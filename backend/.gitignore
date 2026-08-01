@@ -37,10 +37,8 @@ lerna-debug.log*
 
 # dotenv environment variable files
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+.env.*
+!.env.example
 
 # temp directory
 .temp
@@ -54,3 +52,33 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+/generated/prisma
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Prisma
+# (giữ prisma/migrations, chỉ ignore generated client nếu có)
+prisma/generated/
+
+# ─────────────────────────────────────────────
+# AI Agent / Editor config — KHÔNG COMMIT
+# ─────────────────────────────────────────────
+.agents/
+.claude/
+.windsurf/
+.cursor/
+.copilot/
+.windsurf/agents/
+.astro/
+.prompt/
+.continue/
+
+# ─────────────────────────────────────────────
+# File làm việc / ghi chú — KHÔNG COMMIT
+# ─────────────────────────────────────────────
+TODO.md
+skills-lock.json
+*.tmp.md
+notes.md
