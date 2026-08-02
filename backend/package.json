@@ -5,6 +5,9 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
@@ -21,7 +24,8 @@
     "prisma:migrate": "node_modules\\.bin\\prisma migrate dev",
     "prisma:studio": "node_modules\\.bin\\prisma studio",
     "prisma:generate": "node_modules\\.bin\\prisma generate",
-    "prisma:reset": "node_modules\\.bin\\prisma migrate reset"
+    "prisma:reset": "node_modules\\.bin\\prisma migrate reset",
+    "prisma:seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

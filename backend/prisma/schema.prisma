@@ -21,6 +21,13 @@ enum Role {
   SIGNED_UP_USER
 }
 
+/// Giới tính người dùng
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 /// Chế độ hiển thị giải đấu
 enum Visibility {
   PUBLIC
@@ -107,14 +114,22 @@ enum BannedKeywordCategory {
 
 /// Tài khoản hệ thống - Admin hoặc Signed-up User (BTC + Người tham gia gộp chung)
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  passwordHash  String   @map("password_hash")  /// Mật khẩu mã hóa bcrypt
-  displayName   String   @map("display_name")
-  avatarUrl     String?  @map("avatar_url")
-  role          Role     @default(SIGNED_UP_USER)
-  isLocked      Boolean  @default(false) @map("is_locked")  /// Admin khóa tài khoản
-  refreshToken  String?  @map("refresh_token")  /// Hash refresh token
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String    @map("password_hash")  /// Mật khẩu mã hóa bcrypt
+  displayName     String    @map("display_name")
+  avatarUrl       String?   @map("avatar_url")
+  birthDate       DateTime? @map("birth_date")   /// Ngày sinh
+  currentAddress  String?   @map("current_address")  /// Nơi ở hiện tại
+  phoneNumber     String?   @map("phone_number")     /// Số điện thoại
+  gender          Gender?   /// Giới tính
+  bio             String?   /// Giới thiệu bản thân
+  role            Role      @default(SIGNED_UP_USER)
+  isLocked        Boolean   @default(false) @map("is_locked")  /// Admin khóa tài khoản
+  refreshToken    String?   @map("refresh_token")  /// Hash refresh token
+  tokenVersion    Int       @default(0) @map("token_version")  /// Tăng lên khi logout/đổi mật khẩu để vô hiệu access token cũ
+  resetPasswordToken    String?   @map("reset_password_token")  /// Hash token đặt lại mật khẩu
+  resetPasswordExpires  DateTime? @map("reset_password_expires")  /// Hạn sử dụng token đặt lại mật khẩu
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

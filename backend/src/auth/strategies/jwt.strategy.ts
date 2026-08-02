@@ -8,6 +8,7 @@ export interface JwtPayload {
   sub: string; // userId
   email: string;
   role: string;
+  tokenVersion: number; // phiên bản token - tăng khi logout/đổi mật khẩu
 }
 
 /** User đã xác thực được gắn vào request sau khi qua JwtAuthGuard */
@@ -15,8 +16,15 @@ export interface AuthenticatedUser {
   id: string;
   email: string;
   displayName: string;
+  avatarUrl: string | null;
+  birthDate: Date | null;
+  currentAddress: string | null;
+  phoneNumber: string | null;
+  gender: string | null;
+  bio: string | null;
   role: string;
   isLocked: boolean;
+  tokenVersion: number;
 }
 
 @Injectable()
@@ -39,8 +47,15 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         id: true,
         email: true,
         displayName: true,
+        avatarUrl: true,
+        birthDate: true,
+        currentAddress: true,
+        phoneNumber: true,
+        gender: true,
+        bio: true,
         role: true,
         isLocked: true,
+        tokenVersion: true,
       },
     });
 
@@ -52,6 +67,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     if (user.isLocked) {
       throw new UnauthorizedException(
         'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin để biết thêm chi tiết',
+      );
+    }
+
+    // Kiểm tra tokenVersion - token cũ (trước logout/đổi mật khẩu) sẽ không hợp lệ
+    if (payload.tokenVersion !== user.tokenVersion) {
+      throw new UnauthorizedException(
+        'Phiên đăng nhập đã hết hiệu lực. Vui lòng đăng nhập lại',
       );
     }
 

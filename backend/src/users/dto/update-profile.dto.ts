@@ -1,5 +1,4 @@
 import {
-  IsEmail,
   IsString,
   MinLength,
   MaxLength,
@@ -10,21 +9,19 @@ import {
   Validate,
 } from 'class-validator';
 import { Gender } from '@prisma/client';
-import { IsPastDateConstraint } from '../validators/is-past-date.validator';
+import { IsPastDateConstraint } from '../../auth/validators/is-past-date.validator';
 
-export class RegisterDto {
-  @IsEmail({}, { message: 'Email không hợp lệ' })
-  email!: string;
-
-  @IsString()
-  @MinLength(6, { message: 'Mật khẩu phải có ít nhất 6 ký tự' })
-  @MaxLength(50, { message: 'Mật khẩu không được quá 50 ký tự' })
-  password!: string;
-
+export class UpdateProfileDto {
+  @IsOptional()
   @IsString()
   @MinLength(2, { message: 'Tên hiển thị phải có ít nhất 2 ký tự' })
   @MaxLength(50, { message: 'Tên hiển thị không được quá 50 ký tự' })
-  displayName!: string;
+  displayName?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Avatar URL phải là chuỗi' })
+  @MaxLength(500, { message: 'Avatar URL không được quá 500 ký tự' })
+  avatarUrl?: string;
 
   @IsOptional()
   @IsDateString(
