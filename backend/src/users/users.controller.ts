@@ -3,6 +3,7 @@ import {
   Get,
   Patch,
   Body,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -11,11 +12,15 @@ import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { TournamentsService } from '../tournaments/tournaments.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private tournamentsService: TournamentsService,
+  ) {}
 
   /**
    * GET /api/users/me
@@ -34,5 +39,17 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   updateMe(@CurrentUser('id') userId: string, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(userId, dto);
+  }
+
+  /**
+   * GET /api/users/me/tournaments?tab=organized|joined
+   * Danh sách giải đã tổ chức / đã tham gia (UC-U18)
+   */
+  @Get('me/tournaments')
+  getMyTournaments(
+    @CurrentUser('id') userId: string,
+    @Query('tab') tab: 'organized' | 'joined' = 'organized',
+  ) {
+    return this.tournamentsService.findMyTournaments(userId, tab);
   }
 }

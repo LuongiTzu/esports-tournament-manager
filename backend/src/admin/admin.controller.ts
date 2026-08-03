@@ -5,6 +5,7 @@ import {
   Param,
   Query,
   ParseIntPipe,
+  DefaultValuePipe,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -29,8 +30,8 @@ export class AdminController {
    */
   @Get('users')
   listUsers(
-    @Query('page', ParseIntPipe) page = 1,
-    @Query('limit', ParseIntPipe) limit = 20,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
     // Giới hạn limit hợp lệ
     const safeLimit = Math.min(Math.max(limit, 1), 100);
@@ -55,8 +56,14 @@ export class AdminController {
       throw new BadRequestException('Không thể khóa tài khoản của chính mình');
     }
 
-    const isLocked = isLockedRaw === undefined ? true : isLockedRaw === 'true';
+    // Không dùng ParseBoolPipe: global ValidationPipe (transform) đã ép chuỗi lạ
+    // thành false trước khi pipe chạy, khiến ?isLocked=1 âm thầm mở khóa
+    if (isLockedRaw !== undefined && !['true', 'false'].includes(isLockedRaw)) {
+      throw new BadRequestException(
+        'isLocked chỉ nhận giá trị true hoặc false',
+      );
+    }
 
-    return this.adminService.setUserLockStatus(userId, isLocked);
+    return this.adminService.setUserLockStatus(userId, isLockedRaw !== 'false');
   }
 }

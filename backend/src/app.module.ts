@@ -5,6 +5,9 @@ import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
 import { UsersModule } from './users/users.module';
 import { CommonModule } from './common/common.module';
+import { GamesModule } from './games/games.module';
+import { TournamentsModule } from './tournaments/tournaments.module';
+import { TeamsModule } from './teams/teams.module';
 
 @Module({
   imports: [
@@ -23,6 +26,12 @@ import { CommonModule } from './common/common.module';
     UsersModule,
     // Common (guard/decorator dùng chung)
     CommonModule,
+    // Games (danh mục tựa game - UC-G02)
+    GamesModule,
+    // Tournaments (quản lý giải đấu - UC-U04, U05, U09, U10, U18)
+    TournamentsModule,
+    // Teams (đăng ký & duyệt đội - UC-U06, U07, U08, U11, U12)
+    TeamsModule,
   ],
 })
 export class AppModule {}
