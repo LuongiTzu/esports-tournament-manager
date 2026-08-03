@@ -1,26 +1,44 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Bảng token nền tối — app chỉ có 1 theme, không có light mode, không toggle */
+@theme {
+  --color-surface: oklch(0.175 0.008 275);
+  --color-surface-card: oklch(0.215 0.009 275);
+  --color-surface-sub: oklch(0.265 0.01 275);
+  --color-line: oklch(0.325 0.012 275);
+  --color-line-strong: oklch(0.43 0.014 275);
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-ink: oklch(0.965 0.003 275);
+  --color-ink-muted: oklch(0.76 0.008 275);
+  --color-ink-faint: oklch(0.62 0.01 275);
+
+  /* Màu thương hiệu — dùng cho chrome của app (navbar, form xác thực).
+     Tông màu theo game chỉ áp cho phần nội dung giải đấu. */
+  --color-brand: oklch(0.75 0.13 215);
+  --color-on-brand: oklch(0.175 0.008 275);
+
+  /* Trạng thái đội — hệ màu dùng chung toàn app, không trang nào tự đặt màu riêng */
+  --color-pending: oklch(0.8 0.115 78);
+  --color-approved: oklch(0.78 0.13 158);
+  --color-rejected: oklch(0.72 0.095 18);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* `inline` khiến utility biên dịch thành var(--accent, …) thay vì chốt giá trị ở :root,
+   nhờ đó <GameAccent> đặt --accent lúc runtime là bg-accent/text-accent nhận được ngay */
+@theme inline {
+  --color-accent: var(--accent, oklch(0.78 0.02 275));
+  --color-accent-alt: var(--accent-alt, oklch(0.78 0.02 275));
+  --color-on-accent: var(--on-accent, oklch(0.175 0.008 275));
+}
+
+:root {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-surface);
+  color: var(--color-ink);
 }
