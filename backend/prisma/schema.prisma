@@ -28,10 +28,36 @@ enum Gender {
   OTHER
 }
 
+/// Thể loại game — quyết định danh sách vị trí thi đấu hợp lệ
+enum GameGenre {
+  MOBA            /// LOL, Dota 2, Liên Quân Mobile
+  FPS             /// Valorant, CS:GO
+  SPORTS          /// FC Online, PES
+  BATTLE_ROYALE   /// PUBG, Free Fire
+  CARD            /// Hearthstone, Yu-Gi-Oh
+  OTHER
+}
+
 /// Chế độ hiển thị giải đấu
 enum Visibility {
   PUBLIC
   PRIVATE
+}
+
+/// Vòng đời giải đấu
+enum TournamentStatus {
+  DRAFT           /// Bản nháp, chưa công bố
+  REGISTRATION    /// Đang mở đăng ký
+  ONGOING         /// Đang thi đấu
+  COMPLETED       /// Đã kết thúc
+  CANCELLED       /// Đã hủy
+}
+
+/// Hình thức tổ chức giải đấu
+enum TournamentMode {
+  ONLINE
+  OFFLINE
+  HYBRID
 }
 
 /// Trạng thái kiểm duyệt giải đấu (Instant Publishing + Hậu kiểm)
@@ -61,6 +87,15 @@ enum RegistrationStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+/// Vai trò của thành viên trong đội
+enum MemberRole {
+  CAPTAIN     /// Đội trưởng — đúng 1 người mỗi đội
+  PLAYER      /// Thành viên chính thức
+  SUBSTITUTE  /// Dự bị
+  COACH       /// Huấn luyện viên
+  MANAGER     /// Quản lý đội
 }
 
 /// Trạng thái trận đấu
@@ -148,10 +183,15 @@ model User {
 
 /// Danh mục tựa game hỗ trợ
 model Game {
-  id        String   @id @default(cuid())
-  name      String   @unique  /// VD: "League of Legends", "Valorant", "FC Online"
-  iconUrl   String?  @map("icon_url")
-  teamSize  Int      @map("team_size")  /// Số thành viên/đội (LOL=5, FC Online=1...)
+  id        String    @id @default(cuid())
+  name      String    @unique  /// VD: "League of Legends", "Valorant", "FC Online"
+  iconUrl   String?   @map("icon_url")
+  genre     GameGenre @default(OTHER)  /// Thể loại — quyết định danh sách vị trí thi đấu
+  positions Json?     /// Mảng vị trí hợp lệ, VD: ["TOP","JUNGLE","MID","ADC","SUPPORT"]
+
+  defaultTeamSize Int @map("default_team_size")  /// Số người ra sân (LOL=5, FC Online=1)
+  minTeamSize     Int @map("min_team_size")      /// Số người tối thiểu để đội hợp lệ
+  maxTeamSize     Int @map("max_team_size")      /// Số người tối đa kể cả dự bị
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -177,6 +217,30 @@ model Tournament {
   startDate         DateTime?        @map("start_date")
   endDate           DateTime?        @map("end_date")
 
+  // ─── Setting mở rộng (V2) ──────────────────────────────────
+  status TournamentStatus @default(REGISTRATION)  /// Vòng đời giải đấu
+  mode   TournamentMode   @default(ONLINE)        /// Online / Offline / Hybrid
+  location String?        /// Địa điểm — bắt buộc khi mode != ONLINE
+
+  minTeamSize    Int? @map("min_team_size")    /// Số thành viên tối thiểu/đội (null = lấy theo Game)
+  maxTeamSize    Int? @map("max_team_size")    /// Số thành viên tối đa/đội (null = lấy theo Game)
+  maxSubstitutes Int  @default(0) @map("max_substitutes")  /// Số dự bị tối đa
+
+  minAge         Int?  @map("min_age")          /// Giới hạn tuổi tối thiểu của thành viên
+  maxAge         Int?  @map("max_age")          /// Giới hạn tuổi tối đa của thành viên
+  allowedGenders Json? @map("allowed_genders")  /// Giới hạn giới tính, VD ["FEMALE"]; null = không giới hạn
+
+  registrationStartDate DateTime? @map("registration_start_date")  /// Thời điểm mở đăng ký
+  registrationDeadline  DateTime? @map("registration_deadline")    /// Hạn chót đăng ký
+
+  autoApproveTeams      Boolean @default(false) @map("auto_approve_teams")       /// Duyệt đội tự động, bỏ qua PENDING
+  requireMemberFullInfo Boolean @default(true)  @map("require_member_full_info") /// Bắt buộc điền đủ hồ sơ thành viên
+
+  prizePool    String? @map("prize_pool")    /// Mô tả cơ cấu giải thưởng
+  contactEmail String? @map("contact_email") /// Email liên hệ BTC
+  contactPhone String? @map("contact_phone") /// SĐT liên hệ BTC
+  contactLink  String? @map("contact_link")  /// Fanpage / Discord của giải
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -193,6 +257,7 @@ model Tournament {
   notifications Notification[]
 
   @@index([gameId, visibility, moderationStatus])
+  @@index([status, startDate])
   @@map("tournaments")
 }
 
@@ -251,10 +316,21 @@ model GroupTeam {
 model Team {
   id     String             @id @default(cuid())
   name   String
-  logoUrl String?           @map("logo_url")
+  shortName String?         @map("short_name")  /// Tên viết tắt / tag đội (VD: "T1", "GAM")
+  description String?       /// Giới thiệu đội
+  logoUrl String?           @map("logo_url")    /// Avatar đội
   status RegistrationStatus @default(PENDING)
   seed   Int?               /// Hạt giống khi xếp bracket
   finalRank Int?            @map("final_rank")  /// Thứ hạng cuối cùng
+
+  // ─── Người đại diện (prefill từ tài khoản đăng ký) ──────────
+  contactName  String  @map("contact_name")   /// Tên người đại diện
+  contactEmail String  @map("contact_email")  /// Email đại diện
+  contactPhone String? @map("contact_phone")  /// SĐT đại diện
+
+  // ─── Kết quả duyệt của BTC ──────────────────────────────────
+  rejectReason String?   @map("reject_reason")  /// Lý do BTC từ chối — hiển thị lại cho đội trưởng
+  reviewedAt   DateTime? @map("reviewed_at")    /// Thời điểm BTC duyệt/từ chối
 
   registeredAt DateTime @default(now()) @map("registered_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -276,16 +352,29 @@ model Team {
   // Groups
   groupAssignments GroupTeam[]
 
+  @@unique([tournamentId, name])
   @@index([tournamentId, status])
   @@index([captainId])
   @@map("teams")
 }
 
-/// Thành viên trong 1 đội
+/// Thành viên trong 1 đội — hồ sơ chi tiết (V2)
 model TeamMember {
-  id          String  @id @default(cuid())
-  ign         String  /// Tên thi đấu (in-game name)
-  contactInfo String? @map("contact_info")
+  id          String     @id @default(cuid())
+  realName    String     @map("real_name")     /// Tên thật
+  ign         String     /// Tên thi đấu (in-game name)
+  inGameId    String?    @map("in_game_id")    /// ID game (Riot ID, Steam ID, UID...)
+  birthDate   DateTime?  @map("birth_date")    /// Ngày sinh — dùng check minAge/maxAge
+  gender      Gender?    /// Giới tính
+  email       String?    /// Email liên hệ
+  phoneNumber String?    @map("phone_number")  /// SĐT liên hệ
+  position    String?    /// Vị trí thi đấu — validate theo Game.positions
+  memberRole  MemberRole @default(PLAYER) @map("member_role")  /// Chính thức / dự bị / HLV
+  avatarUrl   String?    @map("avatar_url")    /// Ảnh thành viên
+  orderIndex  Int        @default(0) @map("order_index")  /// Thứ tự hiển thị trong roster
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations (userId có thể null nếu chỉ nhập tên tay, không liên kết tài khoản)
   userId String? @map("user_id")
@@ -294,6 +383,8 @@ model TeamMember {
   teamId String @map("team_id")
   team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
+  @@unique([teamId, ign])
+  @@index([teamId])
   @@map("team_members")
 }
 

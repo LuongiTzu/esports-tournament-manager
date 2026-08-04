@@ -26,6 +26,19 @@ export class TeamsController {
   constructor(private teamsService: TeamsService) {}
 
   /**
+   * GET /api/tournaments/:slug/registration-form
+   * Cấu hình + prefill form đăng ký (GĐ 4.1) — cần đăng nhập
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('tournaments/:slug/registration-form')
+  getRegistrationForm(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('slug') slug: string,
+  ) {
+    return this.teamsService.getRegistrationForm(slug, user);
+  }
+
+  /**
    * GET /api/tournaments/:tournamentId/teams
    * Danh sách đội của 1 giải (UC-G05, UC-U12) — không cần đăng nhập
    */
@@ -77,8 +90,14 @@ export class TeamsController {
     @Param('tournamentId') tournamentId: string,
     @Param('teamId') teamId: string,
     @Body('status') status: RegistrationStatus,
+    @Body('rejectReason') rejectReason?: string,
   ) {
-    return this.teamsService.updateStatus(teamId, status, tournamentId);
+    return this.teamsService.updateStatus(
+      teamId,
+      status,
+      tournamentId,
+      rejectReason,
+    );
   }
 
   /**

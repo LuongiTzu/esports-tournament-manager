@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TournamentStatus, TournamentMode } from '@prisma/client';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -38,6 +39,9 @@ export class TournamentsController {
     query: {
       search?: string;
       gameId?: string;
+      status?: TournamentStatus;
+      mode?: TournamentMode;
+      isVerified?: string;
       page?: number;
       limit?: number;
     },

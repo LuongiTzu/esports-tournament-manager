@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, Role, GameGenre } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -27,22 +27,85 @@ async function main() {
   console.log(`  ✔ Admin account: ${adminEmail} / ${adminPassword}`);
 
   // ─── Seed Games ──────────────────────────────────────────────
+  // positions: danh sách vị trí thi đấu hợp lệ, FE dùng render dropdown động
   const games = [
-    { name: 'League of Legends', teamSize: 5 },
-    { name: 'Valorant', teamSize: 5 },
-    { name: 'CS:GO', teamSize: 5 },
-    { name: 'FC Online', teamSize: 1 },
-    { name: 'Dota 2', teamSize: 5 },
-    { name: 'Liên Quân Mobile', teamSize: 5 },
+    {
+      name: 'League of Legends',
+      genre: GameGenre.MOBA,
+      positions: ['TOP', 'JUNGLE', 'MID', 'ADC', 'SUPPORT'],
+      defaultTeamSize: 5,
+      minTeamSize: 5,
+      maxTeamSize: 7,
+    },
+    {
+      name: 'Liên Quân Mobile',
+      genre: GameGenre.MOBA,
+      positions: [
+        'ĐƯỜNG RỒNG',
+        'ĐI RỪNG',
+        'ĐƯỜNG GIỮA',
+        'ĐƯỜNG QUÁI',
+        'HỖ TRỢ',
+      ],
+      defaultTeamSize: 5,
+      minTeamSize: 5,
+      maxTeamSize: 7,
+    },
+    {
+      name: 'Dota 2',
+      genre: GameGenre.MOBA,
+      positions: ['CARRY', 'MID', 'OFFLANE', 'SOFT SUPPORT', 'HARD SUPPORT'],
+      defaultTeamSize: 5,
+      minTeamSize: 5,
+      maxTeamSize: 7,
+    },
+    {
+      name: 'Valorant',
+      genre: GameGenre.FPS,
+      positions: ['IGL', 'ENTRY', 'SUPPORT', 'LURKER', 'SENTINEL'],
+      defaultTeamSize: 5,
+      minTeamSize: 5,
+      maxTeamSize: 7,
+    },
+    {
+      name: 'CS:GO',
+      genre: GameGenre.FPS,
+      positions: ['IGL', 'ENTRY', 'SUPPORT', 'LURKER', 'AWPER'],
+      defaultTeamSize: 5,
+      minTeamSize: 5,
+      maxTeamSize: 7,
+    },
+    {
+      name: 'PUBG Mobile',
+      genre: GameGenre.BATTLE_ROYALE,
+      positions: ['IGL', 'FRAGGER', 'SUPPORT', 'SCOUT'],
+      defaultTeamSize: 4,
+      minTeamSize: 4,
+      maxTeamSize: 6,
+    },
+    {
+      name: 'FC Online',
+      genre: GameGenre.SPORTS,
+      positions: [], // game solo, không có vị trí
+      defaultTeamSize: 1,
+      minTeamSize: 1,
+      maxTeamSize: 1,
+    },
   ];
 
   for (const game of games) {
     await prisma.game.upsert({
       where: { name: game.name },
-      update: {},
+      update: {
+        genre: game.genre,
+        positions: game.positions,
+        defaultTeamSize: game.defaultTeamSize,
+        minTeamSize: game.minTeamSize,
+        maxTeamSize: game.maxTeamSize,
+      },
       create: game,
     });
-    console.log(`  ✔ Game: ${game.name}`);
+    console.log(`  ✔ Game: ${game.name} (${game.genre})`);
   }
 
   // ─── Seed Banned Keywords ────────────────────────────────────

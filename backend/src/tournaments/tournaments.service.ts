@@ -3,13 +3,31 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, ModerationStatus, Visibility } from '@prisma/client';
+import {
+  Prisma,
+  ModerationStatus,
+  Visibility,
+  TournamentMode,
+  TournamentStatus,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateTournamentDto,
   CreateRoundDto,
 } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
+
+/** Field của Game cần trả kèm giải đấu — FE dùng để biết giới hạn đội hình */
+const GAME_SELECT = {
+  id: true,
+  name: true,
+  iconUrl: true,
+  genre: true,
+  positions: true,
+  defaultTeamSize: true,
+  minTeamSize: true,
+  maxTeamSize: true,
+} as const;
 
 @Injectable()
 export class TournamentsService {
@@ -33,10 +51,33 @@ export class TournamentsService {
     // 2. Lọc từ khóa cấm (UC-U19)
     await this.checkBannedKeywords(dto.name, dto.description);
 
-    // 3. Tự sinh slug unique
+    // 3. Giới hạn số thành viên/đội: không nhập thì lấy theo Game
+    const minTeamSize = dto.minTeamSize ?? game.minTeamSize;
+    const maxTeamSize = dto.maxTeamSize ?? game.maxTeamSize;
+
+    // 4. Ràng buộc liên-field — dùng chung 1 hàm với luồng update
+    const mode = dto.mode ?? TournamentMode.ONLINE;
+    this.validateMergedSettings(
+      {
+        mode,
+        location: dto.location ?? null,
+        minTeamSize,
+        maxTeamSize,
+        maxSubstitutes: dto.maxSubstitutes ?? 0,
+        minAge: dto.minAge ?? null,
+        maxAge: dto.maxAge ?? null,
+        registrationStartDate: dto.registrationStartDate ?? null,
+        registrationDeadline: dto.registrationDeadline ?? null,
+        startDate: dto.startDate ?? null,
+        endDate: dto.endDate ?? null,
+      },
+      game,
+    );
+
+    // 5. Tự sinh slug unique
     const slug = await this.generateUniqueSlug(dto.name);
 
-    // 4. Tạo giải đấu + rounds (transaction)
+    // 6. Tạo giải đấu + rounds (transaction)
     return this.prisma.$transaction(async (tx) => {
       const tournament = await tx.tournament.create({
         data: {
@@ -44,18 +85,32 @@ export class TournamentsService {
           slug,
           description: dto.description,
           rules: dto.rules,
+          bannerUrl: dto.bannerUrl,
           visibility: dto.visibility ?? Visibility.PUBLIC,
           moderationStatus: ModerationStatus.ACTIVE, // Instant Publishing
+          status: dto.status ?? TournamentStatus.REGISTRATION,
+          mode,
+          location: dto.location,
           registrationOpen: dto.registrationOpen ?? true,
           maxTeams: dto.maxTeams,
-          startDate: dto.startDate ? new Date(dto.startDate) : null,
-          endDate: dto.endDate ? new Date(dto.endDate) : null,
+          minTeamSize,
+          maxTeamSize,
+          maxSubstitutes: dto.maxSubstitutes ?? 0,
+          minAge: dto.minAge,
+          maxAge: dto.maxAge,
+          allowedGenders: dto.allowedGenders ?? Prisma.JsonNull,
+          registrationStartDate: toDate(dto.registrationStartDate),
+          registrationDeadline: toDate(dto.registrationDeadline),
+          startDate: toDate(dto.startDate),
+          endDate: toDate(dto.endDate),
+          autoApproveTeams: dto.autoApproveTeams ?? false,
+          requireMemberFullInfo: dto.requireMemberFullInfo ?? true,
+          prizePool: dto.prizePool,
+          contactEmail: dto.contactEmail,
+          contactPhone: dto.contactPhone,
+          contactLink: dto.contactLink,
           gameId: dto.gameId,
           organizerId: userId,
-        },
-        include: {
-          game: { select: { id: true, name: true, teamSize: true } },
-          rounds: true,
         },
       });
 
@@ -68,7 +123,7 @@ export class TournamentsService {
       return tx.tournament.findUnique({
         where: { id: tournament.id },
         include: {
-          game: { select: { id: true, name: true, teamSize: true } },
+          game: { select: GAME_SELECT },
           rounds: { orderBy: { orderIndex: 'asc' } },
           _count: { select: { teams: true } },
         },
@@ -79,12 +134,16 @@ export class TournamentsService {
   /**
    * Danh sách giải đấu Public (UC-G01, UC-G02)
    * - Lọc theo từ khóa (tên giải, tên game)
-   * - Lọc theo gameId
+   * - Lọc theo gameId, status, mode, isVerified
    * - Chỉ hiển thị giải PUBLIC + ACTIVE
+   * - Giải đã Verified được ưu tiên lên đầu (UC-A06)
    */
   async findAllPublic(query: {
     search?: string;
     gameId?: string;
+    status?: TournamentStatus;
+    mode?: TournamentMode;
+    isVerified?: string | boolean;
     page?: number;
     limit?: number;
   }) {
@@ -101,6 +160,24 @@ export class TournamentsService {
       where.gameId = query.gameId;
     }
 
+    if (query.status) {
+      if (!(query.status in TournamentStatus)) {
+        throw new BadRequestException('Trạng thái lọc không hợp lệ');
+      }
+      where.status = query.status;
+    }
+
+    if (query.mode) {
+      if (!(query.mode in TournamentMode)) {
+        throw new BadRequestException('Hình thức tổ chức lọc không hợp lệ');
+      }
+      where.mode = query.mode;
+    }
+
+    if (query.isVerified !== undefined) {
+      where.isVerified = query.isVerified === true || query.isVerified === 'true';
+    }
+
     if (query.search) {
       where.OR = [
         { name: { contains: query.search, mode: 'insensitive' } },
@@ -113,9 +190,13 @@ export class TournamentsService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [
+          { isVerified: 'desc' },
+          { startDate: 'asc' },
+          { createdAt: 'desc' },
+        ],
         include: {
-          game: { select: { id: true, name: true, iconUrl: true } },
+          game: { select: GAME_SELECT },
           _count: { select: { teams: true } },
         },
       }),
@@ -143,7 +224,7 @@ export class TournamentsService {
       where: { slug },
       include: {
         game: {
-          select: { id: true, name: true, iconUrl: true, teamSize: true },
+          select: GAME_SELECT,
         },
         organizer: {
           select: { id: true, displayName: true, avatarUrl: true },
@@ -193,12 +274,41 @@ export class TournamentsService {
 
   /**
    * Cập nhật giải đấu (UC-U09) — chỉ BTC
+   *
+   * PATCH gửi dữ liệu một phần nên các ràng buộc liên-field (min<=max, thứ tự mốc
+   * thời gian, địa điểm bắt buộc khi Offline) phải kiểm tra trên trạng thái ĐÃ MERGE
+   * giữa dto và bản ghi hiện tại — decorator ở DTO chỉ thấy được payload gửi lên.
    */
   async update(tournamentId: string, dto: UpdateTournamentDto) {
+    const current = await this.prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      include: { game: { select: GAME_SELECT } },
+    });
+
+    if (!current) {
+      throw new NotFoundException('Không tìm thấy giải đấu');
+    }
+
     // Lọc từ khóa cấm nếu có thay đổi name/description
     if (dto.name || dto.description) {
       await this.checkBannedKeywords(dto.name, dto.description);
     }
+
+    // Đổi game → giới hạn đội hình phải khớp game mới
+    let game = current.game;
+    if (dto.gameId && dto.gameId !== current.gameId) {
+      const newGame = await this.prisma.game.findUnique({
+        where: { id: dto.gameId },
+        select: GAME_SELECT,
+      });
+      if (!newGame) {
+        throw new BadRequestException('Game không tồn tại');
+      }
+      game = newGame;
+    }
+
+    const merged = { ...current, ...stripUndefined(dto) };
+    this.validateMergedSettings(merged, game);
 
     return this.prisma.tournament.update({
       where: { id: tournamentId },
@@ -206,15 +316,33 @@ export class TournamentsService {
         name: dto.name,
         description: dto.description,
         rules: dto.rules,
+        bannerUrl: dto.bannerUrl,
         visibility: dto.visibility,
+        status: dto.status,
+        mode: dto.mode,
+        location: dto.location,
         registrationOpen: dto.registrationOpen,
         maxTeams: dto.maxTeams,
-        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        minTeamSize: dto.minTeamSize,
+        maxTeamSize: dto.maxTeamSize,
+        maxSubstitutes: dto.maxSubstitutes,
+        minAge: dto.minAge,
+        maxAge: dto.maxAge,
+        allowedGenders: dto.allowedGenders,
+        registrationStartDate: toDate(dto.registrationStartDate),
+        registrationDeadline: toDate(dto.registrationDeadline),
+        startDate: toDate(dto.startDate),
+        endDate: toDate(dto.endDate),
+        autoApproveTeams: dto.autoApproveTeams,
+        requireMemberFullInfo: dto.requireMemberFullInfo,
+        prizePool: dto.prizePool,
+        contactEmail: dto.contactEmail,
+        contactPhone: dto.contactPhone,
+        contactLink: dto.contactLink,
         gameId: dto.gameId,
       },
       include: {
-        game: { select: { id: true, name: true } },
+        game: { select: GAME_SELECT },
         rounds: { orderBy: { orderIndex: 'asc' } },
       },
     });
@@ -290,6 +418,72 @@ export class TournamentsService {
 
   // ─── Private helpers ────────────────────────────────────────
 
+  /**
+   * Kiểm tra các ràng buộc liên-field trên trạng thái giải đấu đã merge.
+   * Dùng cho luồng PATCH, nơi decorator ở DTO chỉ nhìn thấy payload một phần.
+   */
+  private validateMergedSettings(
+    t: {
+      mode: TournamentMode;
+      location: string | null;
+      minTeamSize: number | null;
+      maxTeamSize: number | null;
+      maxSubstitutes: number;
+      minAge: number | null;
+      maxAge: number | null;
+      registrationStartDate: Date | string | null;
+      registrationDeadline: Date | string | null;
+      startDate: Date | string | null;
+      endDate: Date | string | null;
+    },
+    game: { minTeamSize: number; maxTeamSize: number },
+  ) {
+    if (t.mode !== TournamentMode.ONLINE && !t.location?.trim()) {
+      throw new BadRequestException(
+        'Giải đấu Offline/Hybrid bắt buộc phải có địa điểm',
+      );
+    }
+
+    const min = t.minTeamSize ?? game.minTeamSize;
+    const max = t.maxTeamSize ?? game.maxTeamSize;
+    if (min > max) {
+      throw new BadRequestException(
+        `Số thành viên tối thiểu (${min}) không được lớn hơn số tối đa (${max})`,
+      );
+    }
+
+    if (t.maxSubstitutes > max - min) {
+      throw new BadRequestException(
+        `Số dự bị (${t.maxSubstitutes}) vượt quá khoảng cho phép giữa số thành viên tối thiểu và tối đa (${max - min})`,
+      );
+    }
+
+    if (t.minAge != null && t.maxAge != null && t.minAge > t.maxAge) {
+      throw new BadRequestException(
+        'Tuổi tối thiểu không được lớn hơn tuổi tối đa',
+      );
+    }
+
+    // Thứ tự các mốc thời gian: mở đăng ký → hạn đăng ký → bắt đầu → kết thúc
+    const timeline: [string, Date | string | null][] = [
+      ['Thời điểm mở đăng ký', t.registrationStartDate],
+      ['Hạn chót đăng ký', t.registrationDeadline],
+      ['Ngày bắt đầu', t.startDate],
+      ['Ngày kết thúc', t.endDate],
+    ];
+    const marks = timeline
+      .filter(([, v]) => v != null)
+      .map(([label, v]) => [label, new Date(v!).getTime()] as const);
+
+    for (let i = 1; i < marks.length; i++) {
+      if (marks[i][1] < marks[i - 1][1]) {
+        throw new BadRequestException(
+          `${marks[i][0]} phải sau ${marks[i - 1][0]}`,
+        );
+      }
+    }
+  }
+
   /** Lọc từ khóa cấm (UC-U19) — kiểm tra name/description chứa keyword cấm */
   private async checkBannedKeywords(name?: string, description?: string) {
     const bannedKeywords = await this.prisma.bannedKeyword.findMany({
@@ -354,4 +548,20 @@ export class TournamentsService {
       });
     }
   }
+}
+
+// ─── Module helpers ───────────────────────────────────────────
+
+/** Chuỗi ISO → Date. Giữ nguyên undefined để Prisma bỏ qua field khi update. */
+function toDate(value?: string | null): Date | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  return new Date(value);
+}
+
+/** Bỏ các key có giá trị undefined để spread không ghi đè dữ liệu hiện có bằng undefined */
+function stripUndefined<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined),
+  ) as Partial<T>;
 }
