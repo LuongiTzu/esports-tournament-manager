@@ -267,6 +267,7 @@ model Round {
   name       String      /// VD: "Vòng bảng", "Playoff", "Chung kết"
   orderIndex Int         @map("order_index")  /// Thứ tự vòng trong giải
   format     RoundFormat /// Thể thức riêng của vòng này
+  bestOf     Int         @default(1) @map("best_of")  /// Mặc định BO1/BO3/BO5 cho cả vòng
   settings   Json?       /// Cấu hình chi tiết (VD: {"numGroups":4, "teamsPerGroup":5, "advanceCount":2})
   status     RoundStatus @default(UPCOMING)
 
@@ -397,6 +398,8 @@ model Match {
   bracketType     BracketType? @map("bracket_type")  /// Chỉ dùng khi Round format = DOUBLE_ELIM
   bracketRound    Int?        @map("bracket_round")  /// Vòng trong bracket (1, 2, 3...)
   matchNumber     Int?        @map("match_number")   /// Thứ tự trận trong bracket_round
+  isBye           Boolean     @default(false) @map("is_bye")  /// Trận nghỉ (Swiss/Playoff lẻ đội)
+  bestOf          Int         @default(1) @map("best_of")     /// BO1/BO3/BO5 theo từng trận
   scheduledAt     DateTime?   @map("scheduled_at")
   playedAt        DateTime?   @map("played_at")
   discordLink     String?     @map("discord_link")

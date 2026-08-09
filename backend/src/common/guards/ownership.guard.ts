@@ -18,6 +18,8 @@ import { AuthenticatedUser } from '../../auth/strategies/jwt.strategy';
  * Hỗ trợ prefix "tournament:" để kiểm tra quyền sở hữu giải đấu:
  *   - tournament:query  → tìm tournament theo slug trong query (?t=xxxx)
  *   - tournament:{param} → tìm tournament theo ID trong param
+ *
+ * Dùng "slug:{param}" khi route định danh giải bằng slug thay vì ID.
  */
 @Injectable()
 export class OwnershipGuard implements CanActivate {
@@ -52,6 +54,17 @@ export class OwnershipGuard implements CanActivate {
       if (!slug) {
         throw new NotFoundException('Thiếu tham số tìm kiếm giải đấu');
       }
+      const tournament = await this.prisma.tournament.findUnique({
+        where: { slug },
+        select: { id: true },
+      });
+      if (!tournament) {
+        throw new NotFoundException('Không tìm thấy giải đấu');
+      }
+      tournamentId = tournament.id;
+    } else if (paramName.startsWith('slug:')) {
+      // Route định danh giải bằng slug, VD @Ownership('slug:slug')
+      const slug = request.params[paramName.slice(5)];
       const tournament = await this.prisma.tournament.findUnique({
         where: { slug },
         select: { id: true },
