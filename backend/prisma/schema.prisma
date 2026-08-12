@@ -111,6 +111,12 @@ enum BracketType {
   LOSER
 }
 
+/// Slot đích khi đội thắng/thua được đẩy sang trận kế tiếp
+enum MatchSlot {
+  A
+  B
+}
+
 /// Loại thông báo
 enum NotificationType {
   SCHEDULE_CHANGE
@@ -425,9 +431,11 @@ model Match {
 
   // Tự tham chiếu cho bracket
   nextMatchId        String? @map("next_match_id")
+  nextMatchSlot      MatchSlot? @map("next_match_slot")
   nextMatch          Match?  @relation("NextMatch", fields: [nextMatchId], references: [id])
   prevMatches        Match[] @relation("NextMatch")
   loserNextMatchId   String? @map("loser_next_match_id")
+  loserNextMatchSlot MatchSlot? @map("loser_next_match_slot")
   loserNextMatch     Match?  @relation("LoserNextMatch", fields: [loserNextMatchId], references: [id])
   loserPrevMatches   Match[] @relation("LoserNextMatch")
 

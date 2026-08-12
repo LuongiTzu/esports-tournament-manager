@@ -62,6 +62,16 @@ export class OwnershipGuard implements CanActivate {
         throw new NotFoundException('Không tìm thấy giải đấu');
       }
       tournamentId = tournament.id;
+    } else if (paramName.startsWith('round:')) {
+      const roundId = request.params[paramName.slice(6)];
+      const round = await this.prisma.round.findUnique({
+        where: { id: roundId },
+        select: { tournamentId: true },
+      });
+      if (!round) {
+        throw new NotFoundException('Không tìm thấy vòng đấu');
+      }
+      tournamentId = round.tournamentId;
     } else if (paramName.startsWith('slug:')) {
       // Route định danh giải bằng slug, VD @Ownership('slug:slug')
       const slug = request.params[paramName.slice(5)];

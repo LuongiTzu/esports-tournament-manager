@@ -17,6 +17,7 @@ import {
 } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { RoundSettingsService } from '../brackets/round-settings.service';
+import { StandingsService } from '../brackets/standings.service';
 
 /** Field của Game cần trả kèm giải đấu — FE dùng để biết giới hạn đội hình */
 const GAME_SELECT = {
@@ -35,6 +36,7 @@ export class TournamentsService {
   constructor(
     private prisma: PrismaService,
     private roundSettingsService: RoundSettingsService,
+    private standingsService: StandingsService,
   ) {}
 
   /**
@@ -179,7 +181,8 @@ export class TournamentsService {
     }
 
     if (query.isVerified !== undefined) {
-      where.isVerified = query.isVerified === true || query.isVerified === 'true';
+      where.isVerified =
+        query.isVerified === true || query.isVerified === 'true';
     }
 
     if (query.search) {
@@ -426,6 +429,45 @@ export class TournamentsService {
         tournamentId,
       },
     });
+  }
+
+  async addRoundBySlug(slug: string, dto: CreateRoundDto) {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!tournament) {
+      throw new NotFoundException('Không tìm thấy giải đấu');
+    }
+    return this.addRound(tournament.id, dto);
+  }
+
+  async getStandings(slug: string, userId?: string) {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        organizerId: true,
+        visibility: true,
+        moderationStatus: true,
+        rounds: {
+          select: { id: true, format: true },
+          orderBy: { orderIndex: 'asc' },
+        },
+      },
+    });
+    if (!tournament) throw new NotFoundException('Không tìm thấy giải đấu');
+    if (
+      (tournament.visibility === Visibility.PRIVATE ||
+        tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN) &&
+      tournament.organizerId !== userId
+    ) {
+      throw new NotFoundException('Không tìm thấy giải đấu');
+    }
+    return this.standingsService.forTournament(
+      tournament.id,
+      tournament.rounds,
+    );
   }
 
   // ─── Private helpers ────────────────────────────────────────

@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { TournamentStatus, TournamentMode } from '@prisma/client';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
@@ -58,6 +59,15 @@ export class TournamentsController {
     return this.tournamentsService.findBySlug(slug);
   }
 
+  @UseGuards(OptionalJwtAuthGuard)
+  @Get(':slug/standings')
+  standings(
+    @Param('slug') slug: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return this.tournamentsService.getStandings(slug, user?.id);
+  }
+
   /**
    * POST /api/tournaments
    * Tạo giải đấu mới (UC-U04) — cần đăng nhập
@@ -101,12 +111,9 @@ export class TournamentsController {
    * Thêm Round vào giải (UC-U05) — chỉ BTC
    */
   @UseGuards(JwtAuthGuard, OwnershipGuard)
-  @Ownership('tournamentId')
-  @Post(':tournamentId/rounds')
-  addRound(
-    @Param('tournamentId') tournamentId: string,
-    @Body() dto: CreateRoundDto,
-  ) {
-    return this.tournamentsService.addRound(tournamentId, dto);
+  @Ownership('slug:slug')
+  @Post(':slug/rounds')
+  addRound(@Param('slug') slug: string, @Body() dto: CreateRoundDto) {
+    return this.tournamentsService.addRoundBySlug(slug, dto);
   }
 }
