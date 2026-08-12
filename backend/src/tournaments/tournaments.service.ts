@@ -16,6 +16,7 @@ import {
   CreateRoundDto,
 } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
+import { RoundSettingsService } from '../brackets/round-settings.service';
 
 /** Field của Game cần trả kèm giải đấu — FE dùng để biết giới hạn đội hình */
 const GAME_SELECT = {
@@ -31,7 +32,10 @@ const GAME_SELECT = {
 
 @Injectable()
 export class TournamentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private roundSettingsService: RoundSettingsService,
+  ) {}
 
   /**
    * Tạo giải đấu mới (UC-U04) — Instant Publishing
@@ -405,11 +409,19 @@ export class TournamentsService {
       select: { orderIndex: true },
     });
 
+    // Chuẩn hóa settings theo format (điền defaults + validate)
+    const normalizedSettings =
+      await this.roundSettingsService.normalizeForFormat(
+        dto.format,
+        dto.settings,
+      );
+
     return this.prisma.round.create({
       data: {
         name: dto.name,
         format: dto.format,
-        settings: (dto.settings as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+        bestOf: dto.bestOf ?? 1,
+        settings: normalizedSettings as unknown as Prisma.InputJsonValue,
         orderIndex: (lastRound?.orderIndex ?? 0) + 1,
         tournamentId,
       },
@@ -536,12 +548,18 @@ export class TournamentsService {
     rounds: CreateRoundDto[],
   ) {
     for (let i = 0; i < rounds.length; i++) {
+      const normalizedSettings =
+        await this.roundSettingsService.normalizeForFormat(
+          rounds[i].format,
+          rounds[i].settings,
+        );
+
       await tx.round.create({
         data: {
           name: rounds[i].name,
           format: rounds[i].format,
-          settings:
-            (rounds[i].settings as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+          bestOf: rounds[i].bestOf ?? 1,
+          settings: normalizedSettings as unknown as Prisma.InputJsonValue,
           orderIndex: i + 1,
           tournamentId,
         },

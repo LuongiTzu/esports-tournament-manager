@@ -41,6 +41,18 @@ export class CreateRoundDto {
   })
   format!: RoundFormat;
 
+  /** Số trận tối đa (BO1/BO3/BO5) — mặc định 1 */
+  @IsOptional()
+  @IsInt({ message: 'bestOf phải là số nguyên' })
+  @Min(1, { message: 'bestOf tối thiểu là 1' })
+  @Max(9, { message: 'bestOf tối đa là 9' })
+  bestOf?: number;
+
+  /**
+   * Cấu hình chi tiết theo thể thức.
+   * Được validate nghiệp vụ ở service (see RoundSettingsValidator) vì schema
+   * phụ thuộc `format` — không thể dùng decorator tĩnh.
+   */
   @IsOptional()
   settings?: Record<string, unknown>;
 }
