@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -28,6 +30,7 @@ interface RefreshTokenPayload {
   role: string;
 }
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -41,6 +44,7 @@ export class AuthController {
    * Đăng ký tài khoản mới (mặc định role SIGNED_UP_USER)
    */
   @Post('register')
+  @Throttle({ default: { limit: 3, ttl: 60 * 60_000 } })
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
@@ -50,6 +54,7 @@ export class AuthController {
    * Đăng nhập, nhận access_token và refresh_token
    */
   @Post('login')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);

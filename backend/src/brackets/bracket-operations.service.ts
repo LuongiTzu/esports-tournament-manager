@@ -6,7 +6,6 @@ import {
   Optional,
 } from '@nestjs/common';
 import {
-  MatchSlot,
   MatchStatus,
   Prisma,
   RegistrationStatus,
@@ -359,11 +358,11 @@ async function persistDrafts(
       where: { id: ids.get(draft.key)! },
       data: {
         nextMatchId: draft.nextMatchKey ? ids.get(draft.nextMatchKey) : null,
-        nextMatchSlot: draft.nextMatchSlot as MatchSlot | null,
+        nextMatchSlot: draft.nextMatchSlot,
         loserNextMatchId: draft.loserNextMatchKey
           ? ids.get(draft.loserNextMatchKey)
           : null,
-        loserNextMatchSlot: draft.loserNextMatchSlot as MatchSlot | null,
+        loserNextMatchSlot: draft.loserNextMatchSlot,
       },
     });
   }

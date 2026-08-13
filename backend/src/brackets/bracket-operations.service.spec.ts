@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { MatchStatus, RoundFormat } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';

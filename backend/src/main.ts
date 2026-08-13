@@ -1,30 +1,49 @@
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { join } from 'path';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-
-  // Global prefix cho tất cả routes
+export function configureApp(app: INestApplication): void {
   app.setGlobalPrefix('api');
-
-  // Global validation pipe (kích hoạt class-validator)
+  app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Loại bỏ field không khai báo trong DTO
-      forbidNonWhitelisted: true, // Báo lỗi nếu có field lạ
-      transform: true, // Tự động chuyển đổi kiểu dữ liệu
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
-
-  // CORS - cho phép frontend kết nối
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
   });
 
+  const config = new DocumentBuilder()
+    .setTitle('Esports Tournament Manager API')
+    .setDescription('Backend API documentation')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('docs', app, document, { useGlobalPrefix: true });
+}
+
+async function bootstrap() {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
+    dotfiles: 'deny',
+    index: false,
+  });
+  configureApp(app);
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  console.log(`🚀 Backend đang chạy tại: http://localhost:${port}/api`);
+  console.log(`Backend running at: http://localhost:${port}/api`);
 }
-void bootstrap();
+
+if (require.main === module) void bootstrap();

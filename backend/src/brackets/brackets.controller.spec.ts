@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import {
   GUARDS_METADATA,
   METHOD_METADATA,

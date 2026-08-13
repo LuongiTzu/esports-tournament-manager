@@ -7,6 +7,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ContentFilterService } from '../common/services/content-filter.service';
+import { NotificationService } from '../notifications/notification.service';
 
 describe('Admin banned keyword authorization', () => {
   it('protects banned keyword APIs with the existing admin guards', () => {
@@ -29,6 +30,7 @@ describe('Admin banned keyword authorization', () => {
     const service = new AdminService(
       prisma,
       filter as unknown as ContentFilterService,
+      {} as NotificationService,
     );
 
     await service.createBannedKeyword({

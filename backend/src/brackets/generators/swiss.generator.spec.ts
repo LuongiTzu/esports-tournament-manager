@@ -1,4 +1,3 @@
-import { RoundFormat } from '@prisma/client';
 import { BracketTeam } from '../types/bracket-generator';
 import { SwissSettings } from '../types/round-settings';
 import { SwissMatchSnapshot } from '../types/swiss';

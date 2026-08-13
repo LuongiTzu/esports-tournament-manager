@@ -280,13 +280,14 @@ export class RegistrationValidatorService {
     members: TeamMemberInputDto[],
     errors: RegistrationError[],
   ) {
-    collectDuplicateIndexes(members.map((m) => m.ign?.trim().toLowerCase())).forEach(
-      (index) =>
-        errors.push({
-          field: 'ign',
-          memberIndex: index,
-          message: 'IGN bị trùng với thành viên khác trong đội',
-        }),
+    collectDuplicateIndexes(
+      members.map((m) => m.ign?.trim().toLowerCase()),
+    ).forEach((index) =>
+      errors.push({
+        field: 'ign',
+        memberIndex: index,
+        message: 'IGN bị trùng với thành viên khác trong đội',
+      }),
     );
 
     collectDuplicateIndexes(
@@ -397,7 +398,10 @@ export function resolveCaptainIndex(members: TeamMemberInputDto[]): number {
 function ageAt(birthDate: Date, reference: Date): number {
   let age = reference.getFullYear() - birthDate.getFullYear();
   const monthDiff = reference.getMonth() - birthDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && reference.getDate() < birthDate.getDate())) {
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 && reference.getDate() < birthDate.getDate())
+  ) {
     age--;
   }
   return age;
@@ -429,11 +433,15 @@ function uniqueValues(values: (string | undefined)[]): string[] {
 }
 
 function toStringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+  return Array.isArray(value)
+    ? value.filter((v): v is string => typeof v === 'string')
+    : [];
 }
 
 function toGenderList(value: unknown): Gender[] | null {
   if (!Array.isArray(value)) return null;
-  const list = value.filter((v): v is Gender => typeof v === 'string' && v in Gender);
+  const list = value.filter(
+    (v): v is Gender => typeof v === 'string' && v in Gender,
+  );
   return list.length ? list : null;
 }

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { AdminModule } from './admin/admin.module';
@@ -13,6 +15,7 @@ import { TournamentRealtimeModule } from './tournaments/tournament-realtime.modu
 import { NotificationModule } from './notifications/notification.module';
 import { CommentModule } from './comments/comment.module';
 import { ReportModule } from './reports/report.module';
+import { UploadModule } from './uploads/upload.module';
 
 @Module({
   imports: [
@@ -20,6 +23,15 @@ import { ReportModule } from './reports/report.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          ttl: config.get<number>('RATE_LIMIT_TTL_MS', 60_000),
+          limit: config.get<number>('RATE_LIMIT_GLOBAL', 100),
+        },
+      ],
     }),
     // Prisma global
     PrismaModule,
@@ -42,6 +54,8 @@ import { ReportModule } from './reports/report.module';
     CommentModule,
     ReportModule,
     TournamentRealtimeModule,
+    UploadModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

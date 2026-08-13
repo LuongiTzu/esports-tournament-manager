@@ -14,19 +14,87 @@ import {
   HttpStatus,
   BadRequestException,
 } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { ModerationStatus, ReportStatus, Role } from '@prisma/client';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateBannedKeywordDto } from './dto/banned-keyword.dto';
+import {
+  LockUserDto,
+  ModerateTournamentDto,
+  ReviewReportDto,
+  VerifyTournamentDto,
+} from './dto/moderation.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 export class AdminController {
   constructor(private adminService: AdminService) {}
+
+  @Get('tournaments')
+  listTournaments(@Query('moderationStatus') status?: ModerationStatus) {
+    if (status && !Object.values(ModerationStatus).includes(status)) {
+      throw new BadRequestException('Invalid moderationStatus');
+    }
+    return this.adminService.listTournaments(status);
+  }
+
+  @Patch('tournaments/:id/moderation')
+  moderateTournament(
+    @Param('id') id: string,
+    @Body() dto: ModerateTournamentDto,
+  ) {
+    return this.adminService.moderateTournament(
+      id,
+      dto.moderationStatus,
+      dto.reason,
+    );
+  }
+
+  @Get('reports')
+  listReports(@Query('status') status?: ReportStatus) {
+    if (status && !Object.values(ReportStatus).includes(status)) {
+      throw new BadRequestException('Invalid report status');
+    }
+    return this.adminService.listReports(status);
+  }
+
+  @Patch('reports/:id')
+  reviewReport(
+    @Param('id') id: string,
+    @Body() dto: ReviewReportDto,
+    @CurrentUser('id') adminId: string,
+  ) {
+    return this.adminService.reviewReport(id, dto.status, adminId);
+  }
+
+  @Get('comments')
+  listComments(@Query('isHidden') isHiddenRaw?: string) {
+    if (isHiddenRaw && !['true', 'false'].includes(isHiddenRaw)) {
+      throw new BadRequestException('isHidden must be true or false');
+    }
+    return this.adminService.listComments(
+      isHiddenRaw === undefined ? undefined : isHiddenRaw === 'true',
+    );
+  }
+
+  @Patch('comments/:id/hide')
+  hideComment(@Param('id') id: string) {
+    return this.adminService.hideComment(id);
+  }
+
+  @Get('stats')
+  stats() {
+    return this.adminService.stats();
+  }
+
+  @Patch('tournaments/:id/verify')
+  verifyTournament(@Param('id') id: string, @Body() dto: VerifyTournamentDto) {
+    return this.adminService.verifyTournament(id, dto.isVerified);
+  }
 
   @Get('banned-keywords')
   listBannedKeywords() {
@@ -68,6 +136,7 @@ export class AdminController {
   async setLock(
     @Param('id') userId: string,
     @CurrentUser('id') adminId: string,
+    @Body() dto: LockUserDto,
     @Query('isLocked') isLockedRaw?: string,
   ) {
     // Admin không thể khóa chính mình
@@ -83,6 +152,9 @@ export class AdminController {
       );
     }
 
-    return this.adminService.setUserLockStatus(userId, isLockedRaw !== 'false');
+    return this.adminService.setUserLockStatus(
+      userId,
+      dto.isLocked ?? isLockedRaw !== 'false',
+    );
   }
 }

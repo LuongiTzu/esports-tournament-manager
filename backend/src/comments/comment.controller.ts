@@ -9,6 +9,8 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
@@ -18,12 +20,14 @@ import { VisibilityGuard } from '../common/guards/visibility.guard';
 import { CommentService } from './comment.service';
 import { CreateCommentDto } from './dto/comment.dto';
 
+@ApiTags('comments')
 @Controller()
 export class CommentController {
   constructor(private readonly comments: CommentService) {}
 
   @UseGuards(JwtAuthGuard, VisibilityGuard)
   @VisibilityResource('slug:slug')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('tournaments/:slug/comments')
   create(
     @Param('slug') slug: string,

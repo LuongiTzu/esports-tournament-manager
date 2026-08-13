@@ -95,10 +95,7 @@ describe('RoundSettingsService', () => {
     [RoundFormat.DOUBLE_ELIM, { grandFinalReset: 'yes' }],
   ])('rejects invalid settings for %s', async (format, settings) => {
     await expect(
-      service.normalizeForFormat(
-        format as RoundFormat,
-        settings as Record<string, unknown>,
-      ),
+      service.normalizeForFormat(format, settings as Record<string, unknown>),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 

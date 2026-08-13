@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/require-await */
 import { BadRequestException } from '@nestjs/common';
 import { BracketType, RoundFormat } from '@prisma/client';
 import { BracketsService } from './brackets.service';
