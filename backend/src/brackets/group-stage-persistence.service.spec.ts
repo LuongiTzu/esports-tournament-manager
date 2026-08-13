@@ -1,3 +1,4 @@
+import { describe, expect, it, jest } from '@jest/globals';
 import { RoundFormat } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroupStageGenerator } from './generators/group-stage.generator';
@@ -35,40 +36,40 @@ function fakePrisma(failOnGroup?: number) {
         const working: FakeState = structuredClone(state);
         const tx = {
           round: {
-            findUnique: jest.fn().mockResolvedValue({
-              id: 'round-1',
-              format: RoundFormat.GROUP_STAGE,
-              settings: {
-                numGroups: 2,
-                teamsPerGroup: 4,
-                advanceCount: 2,
-                doubleRound: false,
-              },
-              bestOf: 3,
-              tournamentId: 'tournament-1',
-            }),
-          },
-          group: {
-            count: jest.fn().mockResolvedValue(working.groups.length),
-            create: jest.fn(
-              async ({ data }: { data: Omit<StoredGroup, 'id'> }) => {
-                const group = {
-                  id: `group-db-${working.groups.length + 1}`,
-                  ...data,
-                };
-                working.groups.push(group);
-                return {
-                  id: group.id,
-                  name: group.name,
-                  orderIndex: group.orderIndex,
-                };
-              },
+            findUnique: jest.fn(() =>
+              Promise.resolve({
+                id: 'round-1',
+                format: RoundFormat.GROUP_STAGE,
+                settings: {
+                  numGroups: 2,
+                  teamsPerGroup: 4,
+                  advanceCount: 2,
+                  doubleRound: false,
+                },
+                bestOf: 3,
+                tournamentId: 'tournament-1',
+              }),
             ),
           },
+          group: {
+            count: jest.fn(() => Promise.resolve(working.groups.length)),
+            create: jest.fn(({ data }: { data: Omit<StoredGroup, 'id'> }) => {
+              const group = {
+                id: `group-db-${working.groups.length + 1}`,
+                ...data,
+              };
+              working.groups.push(group);
+              return {
+                id: group.id,
+                name: group.name,
+                orderIndex: group.orderIndex,
+              };
+            }),
+          },
           match: {
-            count: jest.fn().mockResolvedValue(working.matches.length),
+            count: jest.fn(() => Promise.resolve(working.matches.length)),
             createMany: jest.fn(
-              async ({ data }: { data: Array<Record<string, unknown>> }) => {
+              ({ data }: { data: Array<Record<string, unknown>> }) => {
                 const groupNumber = working.groups.length;
                 if (failOnGroup === groupNumber)
                   throw new Error('simulated match failure');
@@ -77,10 +78,10 @@ function fakePrisma(failOnGroup?: number) {
               },
             ),
           },
-          team: { findMany: jest.fn().mockResolvedValue(teamRows(8)) },
+          team: { findMany: jest.fn(() => Promise.resolve(teamRows(8))) },
           groupTeam: {
             createMany: jest.fn(
-              async ({
+              ({
                 data,
               }: {
                 data: Array<{ groupId: string; teamId: string }>;

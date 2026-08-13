@@ -1,9 +1,39 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ContentFilterService } from '../common/services/content-filter.service';
+import { CreateBannedKeywordDto } from './dto/banned-keyword.dto';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly contentFilter: ContentFilterService,
+  ) {}
+
+  listBannedKeywords() {
+    return this.prisma.bannedKeyword.findMany({
+      orderBy: [{ category: 'asc' }, { keyword: 'asc' }],
+    });
+  }
+
+  async createBannedKeyword(dto: CreateBannedKeywordDto) {
+    const result = await this.prisma.bannedKeyword.create({
+      data: { keyword: dto.keyword.trim(), category: dto.category },
+    });
+    await this.contentFilter.refresh();
+    return result;
+  }
+
+  async deleteBannedKeyword(id: string) {
+    const keyword = await this.prisma.bannedKeyword.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!keyword) throw new NotFoundException('Banned keyword not found');
+    await this.prisma.bannedKeyword.delete({ where: { id } });
+    await this.contentFilter.refresh();
+    return { message: 'Banned keyword deleted', id };
+  }
 
   /** Lấy danh sách tất cả người dùng (phân trang) */
   async listUsers(page = 1, limit = 20) {

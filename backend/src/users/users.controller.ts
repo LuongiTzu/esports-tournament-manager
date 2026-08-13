@@ -13,6 +13,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { TournamentsService } from '../tournaments/tournaments.service';
+import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -47,9 +48,9 @@ export class UsersController {
    */
   @Get('me/tournaments')
   getMyTournaments(
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Query('tab') tab: 'organized' | 'joined' = 'organized',
   ) {
-    return this.tournamentsService.findMyTournaments(userId, tab);
+    return this.tournamentsService.findMyTournaments(user.id, tab, user.role);
   }
 }

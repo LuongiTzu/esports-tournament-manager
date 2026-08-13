@@ -39,6 +39,7 @@ export class OwnershipGuard implements CanActivate {
       user?: AuthenticatedUser;
       params: Record<string, string>;
       query: Record<string, string>;
+      body?: { matches?: unknown };
     }>();
 
     const user = request.user;
@@ -62,6 +63,50 @@ export class OwnershipGuard implements CanActivate {
         throw new NotFoundException('Không tìm thấy giải đấu');
       }
       tournamentId = tournament.id;
+    } else if (paramName === 'matches:body') {
+      const items = request.body?.matches;
+      if (!Array.isArray(items)) {
+        throw new NotFoundException('Khong tim thay tran dau');
+      }
+      const matchIds = items.map((item) =>
+        typeof item === 'object' && item !== null && 'matchId' in item
+          ? (item as { matchId?: unknown }).matchId
+          : undefined,
+      );
+      if (
+        !matchIds.length ||
+        matchIds.some((id): id is Exclude<typeof id, string> =>
+          Boolean(typeof id !== 'string' || !id),
+        )
+      ) {
+        throw new NotFoundException('Khong tim thay tran dau');
+      }
+      const matches = await this.prisma.match.findMany({
+        where: { id: { in: matchIds as string[] } },
+        select: { id: true, round: { select: { tournamentId: true } } },
+      });
+      if (matches.length !== new Set(matchIds).size) {
+        throw new NotFoundException('Khong tim thay tran dau');
+      }
+      const tournamentIds = new Set(
+        matches.map((match) => match.round.tournamentId),
+      );
+      if (tournamentIds.size !== 1) {
+        throw new ForbiddenException(
+          'Tat ca tran dau phai thuoc cung mot giai dau',
+        );
+      }
+      tournamentId = matches[0].round.tournamentId;
+    } else if (paramName.startsWith('match:')) {
+      const matchId = request.params[paramName.slice(6)];
+      const match = await this.prisma.match.findUnique({
+        where: { id: matchId },
+        select: { round: { select: { tournamentId: true } } },
+      });
+      if (!match) {
+        throw new NotFoundException('Khong tim thay tran dau');
+      }
+      tournamentId = match.round.tournamentId;
     } else if (paramName.startsWith('round:')) {
       const roundId = request.params[paramName.slice(6)];
       const round = await this.prisma.round.findUnique({

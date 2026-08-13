@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   MemberRole,
@@ -19,10 +20,10 @@ import {
   UpdateTeamMemberDto,
   UpdateTeamStatusDto,
 } from './dto/update-team.dto';
-import {
-  RegistrationValidatorService,
-  resolveCaptainIndex,
-} from './registration-validator.service';
+import { RegistrationValidatorService } from './registration-validator.service';
+import { TournamentEventsService } from '../tournaments/tournament-events.service';
+import { NotificationService } from '../notifications/notification.service';
+import { ContentFilterService } from '../common/services/content-filter.service';
 
 /** Field roster mà người ngoài (không phải BTC/thành viên đội) được xem */
 const PUBLIC_MEMBER_SELECT = {
@@ -53,6 +54,9 @@ export class TeamsService {
   constructor(
     private prisma: PrismaService,
     private validator: RegistrationValidatorService,
+    private readonly notifications: NotificationService,
+    private readonly contentFilter: ContentFilterService,
+    @Optional() private readonly events?: TournamentEventsService,
   ) {}
 
   /**
@@ -230,6 +234,8 @@ export class TeamsService {
   async update(teamId: string, dto: UpdateTeamDto) {
     const team = await this.loadEditableTeam(teamId);
 
+    this.assertContentAllowed(dto.name, dto.description);
+
     if (dto.name && dto.name !== team.name) {
       await this.assertTeamNameAvailable(team.tournamentId, dto.name, teamId);
     }
@@ -350,7 +356,10 @@ export class TeamsService {
       );
     }
 
-    if (dto.status === RegistrationStatus.REJECTED && !dto.rejectReason?.trim()) {
+    if (
+      dto.status === RegistrationStatus.REJECTED &&
+      !dto.rejectReason?.trim()
+    ) {
       throw new BadRequestException('Phải nhập lý do khi từ chối đội');
     }
 
@@ -369,7 +378,10 @@ export class TeamsService {
       throw new NotFoundException('Không tìm thấy đội');
     }
 
-    if (dto.status === RegistrationStatus.APPROVED && team.tournament.maxTeams) {
+    if (
+      dto.status === RegistrationStatus.APPROVED &&
+      team.tournament.maxTeams
+    ) {
       const approved = await this.prisma.team.count({
         where: {
           tournamentId: team.tournamentId,
@@ -383,8 +395,8 @@ export class TeamsService {
       }
     }
 
-    const [updated] = await this.prisma.$transaction([
-      this.prisma.team.update({
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.team.update({
         where: { id: teamId },
         data: {
           status: dto.status,
@@ -398,9 +410,9 @@ export class TeamsService {
           captain: { select: CAPTAIN_SELECT },
           members: { orderBy: { orderIndex: 'asc' } },
         },
-      }),
-      this.prisma.notification.create({
-        data: {
+      });
+      const notification = await this.notifications.createNotification(
+        {
           userId: team.captainId,
           type:
             dto.status === RegistrationStatus.APPROVED
@@ -412,10 +424,22 @@ export class TeamsService {
               : `Đội "${team.name}" đã bị từ chối. Lý do: ${dto.rejectReason!.trim()}`,
           tournamentId: team.tournamentId,
         },
-      }),
-    ]);
+        tx,
+        false,
+      );
+      return { updated, notification };
+    });
+    this.notifications.emitCreated(result.notification);
 
-    return updated;
+    if (dto.status === RegistrationStatus.APPROVED) {
+      this.events?.publish({
+        tournamentId: team.tournamentId,
+        event: 'teamApproved',
+        payload: result.updated,
+      });
+    }
+
+    return result.updated;
   }
 
   /**
@@ -518,7 +542,10 @@ export class TeamsService {
     const rules = this.validator.buildRules(tournament);
     const { captainIndex } = await this.validator.validate(rules, dto.members);
 
-    return this.prisma.$transaction(async (tx) => {
+    let organizerNotification:
+      | Awaited<ReturnType<NotificationService['createNotification']>>
+      | undefined;
+    const result = await this.prisma.$transaction(async (tx) => {
       const team = await tx.team.create({
         data: {
           name: dto.name,
@@ -559,14 +586,16 @@ export class TeamsService {
       });
 
       if (options.notifyOrganizer) {
-        await tx.notification.create({
-          data: {
+        organizerNotification = await this.notifications.createNotification(
+          {
             userId: tournament.organizerId,
             type: NotificationType.SYSTEM,
             content: `Đội "${team.name}" vừa đăng ký tham gia giải "${tournament.name}"`,
             tournamentId: tournament.id,
           },
-        });
+          tx,
+          false,
+        );
       }
 
       return tx.team.findUnique({
@@ -578,6 +607,10 @@ export class TeamsService {
         },
       });
     });
+    if (organizerNotification) {
+      this.notifications.emitCreated(organizerNotification);
+    }
+    return result;
   }
 
   private async loadTournamentForRegistration(slug: string) {
@@ -614,7 +647,9 @@ export class TeamsService {
     const tournament = await this.prisma.tournament.findUniqueOrThrow({
       where: { id: tournamentId },
       include: {
-        game: { select: { minTeamSize: true, maxTeamSize: true, positions: true } },
+        game: {
+          select: { minTeamSize: true, maxTeamSize: true, positions: true },
+        },
       },
     });
 
@@ -704,7 +739,12 @@ export class TeamsService {
    * Hook lọc từ khóa cấm cho tên/giới thiệu đội.
    * `ContentFilterService` của GĐ 8 sẽ thay phần thân rỗng này.
    */
-  private assertContentAllowed(_name: string, _description?: string) {}
+  private assertContentAllowed(name?: string, description?: string) {
+    if (name !== undefined) this.contentFilter.validate(name);
+    if (description !== undefined) {
+      this.contentFilter.validate(description);
+    }
+  }
 
   private countOccupiedSlots(tournamentId: string) {
     return this.prisma.team.count({
@@ -754,7 +794,10 @@ export class TeamsService {
       return 'Giải đấu chưa tới thời điểm mở đăng ký';
     }
 
-    if (tournament.registrationDeadline && now > tournament.registrationDeadline) {
+    if (
+      tournament.registrationDeadline &&
+      now > tournament.registrationDeadline
+    ) {
       return 'Đã quá hạn chót đăng ký';
     }
 

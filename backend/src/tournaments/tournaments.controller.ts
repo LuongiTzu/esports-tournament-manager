@@ -14,6 +14,8 @@ import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { TournamentStatus, TournamentMode } from '@prisma/client';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
+import { VisibilityResource } from '../common/decorators/visibility.decorator';
+import { VisibilityGuard } from '../common/guards/visibility.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { TournamentsService } from './tournaments.service';
@@ -38,6 +40,7 @@ export class TournamentsController {
   findAll(
     @Query()
     query: {
+      q?: string;
       search?: string;
       gameId?: string;
       status?: TournamentStatus;
@@ -47,25 +50,58 @@ export class TournamentsController {
       limit?: number;
     },
   ) {
-    return this.tournamentsService.findAllPublic(query);
+    return this.tournamentsService.findAllPublic({
+      ...query,
+      search: query.q ?? query.search,
+    });
   }
 
   /**
    * GET /api/tournaments/slug/:slug
    * Chi tiết giải đấu theo slug (UC-G03, UC-G04) — không cần đăng nhập
    */
+  @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
+  @VisibilityResource('slug:slug')
   @Get('slug/:slug')
-  findBySlug(@Param('slug') slug: string) {
-    return this.tournamentsService.findBySlug(slug);
+  findByLegacySlug(
+    @Param('slug') slug: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return this.tournamentsService.findBySlug(slug, user?.id, user?.role);
   }
 
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
+  @VisibilityResource('slug:slug')
   @Get(':slug/standings')
   standings(
     @Param('slug') slug: string,
     @CurrentUser() user?: AuthenticatedUser,
   ) {
-    return this.tournamentsService.getStandings(slug, user?.id);
+    return this.tournamentsService.getStandings(slug, user?.id, user?.role);
+  }
+
+  @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
+  @VisibilityResource('slug:slug')
+  @Get(':slug/schedule')
+  schedule(@Param('slug') slug: string) {
+    return this.tournamentsService.getSchedule(slug);
+  }
+
+  @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
+  @VisibilityResource('slug:slug')
+  @Get(':slug/bracket')
+  bracket(@Param('slug') slug: string) {
+    return this.tournamentsService.getBracket(slug);
+  }
+
+  @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
+  @VisibilityResource('slug:slug')
+  @Get(':slug')
+  findBySlug(
+    @Param('slug') slug: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return this.tournamentsService.findBySlug(slug, user?.id, user?.role);
   }
 
   /**

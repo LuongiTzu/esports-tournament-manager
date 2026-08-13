@@ -18,6 +18,7 @@ import {
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { RoundSettingsService } from '../brackets/round-settings.service';
 import { StandingsService } from '../brackets/standings.service';
+import { ContentFilterService } from '../common/services/content-filter.service';
 
 /** Field của Game cần trả kèm giải đấu — FE dùng để biết giới hạn đội hình */
 const GAME_SELECT = {
@@ -31,12 +32,21 @@ const GAME_SELECT = {
   maxTeamSize: true,
 } as const;
 
+const PUBLIC_TEAM_SELECT = {
+  id: true,
+  name: true,
+  shortName: true,
+  logoUrl: true,
+  seed: true,
+} as const;
+
 @Injectable()
 export class TournamentsService {
   constructor(
     private prisma: PrismaService,
     private roundSettingsService: RoundSettingsService,
     private standingsService: StandingsService,
+    private readonly contentFilter: ContentFilterService,
   ) {}
 
   /**
@@ -55,7 +65,7 @@ export class TournamentsService {
     }
 
     // 2. Lọc từ khóa cấm (UC-U19)
-    await this.checkBannedKeywords(dto.name, dto.description);
+    this.validateContent(dto.name, dto.description, dto.rules);
 
     // 3. Giới hạn số thành viên/đội: không nhập thì lấy theo Game
     const minTeamSize = dto.minTeamSize ?? game.minTeamSize;
@@ -226,7 +236,7 @@ export class TournamentsService {
    * - Public: chỉ xem được giải PUBLIC + ACTIVE
    * - Chủ giải: xem được cả giải PRIVATE
    */
-  async findBySlug(slug: string, userId?: string) {
+  async findBySlug(slug: string, userId?: string, userRole?: string) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { slug },
       include: {
@@ -263,7 +273,12 @@ export class TournamentsService {
     // Kiểm tra quyền xem: giải PRIVATE chỉ chủ giải xem được
     if (
       tournament.visibility === Visibility.PRIVATE &&
-      tournament.organizerId !== userId
+      !(await this.canViewPrivate(
+        tournament.id,
+        tournament.organizerId,
+        userId,
+        userRole,
+      ))
     ) {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
@@ -271,7 +286,8 @@ export class TournamentsService {
     // Giải bị Admin ẩn: chỉ chủ giải xem được
     if (
       tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN &&
-      tournament.organizerId !== userId
+      tournament.organizerId !== userId &&
+      userRole !== 'ADMIN'
     ) {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
@@ -297,8 +313,8 @@ export class TournamentsService {
     }
 
     // Lọc từ khóa cấm nếu có thay đổi name/description
-    if (dto.name || dto.description) {
-      await this.checkBannedKeywords(dto.name, dto.description);
+    if (dto.name || dto.description || dto.rules) {
+      this.validateContent(dto.name, dto.description, dto.rules);
     }
 
     // Đổi game → giới hạn đội hình phải khớp game mới
@@ -370,7 +386,14 @@ export class TournamentsService {
    * - tab = 'organized': giải tôi tạo
    * - tab = 'joined': giải tôi tham gia (có đội đăng ký)
    */
-  async findMyTournaments(userId: string, tab: 'organized' | 'joined') {
+  async findMyTournaments(
+    userId: string,
+    tab: 'organized' | 'joined',
+    userRole?: string,
+  ) {
+    if (tab !== 'organized' && tab !== 'joined') {
+      throw new BadRequestException('Tab must be organized or joined');
+    }
     if (tab === 'organized') {
       return this.prisma.tournament.findMany({
         where: { organizerId: userId },
@@ -393,7 +416,11 @@ export class TournamentsService {
     const tournamentIds = [...new Set(teams.map((t) => t.tournamentId))];
 
     return this.prisma.tournament.findMany({
-      where: { id: { in: tournamentIds } },
+      where: {
+        id: { in: tournamentIds },
+        moderationStatus:
+          userRole === 'ADMIN' ? undefined : ModerationStatus.ACTIVE,
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         game: { select: { id: true, name: true, iconUrl: true } },
@@ -442,7 +469,7 @@ export class TournamentsService {
     return this.addRound(tournament.id, dto);
   }
 
-  async getStandings(slug: string, userId?: string) {
+  async getStandings(slug: string, userId?: string, userRole?: string) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { slug },
       select: {
@@ -458,11 +485,22 @@ export class TournamentsService {
     });
     if (!tournament) throw new NotFoundException('Không tìm thấy giải đấu');
     if (
-      (tournament.visibility === Visibility.PRIVATE ||
-        tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN) &&
-      tournament.organizerId !== userId
+      tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN &&
+      tournament.organizerId !== userId &&
+      userRole !== 'ADMIN'
     ) {
       throw new NotFoundException('Không tìm thấy giải đấu');
+    }
+    if (
+      tournament.visibility === Visibility.PRIVATE &&
+      !(await this.canViewPrivate(
+        tournament.id,
+        tournament.organizerId,
+        userId,
+        userRole,
+      ))
+    ) {
+      throw new NotFoundException('Tournament not found');
     }
     return this.standingsService.forTournament(
       tournament.id,
@@ -476,6 +514,144 @@ export class TournamentsService {
    * Kiểm tra các ràng buộc liên-field trên trạng thái giải đấu đã merge.
    * Dùng cho luồng PATCH, nơi decorator ở DTO chỉ nhìn thấy payload một phần.
    */
+  async getSchedule(slug: string) {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        rounds: {
+          orderBy: { orderIndex: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            orderIndex: true,
+            matches: {
+              orderBy: [
+                { scheduledAt: 'asc' },
+                { bracketRound: 'asc' },
+                { matchNumber: 'asc' },
+              ],
+              include: {
+                teamA: { select: PUBLIC_TEAM_SELECT },
+                teamB: { select: PUBLIC_TEAM_SELECT },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!tournament) throw new NotFoundException('Không tìm thấy giải đấu');
+    return {
+      tournament: { id: tournament.id, name: tournament.name, slug },
+      rounds: tournament.rounds.map((round) => {
+        const dates = new Map<string, typeof round.matches>();
+        for (const match of round.matches) {
+          const date = match.scheduledAt
+            ? match.scheduledAt.toISOString().slice(0, 10)
+            : 'UNSCHEDULED';
+          dates.set(date, [...(dates.get(date) ?? []), match]);
+        }
+        return {
+          id: round.id,
+          name: round.name,
+          orderIndex: round.orderIndex,
+          dates: [...dates].map(([date, matches]) => ({ date, matches })),
+        };
+      }),
+    };
+  }
+
+  async getBracket(slug: string) {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        rounds: {
+          orderBy: { orderIndex: 'asc' },
+          include: {
+            groups: {
+              orderBy: { orderIndex: 'asc' },
+              include: {
+                teamAssignments: {
+                  include: { team: { select: PUBLIC_TEAM_SELECT } },
+                },
+              },
+            },
+            matches: {
+              orderBy: [{ bracketRound: 'asc' }, { matchNumber: 'asc' }],
+              include: {
+                teamA: { select: PUBLIC_TEAM_SELECT },
+                teamB: { select: PUBLIC_TEAM_SELECT },
+                winner: { select: PUBLIC_TEAM_SELECT },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!tournament) throw new NotFoundException('Không tìm thấy giải đấu');
+    return {
+      tournament: { id: tournament.id, name: tournament.name, slug },
+      rounds: tournament.rounds.map((round) => ({
+        round: {
+          id: round.id,
+          name: round.name,
+          orderIndex: round.orderIndex,
+          format: round.format,
+          status: round.status,
+          bestOf: round.bestOf,
+          settings: round.settings,
+        },
+        groups: round.groups.map((group) => ({
+          id: group.id,
+          name: group.name,
+          orderIndex: group.orderIndex,
+          teams: group.teamAssignments.map((assignment) => assignment.team),
+        })),
+        matches: round.matches.map((match) => ({
+          id: match.id,
+          bracketRound: match.bracketRound,
+          bracketType: match.bracketType,
+          matchNumber: match.matchNumber,
+          status: match.status,
+          isBye: match.isBye,
+          bestOf: match.bestOf,
+          scheduledAt: match.scheduledAt,
+          slots: { A: match.teamA, B: match.teamB },
+          score: { A: match.scoreA, B: match.scoreB },
+          winner: match.winner,
+          nextMatch: { id: match.nextMatchId, slot: match.nextMatchSlot },
+          loserNextMatch: {
+            id: match.loserNextMatchId,
+            slot: match.loserNextMatchSlot,
+          },
+        })),
+      })),
+    };
+  }
+
+  private async canViewPrivate(
+    tournamentId: string,
+    organizerId: string,
+    userId?: string,
+    userRole?: string,
+  ) {
+    if (!userId) return false;
+    if (userRole === 'ADMIN' || organizerId === userId) return true;
+    const team = await this.prisma.team.findFirst({
+      where: {
+        tournamentId,
+        OR: [{ captainId: userId }, { members: { some: { userId } } }],
+      },
+      select: { id: true },
+    });
+    return team !== null;
+  }
+
   private validateMergedSettings(
     t: {
       mode: TournamentMode;
@@ -538,21 +714,9 @@ export class TournamentsService {
     }
   }
 
-  /** Lọc từ khóa cấm (UC-U19) — kiểm tra name/description chứa keyword cấm */
-  private async checkBannedKeywords(name?: string, description?: string) {
-    const bannedKeywords = await this.prisma.bannedKeyword.findMany({
-      select: { keyword: true },
-    });
-
-    const content = `${name ?? ''} ${description ?? ''}`.toLowerCase();
-    const found = bannedKeywords.find((kw) =>
-      content.includes(kw.keyword.toLowerCase()),
-    );
-
-    if (found) {
-      throw new BadRequestException(
-        `Nội dung chứa từ khóa bị cấm: "${found.keyword}"`,
-      );
+  private validateContent(...values: Array<string | undefined>) {
+    for (const value of values) {
+      if (value !== undefined) this.contentFilter.validate(value);
     }
   }
 

@@ -8,6 +8,11 @@ import { CommonModule } from './common/common.module';
 import { GamesModule } from './games/games.module';
 import { TournamentsModule } from './tournaments/tournaments.module';
 import { TeamsModule } from './teams/teams.module';
+import { MatchesModule } from './matches/matches.module';
+import { TournamentRealtimeModule } from './tournaments/tournament-realtime.module';
+import { NotificationModule } from './notifications/notification.module';
+import { CommentModule } from './comments/comment.module';
+import { ReportModule } from './reports/report.module';
 
 @Module({
   imports: [
@@ -32,6 +37,11 @@ import { TeamsModule } from './teams/teams.module';
     TournamentsModule,
     // Teams (đăng ký & duyệt đội - UC-U06, U07, U08, U11, U12)
     TeamsModule,
+    MatchesModule,
+    NotificationModule,
+    CommentModule,
+    ReportModule,
+    TournamentRealtimeModule,
   ],
 })
 export class AppModule {}

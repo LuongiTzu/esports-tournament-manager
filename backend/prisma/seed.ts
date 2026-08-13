@@ -124,6 +124,9 @@ async function main() {
     { keyword: 'lồn', category: 'PROFANITY' as const },
     { keyword: 'đụ', category: 'PROFANITY' as const },
     { keyword: 'chó', category: 'PROFANITY' as const },
+    // Liên kết độc hại / lừa đảo
+    { keyword: 'malware', category: 'MALICIOUS_LINK' as const },
+    { keyword: 'phishing', category: 'MALICIOUS_LINK' as const },
   ];
 
   for (const kw of bannedKeywords) {

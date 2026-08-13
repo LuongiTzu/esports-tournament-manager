@@ -1,6 +1,9 @@
 import {
   Controller,
   Get,
+  Post,
+  Delete,
+  Body,
   Patch,
   Param,
   Query,
@@ -17,12 +20,28 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CreateBannedKeywordDto } from './dto/banned-keyword.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 export class AdminController {
   constructor(private adminService: AdminService) {}
+
+  @Get('banned-keywords')
+  listBannedKeywords() {
+    return this.adminService.listBannedKeywords();
+  }
+
+  @Post('banned-keywords')
+  createBannedKeyword(@Body() dto: CreateBannedKeywordDto) {
+    return this.adminService.createBannedKeyword(dto);
+  }
+
+  @Delete('banned-keywords/:id')
+  deleteBannedKeyword(@Param('id') id: string) {
+    return this.adminService.deleteBannedKeyword(id);
+  }
 
   /**
    * GET /api/admin/users

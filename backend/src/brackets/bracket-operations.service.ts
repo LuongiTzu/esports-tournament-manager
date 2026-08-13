@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   MatchSlot,
@@ -16,6 +17,7 @@ import { BracketsService } from './brackets.service';
 import { UpdateSeedsDto } from './dto/bracket-operations.dto';
 import { MatchDraft } from './types/bracket-generator';
 import { StandingsService } from './standings.service';
+import { TournamentEventsService } from '../tournaments/tournament-events.service';
 
 @Injectable()
 export class BracketOperationsService {
@@ -23,10 +25,11 @@ export class BracketOperationsService {
     private readonly prisma: PrismaService,
     private readonly brackets: BracketsService,
     private readonly standings: StandingsService,
+    @Optional() private readonly events?: TournamentEventsService,
   ) {}
 
   async generate(roundId: string, force = false) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const round = await tx.round.findUnique({
         where: { id: roundId },
         select: {
@@ -88,6 +91,7 @@ export class BracketOperationsService {
       });
       const persisted = await persistDrafts(tx, roundId, teams, drafts);
       return {
+        tournamentId: round.tournamentId,
         roundId,
         format: round.format,
         approvedTeamCount: teams.length,
@@ -96,6 +100,13 @@ export class BracketOperationsService {
         matches: persisted,
       };
     });
+    const { tournamentId, ...payload } = result;
+    this.events?.publish({
+      tournamentId,
+      event: 'bracketGenerated',
+      payload,
+    });
+    return payload;
   }
 
   async updateSeeds(roundId: string, dto: UpdateSeedsDto) {
