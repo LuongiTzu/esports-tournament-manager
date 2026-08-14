@@ -77,6 +77,14 @@ export class VisibilityGuard implements CanActivate {
         })
         .then((match) => match?.round.tournament ?? null);
     }
+    if (resource?.startsWith('team:')) {
+      return this.prisma.team
+        .findUnique({
+          where: { id: params[resource.slice(5)] },
+          select: { tournament: { select: visibilitySelect } },
+        })
+        .then((team) => team?.tournament ?? null);
+    }
     const slugParam = resource?.startsWith('slug:')
       ? resource.slice(5)
       : 'slug';

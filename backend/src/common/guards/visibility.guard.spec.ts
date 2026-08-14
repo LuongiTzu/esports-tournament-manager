@@ -4,122 +4,192 @@ import { ModerationStatus, Role, Visibility } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VisibilityGuard } from './visibility.guard';
 
-function context(user?: { id: string; role: Role }) {
-  return {
-    getHandler: () => null,
-    getClass: () => null,
-    switchToHttp: () => ({
-      getRequest: () => ({ params: { slug: 'cup' }, user }),
-    }),
-  } as unknown as ExecutionContext;
-}
+type User = { id: string; role: Role };
+type Resource = 'slug:slug' | 'team:id';
+type TournamentVisibility = {
+  id: string;
+  organizerId: string;
+  visibility: Visibility;
+  moderationStatus: ModerationStatus;
+};
 
-function harness(
-  tournament: {
-    id: string;
-    organizerId: string;
-    visibility: Visibility;
-    moderationStatus: ModerationStatus;
-  },
-  team: { id: string } | null = null,
-) {
-  const findTeam = jest.fn().mockResolvedValue(team);
-  const prisma = {
-    tournament: { findUnique: jest.fn().mockResolvedValue(tournament) },
-    team: { findFirst: findTeam },
-  } as unknown as PrismaService;
-  const reflector = {
-    getAllAndOverride: jest.fn().mockReturnValue('slug:slug'),
-  } as unknown as Reflector;
-  return { guard: new VisibilityGuard(reflector, prisma), findTeam };
-}
-
-const activeTournament = {
+const activeTournament: TournamentVisibility = {
   id: 't-1',
   organizerId: 'organizer',
   visibility: Visibility.PUBLIC,
   moderationStatus: ModerationStatus.ACTIVE,
 };
 
-describe('VisibilityGuard', () => {
-  it('allows an anonymous visitor to view a public active tournament', async () => {
-    const { guard } = harness(activeTournament);
-    await expect(guard.canActivate(context())).resolves.toBe(true);
-  });
+function context(user?: User) {
+  return {
+    getHandler: () => null,
+    getClass: () => null,
+    switchToHttp: () => ({
+      getRequest: () => ({ params: { slug: 'cup', id: 'team-1' }, user }),
+    }),
+  } as unknown as ExecutionContext;
+}
 
-  it('rejects an anonymous visitor for a private tournament', async () => {
-    const { guard } = harness({
-      ...activeTournament,
-      visibility: Visibility.PRIVATE,
-    });
-    await expect(guard.canActivate(context())).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
-  });
+function harness(
+  resource: Resource,
+  tournament: TournamentVisibility | null,
+  belongsToTeam = false,
+) {
+  const findMembership = jest
+    .fn()
+    .mockResolvedValue(belongsToTeam ? { id: 'team-1' } : null);
+  const findTeamById = jest
+    .fn()
+    .mockResolvedValue(tournament ? { tournament } : null);
+  const findTournamentBySlug = jest.fn().mockResolvedValue(tournament);
+  const prisma = {
+    tournament: { findUnique: findTournamentBySlug },
+    team: { findUnique: findTeamById, findFirst: findMembership },
+  } as unknown as PrismaService;
+  const reflector = {
+    getAllAndOverride: jest.fn().mockReturnValue(resource),
+  } as unknown as Reflector;
 
+  return {
+    guard: new VisibilityGuard(reflector, prisma),
+    findMembership,
+    findTeamById,
+    findTournamentBySlug,
+  };
+}
+
+const resources: Array<[string, Resource]> = [
+  ['tournament team list', 'slug:slug'],
+  ['direct team detail', 'team:id'],
+];
+
+describe.each(resources)('VisibilityGuard - %s', (_label, resource) => {
   it.each([
-    ['organizer', Role.SIGNED_UP_USER],
-    ['admin', Role.ADMIN],
-  ] as const)('allows %s to view a private tournament', async (id, role) => {
-    const { guard } = harness({
-      ...activeTournament,
-      visibility: Visibility.PRIVATE,
-    });
-    await expect(guard.canActivate(context({ id, role }))).resolves.toBe(true);
-  });
-
-  it.each(['captain', 'member'])(
-    'allows a private tournament %s',
-    async (id) => {
-      const { guard, findTeam } = harness(
-        { ...activeTournament, visibility: Visibility.PRIVATE },
-        { id: 'team-1' },
-      );
+    ['anonymous', undefined],
+    ['unrelated user', { id: 'unrelated', role: Role.SIGNED_UP_USER }],
+    ['captain', { id: 'captain', role: Role.SIGNED_UP_USER }],
+    ['member', { id: 'member', role: Role.SIGNED_UP_USER }],
+    ['organizer', { id: 'organizer', role: Role.SIGNED_UP_USER }],
+    ['admin', { id: 'admin', role: Role.ADMIN }],
+  ] as Array<[string, User | undefined]>)(
+    'allows %s for a public active tournament',
+    async (_actor, user) => {
       await expect(
-        guard.canActivate(context({ id, role: Role.SIGNED_UP_USER })),
+        harness(resource, activeTournament).guard.canActivate(context(user)),
       ).resolves.toBe(true);
-      expect(findTeam).toHaveBeenCalledWith({
-        where: {
-          tournamentId: 't-1',
-          OR: [{ captainId: id }, { members: { some: { userId: id } } }],
-        },
-        select: { id: true },
-      });
     },
   );
 
-  it('rejects an unrelated user for a private tournament', async () => {
-    const { guard } = harness({
-      ...activeTournament,
-      visibility: Visibility.PRIVATE,
-    });
-    await expect(
-      guard.canActivate(
-        context({ id: 'unrelated', role: Role.SIGNED_UP_USER }),
-      ),
-    ).rejects.toBeInstanceOf(NotFoundException);
-  });
+  it.each([
+    ['anonymous', undefined, false],
+    ['unrelated user', { id: 'unrelated', role: Role.SIGNED_UP_USER }, false],
+  ] as Array<[string, User | undefined, boolean]>)(
+    'denies %s for a private tournament',
+    async (_actor, user, belongsToTeam) => {
+      const { guard } = harness(
+        resource,
+        {
+          ...activeTournament,
+          visibility: Visibility.PRIVATE,
+        },
+        belongsToTeam,
+      );
+      await expect(guard.canActivate(context(user))).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    },
+  );
 
-  it('allows only organizer or admin when hidden by admin', async () => {
-    const hidden = {
-      ...activeTournament,
-      visibility: Visibility.PRIVATE,
-      moderationStatus: ModerationStatus.HIDDEN_BY_ADMIN,
-    };
+  it.each([
+    ['captain', { id: 'captain', role: Role.SIGNED_UP_USER }, true],
+    ['member', { id: 'member', role: Role.SIGNED_UP_USER }, true],
+    ['organizer', { id: 'organizer', role: Role.SIGNED_UP_USER }, false],
+    ['admin', { id: 'admin', role: Role.ADMIN }, false],
+  ] as Array<[string, User, boolean]>)(
+    'allows %s for a private tournament',
+    async (_actor, user, belongsToTeam) => {
+      const { guard } = harness(
+        resource,
+        {
+          ...activeTournament,
+          visibility: Visibility.PRIVATE,
+        },
+        belongsToTeam,
+      );
+      await expect(guard.canActivate(context(user))).resolves.toBe(true);
+    },
+  );
+
+  it.each([
+    ['anonymous', undefined],
+    ['unrelated user', { id: 'unrelated', role: Role.SIGNED_UP_USER }],
+    ['captain', { id: 'captain', role: Role.SIGNED_UP_USER }],
+    ['member', { id: 'member', role: Role.SIGNED_UP_USER }],
+  ] as Array<[string, User | undefined]>)(
+    'denies %s for a tournament hidden by admin',
+    async (_actor, user) => {
+      const { guard } = harness(
+        resource,
+        {
+          ...activeTournament,
+          moderationStatus: ModerationStatus.HIDDEN_BY_ADMIN,
+        },
+        true,
+      );
+      await expect(guard.canActivate(context(user))).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    },
+  );
+
+  it.each([
+    ['organizer', { id: 'organizer', role: Role.SIGNED_UP_USER }],
+    ['admin', { id: 'admin', role: Role.ADMIN }],
+  ] as Array<[string, User]>)(
+    'allows %s for a tournament hidden by admin',
+    async (_actor, user) => {
+      const { guard } = harness(resource, {
+        ...activeTournament,
+        moderationStatus: ModerationStatus.HIDDEN_BY_ADMIN,
+      });
+      await expect(guard.canActivate(context(user))).resolves.toBe(true);
+    },
+  );
+
+  it('does not expose whether the parent resource is missing', async () => {
     await expect(
-      harness(hidden).guard.canActivate(
-        context({ id: 'member', role: Role.SIGNED_UP_USER }),
-      ),
-    ).rejects.toBeInstanceOf(NotFoundException);
-    await expect(
-      harness(hidden).guard.canActivate(
-        context({ id: 'admin', role: Role.ADMIN }),
-      ),
-    ).resolves.toBe(true);
-    await expect(
-      harness(hidden).guard.canActivate(
-        context({ id: 'organizer', role: Role.SIGNED_UP_USER }),
-      ),
-    ).resolves.toBe(true);
+      harness(resource, null).guard.canActivate(context()),
+    ).rejects.toMatchObject({
+      response: {
+        statusCode: 404,
+        message: 'Không tìm thấy giải đấu',
+      },
+    });
+  });
+});
+
+describe('VisibilityGuard resource resolution', () => {
+  it('resolves the parent tournament using the requested team id', async () => {
+    const { guard, findTeamById, findTournamentBySlug } = harness(
+      'team:id',
+      activeTournament,
+    );
+
+    await guard.canActivate(context());
+
+    expect(findTeamById).toHaveBeenCalledWith({
+      where: { id: 'team-1' },
+      select: {
+        tournament: {
+          select: {
+            id: true,
+            organizerId: true,
+            visibility: true,
+            moderationStatus: true,
+          },
+        },
+      },
+    });
+    expect(findTournamentBySlug).not.toHaveBeenCalled();
   });
 });

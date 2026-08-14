@@ -13,6 +13,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
+import { VisibilityResource } from '../common/decorators/visibility.decorator';
+import { VisibilityGuard } from '../common/guards/visibility.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { TeamsService } from './teams.service';
@@ -62,7 +64,8 @@ export class TeamsController {
    * GET /api/tournaments/:slug/teams
    * Danh sách đội của 1 giải (UC-G05) — khách chỉ thấy đội đã duyệt
    */
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
+  @VisibilityResource('slug:slug')
   @Get('tournaments/:slug/teams')
   findByTournament(
     @CurrentUser() user: AuthenticatedUser | undefined,
@@ -101,7 +104,8 @@ export class TeamsController {
    * GET /api/teams/:id
    * Chi tiết đội kèm roster (UC-G06) — thông tin liên hệ chỉ hiện với BTC/đội
    */
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
+  @VisibilityResource('team:id')
   @Get('teams/:id')
   findOne(
     @CurrentUser() user: AuthenticatedUser | undefined,
