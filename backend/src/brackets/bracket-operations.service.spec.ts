@@ -179,3 +179,124 @@ describe('BracketOperationsService generation', () => {
     );
   });
 });
+
+describe('BracketOperationsService group advancement', () => {
+  function advanceHarness(
+    groupCount = 2,
+    advanceCount = 2,
+    overrides: Record<string, unknown> = {},
+  ) {
+    const roundValue: any = {
+      id: 'round-1',
+      tournamentId: 'tournament-1',
+      orderIndex: 1,
+      format: RoundFormat.GROUP_STAGE,
+      settings: {
+        numGroups: groupCount,
+        teamsPerGroup: 4,
+        advanceCount,
+        doubleRound: false,
+      },
+      matches: Array.from({ length: groupCount }, (_, index) =>
+        Array.from({ length: 6 }, () => ({
+          status: MatchStatus.COMPLETED,
+          groupId: `group-${String.fromCharCode(97 + index)}`,
+        })),
+      ).flat(),
+      ...overrides,
+    };
+    const prisma = {
+      round: {
+        findUnique: jest.fn().mockResolvedValue(roundValue),
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'round-2',
+          name: 'Playoff',
+          format: RoundFormat.PLAYOFF,
+        }),
+      },
+    } as unknown as PrismaService;
+    const standings = {
+      forTournament: jest.fn().mockResolvedValue({
+        rounds: [
+          {
+            standings: Array.from({ length: groupCount }, (_, index) => ({
+              groupId: `group-${String.fromCharCode(97 + index)}`,
+              name: `Group ${String.fromCharCode(65 + index)}`,
+              orderIndex: index + 1,
+              standings: Array.from({ length: 4 }, (_, teamIndex) => ({
+                id: `${String.fromCharCode(97 + index)}${teamIndex + 1}`,
+              })),
+            })),
+          },
+        ],
+      }),
+    } as unknown as StandingsService;
+    return {
+      service: new BracketOperationsService(
+        prisma,
+        {} as BracketsService,
+        standings,
+      ),
+      roundValue,
+    };
+  }
+
+  it('qualifies exactly advanceCount teams independently from each group', async () => {
+    const { service } = advanceHarness();
+
+    const result = await service.advance('round-1');
+
+    expect(result.advanceCount).toBe(4);
+    expect(result.advanceCountPerGroup).toBe(2);
+    expect(result.teamIds).toEqual(['a1', 'a2', 'b1', 'b2']);
+    expect(result.groups).toEqual([
+      expect.objectContaining({ groupId: 'group-a', teamIds: ['a1', 'a2'] }),
+      expect.objectContaining({ groupId: 'group-b', teamIds: ['b1', 'b2'] }),
+    ]);
+  });
+
+  it('qualifies two teams from each of four groups', async () => {
+    const { service } = advanceHarness(4, 2);
+
+    const result = await service.advance('round-1');
+
+    expect(result.advanceCount).toBe(8);
+    expect(result.teamIds).toEqual([
+      'a1',
+      'a2',
+      'b1',
+      'b2',
+      'c1',
+      'c2',
+      'd1',
+      'd2',
+    ]);
+  });
+
+  it('blocks advancement when any group match is incomplete', async () => {
+    const { service, roundValue } = advanceHarness();
+    roundValue.matches[6].status = MatchStatus.PENDING;
+
+    await expect(service.advance('round-1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('rejects an advance count larger than a group capacity', async () => {
+    const { service, roundValue } = advanceHarness();
+    (roundValue.settings as Record<string, unknown>).advanceCount = 5;
+
+    await expect(service.advance('round-1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('rejects invalid group settings', async () => {
+    const { service, roundValue } = advanceHarness();
+    (roundValue.settings as Record<string, unknown>).numGroups = 0;
+
+    await expect(service.advance('round-1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+});

@@ -47,6 +47,10 @@ export interface GroupStageSettings {
   advanceCount: number;
   /** Đá 2 lượt trong bảng */
   doubleRound: boolean;
+  /** Điểm thắng/hòa/thua trong từng bảng */
+  pointsWin: number;
+  pointsDraw: number;
+  pointsLoss: number;
 }
 
 /**
@@ -111,6 +115,9 @@ export const DEFAULT_ROUND_SETTINGS: RoundSettingsMap = {
     teamsPerGroup: 4,
     advanceCount: 2,
     doubleRound: false,
+    pointsWin: 3,
+    pointsDraw: 1,
+    pointsLoss: 0,
   },
   [RoundFormat.SWISS]: {
     numRounds: 5,

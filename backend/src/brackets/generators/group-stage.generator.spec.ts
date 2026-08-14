@@ -22,6 +22,21 @@ function input(teamList: BracketTeam[], settings: GroupStageSettings) {
   } as const;
 }
 
+function settings(
+  overrides: Partial<GroupStageSettings> = {},
+): GroupStageSettings {
+  return {
+    numGroups: 2,
+    teamsPerGroup: 4,
+    advanceCount: 2,
+    doubleRound: false,
+    pointsWin: 3,
+    pointsDraw: 1,
+    pointsLoss: 0,
+    ...overrides,
+  };
+}
+
 describe('GroupStageGenerator', () => {
   const generator = new GroupStageGenerator(new RoundRobinGenerator());
 
@@ -31,14 +46,13 @@ describe('GroupStageGenerator', () => {
   ])(
     'allocates %i teams into %i groups and generates round-robin matches',
     (teamCount, numGroups, teamsPerGroup, matchesPerGroup) => {
-      const settings = {
-        numGroups,
-        teamsPerGroup,
-        advanceCount: 2,
-        doubleRound: false,
-      };
-      const allocations = generator.allocate(input(teams(teamCount), settings));
-      const matches = generator.generate(input(teams(teamCount), settings));
+      const groupSettings = settings({ numGroups, teamsPerGroup });
+      const allocations = generator.allocate(
+        input(teams(teamCount), groupSettings),
+      );
+      const matches = generator.generate(
+        input(teams(teamCount), groupSettings),
+      );
 
       expect(allocations).toHaveLength(numGroups);
       expect(allocations.every((group) => group.teams.length === 4)).toBe(true);
@@ -53,12 +67,7 @@ describe('GroupStageGenerator', () => {
 
   it('uses snake allocation for seeded teams', () => {
     const allocations = generator.allocate(
-      input(teams(8).reverse(), {
-        numGroups: 2,
-        teamsPerGroup: 4,
-        advanceCount: 2,
-        doubleRound: false,
-      }),
+      input(teams(8).reverse(), settings()),
     );
 
     expect(
@@ -73,14 +82,7 @@ describe('GroupStageGenerator', () => {
     const unseeded = teams(8)
       .map((team) => ({ ...team, seed: null }))
       .reverse();
-    const allocations = generator.allocate(
-      input(unseeded, {
-        numGroups: 2,
-        teamsPerGroup: 4,
-        advanceCount: 2,
-        doubleRound: false,
-      }),
-    );
+    const allocations = generator.allocate(input(unseeded, settings()));
 
     expect(
       allocations.map((group) => group.teams.map((team) => team.id)),
@@ -91,26 +93,14 @@ describe('GroupStageGenerator', () => {
   });
 
   it('rejects uneven or incomplete group capacity', () => {
-    expect(() =>
-      generator.generate(
-        input(teams(7), {
-          numGroups: 2,
-          teamsPerGroup: 4,
-          advanceCount: 2,
-          doubleRound: false,
-        }),
-      ),
-    ).toThrow('exactly 8 approved teams');
+    expect(() => generator.generate(input(teams(7), settings()))).toThrow(
+      'exactly 8 approved teams',
+    );
   });
 
   it('reuses double round-robin behavior inside every group', () => {
     const matches = generator.generate(
-      input(teams(8), {
-        numGroups: 2,
-        teamsPerGroup: 4,
-        advanceCount: 2,
-        doubleRound: true,
-      }),
+      input(teams(8), settings({ doubleRound: true })),
     );
 
     expect(matches).toHaveLength(24);
@@ -120,14 +110,7 @@ describe('GroupStageGenerator', () => {
   });
 
   it('associates every draft with deterministic group context', () => {
-    const matches = generator.generate(
-      input(teams(8), {
-        numGroups: 2,
-        teamsPerGroup: 4,
-        advanceCount: 2,
-        doubleRound: false,
-      }),
-    );
+    const matches = generator.generate(input(teams(8), settings()));
 
     expect(matches.every((match) => match.group !== undefined)).toBe(true);
     expect(new Set(matches.map((match) => match.key)).size).toBe(

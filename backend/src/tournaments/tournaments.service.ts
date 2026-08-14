@@ -478,7 +478,7 @@ export class TournamentsService {
         visibility: true,
         moderationStatus: true,
         rounds: {
-          select: { id: true, format: true },
+          select: { id: true, format: true, settings: true },
           orderBy: { orderIndex: 'asc' },
         },
       },

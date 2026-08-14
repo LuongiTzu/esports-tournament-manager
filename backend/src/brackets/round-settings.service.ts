@@ -101,10 +101,13 @@ export class RoundSettingsService {
           'advanceCount không được lớn hơn teamsPerGroup',
         );
       }
-      return;
     }
 
-    if (format === RoundFormat.ROUND_ROBIN || format === RoundFormat.SWISS) {
+    if (
+      format === RoundFormat.ROUND_ROBIN ||
+      format === RoundFormat.GROUP_STAGE ||
+      format === RoundFormat.SWISS
+    ) {
       const pointSettings = settings as RoundRobinSettings | SwissSettings;
       if (
         pointSettings.pointsWin <= pointSettings.pointsDraw ||

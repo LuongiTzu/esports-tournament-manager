@@ -166,7 +166,7 @@ export class BracketOperationsService {
         orderIndex: true,
         format: true,
         settings: true,
-        matches: { select: { status: true } },
+        matches: { select: { status: true, groupId: true } },
       },
     });
     if (!round) throw new NotFoundException('Không tìm thấy vòng đấu');
@@ -187,29 +187,96 @@ export class BracketOperationsService {
     if (!nextRound) throw new BadRequestException('No next round exists');
     const settings = asRecord(round.settings) ?? {};
     const configuredAdvanceCount = Number(settings.advanceCount ?? 0);
-    const advanceCount =
-      round.format === RoundFormat.GROUP_STAGE
-        ? configuredAdvanceCount * Number(settings.numGroups ?? 0)
-        : configuredAdvanceCount;
-    if (!Number.isInteger(advanceCount) || advanceCount < 1) {
+    if (
+      !Number.isInteger(configuredAdvanceCount) ||
+      configuredAdvanceCount < 1
+    ) {
       throw new BadRequestException(
         'Round format does not define advanceCount',
       );
     }
     const result = await this.standings.forTournament(round.tournamentId, [
-      { id: round.id, format: round.format },
+      { id: round.id, format: round.format, settings: round.settings },
     ]);
+
+    if (round.format === RoundFormat.GROUP_STAGE) {
+      const numGroups = Number(settings.numGroups);
+      const teamsPerGroup = Number(settings.teamsPerGroup);
+      if (
+        !Number.isInteger(numGroups) ||
+        numGroups < 1 ||
+        !Number.isInteger(teamsPerGroup) ||
+        teamsPerGroup < 2
+      ) {
+        throw new BadRequestException('Invalid GROUP_STAGE settings');
+      }
+      if (configuredAdvanceCount > teamsPerGroup) {
+        throw new BadRequestException(
+          'advanceCount cannot exceed teamsPerGroup',
+        );
+      }
+
+      const groups = result.rounds[0].standings as Array<{
+        groupId: string;
+        name: string;
+        orderIndex: number;
+        standings: Array<{ teamId?: string; id?: string }>;
+      }>;
+      if (
+        groups.length !== numGroups ||
+        groups.some((group) => group.standings.length !== teamsPerGroup)
+      ) {
+        throw new BadRequestException(
+          'Persisted groups do not match GROUP_STAGE settings',
+        );
+      }
+
+      const matchesPerGroup =
+        (teamsPerGroup * (teamsPerGroup - 1)) / 2 *
+        (settings.doubleRound === true ? 2 : 1);
+      if (
+        groups.some(
+          (group) =>
+            round.matches.filter((match) => match.groupId === group.groupId)
+              .length !== matchesPerGroup,
+        )
+      ) {
+        throw new BadRequestException('Current round is not complete');
+      }
+
+      const qualifiedGroups = groups.map((group) => ({
+        groupId: group.groupId,
+        name: group.name,
+        orderIndex: group.orderIndex,
+        teamIds: group.standings
+          .slice(0, configuredAdvanceCount)
+          .map((row) => row.teamId ?? row.id!),
+      }));
+      const teamIds = qualifiedGroups.flatMap((group) => group.teamIds);
+      return {
+        roundId,
+        nextRound,
+        advanceCount: teamIds.length,
+        advanceCountPerGroup: configuredAdvanceCount,
+        groups: qualifiedGroups,
+        teamIds,
+        prepared: true,
+        persisted: false,
+        note: 'Schema has no RoundTeam relation; advancement is prepared for next-round generation.',
+      };
+    }
+
     const standings = result.rounds[0].standings as Array<{
       teamId?: string;
       id?: string;
     }>;
     const teamIds = standings
-      .slice(0, advanceCount)
+      .slice(0, configuredAdvanceCount)
       .map((row) => row.teamId ?? row.id!);
     return {
       roundId,
       nextRound,
-      advanceCount,
+      advanceCount: configuredAdvanceCount,
       teamIds,
       prepared: true,
       persisted: false,

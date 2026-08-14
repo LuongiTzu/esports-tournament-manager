@@ -33,9 +33,9 @@ export class GroupStageGenerator implements IBracketGenerator<
           teams: group.teams,
           settings: {
             doubleRound: input.settings.doubleRound,
-            pointsWin: 3,
-            pointsDraw: 1,
-            pointsLoss: 0,
+            pointsWin: input.settings.pointsWin,
+            pointsDraw: input.settings.pointsDraw,
+            pointsLoss: input.settings.pointsLoss,
           },
           bestOf: input.bestOf,
         })

@@ -58,6 +58,21 @@ export class GroupStageSettingsDto {
 
   @IsBoolean({ message: 'doubleRound phải là boolean' })
   doubleRound!: boolean;
+
+  @IsInt({ message: 'pointsWin phải là số nguyên' })
+  @Min(1, { message: 'pointsWin tối thiểu là 1' })
+  @Max(10, { message: 'pointsWin tối đa là 10' })
+  pointsWin!: number;
+
+  @IsInt({ message: 'pointsDraw phải là số nguyên' })
+  @Min(0, { message: 'pointsDraw tối thiểu là 0' })
+  @Max(10, { message: 'pointsDraw tối đa là 10' })
+  pointsDraw!: number;
+
+  @IsInt({ message: 'pointsLoss phải là số nguyên' })
+  @Min(0, { message: 'pointsLoss tối thiểu là 0' })
+  @Max(10, { message: 'pointsLoss tối đa là 10' })
+  pointsLoss!: number;
 }
 
 /** Thụy Sĩ */

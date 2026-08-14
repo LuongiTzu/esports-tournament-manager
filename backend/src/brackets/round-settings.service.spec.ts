@@ -28,7 +28,15 @@ describe('RoundSettingsService', () => {
     ],
     [
       RoundFormat.GROUP_STAGE,
-      { numGroups: 8, teamsPerGroup: 3, advanceCount: 1, doubleRound: true },
+      {
+        numGroups: 8,
+        teamsPerGroup: 3,
+        advanceCount: 1,
+        doubleRound: true,
+        pointsWin: 3,
+        pointsDraw: 1,
+        pointsLoss: 0,
+      },
     ],
     [
       RoundFormat.SWISS,
@@ -62,6 +70,9 @@ describe('RoundSettingsService', () => {
       teamsPerGroup: 4,
       advanceCount: 2,
       doubleRound: false,
+      pointsWin: 3,
+      pointsDraw: 1,
+      pointsLoss: 0,
     });
   });
 
