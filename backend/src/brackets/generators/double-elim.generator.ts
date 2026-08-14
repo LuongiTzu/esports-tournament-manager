@@ -95,6 +95,10 @@ export class DoubleElimGenerator implements IBracketGenerator<
       loserNextMatchKey: null,
       loserNextMatchSlot: null,
     };
+    grandFinal.nextMatchKey = reset.key;
+    grandFinal.nextMatchSlot = 'A';
+    grandFinal.loserNextMatchKey = reset.key;
+    grandFinal.loserNextMatchSlot = 'B';
     return [...winner, ...loser, grandFinal, reset];
   }
 }

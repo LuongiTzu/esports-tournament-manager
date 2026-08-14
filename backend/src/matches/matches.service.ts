@@ -5,7 +5,15 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { MatchSlot, MatchStatus, Prisma } from '@prisma/client';
+import {
+  MatchActivationCondition,
+  MatchSlot,
+  MatchStatus,
+  Prisma,
+  RoundFormat,
+  RoundStatus,
+  TournamentStatus,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TournamentEventsService } from '../tournaments/tournament-events.service';
 import {
@@ -22,6 +30,9 @@ const matchResultSelect = {
   scoreA: true,
   scoreB: true,
   status: true,
+  isActive: true,
+  activationCondition: true,
+  bracketType: true,
   bestOf: true,
   winnerTeamId: true,
   playedAt: true,
@@ -29,6 +40,7 @@ const matchResultSelect = {
   nextMatchSlot: true,
   loserNextMatchId: true,
   loserNextMatchSlot: true,
+  round: { select: { id: true, format: true, tournamentId: true } },
   _count: { select: { scores: true } },
 } satisfies Prisma.MatchSelect;
 
@@ -75,6 +87,7 @@ export class MatchesService {
   async update(matchId: string, dto: UpdateMatchDto) {
     const updated = await this.prisma.$transaction(async (tx) => {
       const match = await this.findResultMatch(tx, matchId);
+      this.assertActive(match);
       const changesScore = dto.scoreA !== undefined || dto.scoreB !== undefined;
       if (changesScore && match._count.scores > 0) {
         throw new ConflictException(
@@ -128,6 +141,7 @@ export class MatchesService {
   async putScores(matchId: string, dto: PutMatchScoresDto) {
     const updated = await this.prisma.$transaction(async (tx) => {
       const match = await this.findResultMatch(tx, matchId);
+      this.assertActive(match);
       const calculated = this.calculateSeries(dto, match.bestOf);
       const status = calculated.completed
         ? MatchStatus.COMPLETED
@@ -332,6 +346,12 @@ export class MatchesService {
     return scoreA === winsRequired ? match.teamAId : match.teamBId;
   }
 
+  private assertActive(match: ResultMatch) {
+    if (match.isActive === false) {
+      throw new ConflictException('Match is not active');
+    }
+  }
+
   private calculateSeries(dto: PutMatchScoresDto, bestOf: number) {
     this.validateBestOf(bestOf);
     if (dto.scores.length > bestOf) {
@@ -389,6 +409,10 @@ export class MatchesService {
     const oldWinner = match.winnerTeamId;
     const oldLoser =
       oldWinner === match.teamAId ? match.teamBId : match.teamAId;
+    if (await this.rollbackConditionalReset(tx, match)) {
+      await this.rollbackChampion(tx, match, oldWinner);
+      return;
+    }
     const routes = [
       { id: match.nextMatchId, slot: match.nextMatchSlot, teamId: oldWinner },
       {
@@ -427,6 +451,7 @@ export class MatchesService {
       });
       target[field] = null;
     }
+    await this.rollbackChampion(tx, match, oldWinner);
   }
 
   private async advanceResult(
@@ -436,6 +461,11 @@ export class MatchesService {
   ) {
     const loserTeamId =
       winnerTeamId === match.teamAId ? match.teamBId : match.teamAId;
+    if (
+      await this.processConditionalReset(tx, match, winnerTeamId, loserTeamId)
+    ) {
+      return;
+    }
     await this.placeTeam(
       tx,
       match.nextMatchId,
@@ -448,6 +478,186 @@ export class MatchesService {
       match.loserNextMatchSlot,
       loserTeamId,
     );
+    if (this.isDecisiveDoubleElimFinal(match)) {
+      await this.finalizeChampion(tx, match, winnerTeamId);
+    }
+  }
+
+  private async processConditionalReset(
+    tx: Tx,
+    match: ResultMatch,
+    winnerTeamId: string,
+    loserTeamId: string | null,
+  ): Promise<boolean> {
+    if (!match.nextMatchId || match.nextMatchId !== match.loserNextMatchId) {
+      return false;
+    }
+    const reset = await tx.match.findUnique({
+      where: { id: match.nextMatchId },
+      select: {
+        id: true,
+        teamAId: true,
+        teamBId: true,
+        status: true,
+        isActive: true,
+        activationCondition: true,
+      },
+    });
+    if (
+      !reset ||
+      reset.activationCondition !==
+        MatchActivationCondition.LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL
+    ) {
+      return false;
+    }
+    if (!loserTeamId) {
+      throw new ConflictException('Grand Final loser is missing');
+    }
+
+    // The generator always places the Winner Bracket champion in Grand Final
+    // slot A and the Loser Bracket champion in slot B.
+    if (winnerTeamId !== match.teamBId) {
+      await this.finalizeChampion(tx, match, winnerTeamId);
+      return true;
+    }
+
+    if (reset.status === MatchStatus.COMPLETED) {
+      if (
+        reset.isActive &&
+        reset.teamAId === winnerTeamId &&
+        reset.teamBId === loserTeamId
+      ) {
+        return true;
+      }
+      throw new ConflictException('Grand Final Reset is already completed');
+    }
+    if (
+      (reset.teamAId !== null && reset.teamAId !== winnerTeamId) ||
+      (reset.teamBId !== null && reset.teamBId !== loserTeamId)
+    ) {
+      throw new ConflictException(
+        'Grand Final Reset slots are already occupied',
+      );
+    }
+    if (
+      !reset.isActive ||
+      reset.teamAId !== winnerTeamId ||
+      reset.teamBId !== loserTeamId
+    ) {
+      await tx.match.update({
+        where: { id: reset.id },
+        data: {
+          isActive: true,
+          teamAId: winnerTeamId,
+          teamBId: loserTeamId,
+        },
+      });
+    }
+    return true;
+  }
+
+  private async rollbackConditionalReset(
+    tx: Tx,
+    match: ResultMatch,
+  ): Promise<boolean> {
+    if (!match.nextMatchId || match.nextMatchId !== match.loserNextMatchId) {
+      return false;
+    }
+    const reset = await tx.match.findUnique({
+      where: { id: match.nextMatchId },
+      select: {
+        id: true,
+        status: true,
+        scoreA: true,
+        scoreB: true,
+        winnerTeamId: true,
+        playedAt: true,
+        activationCondition: true,
+        _count: { select: { scores: true } },
+      },
+    });
+    if (
+      !reset ||
+      reset.activationCondition !==
+        MatchActivationCondition.LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL
+    ) {
+      return false;
+    }
+    if (
+      reset.status !== MatchStatus.PENDING ||
+      reset.scoreA !== 0 ||
+      reset.scoreB !== 0 ||
+      reset.winnerTeamId !== null ||
+      reset.playedAt !== null ||
+      reset._count.scores > 0
+    ) {
+      throw new ConflictException(
+        'Grand Final Reset has started; reset it before changing the Grand Final',
+      );
+    }
+    await tx.match.update({
+      where: { id: reset.id },
+      data: { isActive: false, teamAId: null, teamBId: null },
+    });
+    return true;
+  }
+
+  private isDecisiveDoubleElimFinal(match: ResultMatch): boolean {
+    return (
+      match.round?.format === RoundFormat.DOUBLE_ELIM &&
+      match.bracketType === null &&
+      (match.activationCondition !== null ||
+        (!match.nextMatchId && !match.loserNextMatchId))
+    );
+  }
+
+  private async finalizeChampion(
+    tx: Tx,
+    match: ResultMatch,
+    winnerTeamId: string,
+  ) {
+    await tx.team.updateMany({
+      where: {
+        tournamentId: match.round.tournamentId,
+        finalRank: 1,
+        id: { not: winnerTeamId },
+      },
+      data: { finalRank: null },
+    });
+    await tx.team.update({
+      where: { id: winnerTeamId },
+      data: { finalRank: 1 },
+    });
+    await tx.round.update({
+      where: { id: match.round.id },
+      data: { status: RoundStatus.COMPLETED },
+    });
+    await tx.tournament.update({
+      where: { id: match.round.tournamentId },
+      data: { status: TournamentStatus.COMPLETED },
+    });
+  }
+
+  private async rollbackChampion(
+    tx: Tx,
+    match: ResultMatch,
+    oldWinnerTeamId: string | null,
+  ) {
+    if (!oldWinnerTeamId || !this.isDecisiveDoubleElimFinal(match)) return;
+    const cleared = await tx.team.updateMany({
+      where: { id: oldWinnerTeamId, finalRank: 1 },
+      data: { finalRank: null },
+    });
+    if (cleared.count > 0) {
+      await tx.round.update({
+        where: { id: match.round.id },
+        data: { status: RoundStatus.ONGOING },
+      });
+      await tx.tournament.update({
+        where: { id: match.round.tournamentId },
+        data: { status: TournamentStatus.ONGOING },
+      });
+    }
   }
 
   private async placeTeam(

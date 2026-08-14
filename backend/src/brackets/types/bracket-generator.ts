@@ -35,7 +35,7 @@ export interface MatchDraft {
   roundName?: string;
   /** Distinguishes the optional bronze match from the elimination tree. */
   matchKind?: 'STANDARD' | 'THIRD_PLACE' | 'GRAND_FINAL' | 'GRAND_FINAL_RESET';
-  /** Pure-generation condition; the current Match schema has no reset metadata. */
+  /** Optional condition persisted by the bracket infrastructure. */
   activationCondition?: 'LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL';
   teamA: MatchParticipantDraft;
   teamB: MatchParticipantDraft;

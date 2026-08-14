@@ -105,6 +105,11 @@ enum MatchStatus {
   COMPLETED
 }
 
+/// Condition that keeps a planned match inactive until its source result requires it.
+enum MatchActivationCondition {
+  LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL
+}
+
 /// Loại nhánh đấu (dùng cho Double Elimination)
 enum BracketType {
   WINNER
@@ -424,6 +429,8 @@ model Match {
   scoreA          Int         @default(0) @map("score_a")  /// Tổng tỉ số đội A (số ván thắng)
   scoreB          Int         @default(0) @map("score_b")  /// Tổng tỉ số đội B
   status          MatchStatus @default(PENDING)
+  isActive        Boolean     @default(true) @map("is_active")
+  activationCondition MatchActivationCondition? @map("activation_condition")
   bracketType     BracketType? @map("bracket_type")  /// Chỉ dùng khi Round format = DOUBLE_ELIM
   bracketRound    Int?        @map("bracket_round")  /// Vòng trong bracket (1, 2, 3...)
   matchNumber     Int?        @map("match_number")   /// Thứ tự trận trong bracket_round
@@ -465,6 +472,7 @@ model Match {
   scores MatchScore[]
 
   @@index([roundId, groupId])
+  @@index([activationCondition, isActive])
   @@index([teamAId, teamBId])
   @@map("matches")
 }

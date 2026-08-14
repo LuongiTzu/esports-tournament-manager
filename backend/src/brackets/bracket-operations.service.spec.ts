@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return */
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { MatchStatus, RoundFormat } from '@prisma/client';
+import {
+  MatchActivationCondition,
+  MatchStatus,
+  RoundFormat,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BracketOperationsService } from './bracket-operations.service';
 import { BracketsService } from './brackets.service';
@@ -148,6 +152,80 @@ describe('BracketOperationsService generation', () => {
     await expect(service.generate('round-1')).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it('persists a conditional Grand Final Reset as inactive and links both results to it', async () => {
+    const { service, tx, brackets } = harness(
+      round([], RoundFormat.DOUBLE_ELIM),
+    );
+    brackets.generate = jest.fn().mockResolvedValue([
+      {
+        key: 'grand-final',
+        bracketRound: 3,
+        bracketType: null,
+        matchNumber: 1,
+        matchKind: 'GRAND_FINAL',
+        teamA: { teamId: null },
+        teamB: { teamId: null },
+        nextMatchKey: 'grand-final-reset',
+        nextMatchSlot: 'A',
+        loserNextMatchKey: 'grand-final-reset',
+        loserNextMatchSlot: 'B',
+        isBye: false,
+        bestOf: 3,
+      },
+      {
+        key: 'grand-final-reset',
+        bracketRound: 4,
+        bracketType: null,
+        matchNumber: 1,
+        matchKind: 'GRAND_FINAL_RESET',
+        teamA: {
+          teamId: null,
+          sourceMatchKey: 'grand-final',
+          sourceResult: 'WINNER',
+        },
+        teamB: {
+          teamId: null,
+          sourceMatchKey: 'grand-final',
+          sourceResult: 'LOSER',
+        },
+        nextMatchKey: null,
+        nextMatchSlot: null,
+        loserNextMatchKey: null,
+        loserNextMatchSlot: null,
+        activationCondition:
+          MatchActivationCondition.LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL,
+        isBye: false,
+        bestOf: 3,
+      },
+    ] as never);
+    tx.match.create.mockImplementation(({ data }: any) =>
+      Promise.resolve({
+        id: data.activationCondition ? 'reset-db' : 'grand-final-db',
+        ...data,
+      }),
+    );
+
+    await service.generate('round-1');
+
+    expect(tx.match.create).toHaveBeenCalledTimes(2);
+    expect(tx.match.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        isActive: false,
+        activationCondition:
+          MatchActivationCondition.LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL,
+      }),
+    });
+    expect(tx.match.update).toHaveBeenCalledWith({
+      where: { id: 'grand-final-db' },
+      data: expect.objectContaining({
+        nextMatchId: 'reset-db',
+        nextMatchSlot: 'A',
+        loserNextMatchId: 'reset-db',
+        loserNextMatchSlot: 'B',
+      }),
+    });
   });
 
   it('returns normalized bracket slots and linkage shape', async () => {

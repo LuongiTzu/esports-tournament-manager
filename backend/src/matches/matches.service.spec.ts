@@ -1,5 +1,10 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { MatchSlot, MatchStatus } from '@prisma/client';
+import {
+  MatchActivationCondition,
+  MatchSlot,
+  MatchStatus,
+  RoundFormat,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MatchesService } from './matches.service';
 
@@ -11,6 +16,9 @@ function match(overrides: Record<string, unknown> = {}) {
     scoreA: 0,
     scoreB: 0,
     status: MatchStatus.PENDING,
+    isActive: true,
+    activationCondition: null,
+    bracketType: null,
     bestOf: 3,
     winnerTeamId: null,
     playedAt: null,
@@ -18,6 +26,11 @@ function match(overrides: Record<string, unknown> = {}) {
     nextMatchSlot: null,
     loserNextMatchId: null,
     loserNextMatchSlot: null,
+    round: {
+      id: 'round-1',
+      format: RoundFormat.PLAYOFF,
+      tournamentId: 'tournament-1',
+    },
     _count: { scores: 0 },
     ...overrides,
   };
@@ -55,8 +68,13 @@ function harness(
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       createMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
-    round: { findUnique: jest.fn() },
-    team: { findMany: jest.fn() },
+    round: { findUnique: jest.fn(), update: jest.fn() },
+    tournament: { update: jest.fn() },
+    team: {
+      findMany: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      update: jest.fn(),
+    },
     group: { findFirst: jest.fn() },
   };
   const prisma = {
@@ -214,6 +232,196 @@ describe('MatchesService results', () => {
     await expect(
       service.putScores('match-1', games(['B', 'B'])),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  describe('Double Elimination Grand Final Reset', () => {
+    const doubleElimRound = {
+      id: 'double-elim-round',
+      format: RoundFormat.DOUBLE_ELIM,
+      tournamentId: 'tournament-1',
+    };
+
+    function grandFinal(overrides: Record<string, unknown> = {}) {
+      return match({
+        id: 'grand-final',
+        teamAId: 'wb-champion',
+        teamBId: 'lb-champion',
+        nextMatchId: 'grand-final-reset',
+        nextMatchSlot: MatchSlot.A,
+        loserNextMatchId: 'grand-final-reset',
+        loserNextMatchSlot: MatchSlot.B,
+        round: doubleElimRound,
+        ...overrides,
+      });
+    }
+
+    function resetFinal(overrides: Record<string, unknown> = {}) {
+      return match({
+        id: 'grand-final-reset',
+        teamAId: null,
+        teamBId: null,
+        isActive: false,
+        activationCondition:
+          MatchActivationCondition.LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL,
+        round: doubleElimRound,
+        ...overrides,
+      });
+    }
+
+    it('does not allow an inactive reset match to be scored', async () => {
+      const { service, tx } = harness(resetFinal());
+
+      await expect(
+        service.putScores('grand-final-reset', games(['A', 'A'])),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(tx.matchScore.createMany).not.toHaveBeenCalled();
+    });
+
+    it('finishes the tournament without activating reset when the Winner Bracket champion wins', async () => {
+      const { service, tx, rows } = harness(grandFinal(), {
+        'grand-final-reset': resetFinal(),
+      });
+
+      await service.putScores('grand-final', games(['A', 'A']));
+
+      expect(rows['grand-final-reset']).toEqual(
+        expect.objectContaining({
+          isActive: false,
+          teamAId: null,
+          teamBId: null,
+        }),
+      );
+      expect(tx.team.update).toHaveBeenCalledWith({
+        where: { id: 'wb-champion' },
+        data: { finalRank: 1 },
+      });
+      expect(tx.round.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'COMPLETED' } }),
+      );
+      expect(tx.tournament.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'COMPLETED' } }),
+      );
+    });
+
+    it('activates reset exactly once when the Loser Bracket champion wins', async () => {
+      const { service, tx, rows } = harness(grandFinal(), {
+        'grand-final-reset': resetFinal(),
+      });
+
+      await service.putScores('grand-final', games(['B', 'B']));
+      await service.putScores('grand-final', games(['B', 'B']));
+
+      expect(rows['grand-final-reset']).toEqual(
+        expect.objectContaining({
+          isActive: true,
+          teamAId: 'lb-champion',
+          teamBId: 'wb-champion',
+        }),
+      );
+      expect(
+        tx.match.update.mock.calls.filter(
+          ([input]) => input.where.id === 'grand-final-reset',
+        ),
+      ).toHaveLength(1);
+      expect(tx.team.update).not.toHaveBeenCalled();
+    });
+
+    it('makes the reset winner the tournament champion', async () => {
+      const { service, tx } = harness(
+        resetFinal({
+          teamAId: 'lb-champion',
+          teamBId: 'wb-champion',
+          isActive: true,
+        }),
+      );
+
+      await service.putScores('grand-final-reset', games(['B', 'B']));
+
+      expect(tx.team.update).toHaveBeenCalledWith({
+        where: { id: 'wb-champion' },
+        data: { finalRank: 1 },
+      });
+      expect(tx.tournament.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'COMPLETED' } }),
+      );
+    });
+
+    it('uses the first Grand Final as decisive when reset is disabled', async () => {
+      const { service, tx } = harness(
+        grandFinal({
+          nextMatchId: null,
+          nextMatchSlot: null,
+          loserNextMatchId: null,
+          loserNextMatchSlot: null,
+        }),
+      );
+
+      await service.putScores('grand-final', games(['B', 'B']));
+
+      expect(tx.team.update).toHaveBeenCalledWith({
+        where: { id: 'lb-champion' },
+        data: { finalRank: 1 },
+      });
+    });
+
+    it('deactivates an unplayed reset when the Grand Final result changes', async () => {
+      const { service, rows } = harness(
+        grandFinal({
+          scoreA: 0,
+          scoreB: 2,
+          status: MatchStatus.COMPLETED,
+          winnerTeamId: 'lb-champion',
+        }),
+        {
+          'grand-final-reset': resetFinal({
+            teamAId: 'lb-champion',
+            teamBId: 'wb-champion',
+            isActive: true,
+          }),
+        },
+      );
+
+      await service.putScores('grand-final', games(['A', 'A']));
+
+      expect(rows['grand-final-reset']).toEqual(
+        expect.objectContaining({
+          isActive: false,
+          teamAId: null,
+          teamBId: null,
+        }),
+      );
+      expect(rows['grand-final']).toEqual(
+        expect.objectContaining({ winnerTeamId: 'wb-champion' }),
+      );
+    });
+
+    it('blocks Grand Final rollback after the reset has completed', async () => {
+      const { service, tx } = harness(
+        grandFinal({
+          scoreA: 0,
+          scoreB: 2,
+          status: MatchStatus.COMPLETED,
+          winnerTeamId: 'lb-champion',
+        }),
+        {
+          'grand-final-reset': resetFinal({
+            teamAId: 'lb-champion',
+            teamBId: 'wb-champion',
+            isActive: true,
+            scoreA: 2,
+            status: MatchStatus.COMPLETED,
+            winnerTeamId: 'lb-champion',
+            playedAt: new Date(),
+            _count: { scores: 2 },
+          }),
+        },
+      );
+
+      await expect(
+        service.putScores('grand-final', games(['A', 'A'])),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(tx.matchScore.deleteMany).not.toHaveBeenCalled();
+    });
   });
 });
 

@@ -492,6 +492,8 @@ export class BracketOperationsService {
         bracketType: match.bracketType,
         matchNumber: match.matchNumber,
         status: match.status,
+        isActive: match.isActive,
+        activationCondition: match.activationCondition,
         isBye: match.isBye,
         bestOf: match.bestOf,
         slots: { A: match.teamA, B: match.teamB },
@@ -582,7 +584,7 @@ async function persistDrafts(
   teams: Array<{ id: string }>,
   drafts: MatchDraft[],
 ) {
-  const active = drafts.filter((draft) => !draft.activationCondition);
+  const active = drafts;
   const groupIds = new Map<string, string>();
   for (const group of uniqueGroups(active)) {
     const record = await tx.group.create({
@@ -615,6 +617,8 @@ async function persistDrafts(
         bracketType: draft.bracketType,
         matchNumber: draft.matchNumber,
         isBye: draft.isBye,
+        isActive: !draft.activationCondition,
+        activationCondition: draft.activationCondition,
         bestOf: draft.bestOf,
         status: draft.isBye ? MatchStatus.COMPLETED : MatchStatus.PENDING,
         scoreA: draft.isBye ? 1 : 0,

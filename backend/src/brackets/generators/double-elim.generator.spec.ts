@@ -149,16 +149,25 @@ describe('DoubleElimGenerator', () => {
 
   it('omits reset preparation when grandFinalReset is false', () => {
     expect(
-      generate(8).some((match) => match.matchKind === 'GRAND_FINAL_RESET'),
+      generate(4).some((match) => match.matchKind === 'GRAND_FINAL_RESET'),
     ).toBe(false);
   });
 
   it('adds only a conditional reset draft when grandFinalReset is true', () => {
-    const result = generate(8, true);
+    const result = generate(4, true);
+    const grandFinal = result.find(
+      (match) => match.matchKind === 'GRAND_FINAL',
+    );
     const reset = result.find(
       (match) => match.matchKind === 'GRAND_FINAL_RESET',
     );
 
+    expect(grandFinal).toMatchObject({
+      nextMatchKey: 'grand-final-reset',
+      nextMatchSlot: 'A',
+      loserNextMatchKey: 'grand-final-reset',
+      loserNextMatchSlot: 'B',
+    });
     expect(reset).toMatchObject({
       key: 'grand-final-reset',
       activationCondition: 'LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL',
