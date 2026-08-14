@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-return */
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { MatchStatus, RoundFormat } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -51,6 +51,7 @@ function harness(roundValue: ReturnType<typeof round>, teamCount = 4) {
     },
     group: { deleteMany: jest.fn(), create: jest.fn() },
     groupTeam: { createMany: jest.fn() },
+    roundTeam: { findMany: jest.fn().mockResolvedValue([]) },
   };
   const prisma = {
     $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
@@ -112,6 +113,33 @@ describe('BracketOperationsService generation', () => {
         where: expect.objectContaining({ status: 'APPROVED' }),
       }),
     );
+  });
+
+  it('uses persisted round participants instead of all tournament teams', async () => {
+    const { service, tx, brackets, teams } = harness(round());
+    tx.roundTeam.findMany.mockResolvedValue([
+      {
+        team: {
+          ...teams[1],
+          tournamentId: 'tournament-1',
+          status: 'APPROVED',
+        },
+      },
+      {
+        team: {
+          ...teams[3],
+          tournamentId: 'tournament-1',
+          status: 'APPROVED',
+        },
+      },
+    ] as never);
+
+    await service.generate('round-1');
+
+    expect(brackets.generate).toHaveBeenCalledWith(
+      expect.objectContaining({ teams: [teams[1], teams[3]] }),
+    );
+    expect(tx.team.findMany).not.toHaveBeenCalled();
   });
 
   it('rejects invalid approved team count', async () => {
@@ -205,15 +233,70 @@ describe('BracketOperationsService group advancement', () => {
       ).flat(),
       ...overrides,
     };
+    const participants: Array<{
+      roundId: string;
+      teamId: string;
+      advancedFromRoundId: string;
+    }> = [];
+    const nextRound = {
+      id: 'round-2',
+      name: 'Playoff',
+      format: RoundFormat.PLAYOFF,
+    };
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'round-1' }]),
+      round: {
+        findUnique: jest.fn().mockImplementation(() =>
+          Promise.resolve({
+            id: roundValue.id,
+            tournamentId: roundValue.tournamentId,
+            orderIndex: roundValue.orderIndex,
+            format: roundValue.format,
+            matches: roundValue.matches.map((match: any) => ({
+              status: match.status,
+            })),
+          }),
+        ),
+        findFirst: jest.fn().mockResolvedValue(nextRound),
+      },
+      roundTeam: {
+        findFirst: jest
+          .fn()
+          .mockImplementation(() =>
+            Promise.resolve(participants.length ? participants[0] : null),
+          ),
+        createMany: jest.fn().mockImplementation(({ data }) => {
+          participants.push(...data);
+          return Promise.resolve({ count: data.length });
+        }),
+        findMany: jest.fn().mockImplementation(() =>
+          Promise.resolve(
+            participants.map((participant) => ({
+              team: {
+                id: participant.teamId,
+                name: participant.teamId.toUpperCase(),
+                seed: null,
+              },
+            })),
+          ),
+        ),
+      },
+      team: {
+        findMany: jest
+          .fn()
+          .mockImplementation(({ where }) =>
+            Promise.resolve((where.id.in as string[]).map((id) => ({ id }))),
+          ),
+      },
+    };
     const prisma = {
       round: {
         findUnique: jest.fn().mockResolvedValue(roundValue),
-        findFirst: jest.fn().mockResolvedValue({
-          id: 'round-2',
-          name: 'Playoff',
-          format: RoundFormat.PLAYOFF,
-        }),
+        findFirst: jest.fn().mockResolvedValue(nextRound),
       },
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+        callback(tx),
+      ),
     } as unknown as PrismaService;
     const standings = {
       forTournament: jest.fn().mockResolvedValue({
@@ -238,13 +321,15 @@ describe('BracketOperationsService group advancement', () => {
         standings,
       ),
       roundValue,
+      participants,
+      tx,
     };
   }
 
   it('qualifies exactly advanceCount teams independently from each group', async () => {
-    const { service } = advanceHarness();
+    const { service, participants } = advanceHarness();
 
-    const result = await service.advance('round-1');
+    const result: any = await service.advance('round-1');
 
     expect(result.advanceCount).toBe(4);
     expect(result.advanceCountPerGroup).toBe(2);
@@ -253,12 +338,15 @@ describe('BracketOperationsService group advancement', () => {
       expect.objectContaining({ groupId: 'group-a', teamIds: ['a1', 'a2'] }),
       expect.objectContaining({ groupId: 'group-b', teamIds: ['b1', 'b2'] }),
     ]);
+    expect(result.persisted).toBe(true);
+    expect(participants).toHaveLength(4);
+    expect(new Set(participants.map((item) => item.teamId)).size).toBe(4);
   });
 
   it('qualifies two teams from each of four groups', async () => {
     const { service } = advanceHarness(4, 2);
 
-    const result = await service.advance('round-1');
+    const result: any = await service.advance('round-1');
 
     expect(result.advanceCount).toBe(8);
     expect(result.teamIds).toEqual([
@@ -299,4 +387,159 @@ describe('BracketOperationsService group advancement', () => {
       BadRequestException,
     );
   });
+
+  it('blocks duplicate persisted advancement', async () => {
+    const { service, tx, participants } = advanceHarness();
+
+    await service.advance('round-1');
+    await expect(service.advance('round-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(tx.roundTeam.createMany).toHaveBeenCalledTimes(1);
+    expect(participants).toHaveLength(4);
+  });
+
+  it('rolls back when participant persistence fails', async () => {
+    const { service, tx, participants } = advanceHarness();
+    tx.roundTeam.createMany.mockRejectedValueOnce(
+      new Error('simulated advancement failure'),
+    );
+
+    await expect(service.advance('round-1')).rejects.toThrow(
+      'simulated advancement failure',
+    );
+    expect(participants).toEqual([]);
+  });
+});
+
+describe('BracketOperationsService format-specific advancement', () => {
+  function harnessFor(
+    format: RoundFormat,
+    settings: Record<string, unknown>,
+    standingsRows: Array<{ id?: string; teamId?: string }>,
+    bracketRound = 1,
+  ) {
+    const matches = [
+      {
+        status: MatchStatus.COMPLETED,
+        groupId: null,
+        bracketRound,
+      },
+    ];
+    const current = {
+      id: 'round-1',
+      tournamentId: 'tournament-1',
+      orderIndex: 1,
+      format,
+      settings,
+      matches,
+    };
+    const next = {
+      id: 'round-2',
+      name: 'Next Round',
+      format: RoundFormat.PLAYOFF,
+    };
+    const participants: string[] = [];
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'round-1' }]),
+      round: {
+        findUnique: jest.fn().mockResolvedValue(current),
+        findFirst: jest.fn().mockResolvedValue(next),
+      },
+      roundTeam: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        createMany: jest.fn().mockImplementation(({ data }) => {
+          participants.push(...data.map((item: any) => item.teamId));
+          return { count: data.length };
+        }),
+        findMany: jest.fn().mockImplementation(() =>
+          participants.map((teamId) => ({
+            team: { id: teamId, name: teamId, seed: null },
+          })),
+        ),
+      },
+      team: {
+        findMany: jest
+          .fn()
+          .mockImplementation(({ where }) =>
+            (where.id.in as string[]).map((id) => ({ id })),
+          ),
+      },
+    };
+    const prisma = {
+      round: {
+        findUnique: jest.fn().mockResolvedValue(current),
+        findFirst: jest.fn().mockResolvedValue(next),
+      },
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as PrismaService;
+    const standings = {
+      forTournament: jest.fn().mockResolvedValue({
+        rounds: [{ standings: standingsRows }],
+      }),
+    } as unknown as StandingsService;
+    return {
+      service: new BracketOperationsService(
+        prisma,
+        {} as BracketsService,
+        standings,
+      ),
+      participants,
+    };
+  }
+
+  it('persists configured Round Robin qualifiers', async () => {
+    const { service, participants } = harnessFor(
+      RoundFormat.ROUND_ROBIN,
+      { advanceCount: 2, pointsWin: 3, pointsDraw: 1, pointsLoss: 0 },
+      [{ id: 'rr-1' }, { id: 'rr-2' }, { id: 'rr-3' }],
+    );
+
+    const result = await service.advance('round-1');
+
+    expect(result.persisted).toBe(true);
+    expect(participants).toEqual(['rr-1', 'rr-2']);
+  });
+
+  it('persists Swiss qualifiers only after the final configured Swiss round', async () => {
+    const final = harnessFor(
+      RoundFormat.SWISS,
+      { advanceCount: 2, numRounds: 3 },
+      [{ teamId: 'swiss-1' }, { teamId: 'swiss-2' }, { teamId: 'swiss-3' }],
+      3,
+    );
+
+    await expect(final.service.advance('round-1')).resolves.toEqual(
+      expect.objectContaining({ persisted: true, advanceCount: 2 }),
+    );
+    expect(final.participants).toEqual(['swiss-1', 'swiss-2']);
+
+    const early = harnessFor(
+      RoundFormat.SWISS,
+      { advanceCount: 2, numRounds: 3 },
+      [{ teamId: 'swiss-1' }, { teamId: 'swiss-2' }],
+      2,
+    );
+    await expect(early.service.advance('round-1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it.each([RoundFormat.PLAYOFF, RoundFormat.DOUBLE_ELIM])(
+    'keeps %s progression match-linkage driven',
+    async (format) => {
+      const { service, participants } = harnessFor(format, {}, []);
+
+      await expect(service.advance('round-1')).resolves.toEqual(
+        expect.objectContaining({
+          persisted: true,
+          progressionMode: 'MATCH_LINKAGE',
+          nextRound: null,
+        }),
+      );
+      expect(participants).toEqual([]);
+    },
+  );
 });

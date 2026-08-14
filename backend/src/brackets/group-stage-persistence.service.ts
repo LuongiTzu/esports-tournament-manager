@@ -35,22 +35,54 @@ export class GroupStagePersistenceService {
         throw new BadRequestException('Round format must be GROUP_STAGE');
       }
 
-      const [groupCount, matchCount, teams] = await Promise.all([
-        tx.group.count({ where: { roundId } }),
-        tx.match.count({ where: { roundId } }),
-        tx.team.findMany({
-          where: {
-            tournamentId: round.tournamentId,
-            status: RegistrationStatus.APPROVED,
-          },
-          select: { id: true, name: true, seed: true, registeredAt: true },
-        }),
-      ]);
+      const [groupCount, matchCount, participantAssignments] =
+        await Promise.all([
+          tx.group.count({ where: { roundId } }),
+          tx.match.count({ where: { roundId } }),
+          tx.roundTeam.findMany({
+            where: { roundId },
+            orderBy: { createdAt: 'asc' },
+            select: {
+              team: {
+                select: {
+                  id: true,
+                  name: true,
+                  seed: true,
+                  registeredAt: true,
+                  tournamentId: true,
+                  status: true,
+                },
+              },
+            },
+          }),
+        ]);
       if (groupCount > 0 || matchCount > 0) {
         throw new BadRequestException(
           'Round already contains groups or matches',
         );
       }
+
+      const teams = participantAssignments.length
+        ? participantAssignments
+            .map((assignment) => assignment.team)
+            .filter(
+              (team) =>
+                team.tournamentId === round.tournamentId &&
+                team.status === RegistrationStatus.APPROVED,
+            )
+            .map((team) => ({
+              id: team.id,
+              name: team.name,
+              seed: team.seed,
+              registeredAt: team.registeredAt,
+            }))
+        : await tx.team.findMany({
+            where: {
+              tournamentId: round.tournamentId,
+              status: RegistrationStatus.APPROVED,
+            },
+            select: { id: true, name: true, seed: true, registeredAt: true },
+          });
 
       const settings = (await this.settingsService.normalizeForFormat(
         RoundFormat.GROUP_STAGE,

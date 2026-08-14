@@ -79,6 +79,7 @@ function fakePrisma(failOnGroup?: number) {
             ),
           },
           team: { findMany: jest.fn(() => Promise.resolve(teamRows(8))) },
+          roundTeam: { findMany: jest.fn(() => Promise.resolve([])) },
           groupTeam: {
             createMany: jest.fn(
               ({

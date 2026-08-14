@@ -286,9 +286,31 @@ model Round {
 
   matches Match[]
   groups  Group[]
+  participants  RoundTeam[] @relation("RoundParticipants")
+  advancedTeams RoundTeam[] @relation("RoundAdvancements")
 
   @@index([tournamentId, orderIndex])
   @@map("rounds")
+}
+
+/// Durable qualification from one round into the eligible participant set of the next round.
+model RoundTeam {
+  roundId String @map("round_id")
+  round   Round  @relation("RoundParticipants", fields: [roundId], references: [id], onDelete: Cascade)
+
+  teamId String @map("team_id")
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  advancedFromRoundId String @map("advanced_from_round_id")
+  advancedFromRound   Round  @relation("RoundAdvancements", fields: [advancedFromRoundId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([roundId, teamId])
+  @@unique([advancedFromRoundId, teamId])
+  @@index([advancedFromRoundId])
+  @@index([teamId])
+  @@map("round_teams")
 }
 
 /// Bảng đấu con trong 1 Round (chỉ dùng khi Round format = GROUP_STAGE)
@@ -358,6 +380,7 @@ model Team {
 
   // Groups
   groupAssignments GroupTeam[]
+  roundAssignments RoundTeam[]
 
   @@unique([tournamentId, name])
   @@index([tournamentId, status])

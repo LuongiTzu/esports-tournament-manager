@@ -61,16 +61,40 @@ export class StandingsService {
     format: RoundFormat,
     rawSettings?: unknown,
   ) {
-    const [teams, matches] = await Promise.all([
-      this.prisma.team.findMany({
-        where: { tournamentId, status: RegistrationStatus.APPROVED },
-        select: { id: true, name: true, seed: true },
+    const [assignments, matches] = await Promise.all([
+      this.prisma.roundTeam.findMany({
+        where: { roundId },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          team: {
+            select: {
+              id: true,
+              name: true,
+              seed: true,
+              tournamentId: true,
+              status: true,
+            },
+          },
+        },
       }),
       this.prisma.match.findMany({
         where: { roundId, status: MatchStatus.COMPLETED },
         select: matchSelect,
       }),
     ]);
+    const teams = assignments.length
+      ? assignments
+          .map((assignment) => assignment.team)
+          .filter(
+            (team) =>
+              team.tournamentId === tournamentId &&
+              team.status === RegistrationStatus.APPROVED,
+          )
+          .map((team) => ({ id: team.id, name: team.name, seed: team.seed }))
+      : await this.prisma.team.findMany({
+          where: { tournamentId, status: RegistrationStatus.APPROVED },
+          select: { id: true, name: true, seed: true },
+        });
     const settings = this.settingsService.getEffectiveSettings(
       format,
       rawSettings,

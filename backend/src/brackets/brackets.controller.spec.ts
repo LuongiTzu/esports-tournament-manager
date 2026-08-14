@@ -9,12 +9,20 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { BracketOperationsService } from './bracket-operations.service';
 import { BracketsController } from './brackets.controller';
+import { SwissService } from './swiss.service';
 
 describe('BracketsController', () => {
   const operations = {
     generate: jest.fn().mockResolvedValue({ matchCount: 1 }),
   } as unknown as BracketOperationsService;
-  const controller = new BracketsController(operations);
+  const swiss = {
+    generateNextSwissRound: jest.fn().mockResolvedValue({
+      roundId: 'round-1',
+      bracketRound: 2,
+      matchCount: 2,
+    }),
+  } as unknown as SwissService;
+  const controller = new BracketsController(operations, swiss);
 
   it('delegates successful generation', async () => {
     await expect(controller.generate('round-1', true)).resolves.toEqual({
@@ -44,5 +52,26 @@ describe('BracketsController', () => {
         BracketsController.prototype.generate,
       ),
     ).toBe(RequestMethod.POST);
+  });
+
+  it('delegates Swiss next-round generation to SwissService', async () => {
+    await expect(controller.generateNextSwissRound('round-1')).resolves.toEqual(
+      expect.objectContaining({ bracketRound: 2, matchCount: 2 }),
+    );
+    expect(swiss.generateNextSwissRound).toHaveBeenCalledWith('round-1');
+  });
+
+  it('registers and protects POST /rounds/:id/swiss/generate-next', () => {
+    const method = BracketsController.prototype.generateNextSwissRound;
+    expect(Reflect.getMetadata(PATH_METADATA, method)).toBe(
+      ':id/swiss/generate-next',
+    );
+    expect(Reflect.getMetadata(METHOD_METADATA, method)).toBe(
+      RequestMethod.POST,
+    );
+    expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
+      JwtAuthGuard,
+      OwnershipGuard,
+    ]);
   });
 });

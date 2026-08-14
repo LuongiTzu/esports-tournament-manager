@@ -92,6 +92,7 @@ describe('StandingsService', () => {
 
   it('calculates and sorts basic standings by wins and score difference', async () => {
     const prisma = {
+      roundTeam: { findMany: jest.fn().mockResolvedValue([]) },
       team: {
         findMany: jest.fn().mockResolvedValue([
           { id: 'a', name: 'A', seed: 2 },

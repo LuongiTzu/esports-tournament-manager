@@ -4,7 +4,12 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { MatchStatus, RegistrationStatus, RoundFormat } from '@prisma/client';
+import {
+  MatchStatus,
+  Prisma,
+  RegistrationStatus,
+  RoundFormat,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SwissGenerator } from './generators/swiss.generator';
 import { RoundSettingsService } from './round-settings.service';
@@ -23,6 +28,11 @@ export class SwissService {
 
   async generateNextSwissRound(roundId: string) {
     return this.prisma.$transaction(async (tx) => {
+      // Serialize generation for this logical Swiss round so concurrent calls
+      // cannot both observe the same last generated bracketRound.
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "rounds" WHERE "id" = ${roundId} FOR UPDATE`,
+      );
       const round = await tx.round.findUnique({
         where: { id: roundId },
         select: {
@@ -39,13 +49,46 @@ export class SwissService {
       }
 
       const [teams, matches] = await Promise.all([
-        tx.team.findMany({
-          where: {
-            tournamentId: round.tournamentId,
-            status: RegistrationStatus.APPROVED,
-          },
-          select: { id: true, name: true, seed: true, registeredAt: true },
-        }),
+        (async () => {
+          const assignments = await tx.roundTeam.findMany({
+            where: { roundId },
+            orderBy: { createdAt: 'asc' },
+            select: {
+              team: {
+                select: {
+                  id: true,
+                  name: true,
+                  seed: true,
+                  registeredAt: true,
+                  tournamentId: true,
+                  status: true,
+                },
+              },
+            },
+          });
+          if (assignments.length) {
+            return assignments
+              .map((assignment) => assignment.team)
+              .filter(
+                (team) =>
+                  team.tournamentId === round.tournamentId &&
+                  team.status === RegistrationStatus.APPROVED,
+              )
+              .map((team) => ({
+                id: team.id,
+                name: team.name,
+                seed: team.seed,
+                registeredAt: team.registeredAt,
+              }));
+          }
+          return tx.team.findMany({
+            where: {
+              tournamentId: round.tournamentId,
+              status: RegistrationStatus.APPROVED,
+            },
+            select: { id: true, name: true, seed: true, registeredAt: true },
+          });
+        })(),
         tx.match.findMany({
           where: { roundId },
           select: {
@@ -60,6 +103,11 @@ export class SwissService {
           orderBy: [{ bracketRound: 'asc' }, { matchNumber: 'asc' }],
         }),
       ]);
+      if (teams.length < 2) {
+        throw new BadRequestException(
+          'SWISS requires at least 2 approved teams',
+        );
+      }
       const currentRound = Math.max(
         0,
         ...matches.map((match) => match.bracketRound ?? 0),
@@ -105,7 +153,7 @@ export class SwissService {
         bracketRound: nextRound,
       });
       result.warnings.forEach((warning) => this.logger.warn(warning));
-      await tx.match.createMany({
+      const persistedMatches = await tx.match.createManyAndReturn({
         data: result.matches.map((draft) => ({
           roundId,
           teamAId: draft.teamA.teamId,
@@ -119,8 +167,26 @@ export class SwissService {
           scoreB: 0,
           winnerTeamId: draft.isBye ? draft.teamA.teamId : null,
         })),
+        select: {
+          id: true,
+          bracketRound: true,
+          matchNumber: true,
+          teamAId: true,
+          teamBId: true,
+          isBye: true,
+        },
       });
-      return { roundId, bracketRound: nextRound, numRounds, ...result };
+      const bye = persistedMatches.find((match) => match.isBye) ?? null;
+      return {
+        roundId,
+        bracketRound: nextRound,
+        numRounds,
+        matchCount: persistedMatches.length,
+        matchIds: persistedMatches.map((match) => match.id),
+        matches: persistedMatches,
+        bye: bye ? { matchId: bye.id, teamId: bye.teamAId } : null,
+        warnings: result.warnings,
+      };
     });
   }
 
@@ -148,13 +214,43 @@ export class SwissService {
     if (round.format !== RoundFormat.SWISS) {
       throw new BadRequestException('Round format must be SWISS');
     }
-    const teams = await this.prisma.team.findMany({
-      where: {
-        tournamentId: round.tournamentId,
-        status: RegistrationStatus.APPROVED,
+    const assignments = await this.prisma.roundTeam.findMany({
+      where: { roundId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            seed: true,
+            registeredAt: true,
+            tournamentId: true,
+            status: true,
+          },
+        },
       },
-      select: { id: true, name: true, seed: true, registeredAt: true },
     });
+    const teams = assignments.length
+      ? assignments
+          .map((assignment) => assignment.team)
+          .filter(
+            (team) =>
+              team.tournamentId === round.tournamentId &&
+              team.status === RegistrationStatus.APPROVED,
+          )
+          .map((team) => ({
+            id: team.id,
+            name: team.name,
+            seed: team.seed,
+            registeredAt: team.registeredAt,
+          }))
+      : await this.prisma.team.findMany({
+          where: {
+            tournamentId: round.tournamentId,
+            status: RegistrationStatus.APPROVED,
+          },
+          select: { id: true, name: true, seed: true, registeredAt: true },
+        });
     const settings = (await this.settingsService.normalizeForFormat(
       RoundFormat.SWISS,
       asRecord(round.settings),

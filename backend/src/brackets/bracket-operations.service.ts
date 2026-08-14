@@ -74,13 +74,7 @@ export class BracketOperationsService {
         await tx.group.deleteMany({ where: { roundId } });
       }
 
-      const teams = await tx.team.findMany({
-        where: {
-          tournamentId: round.tournamentId,
-          status: RegistrationStatus.APPROVED,
-        },
-        select: { id: true, name: true, seed: true, registeredAt: true },
-      });
+      const teams = await loadEligibleTeams(tx, round.id, round.tournamentId);
       validateTeamCount(round.format, teams.length, round.settings);
       const drafts = await this.brackets.generate({
         format: round.format,
@@ -166,7 +160,9 @@ export class BracketOperationsService {
         orderIndex: true,
         format: true,
         settings: true,
-        matches: { select: { status: true, groupId: true } },
+        matches: {
+          select: { status: true, groupId: true, bracketRound: true },
+        },
       },
     });
     if (!round) throw new NotFoundException('Không tìm thấy vòng đấu');
@@ -176,15 +172,37 @@ export class BracketOperationsService {
     ) {
       throw new BadRequestException('Current round is not complete');
     }
+    if (
+      round.format === RoundFormat.PLAYOFF ||
+      round.format === RoundFormat.DOUBLE_ELIM
+    ) {
+      return {
+        roundId,
+        currentRound: {
+          id: round.id,
+          format: round.format,
+          orderIndex: round.orderIndex,
+        },
+        nextRound: null,
+        advanceCount: 0,
+        qualifiedTeams: [],
+        teamIds: [],
+        progressionMode: 'MATCH_LINKAGE',
+        prepared: true,
+        persisted: true,
+      };
+    }
+
     const nextRound = await this.prisma.round.findFirst({
       where: {
         tournamentId: round.tournamentId,
         orderIndex: { gt: round.orderIndex },
       },
       orderBy: { orderIndex: 'asc' },
-      select: { id: true, name: true, format: true },
+      select: { id: true, name: true, format: true, settings: true },
     });
     if (!nextRound) throw new BadRequestException('No next round exists');
+
     const settings = asRecord(round.settings) ?? {};
     const configuredAdvanceCount = Number(settings.advanceCount ?? 0);
     if (
@@ -198,6 +216,23 @@ export class BracketOperationsService {
     const result = await this.standings.forTournament(round.tournamentId, [
       { id: round.id, format: round.format, settings: round.settings },
     ]);
+
+    if (round.format === RoundFormat.SWISS) {
+      const configuredRounds = Number(settings.numRounds);
+      const currentSwissRound = Math.max(
+        0,
+        ...round.matches.map((match) => match.bracketRound ?? 0),
+      );
+      if (
+        !Number.isInteger(configuredRounds) ||
+        configuredRounds < 1 ||
+        currentSwissRound !== configuredRounds
+      ) {
+        throw new BadRequestException(
+          'Swiss advancement is only available after the final configured round',
+        );
+      }
+    }
 
     if (round.format === RoundFormat.GROUP_STAGE) {
       const numGroups = Number(settings.numGroups);
@@ -232,7 +267,7 @@ export class BracketOperationsService {
       }
 
       const matchesPerGroup =
-        (teamsPerGroup * (teamsPerGroup - 1)) / 2 *
+        ((teamsPerGroup * (teamsPerGroup - 1)) / 2) *
         (settings.doubleRound === true ? 2 : 1);
       if (
         groups.some(
@@ -253,17 +288,13 @@ export class BracketOperationsService {
           .map((row) => row.teamId ?? row.id!),
       }));
       const teamIds = qualifiedGroups.flatMap((group) => group.teamIds);
-      return {
-        roundId,
+      return this.persistAdvancement({
+        round,
         nextRound,
-        advanceCount: teamIds.length,
+        teamIds,
         advanceCountPerGroup: configuredAdvanceCount,
         groups: qualifiedGroups,
-        teamIds,
-        prepared: true,
-        persisted: false,
-        note: 'Schema has no RoundTeam relation; advancement is prepared for next-round generation.',
-      };
+      });
     }
 
     const standings = result.rounds[0].standings as Array<{
@@ -273,15 +304,146 @@ export class BracketOperationsService {
     const teamIds = standings
       .slice(0, configuredAdvanceCount)
       .map((row) => row.teamId ?? row.id!);
-    return {
-      roundId,
-      nextRound,
-      advanceCount: configuredAdvanceCount,
-      teamIds,
-      prepared: true,
-      persisted: false,
-      note: 'Schema has no RoundTeam relation; advancement is prepared for next-round generation.',
+    return this.persistAdvancement({ round, nextRound, teamIds });
+  }
+
+  private async persistAdvancement(input: {
+    round: {
+      id: string;
+      tournamentId: string;
+      orderIndex: number;
+      format: RoundFormat;
     };
+    nextRound: {
+      id: string;
+      name: string;
+      format: RoundFormat;
+      settings: unknown;
+    };
+    teamIds: string[];
+    advanceCountPerGroup?: number;
+    groups?: Array<{
+      groupId: string;
+      name: string;
+      orderIndex: number;
+      teamIds: string[];
+    }>;
+  }) {
+    const uniqueTeamIds = [...new Set(input.teamIds)];
+    if (
+      !uniqueTeamIds.length ||
+      uniqueTeamIds.length !== input.teamIds.length
+    ) {
+      throw new BadRequestException('Invalid qualified team selection');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "rounds" WHERE "id" = ${input.round.id} FOR UPDATE`,
+      );
+      const current = await tx.round.findUnique({
+        where: { id: input.round.id },
+        select: {
+          id: true,
+          tournamentId: true,
+          orderIndex: true,
+          format: true,
+          matches: { select: { status: true } },
+        },
+      });
+      if (!current) {
+        throw new NotFoundException('KhÃ´ng tÃ¬m tháº¥y vÃ²ng Ä‘áº¥u');
+      }
+      if (
+        current.tournamentId !== input.round.tournamentId ||
+        current.format !== input.round.format ||
+        !current.matches.length ||
+        current.matches.some((match) => match.status !== MatchStatus.COMPLETED)
+      ) {
+        throw new BadRequestException('Current round is not complete');
+      }
+
+      const durableNextRound = await tx.round.findFirst({
+        where: {
+          tournamentId: current.tournamentId,
+          orderIndex: { gt: current.orderIndex },
+        },
+        orderBy: { orderIndex: 'asc' },
+        select: { id: true, name: true, format: true, settings: true },
+      });
+      if (!durableNextRound || durableNextRound.id !== input.nextRound.id) {
+        throw new BadRequestException('Next round configuration changed');
+      }
+
+      const existing = await tx.roundTeam.findFirst({
+        where: {
+          OR: [
+            { advancedFromRoundId: current.id },
+            { roundId: durableNextRound.id },
+          ],
+        },
+        select: { roundId: true },
+      });
+      if (existing) {
+        throw new ConflictException('Round advancement is already persisted');
+      }
+
+      const eligible = await tx.team.findMany({
+        where: {
+          id: { in: uniqueTeamIds },
+          tournamentId: current.tournamentId,
+          status: RegistrationStatus.APPROVED,
+        },
+        select: { id: true, name: true, seed: true },
+      });
+      if (eligible.length !== uniqueTeamIds.length) {
+        throw new BadRequestException(
+          'Every qualified team must be approved and belong to the tournament',
+        );
+      }
+
+      validateTeamCount(
+        durableNextRound.format,
+        uniqueTeamIds.length,
+        durableNextRound.settings,
+      );
+
+      await tx.roundTeam.createMany({
+        data: uniqueTeamIds.map((teamId) => ({
+          roundId: durableNextRound.id,
+          teamId,
+          advancedFromRoundId: current.id,
+        })),
+      });
+      const eligibleById = new Map(eligible.map((team) => [team.id, team]));
+      const qualifiedTeams = uniqueTeamIds.map((teamId) =>
+        eligibleById.get(teamId)!,
+      );
+
+      return {
+        roundId: current.id,
+        currentRound: {
+          id: current.id,
+          format: current.format,
+          orderIndex: current.orderIndex,
+        },
+        nextRound: {
+          id: durableNextRound.id,
+          name: durableNextRound.name,
+          format: durableNextRound.format,
+        },
+        advanceCount: qualifiedTeams.length,
+        ...(input.advanceCountPerGroup
+          ? { advanceCountPerGroup: input.advanceCountPerGroup }
+          : {}),
+        ...(input.groups ? { groups: input.groups } : {}),
+        qualifiedTeams,
+        teamIds: qualifiedTeams.map((team) => team.id),
+        progressionMode: 'ROUND_PARTICIPANTS',
+        prepared: true,
+        persisted: true,
+      };
+    });
   }
 
   async remove(roundId: string) {
@@ -370,6 +532,48 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object'
     ? (value as Record<string, unknown>)
     : null;
+}
+
+async function loadEligibleTeams(
+  tx: Prisma.TransactionClient,
+  roundId: string,
+  tournamentId: string,
+) {
+  const assignments = await tx.roundTeam.findMany({
+    where: { roundId },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      team: {
+        select: {
+          id: true,
+          name: true,
+          seed: true,
+          registeredAt: true,
+          tournamentId: true,
+          status: true,
+        },
+      },
+    },
+  });
+  if (assignments.length) {
+    return assignments
+      .map((assignment) => assignment.team)
+      .filter(
+        (team) =>
+          team.tournamentId === tournamentId &&
+          team.status === RegistrationStatus.APPROVED,
+      )
+      .map((team) => ({
+        id: team.id,
+        name: team.name,
+        seed: team.seed,
+        registeredAt: team.registeredAt,
+      }));
+  }
+  return tx.team.findMany({
+    where: { tournamentId, status: RegistrationStatus.APPROVED },
+    select: { id: true, name: true, seed: true, registeredAt: true },
+  });
 }
 
 async function persistDrafts(
