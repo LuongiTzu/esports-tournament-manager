@@ -123,8 +123,87 @@ describe('StandingsService', () => {
     ]);
 
     expect(result.rounds[0].standings).toEqual([
-      expect.objectContaining({ id: 'a', wins: 1, scoreDifference: 2 }),
-      expect.objectContaining({ id: 'b', losses: 1, scoreDifference: -2 }),
+      expect.objectContaining({
+        id: 'a',
+        wins: 1,
+        points: 3,
+        scoreDifference: 2,
+      }),
+      expect.objectContaining({
+        id: 'b',
+        losses: 1,
+        points: 0,
+        scoreDifference: -2,
+      }),
+    ]);
+  });
+
+  it('uses each round own win, draw and loss point settings', async () => {
+    const prisma = {
+      roundTeam: { findMany: jest.fn().mockResolvedValue([]) },
+      team: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'a', name: 'A', seed: 1 },
+          { id: 'b', name: 'B', seed: 2 },
+          { id: 'c', name: 'C', seed: 3 },
+        ]),
+      },
+      match: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            teamAId: 'a',
+            teamBId: 'b',
+            scoreA: 2,
+            scoreB: 0,
+            winnerTeamId: 'a',
+            isBye: false,
+          },
+          {
+            teamAId: 'a',
+            teamBId: 'c',
+            scoreA: 1,
+            scoreB: 1,
+            winnerTeamId: null,
+            isBye: false,
+          },
+        ]),
+      },
+    } as unknown as PrismaService;
+    const service = new StandingsService(
+      prisma,
+      {} as SwissService,
+      new RoundSettingsService(),
+    );
+
+    const result = await service.forTournament('t-1', [
+      {
+        id: 'r-custom',
+        format: RoundFormat.ROUND_ROBIN,
+        settings: { pointsWin: 5, pointsDraw: 2, pointsLoss: 1 },
+      },
+      {
+        id: 'r-default',
+        format: RoundFormat.ROUND_ROBIN,
+      },
+    ]);
+    const custom = result.rounds[0].standings as Array<{
+      id: string;
+      points: number;
+    }>;
+    const defaults = result.rounds[1].standings as Array<{
+      id: string;
+      points: number;
+    }>;
+
+    expect(custom.map(({ id, points }) => [id, points])).toEqual([
+      ['a', 7],
+      ['c', 2],
+      ['b', 1],
+    ]);
+    expect(defaults.map(({ id, points }) => [id, points])).toEqual([
+      ['a', 4],
+      ['c', 1],
+      ['b', 0],
     ]);
   });
 

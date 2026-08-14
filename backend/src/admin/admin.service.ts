@@ -6,11 +6,16 @@ import {
 import {
   ModerationStatus,
   NotificationType,
+  Prisma,
   ReportStatus,
+  Role,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ContentFilterService } from '../common/services/content-filter.service';
-import { CreateBannedKeywordDto } from './dto/banned-keyword.dto';
+import {
+  CreateBannedKeywordDto,
+  UpdateBannedKeywordDto,
+} from './dto/banned-keyword.dto';
 import { NotificationService } from '../notifications/notification.service';
 
 @Injectable()
@@ -102,10 +107,18 @@ export class AdminService {
     });
   }
 
-  listComments(isHidden?: boolean) {
+  listComments(query: { isHidden?: boolean; search?: string } = {}) {
+    const search = query.search?.trim();
     return this.prisma.comment.findMany({
-      where: { isHidden },
-      orderBy: { createdAt: 'desc' },
+      where: {
+        isHidden: query.isHidden,
+        ...(search
+          ? {
+              content: { contains: search, mode: Prisma.QueryMode.insensitive },
+            }
+          : {}),
+      },
+      orderBy: [{ isHidden: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
       include: {
         author: { select: { id: true, displayName: true } },
         tournament: { select: { id: true, name: true, slug: true } },
@@ -114,6 +127,24 @@ export class AdminService {
   }
 
   async hideComment(id: string) {
+    return this.setCommentHidden(id, true);
+  }
+
+  async unhideComment(id: string) {
+    return this.setCommentHidden(id, false);
+  }
+
+  async deleteComment(id: string) {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!comment) throw new NotFoundException('Comment not found');
+    await this.prisma.comment.delete({ where: { id } });
+    return { message: 'Comment deleted', id };
+  }
+
+  private async setCommentHidden(id: string, isHidden: boolean) {
     const comment = await this.prisma.comment.findUnique({
       where: { id },
       select: { id: true },
@@ -121,7 +152,7 @@ export class AdminService {
     if (!comment) throw new NotFoundException('Comment not found');
     return this.prisma.comment.update({
       where: { id },
-      data: { isHidden: true },
+      data: { isHidden },
     });
   }
 
@@ -163,18 +194,64 @@ export class AdminService {
   async verifyTournament(id: string, explicit?: boolean) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id },
-      select: { id: true, isVerified: true },
+      select: { id: true, isVerified: true, moderationStatus: true },
     });
     if (!tournament) throw new NotFoundException('Tournament not found');
+    const nextValue = explicit ?? !tournament.isVerified;
+    if (
+      nextValue &&
+      tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN
+    ) {
+      throw new BadRequestException(
+        'A hidden tournament cannot receive the verified trust label',
+      );
+    }
     return this.prisma.tournament.update({
       where: { id },
-      data: { isVerified: explicit ?? !tournament.isVerified },
+      data: { isVerified: nextValue },
     });
   }
 
   async createBannedKeyword(dto: CreateBannedKeywordDto) {
     const result = await this.prisma.bannedKeyword.create({
       data: { keyword: dto.keyword.trim(), category: dto.category },
+    });
+    await this.contentFilter.refresh();
+    return result;
+  }
+
+  async updateBannedKeyword(id: string, dto: UpdateBannedKeywordDto) {
+    if (dto.keyword === undefined && dto.category === undefined) {
+      throw new BadRequestException('At least one field must be provided');
+    }
+    const current = await this.prisma.bannedKeyword.findUnique({
+      where: { id },
+    });
+    if (!current) throw new NotFoundException('Banned keyword not found');
+
+    const keyword = dto.keyword?.trim();
+    if (dto.keyword !== undefined && !keyword) {
+      throw new BadRequestException('Keyword must not be blank');
+    }
+    if (keyword) {
+      const duplicate = await this.prisma.bannedKeyword.findFirst({
+        where: {
+          id: { not: id },
+          keyword: { equals: keyword, mode: Prisma.QueryMode.insensitive },
+        },
+        select: { id: true },
+      });
+      if (duplicate) {
+        throw new BadRequestException('Banned keyword already exists');
+      }
+    }
+
+    const result = await this.prisma.bannedKeyword.update({
+      where: { id },
+      data: {
+        ...(keyword !== undefined ? { keyword } : {}),
+        ...(dto.category !== undefined ? { category: dto.category } : {}),
+      },
     });
     await this.contentFilter.refresh();
     return result;
@@ -192,14 +269,39 @@ export class AdminService {
   }
 
   /** Lấy danh sách tất cả người dùng (phân trang) */
-  async listUsers(page = 1, limit = 20) {
+  async listUsers(
+    page = 1,
+    limit = 20,
+    filters: { search?: string; isLocked?: boolean; role?: Role } = {},
+  ) {
     const skip = (page - 1) * limit;
+    const search = filters.search?.trim();
+    const where: Prisma.UserWhereInput = {
+      isLocked: filters.isLocked,
+      role: filters.role,
+      ...(search
+        ? {
+            OR: [
+              {
+                email: { contains: search, mode: Prisma.QueryMode.insensitive },
+              },
+              {
+                displayName: {
+                  contains: search,
+                  mode: Prisma.QueryMode.insensitive,
+                },
+              },
+            ],
+          }
+        : {}),
+    };
 
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         select: {
           id: true,
           email: true,
@@ -211,7 +313,7 @@ export class AdminService {
           updatedAt: true,
         },
       }),
-      this.prisma.user.count(),
+      this.prisma.user.count({ where }),
     ]);
 
     return {

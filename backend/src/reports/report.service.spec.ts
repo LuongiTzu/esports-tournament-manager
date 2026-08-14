@@ -109,6 +109,7 @@ describe('ReportService', () => {
           type,
           content,
           tournamentId: tournamentId ?? null,
+          deduplicationKey: null,
           isRead: false,
           createdAt: new Date(),
         }),

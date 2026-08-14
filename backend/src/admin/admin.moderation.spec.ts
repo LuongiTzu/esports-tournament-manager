@@ -23,7 +23,12 @@ function setup() {
       update: jest.fn(),
       groupBy: jest.fn(),
     },
-    comment: { findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    comment: {
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
     user: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -138,6 +143,7 @@ describe('AdminService moderation', () => {
     prisma.tournament.findUnique.mockResolvedValue({
       id: 't-1',
       isVerified: false,
+      moderationStatus: ModerationStatus.ACTIVE,
     });
     prisma.tournament.update.mockResolvedValue({ id: 't-1', isVerified: true });
     await service.verifyTournament('t-1');

@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { NotificationType, Prisma } from '@prisma/client';
+import { NotificationType, Prisma, RegistrationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateTournamentNotificationDto,
@@ -100,6 +100,59 @@ export class NotificationService {
     );
     notifications.forEach((notification) => this.emitCreated(notification));
     return { scope: dto.scope, recipientCount: userIds.length, notifications };
+  }
+
+  async createForTournamentEvent(data: {
+    tournamentId: string;
+    type: NotificationType;
+    content: string;
+    sourceKey: string;
+  }) {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: data.tournamentId },
+      select: {
+        organizerId: true,
+        teams: {
+          where: { status: RegistrationStatus.APPROVED },
+          select: {
+            captainId: true,
+            members: {
+              where: { userId: { not: null } },
+              select: { userId: true },
+            },
+          },
+        },
+      },
+    });
+    if (!tournament) throw new NotFoundException('Tournament not found');
+
+    const userIds = [
+      ...new Set([
+        tournament.organizerId,
+        ...tournament.teams.flatMap((team) => [
+          team.captainId,
+          ...team.members
+            .map((member) => member.userId)
+            .filter((userId): userId is string => userId !== null),
+        ]),
+      ]),
+    ];
+    const notifications = await this.prisma.notification.createManyAndReturn({
+      data: userIds.map((userId) => ({
+        userId,
+        type: data.type,
+        content: data.content,
+        tournamentId: data.tournamentId,
+        deduplicationKey: `${data.sourceKey}:user:${userId}`,
+      })),
+      skipDuplicates: true,
+    });
+    notifications.forEach((notification) => this.emitCreated(notification));
+    return {
+      recipientCount: userIds.length,
+      createdCount: notifications.length,
+      notifications,
+    };
   }
 
   async findForUser(

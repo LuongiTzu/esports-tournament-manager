@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { NotificationType } from '@prisma/client';
+import { NotificationType, RegistrationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationScope } from './dto/notification.dto';
 import { NotificationEventsService } from './notification-events.service';
@@ -22,6 +22,19 @@ function harness() {
     findFirst: jest.fn(),
     update: jest.fn(),
     updateMany: jest.fn(),
+    createManyAndReturn: jest
+      .fn()
+      .mockImplementation(
+        ({ data }: { data: Array<Record<string, unknown>> }) =>
+          Promise.resolve(
+            data.map((item) => ({
+              id: `n-${++sequence}`,
+              isRead: false,
+              createdAt: new Date('2026-08-12T00:00:00Z'),
+              ...item,
+            })),
+          ),
+      ),
   };
   const prisma = {
     notification,
@@ -116,6 +129,100 @@ describe('NotificationService', () => {
         where: { tournamentId: 't-1', id: 'team-1' },
       }),
     );
+  });
+
+  it('persists one tournament-event notification per distinct approved participant and organizer', async () => {
+    const { service, prisma, notification, events } = harness();
+    jest.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      organizerId: 'organizer',
+      teams: [
+        {
+          captainId: 'captain',
+          members: [
+            { userId: 'captain' },
+            { userId: 'member' },
+            { userId: null },
+          ],
+        },
+        {
+          captainId: 'organizer',
+          members: [{ userId: 'member' }],
+        },
+      ],
+    } as never);
+    const emitted: string[] = [];
+    const subscription = events.events$.subscribe((item) =>
+      emitted.push(item.userId),
+    );
+
+    const result = await service.createForTournamentEvent({
+      tournamentId: 't-1',
+      type: NotificationType.SCHEDULE_CHANGE,
+      content: 'Schedule changed',
+      sourceKey: 'match:m-1:schedule:revision-1',
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({ recipientCount: 3, createdCount: 3 }),
+    );
+    expect(notification.createManyAndReturn).toHaveBeenCalledWith({
+      data: expect.arrayContaining([
+        expect.objectContaining({ userId: 'organizer' }),
+        expect.objectContaining({ userId: 'captain' }),
+        expect.objectContaining({ userId: 'member' }),
+      ]),
+      skipDuplicates: true,
+    });
+    expect(prisma.tournament.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          teams: expect.objectContaining({
+            where: { status: RegistrationStatus.APPROVED },
+          }) as object,
+        }) as object,
+      }),
+    );
+    expect(emitted.sort()).toEqual(['captain', 'member', 'organizer']);
+    subscription.unsubscribe();
+  });
+
+  it('emits only newly inserted records when an event is retried', async () => {
+    const { service, prisma, notification, events } = harness();
+    jest.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      organizerId: 'organizer',
+      teams: [],
+    } as never);
+    notification.createManyAndReturn
+      .mockResolvedValueOnce([
+        {
+          id: 'n-1',
+          userId: 'organizer',
+          tournamentId: 't-1',
+          type: NotificationType.SCORE_UPDATE,
+          content: 'Result changed',
+          deduplicationKey: 'result-1:user:organizer',
+          isRead: false,
+          createdAt: new Date(),
+        },
+      ])
+      .mockResolvedValueOnce([]);
+    const emitted: string[] = [];
+    const subscription = events.events$.subscribe((item) =>
+      emitted.push(item.id),
+    );
+    const event = {
+      tournamentId: 't-1',
+      type: NotificationType.SCORE_UPDATE,
+      content: 'Result changed',
+      sourceKey: 'result-1',
+    };
+
+    await service.createForTournamentEvent(event);
+    await service.createForTournamentEvent(event);
+
+    expect(notification.createManyAndReturn).toHaveBeenCalledTimes(2);
+    expect(emitted).toEqual(['n-1']);
+    subscription.unsubscribe();
   });
 
   it('rejects a team outside the tournament', async () => {

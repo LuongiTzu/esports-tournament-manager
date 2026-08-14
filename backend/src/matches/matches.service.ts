@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
@@ -9,11 +10,14 @@ import {
   MatchActivationCondition,
   MatchSlot,
   MatchStatus,
+  NotificationType,
   Prisma,
   RoundFormat,
   RoundStatus,
   TournamentStatus,
 } from '@prisma/client';
+import { createHash } from 'crypto';
+import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TournamentEventsService } from '../tournaments/tournament-events.service';
 import {
@@ -36,11 +40,17 @@ const matchResultSelect = {
   bestOf: true,
   winnerTeamId: true,
   playedAt: true,
+  scheduledAt: true,
+  updatedAt: true,
   nextMatchId: true,
   nextMatchSlot: true,
   loserNextMatchId: true,
   loserNextMatchSlot: true,
   round: { select: { id: true, format: true, tournamentId: true } },
+  scores: {
+    select: { setNumber: true, teamAScore: true, teamBScore: true },
+    orderBy: { setNumber: 'asc' as const },
+  },
   _count: { select: { scores: true } },
 } satisfies Prisma.MatchSelect;
 
@@ -57,9 +67,12 @@ const publicTeamSelect = {
 
 @Injectable()
 export class MatchesService {
+  private readonly logger = new Logger(MatchesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly events?: TournamentEventsService,
+    @Optional() private readonly notifications?: NotificationService,
   ) {}
 
   async findOne(matchId: string) {
@@ -85,7 +98,7 @@ export class MatchesService {
   }
 
   async update(matchId: string, dto: UpdateMatchDto) {
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const match = await this.findResultMatch(tx, matchId);
       this.assertActive(match);
       const changesScore = dto.scoreA !== undefined || dto.scoreB !== undefined;
@@ -99,6 +112,18 @@ export class MatchesService {
       const scoreB = dto.scoreB ?? match.scoreB;
       const status = dto.status ?? match.status;
       const winnerTeamId = this.validateResult(match, scoreA, scoreB, status);
+      const scheduleChanged =
+        dto.scheduledAt !== undefined &&
+        !sameDate(match.scheduledAt, toNullableDate(dto.scheduledAt));
+      const resultTouched =
+        dto.scoreA !== undefined ||
+        dto.scoreB !== undefined ||
+        dto.status !== undefined;
+      const resultChanged =
+        scoreA !== match.scoreA ||
+        scoreB !== match.scoreB ||
+        status !== match.status ||
+        winnerTeamId !== match.winnerTeamId;
 
       if (match.status === MatchStatus.COMPLETED) {
         await this.rollbackPreviousAdvancement(tx, match, winnerTeamId, status);
@@ -128,18 +153,48 @@ export class MatchesService {
       if (status === MatchStatus.COMPLETED) {
         await this.advanceResult(tx, match, winnerTeamId!);
       }
-      return updated;
+      const revision = updated.updatedAt.toISOString();
+      return {
+        updated,
+        tournamentId: match.round.tournamentId,
+        scheduleChanged,
+        notifications: [
+          ...(scheduleChanged
+            ? [
+                {
+                  type: NotificationType.SCHEDULE_CHANGE,
+                  content: `Lịch thi đấu của trận ${matchId} đã được cập nhật`,
+                  sourceKey: `match:${matchId}:schedule:${revision}`,
+                },
+              ]
+            : []),
+          ...(resultTouched &&
+          resultChanged &&
+          (status === MatchStatus.COMPLETED ||
+            match.status === MatchStatus.COMPLETED)
+            ? [
+                {
+                  type: NotificationType.SCORE_UPDATE,
+                  content: `Kết quả trận ${matchId} đã được cập nhật`,
+                  sourceKey: `match:${matchId}:result:${revision}`,
+                },
+              ]
+            : []),
+        ],
+      };
     });
-    await this.publishMatchEvents(
+    this.publishMatchEvents(
       matchId,
-      updated,
-      dto.scheduledAt !== undefined,
+      result.tournamentId,
+      result.updated,
+      result.scheduleChanged,
     );
-    return updated;
+    await this.persistNotifications(result.tournamentId, result.notifications);
+    return result.updated;
   }
 
   async putScores(matchId: string, dto: PutMatchScoresDto) {
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const match = await this.findResultMatch(tx, matchId);
       this.assertActive(match);
       const calculated = this.calculateSeries(dto, match.bestOf);
@@ -152,6 +207,12 @@ export class MatchesService {
         calculated.scoreB,
         status,
       );
+      const resultChanged =
+        calculated.scoreA !== match.scoreA ||
+        calculated.scoreB !== match.scoreB ||
+        status !== match.status ||
+        winnerTeamId !== match.winnerTeamId ||
+        !sameScores(match.scores, dto.scores);
 
       if (match.status === MatchStatus.COMPLETED) {
         await this.rollbackPreviousAdvancement(tx, match, winnerTeamId, status);
@@ -179,10 +240,31 @@ export class MatchesService {
       if (status === MatchStatus.COMPLETED) {
         await this.advanceResult(tx, match, winnerTeamId!);
       }
-      return updated;
+      return {
+        updated,
+        tournamentId: match.round.tournamentId,
+        notifications:
+          resultChanged &&
+          (status === MatchStatus.COMPLETED ||
+            match.status === MatchStatus.COMPLETED)
+            ? [
+                {
+                  type: NotificationType.SCORE_UPDATE,
+                  content: `Kết quả trận ${matchId} đã được cập nhật`,
+                  sourceKey: `match:${matchId}:result:${updated.updatedAt.toISOString()}`,
+                },
+              ]
+            : [],
+      };
     });
-    await this.publishMatchEvents(matchId, updated, false);
-    return updated;
+    this.publishMatchEvents(
+      matchId,
+      result.tournamentId,
+      result.updated,
+      false,
+    );
+    await this.persistNotifications(result.tournamentId, result.notifications);
+    return result.updated;
   }
 
   async bulkSchedule(dto: BulkScheduleDto) {
@@ -193,7 +275,12 @@ export class MatchesService {
     const result = await this.prisma.$transaction(async (tx) => {
       const matches = await tx.match.findMany({
         where: { id: { in: ids } },
-        select: { id: true, round: { select: { tournamentId: true } } },
+        select: {
+          id: true,
+          scheduledAt: true,
+          updatedAt: true,
+          round: { select: { tournamentId: true } },
+        },
       });
       if (matches.length !== ids.length) {
         throw new NotFoundException('One or more matches were not found');
@@ -205,27 +292,50 @@ export class MatchesService {
           'All matches must belong to the same tournament',
         );
       }
+      const revisions: Array<{ id: string; updatedAt: Date }> = [];
+      let changedCount = 0;
       for (const item of dto.matches) {
-        await tx.match.update({
+        const match = matches.find(
+          (candidate) => candidate.id === item.matchId,
+        )!;
+        const scheduledAt = toNullableDate(item.scheduledAt);
+        if (sameDate(match.scheduledAt, scheduledAt)) {
+          revisions.push({ id: match.id, updatedAt: match.updatedAt });
+          continue;
+        }
+        const updated = await tx.match.update({
           where: { id: item.matchId },
-          data: {
-            scheduledAt:
-              item.scheduledAt === null ? null : new Date(item.scheduledAt),
-          },
+          data: { scheduledAt },
+          select: { id: true, updatedAt: true },
         });
+        revisions.push(updated);
+        changedCount++;
       }
       return {
         tournamentId: matches[0].round.tournamentId,
+        changedCount,
+        sourceKey: bulkScheduleSourceKey(revisions),
         updatedCount: ids.length,
         matchIds: ids,
       };
     });
-    const { tournamentId, ...payload } = result;
-    this.events?.publish({
-      tournamentId,
-      event: 'scheduleUpdated',
-      payload,
-    });
+    const { tournamentId, changedCount, sourceKey, ...payload } = result;
+    if (changedCount > 0) {
+      this.events?.publish({
+        tournamentId,
+        event: 'scheduleUpdated',
+        payload,
+      });
+    }
+    if (changedCount > 0) {
+      await this.persistNotifications(tournamentId, [
+        {
+          type: NotificationType.SCHEDULE_CHANGE,
+          content: `Lịch thi đấu đã được cập nhật cho ${ids.length} trận`,
+          sourceKey,
+        },
+      ]);
+    }
     return payload;
   }
 
@@ -283,33 +393,53 @@ export class MatchesService {
     return match;
   }
 
-  private async publishMatchEvents(
+  private publishMatchEvents(
     matchId: string,
+    tournamentId: string,
     payload: unknown,
     scheduleChanged: boolean,
   ) {
     if (!this.events) return;
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
-      select: { round: { select: { tournamentId: true } } },
-    });
-    if (!match) return;
     this.events.publish({
-      tournamentId: match.round.tournamentId,
+      tournamentId,
       event: 'matchUpdated',
       payload,
     });
     this.events.publish({
-      tournamentId: match.round.tournamentId,
+      tournamentId,
       event: 'standingsUpdated',
       payload: { matchId },
     });
     if (scheduleChanged) {
       this.events.publish({
-        tournamentId: match.round.tournamentId,
+        tournamentId,
         event: 'scheduleUpdated',
         payload: { matchId },
       });
+    }
+  }
+
+  private async persistNotifications(
+    tournamentId: string,
+    notifications: Array<{
+      type: NotificationType;
+      content: string;
+      sourceKey: string;
+    }>,
+  ) {
+    if (!this.notifications) return;
+    try {
+      for (const notification of notifications) {
+        await this.notifications.createForTournamentEvent({
+          tournamentId,
+          ...notification,
+        });
+      }
+    } catch (error) {
+      this.logger.error(
+        `Match update committed but notification persistence failed for tournament ${tournamentId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
     }
   }
 
@@ -686,4 +816,40 @@ export class MatchesService {
       data: { [field]: teamId },
     });
   }
+}
+
+function toNullableDate(value: string | null): Date | null {
+  return value === null ? null : new Date(value);
+}
+
+function sameDate(left: Date | null, right: Date | null): boolean {
+  return left?.getTime() === right?.getTime();
+}
+
+function sameScores(
+  left: Array<{ setNumber: number; teamAScore: number; teamBScore: number }>,
+  right: Array<{ setNumber: number; teamAScore: number; teamBScore: number }>,
+): boolean {
+  if (left.length !== right.length) return false;
+  const sortedRight = [...right].sort(
+    (first, second) => first.setNumber - second.setNumber,
+  );
+  return left.every((score, index) => {
+    const candidate = sortedRight[index];
+    return (
+      score.setNumber === candidate.setNumber &&
+      score.teamAScore === candidate.teamAScore &&
+      score.teamBScore === candidate.teamBScore
+    );
+  });
+}
+
+function bulkScheduleSourceKey(
+  revisions: Array<{ id: string; updatedAt: Date }>,
+): string {
+  const value = revisions
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map((revision) => `${revision.id}:${revision.updatedAt.toISOString()}`)
+    .join('|');
+  return `bulk-schedule:${createHash('sha256').update(value).digest('hex')}`;
 }

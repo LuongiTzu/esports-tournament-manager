@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import {
   MemberRole,
+  MatchStatus,
   NotificationType,
   Prisma,
   RegistrationStatus,
@@ -167,6 +168,38 @@ export class TeamsService {
       throw new NotFoundException('Không tìm thấy đội');
     }
 
+    const completedMatches = await this.prisma.match.findMany({
+      where: {
+        status: MatchStatus.COMPLETED,
+        OR: [{ teamAId: team.id }, { teamBId: team.id }],
+      },
+      orderBy: [{ playedAt: 'desc' }, { updatedAt: 'desc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        scoreA: true,
+        scoreB: true,
+        winnerTeamId: true,
+        scheduledAt: true,
+        playedAt: true,
+        teamA: { select: { id: true, name: true, shortName: true } },
+        teamB: { select: { id: true, name: true, shortName: true } },
+        round: { select: { id: true, name: true, format: true } },
+      },
+    });
+    const history = {
+      completedMatches: completedMatches.length,
+      wins: completedMatches.filter((match) => match.winnerTeamId === team.id)
+        .length,
+      draws: completedMatches.filter((match) => match.winnerTeamId === null)
+        .length,
+      losses: completedMatches.filter(
+        (match) =>
+          match.winnerTeamId !== null && match.winnerTeamId !== team.id,
+      ).length,
+      finalRank: team.finalRank,
+      recentMatches: completedMatches.slice(0, 10),
+    };
+
     const isPrivileged =
       !!viewerId &&
       (team.tournament.organizerId === viewerId ||
@@ -174,11 +207,12 @@ export class TeamsService {
         team.members.some((m) => m.userId === viewerId));
 
     if (isPrivileged) {
-      return { ...team, canViewSensitiveInfo: true };
+      return { ...team, history, canViewSensitiveInfo: true };
     }
 
     return {
       ...team,
+      history,
       contactEmail: null,
       contactPhone: null,
       rejectReason: null,

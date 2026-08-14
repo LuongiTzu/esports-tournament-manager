@@ -20,7 +20,10 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { CreateBannedKeywordDto } from './dto/banned-keyword.dto';
+import {
+  CreateBannedKeywordDto,
+  UpdateBannedKeywordDto,
+} from './dto/banned-keyword.dto';
 import {
   LockUserDto,
   ModerateTournamentDto,
@@ -72,18 +75,32 @@ export class AdminController {
   }
 
   @Get('comments')
-  listComments(@Query('isHidden') isHiddenRaw?: string) {
+  listComments(
+    @Query('isHidden') isHiddenRaw?: string,
+    @Query('search') search?: string,
+  ) {
     if (isHiddenRaw && !['true', 'false'].includes(isHiddenRaw)) {
       throw new BadRequestException('isHidden must be true or false');
     }
-    return this.adminService.listComments(
-      isHiddenRaw === undefined ? undefined : isHiddenRaw === 'true',
-    );
+    return this.adminService.listComments({
+      isHidden: isHiddenRaw === undefined ? undefined : isHiddenRaw === 'true',
+      search,
+    });
   }
 
   @Patch('comments/:id/hide')
   hideComment(@Param('id') id: string) {
     return this.adminService.hideComment(id);
+  }
+
+  @Patch('comments/:id/unhide')
+  unhideComment(@Param('id') id: string) {
+    return this.adminService.unhideComment(id);
+  }
+
+  @Delete('comments/:id')
+  deleteComment(@Param('id') id: string) {
+    return this.adminService.deleteComment(id);
   }
 
   @Get('stats')
@@ -106,6 +123,14 @@ export class AdminController {
     return this.adminService.createBannedKeyword(dto);
   }
 
+  @Patch('banned-keywords/:id')
+  updateBannedKeyword(
+    @Param('id') id: string,
+    @Body() dto: UpdateBannedKeywordDto,
+  ) {
+    return this.adminService.updateBannedKeyword(id, dto);
+  }
+
   @Delete('banned-keywords/:id')
   deleteBannedKeyword(@Param('id') id: string) {
     return this.adminService.deleteBannedKeyword(id);
@@ -119,11 +144,24 @@ export class AdminController {
   listUsers(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
+    @Query('isLocked') isLockedRaw?: string,
+    @Query('role') role?: Role,
   ) {
+    if (isLockedRaw && !['true', 'false'].includes(isLockedRaw)) {
+      throw new BadRequestException('isLocked must be true or false');
+    }
+    if (role && !Object.values(Role).includes(role)) {
+      throw new BadRequestException('Invalid role');
+    }
     // Giới hạn limit hợp lệ
     const safeLimit = Math.min(Math.max(limit, 1), 100);
     const safePage = Math.max(page, 1);
-    return this.adminService.listUsers(safePage, safeLimit);
+    return this.adminService.listUsers(safePage, safeLimit, {
+      search,
+      isLocked: isLockedRaw === undefined ? undefined : isLockedRaw === 'true',
+      role,
+    });
   }
 
   /**

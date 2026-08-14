@@ -1,11 +1,15 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/unbound-method */
 import {
   MatchActivationCondition,
   MatchSlot,
   MatchStatus,
+  NotificationType,
   RoundFormat,
 } from '@prisma/client';
+import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { TournamentEventsService } from '../tournaments/tournament-events.service';
 import { MatchesService } from './matches.service';
 
 function match(overrides: Record<string, unknown> = {}) {
@@ -22,6 +26,8 @@ function match(overrides: Record<string, unknown> = {}) {
     bestOf: 3,
     winnerTeamId: null,
     playedAt: null,
+    scheduledAt: null,
+    updatedAt: new Date('2026-08-14T00:00:00.000Z'),
     nextMatchId: null,
     nextMatchSlot: null,
     loserNextMatchId: null,
@@ -31,6 +37,7 @@ function match(overrides: Record<string, unknown> = {}) {
       format: RoundFormat.PLAYOFF,
       tournamentId: 'tournament-1',
     },
+    scores: [],
     _count: { scores: 0 },
     ...overrides,
   };
@@ -40,6 +47,7 @@ function harness(
   initial = match(),
   downstream: Record<string, Record<string, unknown>> = {},
 ) {
+  let updateSequence = 0;
   const rows: Record<string, Record<string, unknown>> = {
     [initial.id]: { ...initial },
     ...downstream,
@@ -58,15 +66,47 @@ function harness(
           where: { id: string };
           data: Record<string, unknown>;
         }) => {
-          rows[where.id] = { ...rows[where.id], ...data };
+          const definedData = Object.fromEntries(
+            Object.entries(data).filter(([, value]) => value !== undefined),
+          );
+          rows[where.id] = {
+            ...rows[where.id],
+            ...definedData,
+            updatedAt: new Date(
+              Date.parse('2026-08-14T00:00:00.000Z') + ++updateSequence,
+            ),
+          };
           return Promise.resolve(rows[where.id]);
         },
       ),
       create: jest.fn(),
     },
     matchScore: {
-      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
-      createMany: jest.fn().mockResolvedValue({ count: 1 }),
+      deleteMany: jest.fn(({ where }: { where: { matchId: string } }) => {
+        rows[where.matchId].scores = [];
+        return Promise.resolve({ count: 0 });
+      }),
+      createMany: jest.fn(
+        ({
+          data,
+        }: {
+          data: Array<{
+            matchId: string;
+            setNumber: number;
+            teamAScore: number;
+            teamBScore: number;
+          }>;
+        }) => {
+          if (data.length) {
+            rows[data[0].matchId].scores = data.map((score) => ({
+              setNumber: score.setNumber,
+              teamAScore: score.teamAScore,
+              teamBScore: score.teamBScore,
+            }));
+          }
+          return Promise.resolve({ count: data.length });
+        },
+      ),
     },
     round: { findUnique: jest.fn(), update: jest.fn() },
     tournament: { update: jest.fn() },
@@ -83,7 +123,23 @@ function harness(
       callback(tx),
     ),
   } as unknown as PrismaService;
-  return { service: new MatchesService(prisma), tx, rows };
+  const events = {
+    publish: jest.fn(),
+  } as unknown as TournamentEventsService;
+  const notifications = {
+    createForTournamentEvent: jest.fn().mockResolvedValue({
+      recipientCount: 1,
+      createdCount: 1,
+      notifications: [],
+    }),
+  } as unknown as NotificationService;
+  return {
+    service: new MatchesService(prisma, events, notifications),
+    tx,
+    rows,
+    events,
+    notifications,
+  };
 }
 
 const games = (winners: Array<'A' | 'B'>) => ({
@@ -232,6 +288,93 @@ describe('MatchesService results', () => {
     await expect(
       service.putScores('match-1', games(['B', 'B'])),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('persists and broadcasts a completed score update', async () => {
+    const { service, notifications, events } = harness();
+
+    await service.putScores('match-1', games(['A', 'A']));
+
+    expect(
+      jest.mocked(notifications.createForTournamentEvent),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tournamentId: 'tournament-1',
+        type: NotificationType.SCORE_UPDATE,
+        sourceKey: expect.stringContaining('match:match-1:result:') as string,
+      }),
+    );
+    expect(jest.mocked(events.publish)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tournamentId: 'tournament-1',
+        event: 'matchUpdated',
+      }),
+    );
+    expect(jest.mocked(events.publish)).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'standingsUpdated' }),
+    );
+  });
+
+  it('does not notify an idempotent completed-score retry and notifies a correction', async () => {
+    const { service, notifications } = harness();
+    const createNotification = jest.mocked(
+      notifications.createForTournamentEvent,
+    );
+
+    await service.putScores('match-1', games(['A', 'A']));
+    await service.putScores('match-1', games(['A', 'A']));
+    const firstKey = createNotification.mock.calls[0][0].sourceKey;
+    expect(createNotification).toHaveBeenCalledTimes(1);
+
+    await service.putScores('match-1', games(['B', 'B']));
+    const revisionKey = createNotification.mock.calls[1][0].sourceKey;
+
+    expect(createNotification).toHaveBeenCalledTimes(2);
+    expect(revisionKey).not.toBe(firstKey);
+  });
+
+  it('does not notify identical completed scores after an unrelated match update', async () => {
+    const completedScores = games(['A', 'A']).scores;
+    const { service, notifications } = harness(
+      match({
+        scoreA: 2,
+        status: MatchStatus.COMPLETED,
+        winnerTeamId: 'team-a',
+        playedAt: new Date('2026-08-14T01:00:00.000Z'),
+        scores: completedScores,
+        _count: { scores: completedScores.length },
+      }),
+    );
+    const createNotification = jest.mocked(
+      notifications.createForTournamentEvent,
+    );
+
+    await service.update('match-1', {
+      discordLink: 'https://discord.gg/tournament-room',
+    });
+    await service.putScores('match-1', { scores: completedScores });
+
+    expect(createNotification).not.toHaveBeenCalled();
+  });
+
+  it('keeps a committed result when notification persistence fails', async () => {
+    const { service, notifications, rows } = harness();
+    jest
+      .mocked(notifications.createForTournamentEvent)
+      .mockRejectedValueOnce(new Error('notification database unavailable'));
+    const log = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+
+    await expect(
+      service.putScores('match-1', games(['A', 'A'])),
+    ).resolves.toEqual(expect.objectContaining({ winnerTeamId: 'team-a' }));
+    expect(rows['match-1']).toEqual(
+      expect.objectContaining({
+        status: MatchStatus.COMPLETED,
+        winnerTeamId: 'team-a',
+      }),
+    );
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
   });
 
   describe('Double Elimination Grand Final Reset', () => {
@@ -426,6 +569,65 @@ describe('MatchesService results', () => {
 });
 
 describe('MatchesService organizer operations', () => {
+  it('persists and broadcasts an actual schedule change', async () => {
+    const { service, notifications, events } = harness();
+
+    await service.update('match-1', {
+      scheduledAt: '2026-08-20T10:00:00.000Z',
+    });
+
+    expect(
+      jest.mocked(notifications.createForTournamentEvent),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tournamentId: 'tournament-1',
+        type: NotificationType.SCHEDULE_CHANGE,
+      }),
+    );
+    expect(jest.mocked(events.publish)).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'scheduleUpdated' }),
+    );
+  });
+
+  it('does not persist or broadcast a no-op schedule update', async () => {
+    const scheduledAt = new Date('2026-08-20T10:00:00.000Z');
+    const { service, notifications, events } = harness(match({ scheduledAt }));
+
+    await service.update('match-1', {
+      scheduledAt: scheduledAt.toISOString(),
+    });
+
+    expect(
+      jest.mocked(notifications.createForTournamentEvent),
+    ).not.toHaveBeenCalled();
+    expect(jest.mocked(events.publish)).not.toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'scheduleUpdated' }),
+    );
+    expect(jest.mocked(events.publish)).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'matchUpdated' }),
+    );
+  });
+
+  it('does not notify the same schedule after an unrelated field changes updatedAt', async () => {
+    const scheduledAt = new Date('2026-08-20T10:00:00.000Z');
+    const { service, notifications, events } = harness(match({ scheduledAt }));
+
+    await service.update('match-1', {
+      discordLink: 'https://discord.gg/new-room',
+    });
+    jest.mocked(events.publish).mockClear();
+    await service.update('match-1', {
+      scheduledAt: scheduledAt.toISOString(),
+    });
+
+    expect(
+      jest.mocked(notifications.createForTournamentEvent),
+    ).not.toHaveBeenCalled();
+    expect(jest.mocked(events.publish)).not.toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'scheduleUpdated' }),
+    );
+  });
+
   it('returns match details with per-game scores', async () => {
     const { service, tx } = harness();
     tx.match.findUnique.mockResolvedValue({
@@ -447,11 +649,21 @@ describe('MatchesService organizer operations', () => {
     );
   });
 
-  it('bulk schedules matches from one tournament', async () => {
-    const { service, tx } = harness();
+  it('bulk schedules changed matches and emits one persistent/realtime notification', async () => {
+    const { service, tx, notifications, events } = harness();
     tx.match.findMany.mockResolvedValue([
-      { id: 'm1', round: { tournamentId: 't1' } },
-      { id: 'm2', round: { tournamentId: 't1' } },
+      {
+        id: 'm1',
+        scheduledAt: null,
+        updatedAt: new Date('2026-08-14T00:00:00.000Z'),
+        round: { tournamentId: 't1' },
+      },
+      {
+        id: 'm2',
+        scheduledAt: null,
+        updatedAt: new Date('2026-08-14T00:00:00.000Z'),
+        round: { tournamentId: 't1' },
+      },
     ]);
 
     await expect(
@@ -462,7 +674,54 @@ describe('MatchesService organizer operations', () => {
         ],
       }),
     ).resolves.toEqual({ updatedCount: 2, matchIds: ['m1', 'm2'] });
-    expect(tx.match.update).toHaveBeenCalledTimes(2);
+    expect(tx.match.update).toHaveBeenCalledTimes(1);
+    expect(
+      jest.mocked(notifications.createForTournamentEvent),
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      jest.mocked(notifications.createForTournamentEvent),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ type: NotificationType.SCHEDULE_CHANGE }),
+    );
+    expect(jest.mocked(events.publish)).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'scheduleUpdated' }),
+    );
+  });
+
+  it('does not persist or broadcast a bulk schedule no-op', async () => {
+    const { service, tx, notifications, events } = harness();
+    const scheduledAt = new Date('2026-08-20T10:00:00.000Z');
+    tx.match.findMany.mockResolvedValue([
+      {
+        id: 'm1',
+        scheduledAt,
+        updatedAt: new Date('2026-08-14T00:00:00.000Z'),
+        round: { tournamentId: 't1' },
+      },
+      {
+        id: 'm2',
+        scheduledAt: null,
+        updatedAt: new Date('2026-08-14T00:00:00.000Z'),
+        round: { tournamentId: 't1' },
+      },
+    ]);
+
+    await expect(
+      service.bulkSchedule({
+        matches: [
+          { matchId: 'm1', scheduledAt: scheduledAt.toISOString() },
+          { matchId: 'm2', scheduledAt: null },
+        ],
+      }),
+    ).resolves.toEqual({ updatedCount: 2, matchIds: ['m1', 'm2'] });
+
+    expect(tx.match.update).not.toHaveBeenCalled();
+    expect(
+      jest.mocked(notifications.createForTournamentEvent),
+    ).not.toHaveBeenCalled();
+    expect(jest.mocked(events.publish)).not.toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'scheduleUpdated' }),
+    );
   });
 
   it('creates a manual match using the round bestOf', async () => {
