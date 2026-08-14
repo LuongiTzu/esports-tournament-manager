@@ -42,13 +42,6 @@ const CAPTAIN_SELECT = {
   avatarUrl: true,
 } as const;
 
-/** Giải đã bước vào thi đấu thì roster bị khóa */
-const LOCKED_TOURNAMENT_STATUSES: TournamentStatus[] = [
-  TournamentStatus.ONGOING,
-  TournamentStatus.COMPLETED,
-  TournamentStatus.CANCELLED,
-];
-
 @Injectable()
 export class TeamsService {
   constructor(
@@ -682,10 +675,7 @@ export class TeamsService {
     }));
   }
 
-  /**
-   * Đội chỉ sửa được khi còn chờ duyệt, hoặc khi giải chưa bước vào thi đấu.
-   * Guard đã kiểm tra quyền, hàm này chỉ kiểm tra trạng thái.
-   */
+  /** Guard kiểm tra quyền; helper này áp dụng cùng một registration lock cho mọi roster mutation. */
   private async loadEditableTeam(teamId: string) {
     const team = await this.prisma.team.findUnique({
       where: { id: teamId },
@@ -695,7 +685,15 @@ export class TeamsService {
         status: true,
         captainId: true,
         tournamentId: true,
-        tournament: { select: { status: true } },
+        tournament: {
+          select: {
+            status: true,
+            registrationOpen: true,
+            registrationStartDate: true,
+            registrationDeadline: true,
+            startDate: true,
+          },
+        },
       },
     });
 
@@ -703,16 +701,33 @@ export class TeamsService {
       throw new NotFoundException('Không tìm thấy đội');
     }
 
-    if (
-      team.status !== RegistrationStatus.PENDING &&
-      LOCKED_TOURNAMENT_STATUSES.includes(team.tournament.status)
-    ) {
-      throw new BadRequestException(
-        'Giải đấu đã bắt đầu nên không thể chỉnh sửa hồ sơ đội',
-      );
-    }
+    this.assertRosterLifecycleOpen(team.tournament);
 
     return team;
+  }
+
+  private assertRosterLifecycleOpen(tournament: {
+    status: TournamentStatus;
+    registrationOpen: boolean;
+    registrationStartDate: Date | null;
+    registrationDeadline: Date | null;
+    startDate: Date | null;
+  }) {
+    const now = new Date();
+    const registrationIsOpen =
+      tournament.status === TournamentStatus.REGISTRATION &&
+      tournament.registrationOpen &&
+      (!tournament.registrationStartDate ||
+        now >= tournament.registrationStartDate) &&
+      (!tournament.registrationDeadline ||
+        now <= tournament.registrationDeadline) &&
+      (!tournament.startDate || now < tournament.startDate);
+
+    if (!registrationIsOpen) {
+      throw new BadRequestException(
+        'Giải đấu đã khóa đăng ký nên không thể chỉnh sửa hồ sơ hoặc đội hình',
+      );
+    }
   }
 
   /** Tên đội là unique trong phạm vi 1 giải — báo lỗi tiếng Việt thay vì P2002 */

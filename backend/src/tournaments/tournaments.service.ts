@@ -4,8 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  MatchStatus,
   Prisma,
   ModerationStatus,
+  RoundStatus,
   Visibility,
   TournamentMode,
   TournamentStatus,
@@ -39,6 +41,12 @@ const PUBLIC_TEAM_SELECT = {
   logoUrl: true,
   seed: true,
 } as const;
+
+const DELETABLE_TOURNAMENT_STATUSES: TournamentStatus[] = [
+  TournamentStatus.DRAFT,
+  TournamentStatus.REGISTRATION,
+  TournamentStatus.CANCELLED,
+];
 
 @Injectable()
 export class TournamentsService {
@@ -375,10 +383,62 @@ export class TournamentsService {
    * Xóa giải đấu (UC-U10) — chỉ BTC
    */
   async remove(tournamentId: string) {
-    await this.prisma.tournament.delete({
-      where: { id: tournamentId },
-    });
-    return { message: 'Đã xóa giải đấu thành công' };
+    return this.prisma.$transaction(
+      async (tx) => {
+        const tournament = await tx.tournament.findUnique({
+          where: { id: tournamentId },
+          select: { id: true, status: true, startDate: true },
+        });
+        if (!tournament) {
+          throw new NotFoundException('Không tìm thấy giải đấu');
+        }
+
+        if (!DELETABLE_TOURNAMENT_STATUSES.includes(tournament.status)) {
+          throw new BadRequestException(
+            'Không thể xóa giải đấu đang diễn ra hoặc đã kết thúc',
+          );
+        }
+        if (tournament.startDate && tournament.startDate <= new Date()) {
+          throw new BadRequestException(
+            'Không thể xóa giải đấu đã đến thời điểm bắt đầu',
+          );
+        }
+
+        const [startedRounds, startedMatches] = await Promise.all([
+          tx.round.count({
+            where: {
+              tournamentId,
+              status: { in: [RoundStatus.ONGOING, RoundStatus.COMPLETED] },
+            },
+          }),
+          tx.match.count({
+            where: {
+              round: { tournamentId },
+              OR: [
+                {
+                  status: {
+                    in: [MatchStatus.ONGOING, MatchStatus.COMPLETED],
+                  },
+                },
+                { playedAt: { not: null } },
+                { scoreA: { gt: 0 } },
+                { scoreB: { gt: 0 } },
+                { scores: { some: {} } },
+              ],
+            },
+          }),
+        ]);
+        if (startedRounds > 0 || startedMatches > 0) {
+          throw new BadRequestException(
+            'Không thể xóa giải đấu đã có vòng hoặc trận đấu bắt đầu',
+          );
+        }
+
+        await tx.tournament.delete({ where: { id: tournamentId } });
+        return { message: 'Đã xóa giải đấu thành công' };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 
   /**
