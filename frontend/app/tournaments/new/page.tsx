@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PlusIcon, TrashIcon } from "@phosphor-icons/react";
-import { gamesApi, tournamentsApi, Game } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
-import { ROUND_FORMATS } from "@/lib/formats";
-import { accentVars } from "@/lib/gameAccents";
+import { useAuth } from "@/features/auth/store";
+import { gamesApi } from "@/features/games/api";
+import { accentVars } from "@/features/games/game-accent";
+import type { Game } from "@/features/games/types";
+import { tournamentsApi } from "@/features/tournaments/api";
+import { ROUND_FORMATS } from "@/features/tournaments/round-formats";
 import {
   alertErrorClass,
   hintClass,
@@ -167,7 +169,7 @@ export default function NewTournamentPage() {
                 <option value="">Chọn game</option>
                 {games.map((g) => (
                   <option key={g.id} value={g.id}>
-                    {g.name} ({g.teamSize} người/đội)
+                    {g.name} ({g.defaultTeamSize} người/đội)
                   </option>
                 ))}
               </select>

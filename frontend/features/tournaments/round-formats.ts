@@ -7,5 +7,5 @@ export const ROUND_FORMATS = [
 ] as const;
 
 export const ROUND_FORMAT_LABELS: Record<string, string> = Object.fromEntries(
-  ROUND_FORMATS.map((f) => [f.value, f.label]),
+  ROUND_FORMATS.map((format) => [format.value, format.label]),
 );

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/auth";
-import AuthShell from "@/components/AuthShell";
+import AuthShell from "@/features/auth/components/AuthShell";
+import { login } from "@/features/auth/store";
 import {
   alertErrorClass,
   inputClass,

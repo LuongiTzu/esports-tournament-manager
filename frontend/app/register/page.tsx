@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { authApi } from "@/lib/api";
-import AuthShell from "@/components/AuthShell";
+import { authApi } from "@/features/auth/api";
+import AuthShell from "@/features/auth/components/AuthShell";
 import {
   alertErrorClass,
   hintClass,

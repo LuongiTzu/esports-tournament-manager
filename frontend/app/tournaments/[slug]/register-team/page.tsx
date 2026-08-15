@@ -4,9 +4,10 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
-import { tournamentsApi, teamsApi, TournamentDetail } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
-import { accentVars } from "@/lib/gameAccents";
+import { useAuth } from "@/features/auth/store";
+import { accentVars } from "@/features/games/game-accent";
+import { teamsApi } from "@/features/teams/api";
+import type { Gender, TeamRegistrationForm } from "@/features/teams/types";
 import {
   alertErrorClass,
   hintClass,
@@ -15,12 +16,52 @@ import {
   secondaryButtonClass,
 } from "@/components/ui";
 
-/** Trần cứng của RegisterTeamDto — `members` chỉ nhận tối đa 5 phần tử */
-const MAX_EXTRA_MEMBERS = 5;
-
 interface MemberForm {
+  realName: string;
   ign: string;
-  contactInfo: string;
+  email: string;
+  phoneNumber: string;
+  birthDate: string;
+  gender: "" | Gender;
+  position: string;
+}
+
+const GENDER_OPTIONS: Array<{ value: Gender; label: string }> = [
+  { value: "MALE", label: "Nam" },
+  { value: "FEMALE", label: "Nữ" },
+  { value: "OTHER", label: "Khác" },
+];
+
+function emptyMember(): MemberForm {
+  return {
+    realName: "",
+    ign: "",
+    email: "",
+    phoneNumber: "",
+    birthDate: "",
+    gender: "",
+    position: "",
+  };
+}
+
+function toDateInput(value: string | null): string {
+  return value ? value.slice(0, 10) : "";
+}
+
+function initialMembers(config: TeamRegistrationForm): MemberForm[] {
+  const captain = config.prefill.captainMember;
+  const firstMember: MemberForm = {
+    ...emptyMember(),
+    realName: captain.realName,
+    email: captain.email,
+    phoneNumber: captain.phoneNumber ?? "",
+    birthDate: toDateInput(captain.birthDate),
+    gender: captain.gender ?? "",
+  };
+
+  return Array.from({ length: config.tournament.minTeamSize }, (_, index) =>
+    index === 0 ? firstMember : emptyMember(),
+  );
 }
 
 export default function RegisterTeamPage({
@@ -32,12 +73,15 @@ export default function RegisterTeamPage({
   const router = useRouter();
   const { user, ready } = useAuth();
 
-  const [tournament, setTournament] = useState<TournamentDetail | null>(null);
+  const [config, setConfig] = useState<TeamRegistrationForm | null>(null);
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
 
   const [name, setName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [members, setMembers] = useState<MemberForm[]>([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -48,45 +92,65 @@ export default function RegisterTeamPage({
       router.push("/login");
       return;
     }
-    tournamentsApi
-      .findBySlug(slug)
-      .then((t) => {
-        setTournament(t);
-        // Đội trưởng được backend tự thêm làm thành viên đầu tiên,
-        // nên form chỉ nhập các thành viên còn lại
-        const teamSize = t.game?.teamSize ?? 1;
-        const seed = Math.min(Math.max(teamSize - 1, 0), MAX_EXTRA_MEMBERS);
-        setMembers(Array.from({ length: seed }, () => ({ ign: "", contactInfo: "" })));
+
+    teamsApi
+      .getRegistrationForm(slug)
+      .then((data) => {
+        setConfig(data);
+        setContactName(data.prefill.contactName);
+        setContactEmail(data.prefill.contactEmail);
+        setContactPhone(data.prefill.contactPhone ?? "");
+        setMembers(initialMembers(data));
       })
       .catch((err) =>
-        setLoadError(err instanceof Error ? err.message : "Không tải được giải đấu"),
+        setLoadError(
+          err instanceof Error ? err.message : "Không tải được thông tin đăng ký",
+        ),
       )
       .finally(() => setLoading(false));
   }, [slug, ready, user, router]);
 
-  const updateMember = (i: number, field: keyof MemberForm, value: string) =>
-    setMembers(members.map((m, idx) => (idx === i ? { ...m, [field]: value } : m)));
+  const updateMember = (
+    index: number,
+    field: keyof MemberForm,
+    value: string,
+  ) => {
+    setMembers((current) =>
+      current.map((member, memberIndex) =>
+        memberIndex === index ? { ...member, [field]: value } : member,
+      ),
+    );
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tournament) return;
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!config?.canRegister) return;
     setError("");
 
-    const filled = members
-      .map((m) => ({ ign: m.ign.trim(), contactInfo: m.contactInfo.trim() }))
-      .filter((m) => m.ign);
+    if (members.some((member) => !member.email.trim() && !member.phoneNumber.trim())) {
+      setError("Mỗi thành viên phải có ít nhất email hoặc số điện thoại liên hệ");
+      return;
+    }
 
     setSubmitting(true);
     try {
-      await teamsApi.register(tournament.id, {
+      await teamsApi.register(slug, {
         name: name.trim(),
         logoUrl: logoUrl.trim() || undefined,
-        members: filled.length
-          ? filled.map((m) => ({
-              ign: m.ign,
-              ...(m.contactInfo ? { contactInfo: m.contactInfo } : {}),
-            }))
-          : undefined,
+        contactName: contactName.trim(),
+        contactEmail: contactEmail.trim(),
+        contactPhone: contactPhone.trim() || undefined,
+        members: members.map((member, index) => ({
+          realName: member.realName.trim(),
+          ign: member.ign.trim(),
+          email: member.email.trim() || undefined,
+          phoneNumber: member.phoneNumber.trim() || undefined,
+          birthDate: member.birthDate || undefined,
+          gender: member.gender || undefined,
+          position: member.position || undefined,
+          memberRole: index === 0 ? "CAPTAIN" : "PLAYER",
+          orderIndex: index,
+        })),
       });
       router.push(`/tournaments/${slug}`);
     } catch (err) {
@@ -106,10 +170,12 @@ export default function RegisterTeamPage({
     );
   }
 
-  if (loadError || !tournament) {
+  if (loadError || !config) {
     return (
       <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-16 text-center">
-        <p className={alertErrorClass}>{loadError || "Không tìm thấy giải đấu"}</p>
+        <p className={alertErrorClass}>
+          {loadError || "Không tìm thấy thông tin đăng ký"}
+        </p>
         <Link href="/" className="mt-4 inline-block text-sm text-brand hover:underline">
           Về danh sách giải
         </Link>
@@ -117,15 +183,20 @@ export default function RegisterTeamPage({
     );
   }
 
-  const teamSize = tournament.game?.teamSize ?? 1;
-  const closed = !tournament.registrationOpen;
-  const full =
-    Boolean(tournament.maxTeams) &&
-    (tournament._count?.teams ?? 0) >= (tournament.maxTeams as number);
+  const rules = config.tournament;
+  const requiresBirthDate =
+    rules.requireMemberFullInfo || rules.minAge !== null || rules.maxAge !== null;
+  const requiresGender =
+    rules.requireMemberFullInfo || Boolean(rules.allowedGenders?.length);
+  const requiresPosition =
+    rules.requireMemberFullInfo && config.game.positions.length > 0;
+  const genderOptions = rules.allowedGenders?.length
+    ? GENDER_OPTIONS.filter((option) => rules.allowedGenders?.includes(option.value))
+    : GENDER_OPTIONS;
 
   return (
     <div
-      style={accentVars(tournament.game?.name)}
+      style={accentVars(config.game.name)}
       className="mx-auto w-full max-w-2xl flex-1 px-4 py-10"
     >
       <Link
@@ -133,7 +204,7 @@ export default function RegisterTeamPage({
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-ink"
       >
         <ArrowLeftIcon size={16} />
-        {tournament.name}
+        {rules.name}
       </Link>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
@@ -143,14 +214,10 @@ export default function RegisterTeamPage({
         Đội của bạn sẽ ở trạng thái chờ duyệt cho tới khi ban tổ chức xác nhận.
       </p>
 
-      {closed || full ? (
+      {!config.canRegister ? (
         <div className="mt-8 rounded-xl border border-line bg-surface-card px-6 py-12 text-center">
-          <p className="font-medium text-ink">
-            {closed ? "Giải đấu đã đóng đăng ký" : "Giải đấu đã đủ số đội"}
-          </p>
-          <p className="mt-2 text-sm text-ink-muted">
-            Bạn vẫn có thể theo dõi diễn biến ở trang giải đấu.
-          </p>
+          <p className="font-medium text-ink">Hiện không thể đăng ký đội</p>
+          <p className="mt-2 text-sm text-ink-muted">{config.reason}</p>
           <Link
             href={`/tournaments/${slug}`}
             className={`${secondaryButtonClass} mt-5`}
@@ -174,11 +241,10 @@ export default function RegisterTeamPage({
                   required
                   maxLength={50}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(event) => setName(event.target.value)}
                   className={inputClass}
                   placeholder="Tên đội của bạn"
                 />
-                <p className={hintClass}>Tối đa 50 ký tự.</p>
               </div>
 
               <div>
@@ -190,9 +256,54 @@ export default function RegisterTeamPage({
                   type="url"
                   maxLength={500}
                   value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
+                  onChange={(event) => setLogoUrl(event.target.value)}
                   className={inputClass}
                   placeholder="https://..."
+                />
+                <p className={hintClass}>Không bắt buộc.</p>
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="contactName" className={labelClass}>
+                    Người đại diện
+                  </label>
+                  <input
+                    id="contactName"
+                    type="text"
+                    required
+                    maxLength={100}
+                    value={contactName}
+                    onChange={(event) => setContactName(event.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contactEmail" className={labelClass}>
+                    Email đại diện
+                  </label>
+                  <input
+                    id="contactEmail"
+                    type="email"
+                    required
+                    value={contactEmail}
+                    onChange={(event) => setContactEmail(event.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="contactPhone" className={labelClass}>
+                  Số điện thoại đại diện
+                </label>
+                <input
+                  id="contactPhone"
+                  type="tel"
+                  maxLength={20}
+                  value={contactPhone}
+                  onChange={(event) => setContactPhone(event.target.value)}
+                  className={inputClass}
                 />
                 <p className={hintClass}>Không bắt buộc.</p>
               </div>
@@ -202,20 +313,17 @@ export default function RegisterTeamPage({
           <section className="rounded-xl border border-line bg-surface-card p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="font-semibold text-ink">Thành viên còn lại</h2>
+                <h2 className="font-semibold text-ink">Danh sách thành viên</h2>
                 <p className="mt-1 text-sm text-ink-muted">
-                  Bạn đã được tính là đội trưởng.{" "}
-                  {tournament.game?.name ? `${tournament.game.name} thi đấu ` : ""}
-                  {teamSize} người mỗi đội, nên cần thêm {Math.max(teamSize - 1, 0)}{" "}
-                  thành viên.
+                  {config.game.name} yêu cầu từ {rules.minTeamSize} đến{" "}
+                  {rules.maxTeamSize} thành viên thi đấu. Thành viên đầu tiên là đội
+                  trưởng.
                 </p>
               </div>
-              {members.length < MAX_EXTRA_MEMBERS && (
+              {members.length < rules.maxTeamSize && (
                 <button
                   type="button"
-                  onClick={() =>
-                    setMembers([...members, { ign: "", contactInfo: "" }])
-                  }
+                  onClick={() => setMembers((current) => [...current, emptyMember()])}
                   className={`${secondaryButtonClass} shrink-0 px-3 py-2 text-xs`}
                 >
                   <PlusIcon size={14} weight="bold" />
@@ -224,66 +332,137 @@ export default function RegisterTeamPage({
               )}
             </div>
 
-            {teamSize - 1 > MAX_EXTRA_MEMBERS && (
-              <p className="mt-4 rounded-lg border border-pending/40 bg-pending/10 px-3.5 py-2.5 text-xs text-pending">
-                Hệ thống hiện chỉ nhận tối đa {MAX_EXTRA_MEMBERS} thành viên kèm
-                đăng ký. Những người còn lại sẽ được ban tổ chức bổ sung sau khi
-                duyệt đội.
-              </p>
-            )}
-
-            {members.length === 0 ? (
-              <p className="mt-5 rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-ink-muted">
-                Chưa có thành viên nào. Bạn có thể đăng ký trước rồi bổ sung sau.
-              </p>
-            ) : (
-              <div className="mt-5 space-y-3">
-                {members.map((m, i) => (
-                  <div
-                    key={i}
-                    className="flex flex-col gap-3 rounded-lg border border-line bg-surface-sub p-3 sm:flex-row sm:items-center"
-                  >
-                    <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-surface font-mono text-xs text-ink-muted">
-                      {i + 2}
-                    </span>
-                    <input
-                      type="text"
-                      maxLength={30}
-                      value={m.ign}
-                      onChange={(e) => updateMember(i, "ign", e.target.value)}
-                      aria-label={`Tên trong game của thành viên ${i + 2}`}
-                      className={`${inputClass} flex-1 bg-surface`}
-                      placeholder="Tên trong game (IGN)"
-                    />
-                    <input
-                      type="text"
-                      maxLength={100}
-                      value={m.contactInfo}
-                      onChange={(e) =>
-                        updateMember(i, "contactInfo", e.target.value)
-                      }
-                      aria-label={`Liên hệ của thành viên ${i + 2}`}
-                      className={`${inputClass} flex-1 bg-surface`}
-                      placeholder="Liên hệ (tùy chọn)"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMembers(members.filter((_, idx) => idx !== i))
-                      }
-                      aria-label={`Xóa thành viên ${i + 2}`}
-                      className="shrink-0 rounded-lg p-2 text-ink-faint transition hover:bg-rejected/10 hover:text-rejected"
-                    >
-                      <TrashIcon size={16} />
-                    </button>
+            <div className="mt-5 space-y-4">
+              {members.map((member, index) => (
+                <div
+                  key={index}
+                  className="rounded-lg border border-line bg-surface-sub p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-ink">
+                      {index === 0 ? "Đội trưởng" : `Thành viên ${index + 1}`}
+                    </p>
+                    {index > 0 && members.length > rules.minTeamSize && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMembers((current) =>
+                            current.filter((_, memberIndex) => memberIndex !== index),
+                          )
+                        }
+                        aria-label={`Xóa thành viên ${index + 1}`}
+                        className="rounded-lg p-2 text-ink-faint transition hover:bg-rejected/10 hover:text-rejected"
+                      >
+                        <TrashIcon size={16} />
+                      </button>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
 
-            <p className={`${hintClass} mt-4`}>
-              Dòng để trống IGN sẽ được bỏ qua khi gửi.
-            </p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <input
+                      type="text"
+                      required
+                      maxLength={100}
+                      value={member.realName}
+                      onChange={(event) =>
+                        updateMember(index, "realName", event.target.value)
+                      }
+                      aria-label={`Tên thật của thành viên ${index + 1}`}
+                      className={`${inputClass} bg-surface`}
+                      placeholder="Tên thật"
+                    />
+                    <input
+                      type="text"
+                      required
+                      maxLength={30}
+                      value={member.ign}
+                      onChange={(event) =>
+                        updateMember(index, "ign", event.target.value)
+                      }
+                      aria-label={`IGN của thành viên ${index + 1}`}
+                      className={`${inputClass} bg-surface`}
+                      placeholder="Tên thi đấu (IGN)"
+                    />
+                    <input
+                      type="email"
+                      value={member.email}
+                      onChange={(event) =>
+                        updateMember(index, "email", event.target.value)
+                      }
+                      aria-label={`Email của thành viên ${index + 1}`}
+                      className={`${inputClass} bg-surface`}
+                      placeholder="Email liên hệ"
+                    />
+                    <input
+                      type="tel"
+                      maxLength={20}
+                      value={member.phoneNumber}
+                      onChange={(event) =>
+                        updateMember(index, "phoneNumber", event.target.value)
+                      }
+                      aria-label={`Số điện thoại của thành viên ${index + 1}`}
+                      className={`${inputClass} bg-surface`}
+                      placeholder="Số điện thoại liên hệ"
+                    />
+
+                    {requiresBirthDate && (
+                      <input
+                        type="date"
+                        required
+                        value={member.birthDate}
+                        onChange={(event) =>
+                          updateMember(index, "birthDate", event.target.value)
+                        }
+                        aria-label={`Ngày sinh của thành viên ${index + 1}`}
+                        className={`${inputClass} bg-surface`}
+                      />
+                    )}
+
+                    {requiresGender && (
+                      <select
+                        required
+                        value={member.gender}
+                        onChange={(event) =>
+                          updateMember(index, "gender", event.target.value)
+                        }
+                        aria-label={`Giới tính của thành viên ${index + 1}`}
+                        className={`${inputClass} bg-surface`}
+                      >
+                        <option value="">Chọn giới tính</option>
+                        {genderOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {config.game.positions.length > 0 && (
+                      <select
+                        required={requiresPosition}
+                        value={member.position}
+                        onChange={(event) =>
+                          updateMember(index, "position", event.target.value)
+                        }
+                        aria-label={`Vị trí của thành viên ${index + 1}`}
+                        className={`${inputClass} bg-surface`}
+                      >
+                        <option value="">Chọn vị trí thi đấu</option>
+                        {config.game.positions.map((position) => (
+                          <option key={position} value={position}>
+                            {position}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <p className={`${hintClass} mt-3`}>
+                    Cần ít nhất email hoặc số điện thoại cho thành viên này.
+                  </p>
+                </div>
+              ))}
+            </div>
           </section>
 
           {error && (

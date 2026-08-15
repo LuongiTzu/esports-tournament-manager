@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PlusIcon, SignOutIcon, TrophyIcon } from "@phosphor-icons/react";
-import { useAuth, logout } from "@/lib/auth";
+import { logout, useAuth } from "@/features/auth/store";
 
 export default function Navbar() {
   const router = useRouter();

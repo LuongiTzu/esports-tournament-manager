@@ -6,7 +6,6 @@ export interface Accent {
   onAccent: string;
 }
 
-/** Nhãn đặt trên nền accent luôn là màu tối — cả 6 accent đều đủ sáng để dùng chung quy tắc này */
 const INK = "oklch(0.175 0.008 275)";
 
 const NEUTRAL: Accent = {
@@ -15,12 +14,12 @@ const NEUTRAL: Accent = {
   onAccent: INK,
 };
 
-const key = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const key = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const ACCENTS: Record<string, Accent> = {
   [key("League of Legends")]: {
     accent: "oklch(0.74 0.145 250)",
-    alt: "oklch(0.78 0.105 85)", // brass phẳng, không bao giờ dùng làm gradient
+    alt: "oklch(0.78 0.105 85)",
     onAccent: INK,
   },
   [key("Valorant")]: {
@@ -43,7 +42,6 @@ const ACCENTS: Record<string, Accent> = {
     alt: "oklch(0.62 0.130 158)",
     onAccent: INK,
   },
-  // Seed không có iconUrl nên không suy ra được màu — dùng tông trung tính
   [key("Liên Quân Mobile")]: NEUTRAL,
 };
 
@@ -51,12 +49,11 @@ export function gameAccent(name?: string | null): Accent {
   return (name && ACCENTS[key(name)]) || NEUTRAL;
 }
 
-/** Spread vào `style` của phần tử bao ngoài; con cháu dùng bg-accent / text-accent / bg-accent/10 */
 export function accentVars(name?: string | null): CSSProperties {
-  const a = gameAccent(name);
+  const accent = gameAccent(name);
   return {
-    "--accent": a.accent,
-    "--accent-alt": a.alt,
-    "--on-accent": a.onAccent,
+    "--accent": accent.accent,
+    "--accent-alt": accent.alt,
+    "--on-accent": accent.onAccent,
   } as CSSProperties;
 }

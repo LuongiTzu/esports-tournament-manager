@@ -1,4 +1,4 @@
-export type TeamStatus = "PENDING" | "APPROVED" | "REJECTED";
+import type { TeamStatus } from "@/features/teams/types";
 
 /**
  * Nhãn trạng thái đội — hệ màu duy nhất dùng chung mọi trang.

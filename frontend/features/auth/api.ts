@@ -1,0 +1,26 @@
+import type {
+  LoginRequest,
+  LoginResponse,
+  RegisterAccountRequest,
+  User,
+} from "@/features/auth/types";
+import { request } from "@/lib/api/client";
+
+export const authApi = {
+  login: (data: LoginRequest) =>
+    request<LoginResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  register: (data: RegisterAccountRequest) =>
+    request<{ message: string; user: User }>("/auth/register", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  logout: () =>
+    request<{ message: string }>("/auth/logout", {
+      method: "POST",
+      auth: true,
+    }),
+  getMe: () => request<User>("/users/me", { auth: true }),
+};

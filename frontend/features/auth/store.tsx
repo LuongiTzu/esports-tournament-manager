@@ -1,7 +1,9 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { authApi, tokenStore, User } from "@/lib/api";
+import { authApi } from "@/features/auth/api";
+import type { User } from "@/features/auth/types";
+import { tokenStore } from "@/lib/api/token-store";
 
 interface AuthState {
   user: User | null;
@@ -21,7 +23,7 @@ function setState(next: AuthState) {
 
 function subscribe(onChange: () => void) {
   listeners.add(onChange);
-  if (!state.ready) setState({ user: tokenStore.user, ready: true });
+  if (!state.ready) setState({ user: tokenStore.getUser<User>(), ready: true });
   return () => {
     listeners.delete(onChange);
   };
@@ -31,7 +33,7 @@ export async function login(email: string, password: string) {
   const res = await authApi.login({ email, password });
   tokenStore.accessToken = res.accessToken;
   tokenStore.refreshToken = res.refreshToken;
-  tokenStore.user = res.user;
+  tokenStore.setUser(res.user);
   setState({ user: res.user, ready: true });
 }
 

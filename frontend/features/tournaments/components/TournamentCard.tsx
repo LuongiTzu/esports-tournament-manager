@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { UsersThreeIcon, CalendarBlankIcon } from "@phosphor-icons/react";
-import type { Tournament } from "@/lib/api";
-import { accentVars } from "@/lib/gameAccents";
+import type { Tournament } from "@/features/tournaments/types";
+import { accentVars } from "@/features/games/game-accent";
 
 function formatDate(d?: string | null) {
   return d ? new Date(d).toLocaleDateString("vi-VN") : "Chưa xác định";

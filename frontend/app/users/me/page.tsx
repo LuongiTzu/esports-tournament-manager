@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { usersApi, Tournament } from "@/lib/api";
-import { useAuth } from "@/lib/auth";
-import TournamentCard from "@/components/TournamentCard";
+import { useAuth } from "@/features/auth/store";
+import { tournamentsApi } from "@/features/tournaments/api";
+import TournamentCard from "@/features/tournaments/components/TournamentCard";
+import type { Tournament } from "@/features/tournaments/types";
 import { primaryButtonClass } from "@/components/ui";
 
 const TABS = [
@@ -30,8 +31,8 @@ export default function MyProfilePage() {
       return;
     }
     let cancelled = false;
-    usersApi
-      .getMyTournaments(tab)
+    tournamentsApi
+      .findMine(tab)
       .then((res) => {
         if (!cancelled) setResult({ tab, data: res });
       })

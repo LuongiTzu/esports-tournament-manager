@@ -8,16 +8,14 @@ import {
   SealCheckIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react";
-import {
-  tournamentsApi,
-  teamsApi,
-  TournamentDetail,
-  TeamWithMembers,
-} from "@/lib/api";
-import { useAuth } from "@/lib/auth";
-import { accentVars } from "@/lib/gameAccents";
-import { ROUND_FORMAT_LABELS } from "@/lib/formats";
-import StatusBadge from "@/components/StatusBadge";
+import { useAuth } from "@/features/auth/store";
+import { accentVars } from "@/features/games/game-accent";
+import { teamsApi } from "@/features/teams/api";
+import StatusBadge from "@/features/teams/components/StatusBadge";
+import type { TeamWithMembers } from "@/features/teams/types";
+import { tournamentsApi } from "@/features/tournaments/api";
+import { ROUND_FORMAT_LABELS } from "@/features/tournaments/round-formats";
+import type { TournamentDetail } from "@/features/tournaments/types";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 
 function formatDate(d?: string | null) {
@@ -55,16 +53,14 @@ export default function TournamentDetailPage({
     };
   }, [slug]);
 
-  // findBySlug chỉ trả đội APPROVED, nên phải gọi riêng để biết đội của mình
-  // đang PENDING hay REJECTED. Endpoint này public, không cần token.
   useEffect(() => {
     if (!tournament || !user) return;
     let cancelled = false;
     teamsApi
-      .findByTournament(tournament.id)
+      .findMine()
       .then((teams) => {
         if (!cancelled)
-          setMyTeam(teams.find((t) => t.captain?.id === user.id) ?? null);
+          setMyTeam(teams.find((team) => team.tournament.slug === slug) ?? null);
       })
       .catch(() => {
         if (!cancelled) setMyTeam(null);
@@ -72,7 +68,7 @@ export default function TournamentDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [tournament, user]);
+  }, [slug, tournament, user]);
 
   if (loading) {
     return (
@@ -97,7 +93,7 @@ export default function TournamentDetailPage({
   }
 
   const isOrganizer = user && tournament.organizer?.id === user.id;
-  const ownTeam = user && myTeam?.captain?.id === user.id ? myTeam : null;
+  const ownTeam = user ? myTeam : null;
   const canRegister = user && tournament.registrationOpen && !ownTeam;
 
   return (

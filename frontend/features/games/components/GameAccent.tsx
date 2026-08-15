@@ -1,5 +1,5 @@
 import type { ElementType, ReactNode } from "react";
-import { accentVars } from "@/lib/gameAccents";
+import { accentVars } from "@/features/games/game-accent";
 
 export default function GameAccent({
   game,

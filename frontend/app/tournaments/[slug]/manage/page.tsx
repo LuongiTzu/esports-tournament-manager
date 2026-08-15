@@ -4,16 +4,13 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, XIcon } from "@phosphor-icons/react";
-import {
-  teamsApi,
-  tournamentsApi,
-  TeamWithMembers,
-  TeamStatus,
-  TournamentDetail,
-} from "@/lib/api";
-import { useAuth } from "@/lib/auth";
-import { accentVars } from "@/lib/gameAccents";
-import StatusBadge from "@/components/StatusBadge";
+import { useAuth } from "@/features/auth/store";
+import { accentVars } from "@/features/games/game-accent";
+import { teamsApi } from "@/features/teams/api";
+import StatusBadge from "@/features/teams/components/StatusBadge";
+import type { TeamStatus, TeamWithMembers } from "@/features/teams/types";
+import { tournamentsApi } from "@/features/tournaments/api";
+import type { TournamentDetail } from "@/features/tournaments/types";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 
 const FILTERS: Array<{ value: "ALL" | TeamStatus; label: string }> = [
@@ -55,7 +52,7 @@ export default function ManagePage({
           setLoadError("Bạn không phải ban tổ chức của giải đấu này");
           return;
         }
-        setTeams(await teamsApi.findByTournament(t.id, "ALL"));
+        setTeams(await teamsApi.findByTournament(slug, "ALL"));
       })
       .catch((err) =>
         setLoadError(err instanceof Error ? err.message : "Không tải được dữ liệu"),
@@ -63,13 +60,28 @@ export default function ManagePage({
       .finally(() => setLoading(false));
   }, [slug, router, ready, user]);
 
-  const handleStatus = async (team: TeamWithMembers, status: TeamStatus) => {
+  const handleStatus = async (
+    team: TeamWithMembers,
+    status: "APPROVED" | "REJECTED",
+  ) => {
     if (!tournament || busyTeamId) return;
-    if (
-      status === "REJECTED" &&
-      !window.confirm(`Từ chối đội "${team.name}"? Đội sẽ không thể thi đấu.`)
-    ) {
-      return;
+    let statusUpdate:
+      | { status: "APPROVED" }
+      | { status: "REJECTED"; rejectReason: string };
+    if (status === "REJECTED") {
+      const input = window.prompt(`Nhập lý do từ chối đội "${team.name}":`);
+      if (input === null) return;
+      const rejectReason = input.trim();
+      if (rejectReason.length < 5) {
+        setActionErrors((prev) => ({
+          ...prev,
+          [team.id]: "Lý do từ chối phải có ít nhất 5 ký tự",
+        }));
+        return;
+      }
+      statusUpdate = { status, rejectReason };
+    } else {
+      statusUpdate = { status };
     }
 
     setBusyTeamId(team.id);
@@ -80,11 +92,7 @@ export default function ManagePage({
     });
 
     try {
-      const updated = await teamsApi.updateStatus(
-        tournament.id,
-        team.id,
-        status as "APPROVED" | "REJECTED",
-      );
+      const updated = await teamsApi.updateStatus(team.id, statusUpdate);
       setTeams((prev) =>
         prev.map((t) => (t.id === team.id ? { ...t, status: updated.status } : t)),
       );
@@ -210,12 +218,8 @@ export default function ManagePage({
                         key={m.id}
                         className="rounded-md bg-surface-sub px-2.5 py-1 text-xs text-ink-muted"
                       >
-                        {m.ign}
-                        {m.contactInfo && (
-                          <span className="ml-1.5 text-ink-faint">
-                            {m.contactInfo}
-                          </span>
-                        )}
+                        {m.realName}
+                        <span className="ml-1.5 text-ink-faint">{m.ign}</span>
                       </li>
                     ))}
                   </ul>
