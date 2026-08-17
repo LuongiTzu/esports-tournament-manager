@@ -2,21 +2,23 @@ import Link from "next/link";
 import { UsersThreeIcon, CalendarBlankIcon } from "@phosphor-icons/react";
 import type { Tournament } from "@/features/tournaments/types";
 import { accentVars } from "@/features/games/game-accent";
-
-function formatDate(d?: string | null) {
-  return d ? new Date(d).toLocaleDateString("vi-VN") : "Chưa xác định";
-}
+import { useLocale } from "@/features/locale/store";
 
 export default function TournamentCard({
   tournament: t,
 }: {
   tournament: Tournament;
 }) {
+  const { locale, t: translate } = useLocale();
+  const formattedDate = t.startDate
+    ? new Date(t.startDate).toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US")
+    : translate("tournament.card.dateUnknown");
+
   return (
     <Link
       href={`/tournaments/${t.slug}`}
       style={accentVars(t.game?.name)}
-      className="group flex h-full flex-col rounded-xl border border-line border-l-2 border-l-accent bg-surface-card p-5 transition hover:border-line-strong hover:border-l-accent"
+      className="group flex h-full flex-col rounded-xl border border-line border-l-2 border-l-accent bg-surface-card p-5 transition duration-300 hover:-translate-y-0.5 hover:border-brand/45 hover:border-l-accent hover:shadow-lg hover:shadow-brand/10"
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-semibold text-ink transition group-hover:text-accent">
@@ -30,18 +32,18 @@ export default function TournamentCard({
       </div>
 
       <p className="mt-2 line-clamp-2 flex-1 text-sm text-ink-muted">
-        {t.description || "Chưa có mô tả."}
+        {t.description || translate("tournament.card.noDescription")}
       </p>
 
       <div className="mt-4 flex items-center justify-between text-xs text-ink-faint">
         <span className="inline-flex items-center gap-1.5">
           <UsersThreeIcon size={14} />
-          {t._count?.teams ?? 0} đội
+          {t._count?.teams ?? 0} {translate("tournament.card.teams")}
           {t.maxTeams ? ` / ${t.maxTeams}` : ""}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <CalendarBlankIcon size={14} />
-          {formatDate(t.startDate)}
+          {formattedDate}
         </span>
       </div>
     </Link>

@@ -1,5 +1,6 @@
 import type { Game, GameRef } from "@/features/games/types";
 import type { ApprovedTeam } from "@/features/teams/types";
+import type { TournamentStatus } from "@/shared/types/tournament-status";
 
 export interface Tournament {
   id: string;
@@ -9,6 +10,7 @@ export interface Tournament {
   rules?: string | null;
   bannerUrl?: string | null;
   visibility: "PUBLIC" | "PRIVATE";
+  status: TournamentStatus;
   moderationStatus?: "ACTIVE" | "HIDDEN_BY_ADMIN";
   isVerified?: boolean;
   registrationOpen: boolean;
@@ -25,6 +27,7 @@ export interface Tournament {
 export interface FindAllTournamentsParams {
   search?: string;
   gameId?: string;
+  status?: Tournament["status"];
   page?: number;
   limit?: number;
 }
