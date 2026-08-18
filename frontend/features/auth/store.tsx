@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { authApi } from "@/features/auth/api";
 import type { User } from "@/features/auth/types";
 import { tokenStore } from "@/lib/api/token-store";
@@ -23,10 +23,14 @@ function setState(next: AuthState) {
 
 function subscribe(onChange: () => void) {
   listeners.add(onChange);
-  if (!state.ready) setState({ user: tokenStore.getUser<User>(), ready: true });
   return () => {
     listeners.delete(onChange);
   };
+}
+
+function hydrateAuthState() {
+  if (state.ready) return;
+  setState({ user: tokenStore.getUser<User>(), ready: true });
 }
 
 export async function login(email: string, password: string) {
@@ -43,14 +47,24 @@ export async function logout() {
   } catch {
     // token có thể đã hết hạn — vẫn xoá phía client
   }
+  clearSession();
+}
+
+export function clearSession() {
   tokenStore.clear();
   setState({ user: null, ready: true });
 }
 
 export function useAuth() {
-  return useSyncExternalStore(
+  const authState = useSyncExternalStore(
     subscribe,
     () => state,
     () => SERVER_STATE,
   );
+
+  useEffect(() => {
+    hydrateAuthState();
+  }, []);
+
+  return authState;
 }

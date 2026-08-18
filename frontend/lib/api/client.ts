@@ -9,6 +9,13 @@ interface ApiSuccessEnvelope {
   data: unknown;
 }
 
+interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+}
+
+let refreshRequest: Promise<string | null> | null = null;
+
 function isApiSuccessEnvelope(
   value: unknown,
   responseStatus: number,
@@ -34,6 +41,65 @@ export class ApiError extends Error {
   }
 }
 
+async function readResponseBody(response: Response): Promise<unknown> {
+  const contentType = response.headers.get("content-type") || "";
+  return contentType.includes("application/json")
+    ? response.json()
+    : response.text();
+}
+
+function isTokenPair(value: unknown): value is TokenPair {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.accessToken === "string" &&
+    typeof candidate.refreshToken === "string"
+  );
+}
+
+async function performTokenRefresh(): Promise<string | null> {
+  const refreshToken = tokenStore.refreshToken;
+  if (!refreshToken) {
+    tokenStore.clear();
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${refreshToken}`,
+      },
+    });
+    const body = await readResponseBody(response);
+    const payload = isApiSuccessEnvelope(body, response.status)
+      ? body.data
+      : body;
+
+    if (!response.ok || !isTokenPair(payload)) {
+      tokenStore.clear();
+      return null;
+    }
+
+    tokenStore.accessToken = payload.accessToken;
+    tokenStore.refreshToken = payload.refreshToken;
+    return payload.accessToken;
+  } catch {
+    tokenStore.clear();
+    return null;
+  }
+}
+
+function refreshAccessToken() {
+  if (!refreshRequest) {
+    refreshRequest = performTokenRefresh().finally(() => {
+      refreshRequest = null;
+    });
+  }
+  return refreshRequest;
+}
+
 export async function request<T>(
   path: string,
   options: RequestInit & { auth?: boolean } = {},
@@ -50,15 +116,28 @@ export async function request<T>(
     if (token) finalHeaders.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  let res = await fetch(`${BASE_URL}${path}`, {
     ...rest,
     headers: finalHeaders,
   });
 
-  const contentType = res.headers.get("content-type") || "";
-  const body: unknown = contentType.includes("application/json")
-    ? await res.json()
-    : await res.text();
+  if (auth && res.status === 401) {
+    const refreshedAccessToken = await refreshAccessToken();
+    if (refreshedAccessToken) {
+      finalHeaders.Authorization = `Bearer ${refreshedAccessToken}`;
+      res = await fetch(`${BASE_URL}${path}`, {
+        ...rest,
+        headers: finalHeaders,
+      });
+    } else {
+      throw new ApiError(
+        "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+        401,
+      );
+    }
+  }
+
+  const body = await readResponseBody(res);
 
   if (!res.ok) {
     const message =

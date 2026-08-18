@@ -48,7 +48,17 @@ const en = {
   "home.featured.emptyHelp": "New tournaments will appear here once they are published.",
   "tournaments.discovery.eyebrow": "Public arena",
   "tournaments.discovery.title": "Discover tournaments",
+  "tournaments.discovery.heroTitle": "Compete in tournaments for the games you love",
   "tournaments.discovery.description": "Search and explore public Esports tournaments by game and current status.",
+  "tournaments.discovery.filters": "Tournament filters",
+  "tournaments.discovery.viewLabel": "Tournament list view",
+  "tournaments.discovery.gridView": "Grid view",
+  "tournaments.discovery.listView": "List view",
+  "tournaments.discovery.sortLabel": "Sort by",
+  "tournaments.discovery.sortRecommended": "Recommended",
+  "tournaments.discovery.sortName": "Tournament name",
+  "tournaments.discovery.sortNewest": "Newest",
+  "tournaments.discovery.sortTeams": "Most registered teams",
   "tournaments.discovery.searchLabel": "Search",
   "tournaments.discovery.searchPlaceholder": "Search by tournament or game name",
   "tournaments.discovery.statusLabel": "Status",
@@ -113,6 +123,7 @@ const en = {
   "tournament.card.noDescription": "No description yet.",
   "tournament.card.teams": "teams",
   "tournament.card.dateUnknown": "To be confirmed",
+  "tournament.card.verified": "Verified",
 } satisfies Record<keyof typeof vi, string>;
 
 export default en;

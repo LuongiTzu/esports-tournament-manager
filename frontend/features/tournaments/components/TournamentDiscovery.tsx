@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { MagnifyingGlassIcon } from "@phosphor-icons/react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  FunnelSimpleIcon,
+  ListBulletsIcon,
+  MagnifyingGlassIcon,
+  SquaresFourIcon,
+} from "@phosphor-icons/react";
 import { inputClass } from "@/components/ui";
 import { gamesApi } from "@/features/games/api";
 import type { Game } from "@/features/games/types";
@@ -10,10 +15,12 @@ import { tournamentsApi } from "@/features/tournaments/api";
 import {
   TournamentGrid,
   TournamentGridSkeleton,
+  type TournamentView,
 } from "@/features/tournaments/components/TournamentGrid";
 import type { Paginated, Tournament } from "@/features/tournaments/types";
 
 const PAGE_SIZE = 12;
+type TournamentSort = "recommended" | "name" | "newest" | "teams";
 
 export default function TournamentDiscovery() {
   const { t } = useLocale();
@@ -23,6 +30,8 @@ export default function TournamentDiscovery() {
   const [search, setSearch] = useState("");
   const [gameId, setGameId] = useState("");
   const [status, setStatus] = useState<Tournament["status"] | "">("");
+  const [sort, setSort] = useState<TournamentSort>("recommended");
+  const [view, setView] = useState<TournamentView>("grid");
   const [page, setPage] = useState(1);
   const [retryCount, setRetryCount] = useState(0);
   const queryKey = JSON.stringify({ search, gameId, status, page, retryCount });
@@ -87,7 +96,23 @@ export default function TournamentDiscovery() {
 
   const loading = result?.key !== queryKey;
   const response = result?.response;
-  const tournaments = response?.data ?? [];
+  const tournaments = useMemo(() => response?.data ?? [], [response?.data]);
+  const sortedTournaments = useMemo(() => {
+    if (sort === "recommended") return tournaments;
+
+    return [...tournaments].sort((left, right) => {
+      if (sort === "name") {
+        return left.name.localeCompare(right.name);
+      }
+      if (sort === "newest") {
+        return (
+          new Date(right.createdAt).getTime() -
+          new Date(left.createdAt).getTime()
+        );
+      }
+      return (right._count?.teams ?? 0) - (left._count?.teams ?? 0);
+    });
+  }, [sort, tournaments]);
   const pagination = response?.pagination;
   const error = result?.error ?? "";
   const filtering = Boolean(search || gameId || status);
@@ -116,28 +141,42 @@ export default function TournamentDiscovery() {
   };
 
   return (
-    <div className="relative w-full flex-1 overflow-hidden">
-      <div
-        aria-hidden
-        className="absolute left-1/2 top-0 -z-10 h-72 w-[56rem] -translate-x-1/2 rounded-full bg-gradient-to-r from-brand/15 to-brand-secondary/10 blur-3xl"
-      />
-      <header className="border-b border-line bg-surface-card/25">
-        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8">
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-brand-hover">
+    <div className="relative w-full flex-1 overflow-x-clip bg-surface">
+      <header className="relative isolate min-h-64 overflow-hidden border-b border-line sm:min-h-72">
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-20 bg-cover bg-center"
+          style={{
+            backgroundImage:
+              "url('/images/tournaments/original_tournament.png')",
+          }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,color-mix(in_oklab,var(--color-surface)_68%,transparent),color-mix(in_oklab,var(--color-surface)_18%,transparent)_50%,color-mix(in_oklab,var(--color-surface)_68%,transparent)),linear-gradient(0deg,color-mix(in_oklab,var(--color-surface)_78%,transparent),transparent_72%)]"
+        />
+        <div className="mx-auto flex min-h-64 max-w-7xl flex-col items-center justify-center px-4 py-12 text-center sm:min-h-72 sm:px-6 lg:px-8">
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-brand-hover">
             {t("tournaments.discovery.eyebrow")}
           </p>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight text-ink sm:text-5xl">
-            {t("tournaments.discovery.title")}
+          <h1 className="mt-4 max-w-4xl text-balance text-[clamp(1.75rem,3vw,2.35rem)] font-black leading-[1.18] tracking-tight text-ink drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]">
+            {t("tournaments.discovery.heroTitle")}
           </h1>
-          <p className="mt-4 max-w-2xl leading-7 text-ink-muted">
+          <p className="mt-5 max-w-2xl text-sm leading-7 text-ink-muted sm:text-base">
             {t("tournaments.discovery.description")}
           </p>
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
-        <div className="rounded-2xl border border-line bg-surface-card/80 p-4 shadow-xl shadow-black/10 sm:p-5">
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px_220px]">
+      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
+        <div className="relative z-10 -mt-7 rounded-2xl border border-line bg-surface-card/95 p-4 shadow-2xl shadow-black/25 backdrop-blur-xl sm:p-5">
+          <div className="mb-4 flex items-center gap-2 text-sm font-bold text-ink">
+            <span className="grid size-8 place-items-center rounded-lg bg-brand/15 text-brand-hover">
+              <FunnelSimpleIcon size={18} weight="duotone" />
+            </span>
+            {t("tournaments.discovery.filters")}
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(18rem,1.4fr)_minmax(11rem,0.7fr)_minmax(11rem,0.7fr)_minmax(11rem,0.7fr)]">
             <div>
               <label htmlFor="tournament-search" className="mb-1.5 block text-xs font-semibold text-ink-muted">
                 {t("tournaments.discovery.searchLabel")}
@@ -150,7 +189,7 @@ export default function TournamentDiscovery() {
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
                   placeholder={t("tournaments.discovery.searchPlaceholder")}
-                  className={`${inputClass} pl-10`}
+                  className={`${inputClass} h-11 bg-surface pl-10`}
                 />
               </div>
             </div>
@@ -165,7 +204,7 @@ export default function TournamentDiscovery() {
                   setGameId(event.target.value);
                   setPage(1);
                 }}
-                className={inputClass}
+                className={`${inputClass} h-11 bg-surface`}
               >
                 <option value="">{t("tournaments.discovery.allGames")}</option>
                 {games.map((game) => (
@@ -186,13 +225,39 @@ export default function TournamentDiscovery() {
                   setStatus(event.target.value as Tournament["status"] | "");
                   setPage(1);
                 }}
-                className={inputClass}
+                className={`${inputClass} h-11 bg-surface`}
               >
                 {statusFilters.map((filter) => (
                   <option key={filter.value} value={filter.value}>
                     {filter.label}
                   </option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="tournament-sort" className="mb-1.5 block text-xs font-semibold text-ink-muted">
+                {t("tournaments.discovery.sortLabel")}
+              </label>
+              <select
+                id="tournament-sort"
+                value={sort}
+                onChange={(event) =>
+                  setSort(event.target.value as TournamentSort)
+                }
+                className={`${inputClass} h-11 bg-surface`}
+              >
+                <option value="recommended">
+                  {t("tournaments.discovery.sortRecommended")}
+                </option>
+                <option value="name">
+                  {t("tournaments.discovery.sortName")}
+                </option>
+                <option value="newest">
+                  {t("tournaments.discovery.sortNewest")}
+                </option>
+                <option value="teams">
+                  {t("tournaments.discovery.sortTeams")}
+                </option>
               </select>
             </div>
           </div>
@@ -204,16 +269,69 @@ export default function TournamentDiscovery() {
         </div>
 
         <div id="tournament-results" className="mt-9" aria-live="polite" aria-busy={loading}>
-          {!loading && !error && pagination && (
-            <p className="mb-5 text-sm font-medium text-ink-muted">
-              <span className="text-ink">{pagination.total}</span>{" "}
-              {t("tournaments.discovery.resultCount")}
-            </p>
-          )}
+          <div className="mb-5 flex min-h-10 flex-wrap items-center justify-between gap-3">
+            {!loading && !error && pagination ? (
+              <div>
+                <h2 className="text-lg font-bold text-ink">
+                  {t("tournaments.discovery.title")}
+                </h2>
+                <p className="mt-0.5 text-sm text-ink-muted">
+                  <span className="font-semibold text-ink">{pagination.total}</span>{" "}
+                  {t("tournaments.discovery.resultCount")}
+                </p>
+              </div>
+            ) : (
+              <span />
+            )}
+
+            <div className="flex items-center gap-2">
+              {filtering && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mr-1 rounded-lg px-3 py-2 text-xs font-semibold text-ink-muted transition hover:bg-surface-sub hover:text-ink"
+                >
+                  {t("tournaments.discovery.clearFilters")}
+                </button>
+              )}
+              <div
+                role="group"
+                aria-label={t("tournaments.discovery.viewLabel")}
+                className="inline-flex rounded-lg border border-line bg-surface-card p-1"
+              >
+                <button
+                  type="button"
+                  aria-label={t("tournaments.discovery.gridView")}
+                  aria-pressed={view === "grid"}
+                  onClick={() => setView("grid")}
+                  className={`grid size-9 place-items-center rounded-md transition ${
+                    view === "grid"
+                      ? "bg-gradient-brand text-on-brand shadow-md shadow-brand/20"
+                      : "text-ink-faint hover:bg-surface-sub hover:text-ink"
+                  }`}
+                >
+                  <SquaresFourIcon size={18} weight="bold" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("tournaments.discovery.listView")}
+                  aria-pressed={view === "list"}
+                  onClick={() => setView("list")}
+                  className={`grid size-9 place-items-center rounded-md transition ${
+                    view === "list"
+                      ? "bg-gradient-brand text-on-brand shadow-md shadow-brand/20"
+                      : "text-ink-faint hover:bg-surface-sub hover:text-ink"
+                  }`}
+                >
+                  <ListBulletsIcon size={19} weight="bold" />
+                </button>
+              </div>
+            </div>
+          </div>
 
           {loading ? (
             <>
-              <TournamentGridSkeleton count={6} />
+              <TournamentGridSkeleton count={6} view={view} />
               <span className="sr-only">{t("tournaments.discovery.loading")}</span>
             </>
           ) : error ? (
@@ -251,7 +369,7 @@ export default function TournamentDiscovery() {
               )}
             </div>
           ) : (
-            <TournamentGrid tournaments={tournaments} />
+            <TournamentGrid tournaments={sortedTournaments} view={view} />
           )}
 
           {!loading && !error && pagination && pagination.totalPages > 1 && (

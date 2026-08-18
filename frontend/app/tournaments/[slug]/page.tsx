@@ -115,7 +115,7 @@ export default function TournamentDetailPage({
           aria-hidden
           className="h-48 bg-cover bg-center sm:h-60"
           style={{
-            backgroundImage: `url(${JSON.stringify(getTournamentBannerUrl(tournament.bannerUrl))})`,
+            backgroundImage: `url(${JSON.stringify(getTournamentBannerUrl(tournament.bannerUrl, tournament.game?.name))})`,
           }}
         />
 

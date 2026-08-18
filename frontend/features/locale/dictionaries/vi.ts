@@ -46,7 +46,17 @@ const vi = {
   "home.featured.emptyHelp": "Các giải đấu mới sẽ xuất hiện tại đây khi được công bố.",
   "tournaments.discovery.eyebrow": "Đấu trường công khai",
   "tournaments.discovery.title": "Khám phá giải đấu",
+  "tournaments.discovery.heroTitle": "Tranh tài trong những tựa game bạn yêu thích",
   "tournaments.discovery.description": "Tìm kiếm và khám phá các giải đấu Esports công khai theo tựa game và trạng thái hiện tại.",
+  "tournaments.discovery.filters": "Bộ lọc giải đấu",
+  "tournaments.discovery.viewLabel": "Kiểu hiển thị danh sách giải đấu",
+  "tournaments.discovery.gridView": "Hiển thị dạng lưới",
+  "tournaments.discovery.listView": "Hiển thị dạng danh sách",
+  "tournaments.discovery.sortLabel": "Sắp xếp",
+  "tournaments.discovery.sortRecommended": "Đề xuất",
+  "tournaments.discovery.sortName": "Theo tên giải đấu",
+  "tournaments.discovery.sortNewest": "Mới nhất",
+  "tournaments.discovery.sortTeams": "Nhiều đội đăng ký",
   "tournaments.discovery.searchLabel": "Tìm kiếm",
   "tournaments.discovery.searchPlaceholder": "Tìm theo tên giải hoặc tên game",
   "tournaments.discovery.statusLabel": "Trạng thái",
@@ -111,6 +121,7 @@ const vi = {
   "tournament.card.noDescription": "Chưa có mô tả.",
   "tournament.card.teams": "đội",
   "tournament.card.dateUnknown": "Chưa xác định",
+  "tournament.card.verified": "Đã xác minh",
 } as const;
 
 export default vi;

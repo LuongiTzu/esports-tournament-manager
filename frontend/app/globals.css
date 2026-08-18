@@ -2,22 +2,24 @@
 
 /* Global esports theme: dark surfaces with focused violet and crimson energy. */
 @theme {
-  --color-surface: oklch(0.145 0.025 285);
-  --color-surface-card: oklch(0.19 0.03 285);
-  --color-surface-sub: oklch(0.235 0.035 285);
-  --color-line: oklch(0.31 0.045 290);
-  --color-line-strong: oklch(0.46 0.09 292);
+  --color-surface: #0b0911;
+  --color-surface-card: #12101a;
+  --color-surface-sub: #191522;
+  --color-surface-hover: #21192d;
+  --color-line: #2b2436;
+  --color-line-strong: #4b3b61;
 
-  --color-ink: oklch(0.965 0.003 275);
-  --color-ink-muted: oklch(0.76 0.008 275);
-  --color-ink-faint: oklch(0.62 0.01 275);
+  --color-ink: #f7f5fb;
+  --color-ink-muted: #b6b0c3;
+  --color-ink-faint: #827a91;
 
   /* Màu thương hiệu — dùng cho chrome của app (navbar, form xác thực).
      Tông màu theo game chỉ áp cho phần nội dung giải đấu. */
-  --color-brand: oklch(0.69 0.245 295);
-  --color-brand-hover: oklch(0.75 0.23 295);
-  --color-brand-secondary: oklch(0.64 0.235 20);
-  --color-on-brand: oklch(0.985 0.003 285);
+  --color-brand: #7c3aed;
+  --color-brand-hover: #8b5cf6;
+  --color-brand-secondary: #e11d48;
+  --color-brand-secondary-dark: #be123c;
+  --color-on-brand: #fff;
 
   /* Trạng thái đội — hệ màu dùng chung toàn app, không trang nào tự đặt màu riêng */
   --color-pending: oklch(0.8 0.115 78);
@@ -38,16 +40,22 @@
 
 :root {
   color-scheme: dark;
-  --gradient-primary: linear-gradient(110deg, var(--color-brand), var(--color-brand-secondary));
+  --gradient-primary: linear-gradient(100deg, var(--color-brand) 0%, var(--color-brand-hover) 35%, var(--color-brand-secondary) 100%);
+  --gradient-primary-hover: linear-gradient(100deg, var(--color-brand-hover) 0%, var(--color-brand) 35%, var(--color-brand-secondary-dark) 100%);
   --gradient-border: linear-gradient(90deg, transparent, var(--color-brand), var(--color-brand-secondary), transparent);
-  --gradient-navbar: linear-gradient(110deg, oklch(0.16 0.045 292 / 0.96), oklch(0.15 0.035 20 / 0.94));
-  --glow-primary: 0 0 28px oklch(0.66 0.25 295 / 0.24), 0 0 54px oklch(0.62 0.23 20 / 0.12);
+  --gradient-navbar: linear-gradient(110deg, rgb(19 14 31 / 0.97), rgb(25 10 21 / 0.96));
+  --glow-primary: 0 0 28px rgb(124 58 237 / 0.24), 0 0 54px rgb(225 29 72 / 0.12);
+  --shadow-focus: 0 0 0 3px rgb(124 58 237 / 0.22);
+  --shadow-button: 0 10px 26px rgb(124 58 237 / 0.2), 0 4px 16px rgb(225 29 72 / 0.12);
+  --radius-control: 0.8125rem;
+  --radius-card: 1rem;
+  --control-height: 3.125rem;
 }
 
 body {
   background:
-    radial-gradient(circle at 12% 8%, oklch(0.5 0.2 295 / 0.09), transparent 28rem),
-    radial-gradient(circle at 88% 24%, oklch(0.5 0.2 20 / 0.07), transparent 30rem),
+    radial-gradient(circle at 12% 8%, color-mix(in oklab, var(--color-brand) 9%, transparent), transparent 28rem),
+    radial-gradient(circle at 88% 24%, color-mix(in oklab, var(--color-brand-secondary) 7%, transparent), transparent 30rem),
     var(--color-surface);
   color: var(--color-ink);
 }
@@ -68,9 +76,9 @@ html {
   position: relative;
   isolation: isolate;
   background:
-    radial-gradient(circle at 92% 14%, oklch(0.5 0.2 20 / 0.07), transparent 30rem),
-    radial-gradient(circle at 8% 43%, oklch(0.5 0.2 295 / 0.08), transparent 34rem),
-    radial-gradient(circle at 88% 76%, oklch(0.5 0.2 20 / 0.055), transparent 32rem),
+    radial-gradient(circle at 92% 14%, color-mix(in oklab, var(--color-brand-secondary) 7%, transparent), transparent 30rem),
+    radial-gradient(circle at 8% 43%, color-mix(in oklab, var(--color-brand) 8%, transparent), transparent 34rem),
+    radial-gradient(circle at 88% 76%, color-mix(in oklab, var(--color-brand-secondary) 5.5%, transparent), transparent 32rem),
     linear-gradient(
       180deg,
       var(--color-surface) 0%,
