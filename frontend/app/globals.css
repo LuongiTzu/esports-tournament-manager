@@ -64,6 +64,21 @@ html {
   scroll-behavior: smooth;
 }
 
+.home-sections {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 92% 14%, oklch(0.5 0.2 20 / 0.07), transparent 30rem),
+    radial-gradient(circle at 8% 43%, oklch(0.5 0.2 295 / 0.08), transparent 34rem),
+    radial-gradient(circle at 88% 76%, oklch(0.5 0.2 20 / 0.055), transparent 32rem),
+    linear-gradient(
+      180deg,
+      var(--color-surface) 0%,
+      color-mix(in oklab, var(--color-surface) 96%, var(--color-brand) 4%) 48%,
+      var(--color-surface) 100%
+    );
+}
+
 .scroll-reveal {
   opacity: 0;
   transform: translateY(24px);

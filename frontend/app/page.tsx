@@ -8,10 +8,12 @@ export default function HomePage() {
   return (
     <>
       <HeroSection />
-      <FeaturedTournamentsSection />
-      <TournamentOperationSection />
-      <TournamentFormatsSection />
-      <PlatformBenefitsSection />
+      <div className="home-sections">
+        <FeaturedTournamentsSection />
+        <TournamentOperationSection />
+        <TournamentFormatsSection />
+        <PlatformBenefitsSection />
+      </div>
     </>
   );
 }

@@ -14,6 +14,7 @@ import { teamsApi } from "@/features/teams/api";
 import StatusBadge from "@/features/teams/components/StatusBadge";
 import type { TeamWithMembers } from "@/features/teams/types";
 import { tournamentsApi } from "@/features/tournaments/api";
+import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 import { ROUND_FORMAT_LABELS } from "@/features/tournaments/round-formats";
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
@@ -109,8 +110,16 @@ export default function TournamentDetailPage({
         Danh sách giải
       </Link>
 
-      <header className="mt-4 rounded-xl border border-line border-t-2 border-t-accent bg-surface-card p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <header className="mt-4 overflow-hidden rounded-xl border border-line border-t-2 border-t-accent bg-surface-card">
+        <div
+          aria-hidden
+          className="h-48 bg-cover bg-center sm:h-60"
+          style={{
+            backgroundImage: `url(${JSON.stringify(getTournamentBannerUrl(tournament.bannerUrl))})`,
+          }}
+        />
+
+        <div className="flex flex-wrap items-start justify-between gap-4 p-6 pb-0">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
               {tournament.game && (
@@ -158,10 +167,10 @@ export default function TournamentDetailPage({
         </div>
 
         {tournament.description && (
-          <p className="mt-5 max-w-2xl text-ink-muted">{tournament.description}</p>
+          <p className="mx-6 mt-5 max-w-2xl text-ink-muted">{tournament.description}</p>
         )}
 
-        <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-5 border-t border-line pt-5 text-sm sm:grid-cols-4">
+        <dl className="mx-6 mt-6 grid grid-cols-2 gap-x-4 gap-y-5 border-t border-line pb-6 pt-5 text-sm sm:grid-cols-4">
           <div>
             <dt className="text-xs text-ink-faint">Đăng ký</dt>
             <dd className="mt-1 font-medium text-ink">

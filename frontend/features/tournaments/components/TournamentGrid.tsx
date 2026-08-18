@@ -18,11 +18,14 @@ export function TournamentGridSkeleton({ count }: { count: number }) {
         <div
           key={index}
           aria-hidden
-          className="h-44 animate-pulse rounded-xl border border-line bg-surface-card p-5"
+          className="h-80 animate-pulse overflow-hidden rounded-xl border border-line bg-surface-card"
         >
-          <div className="h-5 w-2/3 rounded bg-surface-sub" />
-          <div className="mt-4 h-4 rounded bg-surface-sub" />
-          <div className="mt-2 h-4 w-4/5 rounded bg-surface-sub" />
+          <div className="h-32 bg-surface-sub" />
+          <div className="p-5">
+            <div className="h-5 w-2/3 rounded bg-surface-sub" />
+            <div className="mt-4 h-4 rounded bg-surface-sub" />
+            <div className="mt-2 h-4 w-4/5 rounded bg-surface-sub" />
+          </div>
         </div>
       ))}
     </div>

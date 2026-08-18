@@ -10,7 +10,7 @@ export default function HeroSection() {
   const { t } = useLocale();
 
   return (
-    <section className="relative isolate overflow-hidden border-b border-line">
+    <section className="relative isolate overflow-hidden">
       <Image
         src="/images/home/hero/hero-background.png"
         alt=""

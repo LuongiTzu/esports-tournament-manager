@@ -57,7 +57,7 @@ export default function FeaturedTournamentsSection() {
   return (
     <section
       id="featured-tournaments"
-      className="relative scroll-mt-24 overflow-hidden border-b border-line bg-surface-card/25 py-20 sm:py-24"
+      className="relative scroll-mt-24 overflow-x-clip py-20 sm:py-24"
     >
       <div
         aria-hidden
