@@ -148,7 +148,7 @@ export default function TournamentDiscovery() {
           className="absolute inset-0 -z-20 bg-cover bg-center"
           style={{
             backgroundImage:
-              "url('/images/tournaments/original_tournament.png')",
+              "url('/images/tournaments/common/backgrounds/tournament-collage.png')",
           }}
         />
         <div

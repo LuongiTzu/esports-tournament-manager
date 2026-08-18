@@ -12,6 +12,8 @@ export const errorTextClass = "mt-1.5 text-xs text-rejected";
 export const primaryButtonClass =
   "inline-flex min-h-[var(--control-height)] items-center justify-center gap-2 rounded-[var(--radius-control)] bg-gradient-brand px-6 py-3 text-sm font-semibold text-on-brand shadow-[var(--shadow-button)] transition-[transform,filter,box-shadow] duration-200 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-glow-brand active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-50";
 
+export const authSubmitButtonClass = `${primaryButtonClass} w-full hover:translate-y-0! hover:bg-[image:var(--gradient-primary-hover)]! hover:brightness-100! hover:shadow-none!`;
+
 export const secondaryButtonClass =
   "inline-flex min-h-[var(--control-height)] items-center justify-center gap-2 rounded-[var(--radius-control)] border border-line-strong bg-surface-sub px-5 py-3 text-sm font-semibold text-ink transition-[transform,border-color,background-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-brand/70 hover:bg-surface-hover hover:shadow-[var(--shadow-focus)] active:translate-y-0 active:scale-[0.98] disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-50";
 

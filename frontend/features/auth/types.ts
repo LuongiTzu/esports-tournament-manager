@@ -3,6 +3,11 @@ export interface User {
   email: string;
   displayName: string;
   avatarUrl?: string | null;
+  birthDate?: string | null;
+  currentAddress?: string | null;
+  phoneNumber?: string | null;
+  gender?: Gender | null;
+  bio?: string | null;
   role: "ADMIN" | "SIGNED_UP_USER";
 }
 
@@ -15,7 +20,13 @@ export interface RegisterAccountRequest {
   email: string;
   password: string;
   displayName: string;
+  birthDate?: string;
+  currentAddress?: string;
+  phoneNumber?: string;
+  gender?: Gender;
 }
+
+export type Gender = "MALE" | "FEMALE" | "OTHER";
 
 export interface LoginResponse {
   message: string;

@@ -1,11 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRightIcon, LightningIcon } from "@phosphor-icons/react";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/ui";
 import { useLocale } from "@/features/locale/store";
-import TournamentImageRotator from "@/features/home/components/TournamentImageRotator";
+import RotatingImage from "@/components/RotatingImage";
+
+const heroBackgroundImages = [
+  { src: "/images/home/hero/hero-background.png", alt: "" },
+  {
+    src: "/images/tournaments/common/backgrounds/tournament-collage.png",
+    alt: "",
+  },
+];
 
 const heroImages = [
   { src: "/images/home/formats/single-elimination.jpg", label: "Single elimination" },
@@ -20,13 +27,15 @@ export default function HeroSection() {
 
   return (
     <section className="relative isolate overflow-hidden">
-      <Image
-        src="/images/home/hero/hero-background.png"
-        alt=""
-        fill
-        priority
+      <RotatingImage
+        images={heroBackgroundImages}
+        interval={10000}
+        variant="fill"
+        showOverlay={false}
+        showIndicators={false}
         sizes="100vw"
-        className="-z-20 object-cover object-center opacity-40"
+        quality={90}
+        className="pointer-events-none absolute inset-0 -z-20 opacity-40"
       />
       <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,color-mix(in_oklab,var(--color-surface)_82%,transparent)_0%,color-mix(in_oklab,var(--color-surface)_56%,transparent)_48%,color-mix(in_oklab,var(--color-surface)_38%,transparent)_100%),linear-gradient(to_bottom,color-mix(in_oklab,var(--color-surface)_18%,transparent),var(--color-surface))]" />
       <div className="mx-auto grid min-h-[calc(100svh-4.5rem)] max-w-7xl items-center gap-14 px-4 py-16 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 lg:py-20">
@@ -54,7 +63,7 @@ export default function HeroSection() {
           <div aria-hidden className="absolute inset-8 rounded-full border border-dashed border-brand-secondary/25" />
           <div className="relative">
             <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-[image:var(--gradient-border)]" />
-            <TournamentImageRotator
+            <RotatingImage
               images={heroImages.map((image) => ({
                 src: image.src,
                 alt: `${t("home.hero.illustration")} — ${image.label}`,

@@ -3,19 +3,28 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  EnvelopeSimpleIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  LockKeyIcon,
+  SignInIcon,
+} from "@phosphor-icons/react";
 import AuthShell from "@/features/auth/components/AuthShell";
+import AuthVisualPanel from "@/features/auth/components/AuthVisualPanel";
 import { login } from "@/features/auth/store";
 import {
   alertErrorClass,
+  authSubmitButtonClass,
   inputClass,
   labelClass,
-  primaryButtonClass,
 } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,6 +46,7 @@ export default function LoginPage() {
     <AuthShell
       title="Đăng nhập"
       subtitle="Đăng nhập để tạo giải và quản lý đội đăng ký."
+      visual={<AuthVisualPanel mode="login" />}
       footer={
         <>
           Chưa có tài khoản?{" "}
@@ -51,32 +61,55 @@ export default function LoginPage() {
           <label htmlFor="email" className={labelClass}>
             Email
           </label>
-          <input
-            id="email"
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={inputClass}
-            placeholder="ban@vidu.com"
-          />
+          <div className="relative">
+            <EnvelopeSimpleIcon
+              aria-hidden
+              size={19}
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+            />
+            <input
+              id="email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={`${inputClass} pl-11`}
+              placeholder="ban@vidu.com"
+            />
+          </div>
         </div>
 
         <div>
           <label htmlFor="password" className={labelClass}>
             Mật khẩu
           </label>
-          <input
-            id="password"
-            type="password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className={inputClass}
-            placeholder="Nhập mật khẩu"
-          />
+          <div className="relative">
+            <LockKeyIcon
+              aria-hidden
+              size={19}
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+            />
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={`${inputClass} px-11`}
+              placeholder="Nhập mật khẩu"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              aria-pressed={showPassword}
+              className="absolute right-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-ink-faint transition hover:bg-white/5 hover:text-brand-hover focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+            >
+              {showPassword ? <EyeSlashIcon size={19} /> : <EyeIcon size={19} />}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -88,9 +121,10 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className={`${primaryButtonClass} w-full`}
+          className={authSubmitButtonClass}
         >
           {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+          {!loading && <SignInIcon size={18} weight="bold" />}
         </button>
       </form>
     </AuthShell>

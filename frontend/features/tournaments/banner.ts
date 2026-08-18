@@ -1,19 +1,19 @@
 export const DEFAULT_TOURNAMENT_BANNER_URL =
-  "/images/tournaments/original_tournament.png";
+  "/images/tournaments/common/backgrounds/tournament-collage.png";
 
 const GAME_POSTERS: Record<string, string> = {
-  leagueoflegends: "/images/tournaments/poster_lol.jpg",
-  lol: "/images/tournaments/poster_lol.jpg",
-  lienquanmobile: "/images/tournaments/poster_aov.jpg",
-  arenaofvalor: "/images/tournaments/poster_aov.jpg",
-  aov: "/images/tournaments/poster_aov.jpg",
-  dota2: "/images/tournaments/poster_dota2.jpg",
-  valorant: "/images/tournaments/poster_vlr.jpg",
-  csgo: "/images/tournaments/poster_cs2.jpg",
-  counterstrike: "/images/tournaments/poster_cs2.jpg",
-  counterstrike2: "/images/tournaments/poster_cs2.jpg",
-  fconline: "/images/tournaments/poster_fco.jpg",
-  fifaonline: "/images/tournaments/poster_fco.jpg",
+  leagueoflegends: "/images/tournaments/common/posters/league-of-legends.jpg",
+  lol: "/images/tournaments/common/posters/league-of-legends.jpg",
+  lienquanmobile: "/images/tournaments/common/posters/arena-of-valor.jpg",
+  arenaofvalor: "/images/tournaments/common/posters/arena-of-valor.jpg",
+  aov: "/images/tournaments/common/posters/arena-of-valor.jpg",
+  dota2: "/images/tournaments/common/posters/dota-2.jpg",
+  valorant: "/images/tournaments/common/posters/valorant.jpg",
+  csgo: "/images/tournaments/common/posters/counter-strike-2.jpg",
+  counterstrike: "/images/tournaments/common/posters/counter-strike-2.jpg",
+  counterstrike2: "/images/tournaments/common/posters/counter-strike-2.jpg",
+  fconline: "/images/tournaments/common/posters/fc-online.jpg",
+  fifaonline: "/images/tournaments/common/posters/fc-online.jpg",
 };
 
 function normalizeGameName(gameName: string) {
