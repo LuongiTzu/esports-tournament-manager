@@ -31,11 +31,19 @@ enum Gender {
 /// Thể loại game — quyết định danh sách vị trí thi đấu hợp lệ
 enum GameGenre {
   MOBA            /// LOL, Dota 2, Liên Quân Mobile
-  FPS             /// Valorant, CS:GO
+  FPS             /// Valorant, Counter-Strike 2
   SPORTS          /// FC Online, PES
   BATTLE_ROYALE   /// PUBG, Free Fire
+  FIGHTING        /// Tekken, Street Fighter
   CARD            /// Hearthstone, Yu-Gi-Oh
   OTHER
+}
+
+/// Cách game cung cấp vị trí/vai trò cho người chơi
+enum GamePositionMode {
+  FIXED
+  OPTIONAL
+  NONE
 }
 
 /// Chế độ hiển thị giải đấu
@@ -194,13 +202,14 @@ model User {
 
 /// Danh mục tựa game hỗ trợ
 model Game {
-  id        String    @id @default(cuid())
-  name      String    @unique  /// VD: "League of Legends", "Valorant", "FC Online"
-  iconUrl   String?   @map("icon_url")
-  genre     GameGenre @default(OTHER)  /// Thể loại — quyết định danh sách vị trí thi đấu
-  positions Json?     /// Mảng vị trí hợp lệ, VD: ["TOP","JUNGLE","MID","ADC","SUPPORT"]
+  id           String           @id @default(cuid())
+  name         String           @unique  /// VD: "League of Legends", "Valorant", "Tekken 8"
+  iconUrl      String?          @map("icon_url")
+  genre        GameGenre        @default(OTHER)  /// Thể loại — quyết định danh sách vị trí thi đấu
+  positions    Json?             /// Mã vị trí ổn định, VD: ["TOP","JUNGLE","MID","BOT","SUPPORT"]
+  positionMode GamePositionMode @default(NONE) @map("position_mode")
 
-  defaultTeamSize Int @map("default_team_size")  /// Số người ra sân (LOL=5, FC Online=1)
+  defaultTeamSize Int @map("default_team_size")  /// Số người thi đấu mỗi bên (LOL=5, Tekken=1)
   minTeamSize     Int @map("min_team_size")      /// Số người tối thiểu để đội hợp lệ
   maxTeamSize     Int @map("max_team_size")      /// Số người tối đa kể cả dự bị
 
@@ -233,9 +242,8 @@ model Tournament {
   mode   TournamentMode   @default(ONLINE)        /// Online / Offline / Hybrid
   location String?        /// Địa điểm — bắt buộc khi mode != ONLINE
 
-  minTeamSize    Int? @map("min_team_size")    /// Số thành viên tối thiểu/đội (null = lấy theo Game)
-  maxTeamSize    Int? @map("max_team_size")    /// Số thành viên tối đa/đội (null = lấy theo Game)
-  maxSubstitutes Int  @default(0) @map("max_substitutes")  /// Số dự bị tối đa
+  minTeamSize Int @map("min_team_size")  /// Snapshot số người thi đấu chính từ Game.defaultTeamSize
+  maxTeamSize Int @map("max_team_size")  /// Tổng số vị trí cầu thủ, gồm cả dự bị
 
   minAge         Int?  @map("min_age")          /// Giới hạn tuổi tối thiểu của thành viên
   maxAge         Int?  @map("max_age")          /// Giới hạn tuổi tối đa của thành viên

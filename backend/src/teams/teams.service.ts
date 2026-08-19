@@ -519,9 +519,9 @@ export class TeamsService {
         slug: tournament.slug,
         name: tournament.name,
         status: tournament.status,
-        minTeamSize: tournament.minTeamSize ?? game.minTeamSize,
-        maxTeamSize: tournament.maxTeamSize ?? game.maxTeamSize,
-        maxSubstitutes: tournament.maxSubstitutes,
+        minTeamSize: tournament.minTeamSize,
+        maxTeamSize: tournament.maxTeamSize,
+        maxSubstitutes: tournament.maxTeamSize - tournament.minTeamSize,
         minAge: tournament.minAge,
         maxAge: tournament.maxAge,
         allowedGenders: tournament.allowedGenders,
@@ -534,6 +534,7 @@ export class TeamsService {
         name: game.name,
         genre: game.genre,
         positions: game.positions ?? [],
+        positionMode: game.positionMode,
       },
       prefill: {
         contactName: user.displayName,
@@ -650,9 +651,7 @@ export class TeamsService {
             name: true,
             genre: true,
             positions: true,
-            defaultTeamSize: true,
-            minTeamSize: true,
-            maxTeamSize: true,
+            positionMode: true,
           },
         },
       },
@@ -675,7 +674,7 @@ export class TeamsService {
       where: { id: tournamentId },
       include: {
         game: {
-          select: { minTeamSize: true, maxTeamSize: true, positions: true },
+          select: { positions: true, positionMode: true },
         },
       },
     });
@@ -886,9 +885,7 @@ type TournamentForRegistration = Prisma.TournamentGetPayload<{
         name: true;
         genre: true;
         positions: true;
-        defaultTeamSize: true;
-        minTeamSize: true;
-        maxTeamSize: true;
+        positionMode: true;
       };
     };
   };

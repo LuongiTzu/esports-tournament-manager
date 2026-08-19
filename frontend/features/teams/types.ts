@@ -1,4 +1,4 @@
-import type { GameGenre } from "@/features/games/types";
+import type { GameGenre, GamePositionMode } from "@/features/games/types";
 import type { TournamentStatus } from "@/shared/types/tournament-status";
 
 export type TeamStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -71,7 +71,7 @@ export interface TeamRegistration {
   description?: string;
   contactName: string;
   contactEmail: string;
-  contactPhone?: string;
+  contactPhone: string;
   members: TeamMemberRegistration[];
 }
 
@@ -98,6 +98,7 @@ export interface TeamRegistrationForm {
     name: string;
     genre: GameGenre;
     positions: string[];
+    positionMode: GamePositionMode;
   };
   prefill: {
     contactName: string;

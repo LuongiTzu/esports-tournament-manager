@@ -27,7 +27,7 @@ const ACCENTS: Record<string, Accent> = {
     alt: "oklch(0.62 0.150 22)",
     onAccent: INK,
   },
-  [key("CS:GO")]: {
+  [key("Counter-Strike 2")]: {
     accent: "oklch(0.77 0.150 62)",
     alt: "oklch(0.43 0.020 62)",
     onAccent: INK,
@@ -40,6 +40,21 @@ const ACCENTS: Record<string, Accent> = {
   [key("FC Online")]: {
     accent: "oklch(0.79 0.155 158)",
     alt: "oklch(0.62 0.130 158)",
+    onAccent: INK,
+  },
+  [key("Rocket League")]: {
+    accent: "oklch(0.72 0.16 240)",
+    alt: "oklch(0.76 0.14 65)",
+    onAccent: INK,
+  },
+  [key("Tekken 8")]: {
+    accent: "oklch(0.68 0.2 20)",
+    alt: "oklch(0.72 0.16 300)",
+    onAccent: INK,
+  },
+  [key("Street Fighter 6")]: {
+    accent: "oklch(0.72 0.17 250)",
+    alt: "oklch(0.76 0.17 80)",
     onAccent: INK,
   },
   [key("Liên Quân Mobile")]: NEUTRAL,

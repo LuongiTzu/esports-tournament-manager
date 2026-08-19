@@ -1,5 +1,10 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
-import { Gender, MemberRole, RegistrationStatus } from '@prisma/client';
+import {
+  GamePositionMode,
+  Gender,
+  MemberRole,
+  RegistrationStatus,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TeamMemberInputDto } from './dto/register-team.dto';
 
@@ -10,7 +15,7 @@ export interface RegistrationError {
   message: string;
 }
 
-/** Ràng buộc của giải mà validator cần đọc (đã merge fallback theo Game) */
+/** Ràng buộc đăng ký lấy từ snapshot của giải đấu. */
 export interface RegistrationRules {
   tournamentId: string;
   minTeamSize: number;
@@ -22,6 +27,7 @@ export interface RegistrationRules {
   requireMemberFullInfo: boolean;
   startDate: Date | null;
   positions: string[];
+  positionMode: GamePositionMode;
 }
 
 /** Vai trò không tính vào sức chứa đội hình thi đấu */
@@ -39,32 +45,31 @@ export class RegistrationValidatorService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Đọc ràng buộc của giải, đã fallback `minTeamSize`/`maxTeamSize` theo Game
-   * và chuẩn hóa `allowedGenders`/`positions` từ cột Json.
+   * Đọc snapshot `minTeamSize`/`maxTeamSize` của giải và chuẩn hóa dữ liệu Json.
    */
   buildRules(tournament: {
     id: string;
-    minTeamSize: number | null;
-    maxTeamSize: number | null;
-    maxSubstitutes: number;
+    minTeamSize: number;
+    maxTeamSize: number;
     minAge: number | null;
     maxAge: number | null;
     allowedGenders: unknown;
     requireMemberFullInfo: boolean;
     startDate: Date | null;
-    game: { minTeamSize: number; maxTeamSize: number; positions: unknown };
+    game: { positions: unknown; positionMode: GamePositionMode };
   }): RegistrationRules {
     return {
       tournamentId: tournament.id,
-      minTeamSize: tournament.minTeamSize ?? tournament.game.minTeamSize,
-      maxTeamSize: tournament.maxTeamSize ?? tournament.game.maxTeamSize,
-      maxSubstitutes: tournament.maxSubstitutes,
+      minTeamSize: tournament.minTeamSize,
+      maxTeamSize: tournament.maxTeamSize,
+      maxSubstitutes: tournament.maxTeamSize - tournament.minTeamSize,
       minAge: tournament.minAge,
       maxAge: tournament.maxAge,
       allowedGenders: toGenderList(tournament.allowedGenders),
       requireMemberFullInfo: tournament.requireMemberFullInfo,
       startDate: tournament.startDate,
       positions: toStringList(tournament.game.positions),
+      positionMode: tournament.game.positionMode,
     };
   }
 
@@ -187,22 +192,17 @@ export class RegistrationValidatorService {
           : (member.memberRole ?? MemberRole.PLAYER);
       const isPlaying = !NON_PLAYING_ROLES.includes(effectiveRole);
 
-      if (!member.email?.trim() && !member.phoneNumber?.trim()) {
-        errors.push({
-          field: 'email',
-          memberIndex: index,
-          message: 'Phải có ít nhất email hoặc số điện thoại liên hệ',
-        });
-      }
-
       if (rules.requireMemberFullInfo) {
         const missing: [string, unknown][] = [
           ['realName', member.realName?.trim()],
           ['birthDate', member.birthDate],
           ['gender', member.gender],
         ];
-        // Game solo không có vị trí thi đấu nên không đòi field này
-        if (isPlaying && rules.positions.length) {
+        if (
+          isPlaying &&
+          rules.positionMode === GamePositionMode.FIXED &&
+          rules.positions.length
+        ) {
           missing.push(['position', member.position?.trim()]);
         }
 
@@ -259,12 +259,14 @@ export class RegistrationValidatorService {
         }
       }
 
-      if (
-        isPlaying &&
-        rules.positions.length &&
-        member.position?.trim() &&
-        !rules.positions.includes(member.position.trim())
-      ) {
+      const position = member.position?.trim();
+      if (position && rules.positionMode === GamePositionMode.NONE) {
+        errors.push({
+          field: 'position',
+          memberIndex: index,
+          message: 'Game này không sử dụng vị trí thi đấu',
+        });
+      } else if (position && !rules.positions.includes(position)) {
         errors.push({
           field: 'position',
           memberIndex: index,

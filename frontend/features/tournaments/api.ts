@@ -1,4 +1,5 @@
 import type {
+  CreateTournamentRequest,
   FindAllTournamentsParams,
   Paginated,
   Tournament,
@@ -19,7 +20,7 @@ export const tournamentsApi = {
   },
   findBySlug: (slug: string) =>
     request<TournamentDetail>(`/tournaments/slug/${slug}`, { auth: true }),
-  create: (data: Record<string, unknown>) =>
+  create: (data: CreateTournamentRequest) =>
     request<Tournament>("/tournaments", {
       method: "POST",
       body: JSON.stringify(data),

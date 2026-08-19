@@ -11,7 +11,7 @@ export class GamesController {
 
   /**
    * GET /api/games
-   * Lấy danh sách game hỗ trợ kèm genre + positions (UC-G01, UC-G02)
+   * Lấy danh sách game active kèm genre + position metadata (UC-G01, UC-G02)
    */
   @Get()
   findAll() {
@@ -20,7 +20,7 @@ export class GamesController {
 
   /**
    * GET /api/games/:id/positions
-   * Danh sách vị trí thi đấu của 1 game — FE render dropdown động trong form đăng ký đội
+   * Mã vị trí và chế độ fixed/optional/none của một game
    */
   @Get(':id/positions')
   findPositions(@Param('id') id: string) {

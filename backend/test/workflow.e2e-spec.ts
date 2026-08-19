@@ -64,7 +64,9 @@ describeDatabase('main tournament workflow (database E2E)', () => {
     const games = await request(app.getHttpServer())
       .get('/api/games')
       .expect(200);
-    gameId = games.body.data[0].id;
+    gameId = games.body.data.find(
+      (game: { name: string }) => game.name === 'Tekken 8',
+    ).id;
     const tournament = await request(app.getHttpServer())
       .post('/api/tournaments')
       .set('Authorization', `Bearer ${token}`)
@@ -72,7 +74,6 @@ describeDatabase('main tournament workflow (database E2E)', () => {
         name: `E2E Cup ${stamp}`,
         gameId,
         visibility: 'PUBLIC',
-        minTeamSize: 1,
         maxTeamSize: 1,
         requireMemberFullInfo: false,
       })

@@ -1,11 +1,12 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { useAuth } from "@/features/auth/store";
 import { accentVars } from "@/features/games/game-accent";
+import { gamePositionLabel } from "@/features/games/position-labels";
 import { teamsApi } from "@/features/teams/api";
 import type { Gender, TeamRegistrationForm } from "@/features/teams/types";
 import {
@@ -85,6 +86,7 @@ export default function RegisterTeamPage({
   const [members, setMembers] = useState<MemberForm[]>([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const initializedSlug = useRef<string | null>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -97,10 +99,13 @@ export default function RegisterTeamPage({
       .getRegistrationForm(slug)
       .then((data) => {
         setConfig(data);
-        setContactName(data.prefill.contactName);
-        setContactEmail(data.prefill.contactEmail);
-        setContactPhone(data.prefill.contactPhone ?? "");
-        setMembers(initialMembers(data));
+        if (initializedSlug.current !== slug) {
+          setContactName(data.prefill.contactName);
+          setContactEmail(data.prefill.contactEmail);
+          setContactPhone(data.prefill.contactPhone ?? "");
+          setMembers(initialMembers(data));
+          initializedSlug.current = slug;
+        }
       })
       .catch((err) =>
         setLoadError(
@@ -127,8 +132,37 @@ export default function RegisterTeamPage({
     if (!config?.canRegister) return;
     setError("");
 
-    if (members.some((member) => !member.email.trim() && !member.phoneNumber.trim())) {
-      setError("Mỗi thành viên phải có ít nhất email hoặc số điện thoại liên hệ");
+    if (!contactName.trim()) {
+      setError("Tên người đại diện là bắt buộc");
+      return;
+    }
+    if (!contactEmail.trim()) {
+      setError("Email người đại diện là bắt buộc");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(contactEmail.trim())) {
+      setError("Email người đại diện không hợp lệ");
+      return;
+    }
+    if (!contactPhone.trim()) {
+      setError("Số điện thoại đại diện là bắt buộc");
+      return;
+    }
+    if (
+      members.length < config.tournament.minTeamSize ||
+      members.length > config.tournament.maxTeamSize
+    ) {
+      setError(
+        `Giải đấu yêu cầu từ ${config.tournament.minTeamSize} đến ${config.tournament.maxTeamSize} thành viên`,
+      );
+      return;
+    }
+    if (
+      config.game.positionMode === "FIXED" &&
+      config.tournament.requireMemberFullInfo &&
+      members.some((member) => !member.position)
+    ) {
+      setError("Vui lòng chọn vị trí cho tất cả thành viên");
       return;
     }
 
@@ -139,7 +173,7 @@ export default function RegisterTeamPage({
         logoUrl: logoUrl.trim() || undefined,
         contactName: contactName.trim(),
         contactEmail: contactEmail.trim(),
-        contactPhone: contactPhone.trim() || undefined,
+        contactPhone: contactPhone.trim(),
         members: members.map((member, index) => ({
           realName: member.realName.trim(),
           ign: member.ign.trim(),
@@ -148,7 +182,12 @@ export default function RegisterTeamPage({
           birthDate: member.birthDate || undefined,
           gender: member.gender || undefined,
           position: member.position || undefined,
-          memberRole: index === 0 ? "CAPTAIN" : "PLAYER",
+          memberRole:
+            index === 0
+              ? "CAPTAIN"
+              : index >= config.tournament.minTeamSize
+                ? "SUBSTITUTE"
+                : "PLAYER",
           orderIndex: index,
         })),
       });
@@ -189,7 +228,11 @@ export default function RegisterTeamPage({
   const requiresGender =
     rules.requireMemberFullInfo || Boolean(rules.allowedGenders?.length);
   const requiresPosition =
-    rules.requireMemberFullInfo && config.game.positions.length > 0;
+    rules.requireMemberFullInfo &&
+    config.game.positionMode === "FIXED" &&
+    config.game.positions.length > 0;
+  const showsPosition =
+    config.game.positionMode !== "NONE" && config.game.positions.length > 0;
   const genderOptions = rules.allowedGenders?.length
     ? GENDER_OPTIONS.filter((option) => rules.allowedGenders?.includes(option.value))
     : GENDER_OPTIONS;
@@ -266,7 +309,7 @@ export default function RegisterTeamPage({
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label htmlFor="contactName" className={labelClass}>
-                    Người đại diện
+                    Người đại diện <span className="text-rejected">*</span>
                   </label>
                   <input
                     id="contactName"
@@ -280,7 +323,7 @@ export default function RegisterTeamPage({
                 </div>
                 <div>
                   <label htmlFor="contactEmail" className={labelClass}>
-                    Email đại diện
+                    Email đại diện <span className="text-rejected">*</span>
                   </label>
                   <input
                     id="contactEmail"
@@ -295,17 +338,18 @@ export default function RegisterTeamPage({
 
               <div>
                 <label htmlFor="contactPhone" className={labelClass}>
-                  Số điện thoại đại diện
+                  Số điện thoại đại diện{" "}
+                  <span className="text-rejected">*</span>
                 </label>
                 <input
                   id="contactPhone"
                   type="tel"
+                  required
                   maxLength={20}
                   value={contactPhone}
                   onChange={(event) => setContactPhone(event.target.value)}
                   className={inputClass}
                 />
-                <p className={hintClass}>Không bắt buộc.</p>
               </div>
             </div>
           </section>
@@ -315,20 +359,31 @@ export default function RegisterTeamPage({
               <div>
                 <h2 className="font-semibold text-ink">Danh sách thành viên</h2>
                 <p className="mt-1 text-sm text-ink-muted">
-                  {config.game.name} yêu cầu từ {rules.minTeamSize} đến{" "}
-                  {rules.maxTeamSize} thành viên thi đấu. Thành viên đầu tiên là đội
+                  Đội hình yêu cầu: {rules.minTeamSize}–{rules.maxTeamSize}{" "}
+                  thành viên
+                </p>
+                <p className="mt-1 text-sm text-ink-muted">
+                  {rules.minTeamSize} thi đấu chính • tối đa{" "}
+                  {rules.maxSubstitutes} dự bị. Thành viên đầu tiên là đội
                   trưởng.
                 </p>
               </div>
               {members.length < rules.maxTeamSize && (
                 <button
                   type="button"
-                  onClick={() => setMembers((current) => [...current, emptyMember()])}
+                  onClick={() =>
+                    setMembers((current) => [...current, emptyMember()])
+                  }
                   className={`${secondaryButtonClass} shrink-0 px-3 py-2 text-xs`}
                 >
                   <PlusIcon size={14} weight="bold" />
-                  Thêm
+                  Thêm thành viên
                 </button>
+              )}
+              {members.length === rules.maxTeamSize && (
+                <span className="shrink-0 text-xs font-medium text-ink-faint">
+                  Đã đủ {rules.maxTeamSize} thành viên
+                </span>
               )}
             </div>
 
@@ -437,7 +492,7 @@ export default function RegisterTeamPage({
                       </select>
                     )}
 
-                    {config.game.positions.length > 0 && (
+                    {showsPosition && (
                       <select
                         required={requiresPosition}
                         value={member.position}
@@ -447,10 +502,14 @@ export default function RegisterTeamPage({
                         aria-label={`Vị trí của thành viên ${index + 1}`}
                         className={`${inputClass} bg-surface`}
                       >
-                        <option value="">Chọn vị trí thi đấu</option>
+                        <option value="">
+                          {requiresPosition
+                            ? "Chọn vị trí thi đấu"
+                            : "Không chọn"}
+                        </option>
                         {config.game.positions.map((position) => (
                           <option key={position} value={position}>
-                            {position}
+                            {gamePositionLabel(position)}
                           </option>
                         ))}
                       </select>
@@ -458,7 +517,7 @@ export default function RegisterTeamPage({
                   </div>
 
                   <p className={`${hintClass} mt-3`}>
-                    Cần ít nhất email hoặc số điện thoại cho thành viên này.
+                    Email và số điện thoại thành viên đều không bắt buộc.
                   </p>
                 </div>
               ))}

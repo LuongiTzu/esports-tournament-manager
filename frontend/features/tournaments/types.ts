@@ -46,3 +46,32 @@ export interface TournamentDetail extends Omit<Tournament, "game"> {
   game: Game;
   teams: ApprovedTeam[];
 }
+
+export interface CreateTournamentRequest {
+  name: string;
+  gameId: string;
+  description?: string;
+  rules?: string;
+  bannerUrl?: string;
+  visibility: "PUBLIC" | "PRIVATE";
+  status: "DRAFT" | "REGISTRATION";
+  mode: "ONLINE" | "OFFLINE" | "HYBRID";
+  location?: string;
+  registrationOpen: boolean;
+  maxTeams?: number;
+  maxTeamSize: number;
+  minAge?: number;
+  maxAge?: number;
+  allowedGenders?: Array<"MALE" | "FEMALE" | "OTHER">;
+  registrationStartDate?: string;
+  registrationDeadline?: string;
+  startDate?: string;
+  endDate?: string;
+  autoApproveTeams: boolean;
+  requireMemberFullInfo: boolean;
+  prizePool?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contactLink?: string;
+  rounds: Array<{ name: string; format: string; bestOf: number }>;
+}

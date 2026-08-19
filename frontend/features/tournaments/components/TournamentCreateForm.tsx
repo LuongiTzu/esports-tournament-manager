@@ -48,9 +48,7 @@ interface TournamentFormState {
   location: string;
   registrationOpen: boolean;
   maxTeams: string;
-  minTeamSize: string;
   maxTeamSize: string;
-  maxSubstitutes: string;
   minAge: string;
   maxAge: string;
   allowedGenders: Array<"MALE" | "FEMALE" | "OTHER">;
@@ -78,9 +76,7 @@ const INITIAL_FORM: TournamentFormState = {
   location: "",
   registrationOpen: true,
   maxTeams: "",
-  minTeamSize: "",
   maxTeamSize: "",
-  maxSubstitutes: "0",
   minAge: "",
   maxAge: "",
   allowedGenders: [],
@@ -206,6 +202,12 @@ export default function TournamentCreateForm() {
   }, [router, ready, user]);
 
   const selectedGame = games.find((game) => game.id === form.gameId);
+  const minimumMembers = selectedGame?.defaultTeamSize;
+  const maximumMembers = optionalNumber(form.maxTeamSize);
+  const maximumSubstitutes =
+    minimumMembers !== undefined && maximumMembers !== undefined
+      ? Math.max(0, maximumMembers - minimumMembers)
+      : undefined;
 
   const handleChange = (
     event: React.ChangeEvent<
@@ -228,6 +230,16 @@ export default function TournamentCreateForm() {
       status,
       registrationOpen:
         status === "DRAFT" ? false : current.registrationOpen,
+    }));
+  };
+
+  const handleGameChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const gameId = event.target.value;
+    const game = games.find((item) => item.id === gameId);
+    setForm((current) => ({
+      ...current,
+      gameId,
+      maxTeamSize: game ? String(game.maxTeamSize) : "",
     }));
   };
 
@@ -274,25 +286,17 @@ export default function TournamentCreateForm() {
       return "Vui lòng nhập địa điểm cho giải Offline hoặc Hybrid.";
     }
 
-    const minTeamSize =
-      optionalNumber(form.minTeamSize) ?? selectedGame?.minTeamSize;
-    const maxTeamSize =
-      optionalNumber(form.maxTeamSize) ?? selectedGame?.maxTeamSize;
-    const maxSubstitutes = optionalNumber(form.maxSubstitutes) ?? 0;
+    if (!selectedGame) {
+      return "Vui lòng chọn trò chơi.";
+    }
 
     if (
-      minTeamSize !== undefined &&
-      maxTeamSize !== undefined &&
-      minTeamSize > maxTeamSize
+      maximumMembers === undefined ||
+      !Number.isInteger(maximumMembers) ||
+      maximumMembers < selectedGame.defaultTeamSize ||
+      maximumMembers > selectedGame.maxTeamSize
     ) {
-      return "Số thành viên tối thiểu không được lớn hơn số tối đa.";
-    }
-    if (
-      minTeamSize !== undefined &&
-      maxTeamSize !== undefined &&
-      maxSubstitutes > maxTeamSize - minTeamSize
-    ) {
-      return "Số dự bị vượt quá khoảng chênh lệch giữa đội hình tối thiểu và tối đa.";
+      return `Số thành viên tối đa phải từ ${selectedGame.defaultTeamSize} đến ${selectedGame.maxTeamSize}.`;
     }
 
     const minAge = optionalNumber(form.minAge);
@@ -348,9 +352,7 @@ export default function TournamentCreateForm() {
           form.mode === "ONLINE" ? undefined : form.location.trim(),
         registrationOpen: form.registrationOpen,
         maxTeams: optionalNumber(form.maxTeams),
-        minTeamSize: optionalNumber(form.minTeamSize),
-        maxTeamSize: optionalNumber(form.maxTeamSize),
-        maxSubstitutes: optionalNumber(form.maxSubstitutes),
+        maxTeamSize: maximumMembers!,
         minAge: optionalNumber(form.minAge),
         maxAge: optionalNumber(form.maxAge),
         allowedGenders:
@@ -432,7 +434,7 @@ export default function TournamentCreateForm() {
                   name="gameId"
                   required
                   value={form.gameId}
-                  onChange={handleChange}
+                  onChange={handleGameChange}
                   className={inputClass}
                 >
                   <option value="">Chọn trò chơi</option>
@@ -604,14 +606,16 @@ export default function TournamentCreateForm() {
                 <input
                   id="minTeamSize"
                   type="number"
-                  name="minTeamSize"
-                  min={1}
-                  max={50}
-                  value={form.minTeamSize}
-                  onChange={handleChange}
+                  readOnly
+                  value={minimumMembers ?? ""}
                   className={inputClass}
-                  placeholder={selectedGame ? String(selectedGame.minTeamSize) : "Theo game"}
+                  placeholder="Chọn game"
                 />
+                <p className={hintClass}>
+                  {selectedGame
+                    ? `Đội hình thi đấu mặc định của ${selectedGame.name}`
+                    : "Tự động lấy theo trò chơi"}
+                </p>
               </div>
               <div>
                 <label htmlFor="maxTeamSize" className={labelClass}>
@@ -621,13 +625,21 @@ export default function TournamentCreateForm() {
                   id="maxTeamSize"
                   type="number"
                   name="maxTeamSize"
-                  min={1}
-                  max={50}
+                  min={minimumMembers}
+                  max={selectedGame?.maxTeamSize}
+                  required
+                  disabled={!selectedGame}
                   value={form.maxTeamSize}
                   onChange={handleChange}
                   className={inputClass}
-                  placeholder={selectedGame ? String(selectedGame.maxTeamSize) : "Theo game"}
+                  placeholder="Chọn game"
                 />
+                {selectedGame && (
+                  <p className={hintClass}>
+                    Cho phép từ {selectedGame.defaultTeamSize} đến{" "}
+                    {selectedGame.maxTeamSize} cầu thủ
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="maxSubstitutes" className={labelClass}>
@@ -636,22 +648,16 @@ export default function TournamentCreateForm() {
                 <input
                   id="maxSubstitutes"
                   type="number"
-                  name="maxSubstitutes"
-                  min={0}
-                  max={20}
-                  value={form.maxSubstitutes}
-                  onChange={handleChange}
+                  readOnly
+                  value={maximumSubstitutes ?? ""}
                   className={inputClass}
+                  placeholder="0"
                 />
+                <p className={hintClass}>
+                  Tự động tính từ số thành viên tối đa
+                </p>
               </div>
             </div>
-
-            {selectedGame && (
-              <p className="mt-3 text-xs text-ink-faint">
-                Mặc định của {selectedGame.name}: {selectedGame.minTeamSize}–
-                {selectedGame.maxTeamSize} thành viên, đội hình chuẩn {selectedGame.defaultTeamSize} người.
-              </p>
-            )}
 
             <div className="mt-6 grid gap-5 border-t border-line/70 pt-6 sm:grid-cols-2">
               <div>

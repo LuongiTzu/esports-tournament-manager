@@ -21,6 +21,7 @@ import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { RoundSettingsService } from '../brackets/round-settings.service';
 import { StandingsService } from '../brackets/standings.service';
 import { ContentFilterService } from '../common/services/content-filter.service';
+import { GAME_CATALOG_NAMES } from '../games/game-catalog';
 
 /** Field của Game cần trả kèm giải đấu — FE dùng để biết giới hạn đội hình */
 const GAME_SELECT = {
@@ -29,6 +30,7 @@ const GAME_SELECT = {
   iconUrl: true,
   genre: true,
   positions: true,
+  positionMode: true,
   defaultTeamSize: true,
   minTeamSize: true,
   maxTeamSize: true,
@@ -65,8 +67,8 @@ export class TournamentsService {
    */
   async create(userId: string, dto: CreateTournamentDto) {
     // 1. Kiểm tra game tồn tại
-    const game = await this.prisma.game.findUnique({
-      where: { id: dto.gameId },
+    const game = await this.prisma.game.findFirst({
+      where: { id: dto.gameId, name: { in: GAME_CATALOG_NAMES } },
     });
     if (!game) {
       throw new BadRequestException('Game không tồn tại');
@@ -75,28 +77,23 @@ export class TournamentsService {
     // 2. Lọc từ khóa cấm (UC-U19)
     this.validateContent(dto.name, dto.description, dto.rules);
 
-    // 3. Giới hạn số thành viên/đội: không nhập thì lấy theo Game
-    const minTeamSize = dto.minTeamSize ?? game.minTeamSize;
+    // 3. Snapshot đội hình thi đấu chuẩn; BTC chỉ chọn tổng số vị trí cầu thủ.
+    const minTeamSize = game.defaultTeamSize;
     const maxTeamSize = dto.maxTeamSize ?? game.maxTeamSize;
+    this.validateRosterSettings(minTeamSize, maxTeamSize, game.maxTeamSize);
 
     // 4. Ràng buộc liên-field — dùng chung 1 hàm với luồng update
     const mode = dto.mode ?? TournamentMode.ONLINE;
-    this.validateMergedSettings(
-      {
-        mode,
-        location: dto.location ?? null,
-        minTeamSize,
-        maxTeamSize,
-        maxSubstitutes: dto.maxSubstitutes ?? 0,
-        minAge: dto.minAge ?? null,
-        maxAge: dto.maxAge ?? null,
-        registrationStartDate: dto.registrationStartDate ?? null,
-        registrationDeadline: dto.registrationDeadline ?? null,
-        startDate: dto.startDate ?? null,
-        endDate: dto.endDate ?? null,
-      },
-      game,
-    );
+    this.validateMergedSettings({
+      mode,
+      location: dto.location ?? null,
+      minAge: dto.minAge ?? null,
+      maxAge: dto.maxAge ?? null,
+      registrationStartDate: dto.registrationStartDate ?? null,
+      registrationDeadline: dto.registrationDeadline ?? null,
+      startDate: dto.startDate ?? null,
+      endDate: dto.endDate ?? null,
+    });
 
     // 5. Tự sinh slug unique
     const slug = await this.generateUniqueSlug(dto.name);
@@ -119,7 +116,6 @@ export class TournamentsService {
           maxTeams: dto.maxTeams,
           minTeamSize,
           maxTeamSize,
-          maxSubstitutes: dto.maxSubstitutes ?? 0,
           minAge: dto.minAge,
           maxAge: dto.maxAge,
           allowedGenders: dto.allowedGenders ?? Prisma.JsonNull,
@@ -328,8 +324,8 @@ export class TournamentsService {
     // Đổi game → giới hạn đội hình phải khớp game mới
     let game = current.game;
     if (dto.gameId && dto.gameId !== current.gameId) {
-      const newGame = await this.prisma.game.findUnique({
-        where: { id: dto.gameId },
+      const newGame = await this.prisma.game.findFirst({
+        where: { id: dto.gameId, name: { in: GAME_CATALOG_NAMES } },
         select: GAME_SELECT,
       });
       if (!newGame) {
@@ -338,8 +334,20 @@ export class TournamentsService {
       game = newGame;
     }
 
+    const gameChanged = game.id !== current.gameId;
+    const minTeamSize = gameChanged
+      ? game.defaultTeamSize
+      : current.minTeamSize;
+    const maxTeamSize = gameChanged
+      ? (dto.maxTeamSize ?? game.maxTeamSize)
+      : (dto.maxTeamSize ?? current.maxTeamSize);
+
+    if (gameChanged || dto.maxTeamSize !== undefined) {
+      this.validateRosterSettings(minTeamSize, maxTeamSize, game.maxTeamSize);
+    }
+
     const merged = { ...current, ...stripUndefined(dto) };
-    this.validateMergedSettings(merged, game);
+    this.validateMergedSettings(merged);
 
     return this.prisma.tournament.update({
       where: { id: tournamentId },
@@ -354,9 +362,11 @@ export class TournamentsService {
         location: dto.location,
         registrationOpen: dto.registrationOpen,
         maxTeams: dto.maxTeams,
-        minTeamSize: dto.minTeamSize,
-        maxTeamSize: dto.maxTeamSize,
-        maxSubstitutes: dto.maxSubstitutes,
+        minTeamSize: gameChanged ? minTeamSize : undefined,
+        maxTeamSize:
+          gameChanged || dto.maxTeamSize !== undefined
+            ? maxTeamSize
+            : undefined,
         minAge: dto.minAge,
         maxAge: dto.maxAge,
         allowedGenders: dto.allowedGenders,
@@ -712,39 +722,19 @@ export class TournamentsService {
     return team !== null;
   }
 
-  private validateMergedSettings(
-    t: {
-      mode: TournamentMode;
-      location: string | null;
-      minTeamSize: number | null;
-      maxTeamSize: number | null;
-      maxSubstitutes: number;
-      minAge: number | null;
-      maxAge: number | null;
-      registrationStartDate: Date | string | null;
-      registrationDeadline: Date | string | null;
-      startDate: Date | string | null;
-      endDate: Date | string | null;
-    },
-    game: { minTeamSize: number; maxTeamSize: number },
-  ) {
+  private validateMergedSettings(t: {
+    mode: TournamentMode;
+    location: string | null;
+    minAge: number | null;
+    maxAge: number | null;
+    registrationStartDate: Date | string | null;
+    registrationDeadline: Date | string | null;
+    startDate: Date | string | null;
+    endDate: Date | string | null;
+  }) {
     if (t.mode !== TournamentMode.ONLINE && !t.location?.trim()) {
       throw new BadRequestException(
         'Giải đấu Offline/Hybrid bắt buộc phải có địa điểm',
-      );
-    }
-
-    const min = t.minTeamSize ?? game.minTeamSize;
-    const max = t.maxTeamSize ?? game.maxTeamSize;
-    if (min > max) {
-      throw new BadRequestException(
-        `Số thành viên tối thiểu (${min}) không được lớn hơn số tối đa (${max})`,
-      );
-    }
-
-    if (t.maxSubstitutes > max - min) {
-      throw new BadRequestException(
-        `Số dự bị (${t.maxSubstitutes}) vượt quá khoảng cho phép giữa số thành viên tối thiểu và tối đa (${max - min})`,
       );
     }
 
@@ -771,6 +761,24 @@ export class TournamentsService {
           `${marks[i][0]} phải sau ${marks[i - 1][0]}`,
         );
       }
+    }
+  }
+
+  private validateRosterSettings(
+    minTeamSize: number,
+    maxTeamSize: number,
+    gameMaxTeamSize: number,
+  ) {
+    if (maxTeamSize < minTeamSize) {
+      throw new BadRequestException(
+        `Số thành viên tối đa (${maxTeamSize}) không được nhỏ hơn đội hình thi đấu mặc định (${minTeamSize})`,
+      );
+    }
+
+    if (maxTeamSize > gameMaxTeamSize) {
+      throw new BadRequestException(
+        `Số thành viên tối đa (${maxTeamSize}) vượt quá giới hạn của game (${gameMaxTeamSize})`,
+      );
     }
   }
 

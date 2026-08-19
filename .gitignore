@@ -141,3 +141,28 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# ─────────────────────────────────────────────
+# AI Agent directories (tất cả subdirectories)
+# ─────────────────────────────────────────────
+.agents/
+.claude/
+.windsurf/
+.cursor/
+.copilot/
+.windsurf/agents/
+.astro/
+.prompt/
+.continue/
+AGENTS.md
+CLAUDE.md
+
+# ─────────────────────────────────────────────
+# File làm việc tạm thời
+# ─────────────────────────────────────────────
+TODO.md
+notes.md
+*.tmp.md
+skills-lock.json
+backend/uploads/*
+!backend/uploads/.gitkeep

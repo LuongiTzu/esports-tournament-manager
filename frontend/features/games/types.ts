@@ -3,8 +3,11 @@ export type GameGenre =
   | "FPS"
   | "SPORTS"
   | "BATTLE_ROYALE"
+  | "FIGHTING"
   | "CARD"
   | "OTHER";
+
+export type GamePositionMode = "FIXED" | "OPTIONAL" | "NONE";
 
 export interface Game {
   id: string;
@@ -12,6 +15,7 @@ export interface Game {
   iconUrl: string | null;
   genre: GameGenre;
   positions: string[] | null;
+  positionMode: GamePositionMode;
   defaultTeamSize: number;
   minTeamSize: number;
   maxTeamSize: number;

@@ -119,24 +119,10 @@ export class CreateTournamentDto {
   maxTeams?: number;
 
   @IsOptional()
-  @IsInt({ message: 'minTeamSize phải là số nguyên' })
-  @Min(1, { message: 'minTeamSize tối thiểu là 1' })
-  @IsLteField('maxTeamSize', {
-    message: 'Số thành viên tối thiểu phải nhỏ hơn hoặc bằng số tối đa',
-  })
-  minTeamSize?: number;
-
-  @IsOptional()
   @IsInt({ message: 'maxTeamSize phải là số nguyên' })
   @Min(1, { message: 'maxTeamSize tối thiểu là 1' })
   @Max(50, { message: 'maxTeamSize tối đa là 50' })
   maxTeamSize?: number;
-
-  @IsOptional()
-  @IsInt({ message: 'maxSubstitutes phải là số nguyên' })
-  @Min(0, { message: 'maxSubstitutes không được âm' })
-  @Max(20, { message: 'maxSubstitutes tối đa là 20' })
-  maxSubstitutes?: number;
 
   // ─── Giới hạn thành viên ─────────────────────────────────────
   @IsOptional()

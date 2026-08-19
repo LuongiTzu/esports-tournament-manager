@@ -10,8 +10,9 @@ import {
   ValidateNested,
   MaxLength,
   ArrayMinSize,
+  Matches,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { Gender, MemberRole } from '@prisma/client';
 
 /**
@@ -42,10 +43,12 @@ export class TeamMemberInputDto {
   gender?: Gender;
 
   @IsOptional()
+  @Transform(({ value }) => emptyStringToUndefined(value))
   @IsEmail({}, { message: 'Email liên hệ không hợp lệ' })
   email?: string;
 
   @IsOptional()
+  @Transform(({ value }) => emptyStringToUndefined(value))
   @IsString({ message: 'SĐT phải là chuỗi' })
   @MaxLength(20, { message: 'SĐT không được quá 20 ký tự' })
   phoneNumber?: string;
@@ -96,20 +99,25 @@ export class RegisterTeamDto {
   description?: string;
 
   @IsString({ message: 'Tên người đại diện phải là chuỗi' })
+  @Matches(/\S/, { message: 'Tên người đại diện là bắt buộc' })
   @MaxLength(100, { message: 'Tên người đại diện không được quá 100 ký tự' })
   contactName!: string;
 
   @IsEmail({}, { message: 'Email người đại diện không hợp lệ' })
   contactEmail!: string;
 
-  @IsOptional()
   @IsString({ message: 'SĐT người đại diện phải là chuỗi' })
+  @Matches(/\S/, { message: 'Số điện thoại đại diện là bắt buộc' })
   @MaxLength(20, { message: 'SĐT người đại diện không được quá 20 ký tự' })
-  contactPhone?: string;
+  contactPhone!: string;
 
   @IsArray({ message: 'Danh sách thành viên không hợp lệ' })
   @ValidateNested({ each: true })
   @Type(() => TeamMemberInputDto)
   @ArrayMinSize(1, { message: 'Đội phải có ít nhất 1 thành viên' })
   members!: TeamMemberInputDto[];
+}
+
+function emptyStringToUndefined(value: unknown): unknown {
+  return typeof value === 'string' && !value.trim() ? undefined : value;
 }
