@@ -2,9 +2,13 @@ import type {
   CreateTournamentRequest,
   CreateRoundRequest,
   FindAllTournamentsParams,
+  GenerateRoundResult,
+  GenerateSwissIterationResult,
   Paginated,
   Tournament,
+  TournamentBracket,
   TournamentDetail,
+  TournamentStandingsResponse,
 } from "@/features/tournaments/types";
 import { request } from "@/lib/api/client";
 import { uploadImage } from "@/lib/api/upload";
@@ -38,6 +42,22 @@ export const tournamentsApi = {
       body: JSON.stringify(data),
       auth: true,
     }),
+  getTournamentBracket: (slug: string) =>
+    request<TournamentBracket>(`/tournaments/${slug}/bracket`, { auth: true }),
+  getStandings: (slug: string) =>
+    request<TournamentStandingsResponse>(`/tournaments/${slug}/standings`, {
+      auth: true,
+    }),
+  generateRound: (roundId: string, force = false) =>
+    request<GenerateRoundResult>(
+      `/rounds/${roundId}/generate${force ? "?force=true" : ""}`,
+      { method: "POST", auth: true },
+    ),
+  generateNextSwissIteration: (roundId: string) =>
+    request<GenerateSwissIterationResult>(
+      `/rounds/${roundId}/swiss/generate-next`,
+      { method: "POST", auth: true },
+    ),
   findMine: (tab: "organized" | "joined") =>
     request<Tournament[]>(`/users/me/tournaments?tab=${tab}`, { auth: true }),
 };

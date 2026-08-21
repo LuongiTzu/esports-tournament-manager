@@ -11,6 +11,7 @@ import { teamsApi } from "@/features/teams/api";
 import StatusBadge from "@/features/teams/components/StatusBadge";
 import type { TeamStatus, TeamWithMembers } from "@/features/teams/types";
 import { tournamentsApi } from "@/features/tournaments/api";
+import CompetitionManager from "@/features/tournaments/components/manage/CompetitionManager";
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 
@@ -20,6 +21,14 @@ const FILTERS: Array<{ value: "ALL" | TeamStatus; label: string }> = [
   { value: "APPROVED", label: "Đã duyệt" },
   { value: "REJECTED", label: "Từ chối" },
 ];
+
+const TOURNAMENT_STATUS_LABELS: Record<TournamentDetail["status"], string> = {
+  DRAFT: "Bản nháp",
+  REGISTRATION: "Đang đăng ký",
+  ONGOING: "Đang thi đấu",
+  COMPLETED: "Đã hoàn tất",
+  CANCELLED: "Đã hủy",
+};
 
 export default function ManagePage({
   params,
@@ -56,7 +65,9 @@ export default function ManagePage({
         setTeams(await teamsApi.findByTournament(slug, "ALL"));
       })
       .catch((err) =>
-        setLoadError(err instanceof Error ? err.message : "Không tải được dữ liệu"),
+        setLoadError(
+          err instanceof Error ? err.message : "Không tải được dữ liệu",
+        ),
       )
       .finally(() => setLoading(false));
   }, [slug, router, ready, user]);
@@ -67,8 +78,7 @@ export default function ManagePage({
   ) => {
     if (!tournament || busyTeamId) return;
     let statusUpdate:
-      | { status: "APPROVED" }
-      | { status: "REJECTED"; rejectReason: string };
+      { status: "APPROVED" } | { status: "REJECTED"; rejectReason: string };
     if (status === "REJECTED") {
       const input = window.prompt(`Nhập lý do từ chối đội "${team.name}":`);
       if (input === null) return;
@@ -95,7 +105,9 @@ export default function ManagePage({
     try {
       const updated = await teamsApi.updateStatus(team.id, statusUpdate);
       setTeams((prev) =>
-        prev.map((t) => (t.id === team.id ? { ...t, status: updated.status } : t)),
+        prev.map((t) =>
+          t.id === team.id ? { ...t, status: updated.status } : t,
+        ),
       );
     } catch (err) {
       setActionErrors((prev) => ({
@@ -122,8 +134,13 @@ export default function ManagePage({
   if (loadError || !tournament) {
     return (
       <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-16 text-center">
-        <p className={alertErrorClass}>{loadError || "Không tìm thấy giải đấu"}</p>
-        <Link href="/" className="mt-4 inline-block text-sm text-brand hover:underline">
+        <p className={alertErrorClass}>
+          {loadError || "Không tìm thấy giải đấu"}
+        </p>
+        <Link
+          href="/"
+          className="mt-4 inline-block text-sm text-brand hover:underline"
+        >
           Về danh sách giải
         </Link>
       </div>
@@ -142,7 +159,7 @@ export default function ManagePage({
   return (
     <div
       style={accentVars(tournament.game?.name)}
-      className="mx-auto w-full max-w-4xl flex-1 px-4 py-10"
+      className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 sm:py-10"
     >
       <Link
         href={`/tournaments/${slug}`}
@@ -152,9 +169,32 @@ export default function ManagePage({
         {tournament.name}
       </Link>
 
-      <h1 className="mt-4 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+      <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+            Organizer workspace
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+            Quản lý {tournament.name}
+          </h1>
+        </div>
+        <span className="rounded-full border border-line bg-surface-card px-3 py-1.5 text-xs font-medium text-ink-muted">
+          {TOURNAMENT_STATUS_LABELS[tournament.status]}
+        </span>
+      </div>
+
+      <div className="mt-8">
+        <CompetitionManager
+          tournament={tournament}
+          onTournamentRefresh={async () => {
+            setTournament(await tournamentsApi.findBySlug(slug));
+          }}
+        />
+      </div>
+
+      <h2 className="mt-12 border-t border-line pt-10 text-xl font-bold tracking-tight text-ink sm:text-2xl">
         Duyệt đội đăng ký
-      </h1>
+      </h2>
       <p className="mt-2 text-sm text-ink-muted">
         {counts.PENDING > 0
           ? `${counts.PENDING} đội đang chờ bạn xử lý.`

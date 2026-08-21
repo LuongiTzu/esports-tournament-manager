@@ -291,12 +291,15 @@ describe('BracketOperationsService generation', () => {
           matches: [
             {
               id: 'match-1',
+              groupId: 'group-a',
               bracketRound: 1,
               bracketType: null,
               matchNumber: 1,
               status: MatchStatus.PENDING,
+              outcome: null,
               isBye: false,
               bestOf: 3,
+              scheduledAt: null,
               teamA: { id: 'team-1' },
               teamB: { id: 'team-2' },
               scoreA: 0,
@@ -324,8 +327,10 @@ describe('BracketOperationsService generation', () => {
         groups: [],
         matches: [
           expect.objectContaining({
+            groupId: 'group-a',
             slots: { A: { id: 'team-1' }, B: { id: 'team-2' } },
             status: MatchStatus.PENDING,
+            outcome: null,
             isBye: false,
             nextMatch: { id: 'match-2', slot: 'A' },
             loserNextMatch: { id: null, slot: null },

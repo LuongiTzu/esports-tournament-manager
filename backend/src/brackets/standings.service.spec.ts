@@ -138,12 +138,14 @@ describe('StandingsService', () => {
     expect(result.rounds[0].standings).toEqual([
       expect.objectContaining({
         id: 'a',
+        rank: 1,
         wins: 1,
         points: 3,
         scoreDifference: 2,
       }),
       expect.objectContaining({
         id: 'b',
+        rank: 2,
         losses: 1,
         points: 0,
         scoreDifference: -2,
@@ -322,8 +324,21 @@ describe('StandingsService', () => {
     const swiss = {
       calculateSwissStandings: jest.fn().mockResolvedValue([{ teamId: 'a' }]),
     } as unknown as SwissService;
+    const prisma = {
+      team: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'a',
+            name: 'A',
+            shortName: 'A',
+            logoUrl: null,
+            seed: 1,
+          },
+        ]),
+      },
+    } as unknown as PrismaService;
     const service = new StandingsService(
-      {} as PrismaService,
+      prisma,
       swiss,
       new RoundSettingsService(),
     );
@@ -332,6 +347,34 @@ describe('StandingsService', () => {
       { id: 'r-1', format: RoundFormat.SWISS },
     ]);
 
-    expect(result.rounds[0].standings).toEqual([{ teamId: 'a' }]);
+    expect(result.rounds[0].standings).toEqual([
+      {
+        teamId: 'a',
+        team: {
+          id: 'a',
+          name: 'A',
+          shortName: 'A',
+          logoUrl: null,
+          seed: 1,
+        },
+      },
+    ]);
   });
+
+  it.each([RoundFormat.PLAYOFF, RoundFormat.DOUBLE_ELIM])(
+    'does not manufacture standings for %s',
+    async (format) => {
+      const service = new StandingsService(
+        {} as PrismaService,
+        {} as SwissService,
+        new RoundSettingsService(),
+      );
+
+      const result = await service.forTournament('t-1', [
+        { id: 'r-1', format },
+      ]);
+
+      expect(result.rounds[0].standings).toEqual([]);
+    },
+  );
 });

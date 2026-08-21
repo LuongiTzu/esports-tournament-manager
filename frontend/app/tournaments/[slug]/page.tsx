@@ -15,8 +15,8 @@ import StatusBadge from "@/features/teams/components/StatusBadge";
 import type { TeamWithMembers } from "@/features/teams/types";
 import { tournamentsApi } from "@/features/tournaments/api";
 import { getTournamentBannerUrl } from "@/features/tournaments/banner";
-import { ROUND_FORMAT_LABELS } from "@/features/tournaments/round-formats";
 import type { TournamentDetail } from "@/features/tournaments/types";
+import PublicCompetitionView from "@/features/tournaments/components/competition/PublicCompetitionView";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import ResolvedImage from "@/components/ResolvedImage";
 
@@ -51,7 +51,9 @@ export default function TournamentDetailPage({
       })
       .catch((err) => {
         if (!cancelled)
-          setError(err instanceof Error ? err.message : "Không tải được giải đấu");
+          setError(
+            err instanceof Error ? err.message : "Không tải được giải đấu",
+          );
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -68,7 +70,9 @@ export default function TournamentDetailPage({
       .findMine()
       .then((teams) => {
         if (!cancelled)
-          setMyTeam(teams.find((team) => team.tournament.slug === slug) ?? null);
+          setMyTeam(
+            teams.find((team) => team.tournament.slug === slug) ?? null,
+          );
       })
       .catch(() => {
         if (!cancelled) setMyTeam(null);
@@ -93,7 +97,10 @@ export default function TournamentDetailPage({
     return (
       <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-16 text-center">
         <p className={alertErrorClass}>{error || "Không tìm thấy giải đấu"}</p>
-        <Link href="/" className="mt-4 inline-block text-sm text-brand hover:underline">
+        <Link
+          href="/"
+          className="mt-4 inline-block text-sm text-brand hover:underline"
+        >
           Về danh sách giải
         </Link>
       </div>
@@ -107,7 +114,7 @@ export default function TournamentDetailPage({
   return (
     <div
       style={accentVars(tournament.game?.name)}
-      className="mx-auto w-full max-w-4xl flex-1 px-4 py-10"
+      className="mx-auto w-full max-w-6xl flex-1 px-4 py-10"
     >
       <Link
         href="/"
@@ -192,7 +199,9 @@ export default function TournamentDetailPage({
         </div>
 
         {tournament.description && (
-          <p className="mx-6 mt-5 max-w-2xl text-ink-muted">{tournament.description}</p>
+          <p className="mx-6 mt-5 max-w-2xl text-ink-muted">
+            {tournament.description}
+          </p>
         )}
 
         <dl className="mx-6 mt-6 grid grid-cols-2 gap-x-4 gap-y-5 border-t border-line pb-6 pt-5 text-sm sm:grid-cols-4">
@@ -258,29 +267,7 @@ export default function TournamentDetailPage({
         </section>
       )}
 
-      {tournament.rounds && tournament.rounds.length > 0 && (
-        <section className="mt-6 rounded-xl border border-line bg-surface-card p-6">
-          <h2 className="font-semibold text-ink">Các vòng đấu</h2>
-          <ol className="mt-4 divide-y divide-line">
-            {tournament.rounds.map((r, i) => (
-              <li
-                key={r.id}
-                className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0"
-              >
-                <span className="flex min-w-0 items-center gap-3">
-                  <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-md bg-surface-sub font-mono text-xs text-ink-muted">
-                    {i + 1}
-                  </span>
-                  <span className="truncate font-medium text-ink">{r.name}</span>
-                </span>
-                <span className="shrink-0 text-sm text-ink-muted">
-                  {ROUND_FORMAT_LABELS[r.format] || r.format}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </section>
-      )}
+      <PublicCompetitionView slug={slug} />
 
       <section className="mt-6 rounded-xl border border-line bg-surface-card p-6">
         <h2 className="font-semibold text-ink">Đội đã được duyệt</h2>
@@ -324,7 +311,8 @@ export default function TournamentDetailPage({
                     {t.name}
                   </span>
                   <span className="block text-xs text-ink-faint">
-                    {t.captain?.displayName} • {t._count?.members ?? 0} thành viên
+                    {t.captain?.displayName} • {t._count?.members ?? 0} thành
+                    viên
                   </span>
                 </span>
               </li>

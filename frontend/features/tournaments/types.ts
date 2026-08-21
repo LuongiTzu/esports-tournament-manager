@@ -65,10 +65,18 @@ export type CreateRoundRequest =
       settings: DoubleElimSettings;
     };
 
+export type RoundStatus = "UPCOMING" | "ONGOING" | "COMPLETED";
+export type MatchStatus = "PENDING" | "ONGOING" | "COMPLETED";
+export type MatchOutcome = "TEAM_A" | "TEAM_B" | "DRAW";
+export type BracketType = "WINNER" | "LOSER";
+
 type TournamentRoundBase = {
   id: string;
   name: string;
+  orderIndex: number;
   bestOf: number;
+  status: RoundStatus;
+  _count?: { matches: number };
 };
 
 export type TournamentRound =
@@ -137,6 +145,192 @@ export interface Paginated<T> {
 export interface TournamentDetail extends Omit<Tournament, "game"> {
   game: Game;
   teams: ApprovedTeam[];
+}
+
+export interface BracketTeam {
+  id: string;
+  name: string;
+  shortName: string | null;
+  logoUrl: string | null;
+  seed: number | null;
+}
+
+export interface BracketGroup {
+  id: string;
+  name: string;
+  orderIndex: number;
+  teams: BracketTeam[];
+}
+
+export interface BracketMatch {
+  id: string;
+  groupId: string | null;
+  bracketRound: number | null;
+  bracketType: BracketType | null;
+  matchNumber: number | null;
+  status: MatchStatus;
+  outcome: MatchOutcome | null;
+  isActive: boolean;
+  activationCondition: "LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL" | null;
+  isBye: boolean;
+  bestOf: number;
+  scheduledAt: string | null;
+  slots: { A: BracketTeam | null; B: BracketTeam | null };
+  score: { A: number; B: number };
+  winner: BracketTeam | null;
+  nextMatch: { id: string | null; slot: "A" | "B" | null };
+  loserNextMatch: { id: string | null; slot: "A" | "B" | null };
+}
+
+export interface RoundBracket {
+  round: TournamentRound;
+  groups: BracketGroup[];
+  matches: BracketMatch[];
+}
+
+export interface TournamentBracket {
+  tournament: { id: string; name: string; slug: string };
+  rounds: RoundBracket[];
+}
+
+export interface BasicStanding {
+  id: string;
+  name: string;
+  seed: number | null;
+  rank: number;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  points: number;
+  scoreDifference: number;
+}
+
+export interface GroupStanding {
+  groupId: string;
+  name: string;
+  orderIndex: number;
+  standings: BasicStanding[];
+}
+
+export interface SwissStanding {
+  rank: number;
+  teamId: string;
+  team: BracketTeam | null;
+  played: number;
+  wins: number;
+  losses: number;
+  points: number;
+  byes: number;
+  buchholz: number;
+  buchholzCut1: number;
+  scoreDifference: number;
+  opponents: string[];
+}
+
+export type RoundProgressionState =
+  | "NOT_GENERATED"
+  | "IN_PROGRESS"
+  | "TERMINAL_COMPLETE"
+  | "ADVANCEMENT_UNSUPPORTED"
+  | "AWAITING_ADVANCEMENT"
+  | "READY_FOR_GENERATION"
+  | "NEXT_STAGE_GENERATED"
+  | "NEXT_STAGE_COMPLETED";
+
+export interface RoundParticipantAssignment {
+  createdAt: string;
+  team: BracketTeam;
+  advancedFromRound: Pick<
+    TournamentRound,
+    "id" | "name" | "orderIndex" | "format"
+  > | null;
+}
+
+export interface QualifiedTeamAssignment {
+  advancedAt: string;
+  team: BracketTeam;
+  targetRound: Pick<
+    TournamentRound,
+    "id" | "name" | "orderIndex" | "format" | "status"
+  >;
+}
+
+interface RoundStandingsBase {
+  roundId: string;
+  round: Pick<
+    TournamentRound,
+    "id" | "name" | "orderIndex" | "format" | "status"
+  >;
+  progress: {
+    totalMatches: number;
+    completedMatches: number;
+    requiredMatches: number;
+    completedRequiredMatches: number;
+    allRequiredMatchesCompleted: boolean;
+  };
+  participants: RoundParticipantAssignment[];
+  advancement: {
+    supported: boolean;
+    state: RoundProgressionState;
+    nextRound:
+      | (Pick<
+          TournamentRound,
+          "id" | "name" | "orderIndex" | "format" | "status"
+        > & {
+          participantCount: number;
+          matchCount: number;
+        })
+      | null;
+    qualifiedTeams: QualifiedTeamAssignment[];
+  };
+}
+
+export type RoundStandings =
+  | (RoundStandingsBase & {
+      format: "ROUND_ROBIN";
+      standings: BasicStanding[];
+    })
+  | (RoundStandingsBase & {
+      format: "GROUP_STAGE";
+      standings: GroupStanding[];
+    })
+  | (RoundStandingsBase & {
+      format: "SWISS";
+      standings: SwissStanding[];
+    })
+  | (RoundStandingsBase & {
+      format: "PLAYOFF" | "DOUBLE_ELIM";
+      standings: [];
+    });
+
+export interface TournamentStandingsResponse {
+  tournamentId: string;
+  tournament: {
+    id: string;
+    name: string;
+    status: TournamentStatus;
+    champion: BracketTeam | null;
+  };
+  rounds: RoundStandings[];
+}
+
+export interface GenerateRoundResult {
+  roundId: string;
+  format: TournamentRound["format"];
+  approvedTeamCount: number;
+  matchCount: number;
+  force: boolean;
+}
+
+export interface GenerateSwissIterationResult {
+  roundId: string;
+  bracketRound: number;
+  numberOfRounds: number;
+  matchCount: number;
+  matchIds: string[];
+  bye: { matchId: string; teamId: string } | null;
+  warnings: string[];
 }
 
 export interface CreateTournamentRequest {

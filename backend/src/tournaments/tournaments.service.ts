@@ -7,6 +7,7 @@ import {
   MatchStatus,
   Prisma,
   ModerationStatus,
+  RoundFormat,
   RoundStatus,
   Visibility,
   TournamentMode,
@@ -576,11 +577,59 @@ export class TournamentsService {
       where: { slug },
       select: {
         id: true,
+        name: true,
+        status: true,
         organizerId: true,
         visibility: true,
         moderationStatus: true,
+        teams: {
+          where: { finalRank: 1 },
+          take: 1,
+          select: PUBLIC_TEAM_SELECT,
+        },
         rounds: {
-          select: { id: true, format: true, settings: true },
+          select: {
+            id: true,
+            name: true,
+            orderIndex: true,
+            format: true,
+            status: true,
+            settings: true,
+            matches: {
+              select: { status: true, isActive: true },
+            },
+            participants: {
+              orderBy: { createdAt: 'asc' },
+              select: {
+                createdAt: true,
+                team: { select: PUBLIC_TEAM_SELECT },
+                advancedFromRound: {
+                  select: {
+                    id: true,
+                    name: true,
+                    orderIndex: true,
+                    format: true,
+                  },
+                },
+              },
+            },
+            advancedTeams: {
+              orderBy: { createdAt: 'asc' },
+              select: {
+                createdAt: true,
+                team: { select: PUBLIC_TEAM_SELECT },
+                round: {
+                  select: {
+                    id: true,
+                    name: true,
+                    orderIndex: true,
+                    format: true,
+                    status: true,
+                  },
+                },
+              },
+            },
+          },
           orderBy: { orderIndex: 'asc' },
         },
       },
@@ -604,10 +653,93 @@ export class TournamentsService {
     ) {
       throw new NotFoundException('Tournament not found');
     }
-    return this.standingsService.forTournament(
+    const calculated = await this.standingsService.forTournament(
       tournament.id,
       tournament.rounds,
     );
+    const standingsByRound = new Map(
+      calculated.rounds.map((round) => [round.roundId, round.standings]),
+    );
+    return {
+      tournamentId: tournament.id,
+      tournament: {
+        id: tournament.id,
+        name: tournament.name,
+        status: tournament.status,
+        champion: tournament.teams[0] ?? null,
+      },
+      rounds: tournament.rounds.map((round, index) => {
+        const nextRound = tournament.rounds[index + 1] ?? null;
+        const requiredMatches = round.matches.filter((match) => match.isActive);
+        const completedRequiredMatches = requiredMatches.filter(
+          (match) => match.status === MatchStatus.COMPLETED,
+        ).length;
+        const allRequiredMatchesCompleted =
+          requiredMatches.length > 0 &&
+          completedRequiredMatches === requiredMatches.length;
+        const advancementSupported =
+          round.format === RoundFormat.GROUP_STAGE ||
+          round.format === RoundFormat.SWISS;
+        const progressionState = !round.matches.length
+          ? 'NOT_GENERATED'
+          : !allRequiredMatchesCompleted
+            ? 'IN_PROGRESS'
+            : !nextRound
+              ? 'TERMINAL_COMPLETE'
+              : !advancementSupported
+                ? 'ADVANCEMENT_UNSUPPORTED'
+                : !round.advancedTeams.length
+                  ? 'AWAITING_ADVANCEMENT'
+                  : !nextRound.matches.length
+                    ? 'READY_FOR_GENERATION'
+                    : nextRound.status === RoundStatus.COMPLETED
+                      ? 'NEXT_STAGE_COMPLETED'
+                      : 'NEXT_STAGE_GENERATED';
+
+        return {
+          roundId: round.id,
+          format: round.format,
+          round: {
+            id: round.id,
+            name: round.name,
+            orderIndex: round.orderIndex,
+            format: round.format,
+            status: round.status,
+          },
+          standings: standingsByRound.get(round.id) ?? [],
+          progress: {
+            totalMatches: round.matches.length,
+            completedMatches: round.matches.filter(
+              (match) => match.status === MatchStatus.COMPLETED,
+            ).length,
+            requiredMatches: requiredMatches.length,
+            completedRequiredMatches,
+            allRequiredMatchesCompleted,
+          },
+          participants: round.participants,
+          advancement: {
+            supported: advancementSupported,
+            state: progressionState,
+            nextRound: nextRound
+              ? {
+                  id: nextRound.id,
+                  name: nextRound.name,
+                  orderIndex: nextRound.orderIndex,
+                  format: nextRound.format,
+                  status: nextRound.status,
+                  participantCount: nextRound.participants.length,
+                  matchCount: nextRound.matches.length,
+                }
+              : null,
+            qualifiedTeams: round.advancedTeams.map((assignment) => ({
+              team: assignment.team,
+              targetRound: assignment.round,
+              advancedAt: assignment.createdAt,
+            })),
+          },
+        };
+      }),
+    };
   }
 
   // ─── Private helpers ────────────────────────────────────────
@@ -719,10 +851,14 @@ export class TournamentsService {
         })),
         matches: round.matches.map((match) => ({
           id: match.id,
+          groupId: match.groupId,
           bracketRound: match.bracketRound,
           bracketType: match.bracketType,
           matchNumber: match.matchNumber,
           status: match.status,
+          outcome: match.outcome,
+          isActive: match.isActive,
+          activationCondition: match.activationCondition,
           isBye: match.isBye,
           bestOf: match.bestOf,
           scheduledAt: match.scheduledAt,

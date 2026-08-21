@@ -388,6 +388,112 @@ describe('TournamentsService round settings', () => {
   });
 });
 
+describe('TournamentsService standings read model', () => {
+  it('exposes persisted qualification and next-stage assignments without deriving them', async () => {
+    const qualifiedTeam = {
+      id: 'team-1',
+      name: 'Team One',
+      shortName: 'ONE',
+      logoUrl: null,
+      seed: 1,
+    };
+    const tournament = {
+      id: 'tournament-1',
+      name: 'Integration Cup',
+      status: TournamentStatus.ONGOING,
+      organizerId: 'organizer-1',
+      visibility: 'PUBLIC',
+      moderationStatus: 'ACTIVE',
+      teams: [],
+      rounds: [
+        {
+          id: 'groups',
+          name: 'Group Stage',
+          orderIndex: 0,
+          format: RoundFormat.GROUP_STAGE,
+          status: RoundStatus.COMPLETED,
+          settings: {},
+          matches: [
+            { status: MatchStatus.COMPLETED, isActive: true },
+            { status: MatchStatus.COMPLETED, isActive: true },
+          ],
+          participants: [],
+          advancedTeams: [
+            {
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+              team: qualifiedTeam,
+              round: {
+                id: 'playoff',
+                name: 'Playoff',
+                orderIndex: 1,
+                format: RoundFormat.PLAYOFF,
+                status: RoundStatus.UPCOMING,
+              },
+            },
+          ],
+        },
+        {
+          id: 'playoff',
+          name: 'Playoff',
+          orderIndex: 1,
+          format: RoundFormat.PLAYOFF,
+          status: RoundStatus.UPCOMING,
+          settings: {},
+          matches: [],
+          participants: [
+            {
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+              team: qualifiedTeam,
+              advancedFromRound: {
+                id: 'groups',
+                name: 'Group Stage',
+                orderIndex: 0,
+                format: RoundFormat.GROUP_STAGE,
+              },
+            },
+          ],
+          advancedTeams: [],
+        },
+      ],
+    };
+    const prisma = {
+      tournament: { findUnique: jest.fn().mockResolvedValue(tournament) },
+    } as unknown as PrismaService;
+    const standingsService = {
+      forTournament: jest.fn().mockResolvedValue({
+        tournamentId: tournament.id,
+        rounds: [
+          { roundId: 'groups', standings: [] },
+          { roundId: 'playoff', standings: [] },
+        ],
+      }),
+    } as unknown as StandingsService;
+    const service = new TournamentsService(
+      prisma,
+      {} as RoundSettingsService,
+      standingsService,
+      {} as ContentFilterService,
+    );
+
+    const result = await service.getStandings('integration-cup');
+
+    expect(result.rounds[0]).toEqual(
+      expect.objectContaining({
+        progress: expect.objectContaining({
+          completedMatches: 2,
+          allRequiredMatchesCompleted: true,
+        }),
+        advancement: expect.objectContaining({
+          state: 'READY_FOR_GENERATION',
+          nextRound: expect.objectContaining({ participantCount: 1 }),
+          qualifiedTeams: [expect.objectContaining({ team: qualifiedTeam })],
+        }),
+      }),
+    );
+    expect(result.rounds[1].participants).toHaveLength(1);
+  });
+});
+
 describe('TournamentsService roster snapshots', () => {
   function creationHarness(defaultTeamSize: number, maxTeamSize: number) {
     const game = {

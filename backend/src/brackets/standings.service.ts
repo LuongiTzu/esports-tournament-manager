@@ -47,9 +47,29 @@ export class StandingsService {
     for (const round of rounds) {
       let standings: unknown[];
       if (round.format === RoundFormat.SWISS) {
-        standings = await this.swiss.calculateSwissStandings(round.id);
+        const rows = await this.swiss.calculateSwissStandings(round.id);
+        const teams = await this.prisma.team.findMany({
+          where: { id: { in: rows.map((row) => row.teamId) } },
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            logoUrl: true,
+            seed: true,
+          },
+        });
+        const teamsById = new Map(teams.map((team) => [team.id, team]));
+        standings = rows.map((row) => ({
+          ...row,
+          team: teamsById.get(row.teamId) ?? null,
+        }));
       } else if (round.format === RoundFormat.GROUP_STAGE) {
         standings = await this.calculateGroups(round.id, round.settings);
+      } else if (
+        round.format === RoundFormat.PLAYOFF ||
+        round.format === RoundFormat.DOUBLE_ELIM
+      ) {
+        standings = [];
       } else {
         standings = await this.calculateBasic(
           round.id,
@@ -258,11 +278,13 @@ function calculateRows(
       }
     }
   }
-  return [...rows.values()].sort(
-    (a, b) =>
-      b.points - a.points ||
-      b.wins - a.wins ||
-      b.scoreDifference - a.scoreDifference ||
-      (a.seed ?? 9999) - (b.seed ?? 9999),
-  );
+  return [...rows.values()]
+    .sort(
+      (a, b) =>
+        b.points - a.points ||
+        b.wins - a.wins ||
+        b.scoreDifference - a.scoreDifference ||
+        (a.seed ?? 9999) - (b.seed ?? 9999),
+    )
+    .map((row, index) => ({ ...row, rank: index + 1 }));
 }
