@@ -184,7 +184,7 @@ export default function TournamentOperationSection() {
                     </span>
                     <h3
                       className={`mt-2 text-lg font-bold transition-colors duration-300 sm:text-xl ${
-                        emphasized ? "text-white" : "text-ink"
+                        emphasized ? "text-emphasis-foreground" : "text-ink"
                       }`}
                     >
                       {t(step.title)}

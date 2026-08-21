@@ -2,6 +2,7 @@ import type {
   MyTeam,
   TeamRegistration,
   TeamRegistrationForm,
+  TeamDetail,
   TeamStatus,
   TeamWithMembers,
   UpdateTeamStatusRequest,
@@ -19,6 +20,8 @@ export const teamsApi = {
       `/tournaments/${slug}/teams${status ? `?status=${status}` : ""}`,
       { auth: true },
     ),
+  findOne: (teamId: string) =>
+    request<TeamDetail>(`/teams/${teamId}`, { auth: true }),
   findMine: () => request<MyTeam[]>("/users/me/teams", { auth: true }),
   register: (slug: string, data: TeamRegistration) =>
     request<TeamWithMembers>(`/tournaments/${slug}/register`, {

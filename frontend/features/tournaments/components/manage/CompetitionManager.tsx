@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ArrowRightIcon,
   ArrowsClockwiseIcon,
   CheckCircleIcon,
   CircleNotchIcon,
@@ -54,7 +55,9 @@ export default function CompetitionManager({
   const [standings, setStandings] =
     useState<TournamentStandingsResponse | null>(null);
   const [loading, setLoading] = useState(Boolean(rounds.length));
-  const [working, setWorking] = useState<"generate" | "swiss" | null>(null);
+  const [working, setWorking] = useState<
+    "generate" | "swiss" | "advance" | null
+  >(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
@@ -192,6 +195,31 @@ export default function CompetitionManager({
     }
   };
 
+  const advanceRound = async () => {
+    if (!selectedRound || working) return;
+    setWorking("advance");
+    setError("");
+    setNotice("");
+    try {
+      const result = await tournamentsApi.advanceRound(selectedRound.id);
+      setNotice(
+        `Đã đưa ${result.advanceCount} đội vào ${result.nextRound?.name ?? "vòng tiếp theo"}.`,
+      );
+      await Promise.all([
+        loadCompetition(selectedRound.id),
+        onTournamentRefresh(),
+      ]);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Không thể chuyển đội vào vòng tiếp theo",
+      );
+    } finally {
+      setWorking(null);
+    }
+  };
+
   if (!rounds.length) {
     return (
       <section className="rounded-2xl border border-dashed border-line px-6 py-14 text-center">
@@ -234,6 +262,12 @@ export default function CompetitionManager({
     tournament.status !== "CANCELLED" &&
     tournament.status !== "COMPLETED" &&
     activeRound?.status !== "COMPLETED";
+  const advancementAllowed =
+    tournament.status !== "CANCELLED" && tournament.status !== "COMPLETED";
+  const canAdvance =
+    advancementAllowed &&
+    activeStandings?.advancement.state === "AWAITING_ADVANCEMENT" &&
+    (activeRound?.format === "GROUP_STAGE" || activeRound?.format === "SWISS");
 
   return (
     <section aria-labelledby="competition-heading">
@@ -322,9 +356,10 @@ export default function CompetitionManager({
               </p>
             </div>
 
-            {actionsAllowed && !loading && (
+            {!loading && (actionsAllowed || canAdvance) && (
               <div className="flex flex-wrap gap-2">
-                {selectedRound.format === "SWISS" &&
+                {actionsAllowed &&
+                  selectedRound.format === "SWISS" &&
                   hasStructure &&
                   swissIterationComplete &&
                   swissHasAnotherConfiguredIteration && (
@@ -342,23 +377,39 @@ export default function CompetitionManager({
                       Tạo lượt Swiss tiếp
                     </button>
                   )}
-                {(!hasStructure || canRequestRegeneration) && (
+                {actionsAllowed &&
+                  (!hasStructure || canRequestRegeneration) && (
+                    <button
+                      type="button"
+                      onClick={generate}
+                      disabled={Boolean(working)}
+                      className={
+                        hasStructure ? secondaryButtonClass : primaryButtonClass
+                      }
+                    >
+                      {working === "generate" ? (
+                        <CircleNotchIcon className="animate-spin" />
+                      ) : hasStructure ? (
+                        <ArrowsClockwiseIcon />
+                      ) : (
+                        <PlayIcon weight="fill" />
+                      )}
+                      {hasStructure ? "Tạo lại cấu trúc" : "Tạo cấu trúc"}
+                    </button>
+                  )}
+                {canAdvance && (
                   <button
                     type="button"
-                    onClick={generate}
+                    onClick={advanceRound}
                     disabled={Boolean(working)}
-                    className={
-                      hasStructure ? secondaryButtonClass : primaryButtonClass
-                    }
+                    className={primaryButtonClass}
                   >
-                    {working === "generate" ? (
+                    {working === "advance" ? (
                       <CircleNotchIcon className="animate-spin" />
-                    ) : hasStructure ? (
-                      <ArrowsClockwiseIcon />
                     ) : (
-                      <PlayIcon weight="fill" />
+                      <ArrowRightIcon weight="bold" />
                     )}
-                    {hasStructure ? "Tạo lại cấu trúc" : "Tạo cấu trúc"}
+                    Đưa đội vào vòng tiếp theo
                   </button>
                 )}
               </div>

@@ -4,6 +4,27 @@ import "./globals.css";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { LocaleProvider } from "@/features/locale/store";
+import { ThemeProvider } from "@/features/theme/store";
+
+const themeBootstrapScript = `
+(() => {
+  const key = "etm-theme";
+  const valid = ["light", "dark", "system"];
+  try {
+    const saved = localStorage.getItem(key);
+    const preference = valid.includes(saved) ? saved : "dark";
+    const resolved = preference === "system"
+      ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : preference;
+    const root = document.documentElement;
+    root.dataset.theme = resolved;
+    root.dataset.themePreference = preference;
+    root.style.colorScheme = resolved;
+  } catch {
+    document.documentElement.dataset.theme = "dark";
+    document.documentElement.dataset.themePreference = "dark";
+  }
+})();`;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,14 +55,22 @@ export default function RootLayout({
   return (
     <html
       lang="vi"
+      data-theme="dark"
+      data-theme-preference="dark"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+      </head>
       <body className="flex min-h-full flex-col bg-surface text-ink">
-        <LocaleProvider>
-          <Navbar />
-          <main className="flex flex-1 flex-col">{children}</main>
-          <Footer />
-        </LocaleProvider>
+        <ThemeProvider>
+          <LocaleProvider>
+            <Navbar />
+            <main className="flex flex-1 flex-col">{children}</main>
+            <Footer />
+          </LocaleProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

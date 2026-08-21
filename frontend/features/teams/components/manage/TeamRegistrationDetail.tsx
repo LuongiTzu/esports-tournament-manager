@@ -1,0 +1,283 @@
+import ResolvedImage from "@/components/ResolvedImage";
+import StatusBadge from "@/features/teams/components/StatusBadge";
+import type { GamePositionMode } from "@/features/games/types";
+import { gamePositionLabel } from "@/features/games/position-labels";
+import type {
+  Gender,
+  MemberRole,
+  TeamDetail,
+  TeamMember,
+} from "@/features/teams/types";
+
+const ROLE_LABELS: Record<MemberRole, string> = {
+  CAPTAIN: "Đội trưởng",
+  PLAYER: "Cầu thủ",
+  SUBSTITUTE: "Dự bị",
+  COACH: "Huấn luyện viên",
+  MANAGER: "Quản lý",
+};
+
+const GENDER_LABELS: Record<Gender, string> = {
+  MALE: "Nam",
+  FEMALE: "Nữ",
+  OTHER: "Khác",
+};
+
+const PLAYER_ROLES = new Set<MemberRole>(["CAPTAIN", "PLAYER", "SUBSTITUTE"]);
+
+function formatDate(value?: string | null) {
+  return value ? new Date(value).toLocaleDateString("vi-VN") : null;
+}
+
+function MemberCard({
+  member,
+  positionMode,
+}: {
+  member: TeamMember;
+  positionMode: GamePositionMode;
+}) {
+  const showPosition =
+    PLAYER_ROLES.has(member.memberRole) && positionMode !== "NONE";
+
+  return (
+    <li className="rounded-xl border border-line bg-surface-sub/45 p-3">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-brand/10 text-sm font-bold text-brand">
+          <ResolvedImage
+            src={member.avatarUrl}
+            alt={`Ảnh ${member.realName}`}
+            className="size-full object-cover object-center"
+            fallback={member.realName.charAt(0).toUpperCase()}
+          />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="font-medium text-ink">{member.realName}</p>
+              <p className="text-xs text-brand">{member.ign}</p>
+            </div>
+            <span className="rounded-full bg-surface-card px-2 py-1 text-[10px] font-semibold uppercase text-ink-muted">
+              {ROLE_LABELS[member.memberRole]}
+            </span>
+          </div>
+          <dl className="mt-3 grid gap-x-4 gap-y-2 text-xs text-ink-muted sm:grid-cols-2">
+            {showPosition && (
+              <div>
+                <dt className="text-ink-faint">Vị trí</dt>
+                <dd className="mt-0.5">
+                  {member.position
+                    ? gamePositionLabel(member.position)
+                    : positionMode === "OPTIONAL"
+                      ? "Chưa chọn"
+                      : "Không có dữ liệu"}
+                </dd>
+              </div>
+            )}
+            {member.birthDate && (
+              <div>
+                <dt className="text-ink-faint">Ngày sinh</dt>
+                <dd className="mt-0.5">{formatDate(member.birthDate)}</dd>
+              </div>
+            )}
+            {member.gender && (
+              <div>
+                <dt className="text-ink-faint">Giới tính</dt>
+                <dd className="mt-0.5">{GENDER_LABELS[member.gender]}</dd>
+              </div>
+            )}
+            {member.email && (
+              <div className="min-w-0">
+                <dt className="text-ink-faint">Email</dt>
+                <dd className="mt-0.5 truncate">{member.email}</dd>
+              </div>
+            )}
+            {member.phoneNumber && (
+              <div>
+                <dt className="text-ink-faint">Điện thoại</dt>
+                <dd className="mt-0.5">{member.phoneNumber}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+export default function TeamRegistrationDetail({
+  team,
+  positionMode,
+  minTeamSize,
+  maxTeamSize,
+  rejectionReason,
+  onRejectionReasonChange,
+  onApprove,
+  onReject,
+  working,
+}: {
+  team: TeamDetail;
+  positionMode: GamePositionMode;
+  minTeamSize: number;
+  maxTeamSize: number;
+  rejectionReason: string;
+  onRejectionReasonChange: (value: string) => void;
+  onApprove: () => void;
+  onReject: () => void;
+  working: "approve" | "reject" | null;
+}) {
+  const players = team.members.filter((member) =>
+    PLAYER_ROLES.has(member.memberRole),
+  );
+  const staff = team.members.filter(
+    (member) => !PLAYER_ROLES.has(member.memberRole),
+  );
+  const maxSubstitutes = maxTeamSize - minTeamSize;
+
+  return (
+    <article className="rounded-2xl border border-line bg-surface-card p-4 sm:p-5">
+      <div className="flex flex-wrap items-start gap-4">
+        <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-brand/10 text-xl font-bold text-brand">
+          <ResolvedImage
+            src={team.logoUrl}
+            alt={`Logo ${team.name}`}
+            className="size-full object-cover object-center"
+            fallback={team.name.charAt(0).toUpperCase()}
+          />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 className="text-lg font-bold text-ink">{team.name}</h3>
+              {team.shortName && (
+                <p className="mt-0.5 text-xs uppercase text-ink-faint">
+                  {team.shortName}
+                </p>
+              )}
+            </div>
+            <StatusBadge status={team.status} />
+          </div>
+          {team.description && (
+            <p className="mt-3 text-sm leading-relaxed text-ink-muted">
+              {team.description}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <section className="mt-5 rounded-xl border border-line bg-surface-sub/45 p-4">
+        <h4 className="text-sm font-semibold text-ink">Người đại diện</h4>
+        <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+          <div>
+            <dt className="text-xs text-ink-faint">Họ tên</dt>
+            <dd className="mt-0.5 break-words text-ink-muted">
+              {team.contactName}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-ink-faint">Email</dt>
+            <dd className="mt-0.5 break-all text-ink-muted">
+              {team.contactEmail}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs text-ink-faint">Điện thoại</dt>
+            <dd className="mt-0.5 text-ink-muted">
+              {team.contactPhone ?? "—"}
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="mt-5">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h4 className="text-sm font-semibold text-ink">Đội hình cầu thủ</h4>
+            <p className="mt-1 text-xs text-ink-muted">
+              {players.length} vị trí cầu thủ đã đăng ký
+            </p>
+          </div>
+          <p className="text-xs text-ink-faint">
+            {minTeamSize}–{maxTeamSize} vị trí · {minTeamSize} thi đấu chính ·
+            tối đa {maxSubstitutes} dự bị
+          </p>
+        </div>
+        <ul className="mt-3 grid gap-3 xl:grid-cols-2">
+          {players.map((member) => (
+            <MemberCard
+              key={member.id}
+              member={member}
+              positionMode={positionMode}
+            />
+          ))}
+        </ul>
+      </section>
+
+      {staff.length > 0 && (
+        <section className="mt-5 border-t border-line pt-5">
+          <h4 className="text-sm font-semibold text-ink">
+            Ban huấn luyện / quản lý
+          </h4>
+          <p className="mt-1 text-xs text-ink-faint">
+            Các vai trò này không chiếm vị trí cầu thủ.
+          </p>
+          <ul className="mt-3 grid gap-3 xl:grid-cols-2">
+            {staff.map((member) => (
+              <MemberCard
+                key={member.id}
+                member={member}
+                positionMode={positionMode}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {team.status === "REJECTED" && team.rejectReason && (
+        <div className="mt-5 rounded-xl border border-rejected/30 bg-rejected/10 p-4">
+          <p className="text-xs font-semibold uppercase text-rejected">
+            Lý do từ chối
+          </p>
+          <p className="mt-2 text-sm text-ink-muted">{team.rejectReason}</p>
+        </div>
+      )}
+
+      {team.status === "PENDING" && (
+        <section className="mt-5 border-t border-line pt-5">
+          <label
+            className="block text-sm font-medium text-ink"
+            htmlFor={`reject-${team.id}`}
+          >
+            Lý do từ chối
+          </label>
+          <textarea
+            id={`reject-${team.id}`}
+            value={rejectionReason}
+            onChange={(event) => onRejectionReasonChange(event.target.value)}
+            maxLength={500}
+            rows={3}
+            placeholder="Bắt buộc khi từ chối, tối thiểu 5 ký tự"
+            className="mt-2 w-full rounded-xl border border-line bg-surface-sub px-3 py-2 text-sm text-ink outline-none focus:border-brand"
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onApprove}
+              disabled={working !== null}
+              className="rounded-lg bg-approved px-4 py-2 text-sm font-semibold text-surface disabled:opacity-50"
+            >
+              {working === "approve" ? "Đang duyệt..." : "Duyệt đội"}
+            </button>
+            <button
+              type="button"
+              onClick={onReject}
+              disabled={working !== null}
+              className="rounded-lg border border-rejected/40 bg-rejected/10 px-4 py-2 text-sm font-semibold text-rejected disabled:opacity-50"
+            >
+              {working === "reject" ? "Đang từ chối..." : "Từ chối đội"}
+            </button>
+          </div>
+        </section>
+      )}
+    </article>
+  );
+}

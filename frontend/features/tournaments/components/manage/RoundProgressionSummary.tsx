@@ -45,6 +45,11 @@ export default function RoundProgressionSummary({
         <p className="mt-1 text-sm text-ink-muted">
           {STATE_LABELS[advancement.state]}
         </p>
+        {advancement.readinessReason && (
+          <p className="mt-2 text-xs leading-relaxed text-ink-faint">
+            {advancement.readinessReason}
+          </p>
+        )}
       </div>
 
       {advancement.nextRound && (

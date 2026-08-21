@@ -286,7 +286,7 @@ export default function RegisterTeamPage({
   if (registeredTeam) {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-16">
-        <section className="w-full rounded-2xl border border-approved/30 bg-surface-card p-6 shadow-xl shadow-black/10 sm:p-8">
+        <section className="w-full rounded-2xl border border-approved/30 bg-surface-card p-6 shadow-[var(--shadow-elevated)] sm:p-8">
           <h1 className="text-xl font-bold text-ink">
             Đội {registeredTeam.name} đã được đăng ký
           </h1>

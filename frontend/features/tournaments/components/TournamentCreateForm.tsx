@@ -194,7 +194,7 @@ function FormSection({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-line bg-surface-card/90 shadow-xl shadow-black/10">
+    <section className="overflow-hidden rounded-2xl border border-line bg-surface-card/90 shadow-[var(--shadow-elevated)]">
       <div className="flex items-start gap-3 border-b border-line/80 bg-surface-sub/45 px-5 py-4 sm:px-6">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand/20 to-brand-secondary/15 text-brand-hover">
           <Icon size={22} weight="duotone" />
@@ -746,7 +746,7 @@ export default function TournamentCreateForm() {
   if (createdTournament) {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-16">
-        <section className="w-full rounded-2xl border border-approved/30 bg-surface-card p-6 shadow-xl shadow-black/10 sm:p-8">
+        <section className="w-full rounded-2xl border border-approved/30 bg-surface-card p-6 shadow-[var(--shadow-elevated)] sm:p-8">
           <h1 className="text-xl font-bold text-ink">Giải đấu đã được tạo</h1>
           <p className="mt-2 text-sm leading-6 text-ink-muted">
             Banner chưa tải lên được: {createdTournament.uploadError} Giải đấu
@@ -1799,7 +1799,7 @@ export default function TournamentCreateForm() {
             </p>
           )}
 
-          <div className="sticky bottom-4 z-30 flex flex-col-reverse gap-3 rounded-2xl border border-line bg-surface-card/95 p-4 shadow-2xl shadow-black/35 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+          <div className="sticky bottom-4 z-30 flex flex-col-reverse gap-3 rounded-2xl border border-line bg-surface-card/95 p-4 shadow-[var(--shadow-elevated)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-5 text-ink-faint">
               Slug, người tổ chức và trạng thái xác minh được hệ thống tự quản
               lý.

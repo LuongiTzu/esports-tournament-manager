@@ -169,7 +169,7 @@ export default function TournamentDiscovery() {
       </header>
 
       <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
-        <div className="relative z-10 -mt-7 rounded-2xl border border-line bg-surface-card/95 p-4 shadow-2xl shadow-black/25 backdrop-blur-xl sm:p-5">
+        <div className="relative z-10 -mt-7 rounded-2xl border border-line bg-surface-card/95 p-4 shadow-[var(--shadow-elevated)] backdrop-blur-xl sm:p-5">
           <div className="mb-4 flex items-center gap-2 text-sm font-bold text-ink">
             <span className="grid size-8 place-items-center rounded-lg bg-brand/15 text-brand-hover">
               <FunnelSimpleIcon size={18} weight="duotone" />

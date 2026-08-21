@@ -61,7 +61,7 @@ export default function RotatingImage({
   const containerClass =
     variant === "fill"
       ? "h-full w-full overflow-hidden bg-surface-card"
-      : "group relative aspect-[16/10] overflow-hidden rounded-[var(--radius-card)] border border-brand/30 bg-surface-card shadow-2xl shadow-black/30 focus-within:shadow-glow-brand";
+      : "group relative aspect-[16/10] overflow-hidden rounded-[var(--radius-card)] border border-brand/30 bg-surface-card shadow-[var(--shadow-elevated)] focus-within:shadow-glow-brand";
 
   return (
     <div

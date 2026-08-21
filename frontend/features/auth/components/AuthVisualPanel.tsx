@@ -63,7 +63,7 @@ export default function AuthVisualPanel({
       />
       <div
         aria-hidden
-        className="absolute inset-0 -z-20 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-surface)_35%,transparent)_0%,color-mix(in_oklab,var(--color-surface)_62%,transparent)_48%,var(--color-surface)_100%),linear-gradient(110deg,color-mix(in_oklab,var(--color-brand)_32%,transparent),color-mix(in_oklab,var(--color-brand-secondary)_24%,transparent))]"
+        className="absolute inset-0 -z-20 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-visual-backdrop)_35%,transparent)_0%,color-mix(in_oklab,var(--color-visual-backdrop)_62%,transparent)_48%,var(--color-visual-backdrop)_100%),linear-gradient(110deg,color-mix(in_oklab,var(--color-brand)_32%,transparent),color-mix(in_oklab,var(--color-brand-secondary)_24%,transparent))]"
       />
       <div
         aria-hidden
@@ -76,7 +76,7 @@ export default function AuthVisualPanel({
 
       <div className="flex w-full flex-col p-6 sm:p-8 md:p-10">
         <div className="mt-auto max-w-lg pt-14 md:pt-20">
-          <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-brand-hover">
+          <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-visual-accent">
             <LightningIcon size={17} weight="fill" />
             Nền tảng tổ chức Esports
           </p>

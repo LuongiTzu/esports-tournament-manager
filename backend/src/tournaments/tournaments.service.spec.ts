@@ -414,8 +414,16 @@ describe('TournamentsService standings read model', () => {
           status: RoundStatus.COMPLETED,
           settings: {},
           matches: [
-            { status: MatchStatus.COMPLETED, isActive: true },
-            { status: MatchStatus.COMPLETED, isActive: true },
+            {
+              status: MatchStatus.COMPLETED,
+              isActive: true,
+              bracketRound: 1,
+            },
+            {
+              status: MatchStatus.COMPLETED,
+              isActive: true,
+              bracketRound: 1,
+            },
           ],
           participants: [],
           advancedTeams: [
@@ -491,6 +499,86 @@ describe('TournamentsService standings read model', () => {
       }),
     );
     expect(result.rounds[1].participants).toHaveLength(1);
+  });
+
+  it('does not offer Swiss advancement before the final configured iteration', async () => {
+    const swissMatch = {
+      status: MatchStatus.COMPLETED,
+      isActive: true,
+      bracketRound: 2,
+    };
+    const tournament = {
+      id: 'tournament-1',
+      name: 'Swiss Cup',
+      status: TournamentStatus.ONGOING,
+      organizerId: 'organizer-1',
+      visibility: 'PUBLIC',
+      moderationStatus: 'ACTIVE',
+      teams: [],
+      rounds: [
+        {
+          id: 'swiss',
+          name: 'Swiss',
+          orderIndex: 0,
+          format: RoundFormat.SWISS,
+          status: RoundStatus.ONGOING,
+          settings: { numberOfRounds: 3, advancingTeamCount: 4 },
+          matches: [swissMatch],
+          participants: [],
+          advancedTeams: [],
+        },
+        {
+          id: 'playoff',
+          name: 'Playoff',
+          orderIndex: 1,
+          format: RoundFormat.PLAYOFF,
+          status: RoundStatus.UPCOMING,
+          settings: { thirdPlaceMatch: false },
+          matches: [],
+          participants: [],
+          advancedTeams: [],
+        },
+      ],
+    };
+    const prisma = {
+      tournament: { findUnique: jest.fn().mockResolvedValue(tournament) },
+    } as unknown as PrismaService;
+    const standingsService = {
+      forTournament: jest.fn().mockResolvedValue({
+        tournamentId: tournament.id,
+        rounds: [
+          {
+            roundId: 'swiss',
+            standings: Array.from({ length: 8 }, (_, index) => ({
+              teamId: `team-${index + 1}`,
+            })),
+          },
+          { roundId: 'playoff', standings: [] },
+        ],
+      }),
+    } as unknown as StandingsService;
+    const service = new TournamentsService(
+      prisma,
+      new RoundSettingsService(),
+      standingsService,
+      {} as ContentFilterService,
+    );
+
+    const beforeFinal = await service.getStandings('swiss-cup');
+    expect(beforeFinal.rounds[0].advancement).toEqual(
+      expect.objectContaining({
+        state: 'IN_PROGRESS',
+        readinessReason: 'Swiss mới hoàn tất 2/3 lượt ghép cặp.',
+      }),
+    );
+
+    swissMatch.bracketRound = 3;
+    const afterFinal = await service.getStandings('swiss-cup');
+    expect(afterFinal.rounds[0].advancement).toEqual(
+      expect.objectContaining({
+        state: 'AWAITING_ADVANCEMENT',
+      }),
+    );
   });
 });
 

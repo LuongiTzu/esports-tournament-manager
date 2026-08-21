@@ -126,14 +126,6 @@ async function cleanOwnedSeedData(prisma: PrismaService): Promise<void> {
   await prisma.tournament.deleteMany({
     where: { slug: { startsWith: SEED_SLUG_PREFIX } },
   });
-  await prisma.user.deleteMany({
-    where: {
-      OR: [
-        { email: { endsWith: `@${SEED_EMAIL_DOMAIN}` } },
-        { email: 'admin@esports.com' },
-      ],
-    },
-  });
 }
 
 async function seedGames(prisma: PrismaService): Promise<void> {
@@ -156,19 +148,24 @@ async function seedGames(prisma: PrismaService): Promise<void> {
 async function seedUsers(prisma: PrismaService): Promise<void> {
   const passwordHash = await bcrypt.hash(DEVELOPMENT_PASSWORD, BCRYPT_ROUNDS);
   for (const user of SEED_USERS) {
-    await prisma.user.create({
-      data: {
+    const profile = {
+      passwordHash,
+      displayName: user.displayName,
+      role: user.role,
+      gender: user.gender,
+      phoneNumber: user.phoneNumber,
+      birthDate: new Date(user.birthDate),
+      currentAddress: user.currentAddress,
+      bio: user.bio,
+      avatarUrl: null,
+    };
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: profile,
+      create: {
         id: user.id,
         email: user.email,
-        passwordHash,
-        displayName: user.displayName,
-        role: user.role,
-        gender: user.gender,
-        phoneNumber: user.phoneNumber,
-        birthDate: new Date(user.birthDate),
-        currentAddress: user.currentAddress,
-        bio: user.bio,
-        avatarUrl: null,
+        ...profile,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
       },
     });

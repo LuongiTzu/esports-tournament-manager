@@ -23,6 +23,10 @@ import { RoundSettingsService } from '../brackets/round-settings.service';
 import { StandingsService } from '../brackets/standings.service';
 import { ContentFilterService } from '../common/services/content-filter.service';
 import { GAME_CATALOG_NAMES } from '../games/game-catalog';
+import {
+  resolveSwissNumberOfRounds,
+  SwissSettings,
+} from '../brackets/types/round-settings';
 
 /** Field của Game cần trả kèm giải đấu — FE dùng để biết giới hạn đội hình */
 const GAME_SELECT = {
@@ -596,7 +600,7 @@ export class TournamentsService {
             status: true,
             settings: true,
             matches: {
-              select: { status: true, isActive: true },
+              select: { status: true, isActive: true, bracketRound: true },
             },
             participants: {
               orderBy: { createdAt: 'asc' },
@@ -670,6 +674,7 @@ export class TournamentsService {
       },
       rounds: tournament.rounds.map((round, index) => {
         const nextRound = tournament.rounds[index + 1] ?? null;
+        const roundStandings = standingsByRound.get(round.id) ?? [];
         const requiredMatches = round.matches.filter((match) => match.isActive);
         const completedRequiredMatches = requiredMatches.filter(
           (match) => match.status === MatchStatus.COMPLETED,
@@ -680,21 +685,59 @@ export class TournamentsService {
         const advancementSupported =
           round.format === RoundFormat.GROUP_STAGE ||
           round.format === RoundFormat.SWISS;
+        const currentSwissIteration =
+          round.format === RoundFormat.SWISS
+            ? Math.max(
+                0,
+                ...round.matches.map((match) => match.bracketRound ?? 0),
+              )
+            : null;
+        const requiredSwissIterations =
+          round.format === RoundFormat.SWISS
+            ? resolveSwissNumberOfRounds(
+                roundStandings.length,
+                (
+                  this.roundSettingsService.getEffectiveSettings(
+                    RoundFormat.SWISS,
+                    round.settings,
+                  ) as SwissSettings
+                ).numberOfRounds,
+              )
+            : null;
+        const swissFinalIterationReached =
+          currentSwissIteration === null ||
+          requiredSwissIterations === null ||
+          currentSwissIteration === requiredSwissIterations;
         const progressionState = !round.matches.length
           ? 'NOT_GENERATED'
           : !allRequiredMatchesCompleted
             ? 'IN_PROGRESS'
-            : !nextRound
-              ? 'TERMINAL_COMPLETE'
-              : !advancementSupported
-                ? 'ADVANCEMENT_UNSUPPORTED'
-                : !round.advancedTeams.length
-                  ? 'AWAITING_ADVANCEMENT'
-                  : !nextRound.matches.length
-                    ? 'READY_FOR_GENERATION'
-                    : nextRound.status === RoundStatus.COMPLETED
-                      ? 'NEXT_STAGE_COMPLETED'
-                      : 'NEXT_STAGE_GENERATED';
+            : !swissFinalIterationReached
+              ? 'IN_PROGRESS'
+              : !nextRound
+                ? 'TERMINAL_COMPLETE'
+                : !advancementSupported
+                  ? 'ADVANCEMENT_UNSUPPORTED'
+                  : !round.advancedTeams.length
+                    ? 'AWAITING_ADVANCEMENT'
+                    : !nextRound.matches.length
+                      ? 'READY_FOR_GENERATION'
+                      : nextRound.status === RoundStatus.COMPLETED
+                        ? 'NEXT_STAGE_COMPLETED'
+                        : 'NEXT_STAGE_GENERATED';
+        const readinessReason = !round.matches.length
+          ? 'Giai đoạn chưa được tạo.'
+          : !allRequiredMatchesCompleted
+            ? `Còn ${requiredMatches.length - completedRequiredMatches} trận bắt buộc chưa hoàn tất.`
+            : !swissFinalIterationReached
+              ? `Swiss mới hoàn tất ${currentSwissIteration}/${requiredSwissIterations} lượt ghép cặp.`
+              : progressionState === 'AWAITING_ADVANCEMENT'
+                ? 'Giai đoạn đã hoàn tất và đủ điều kiện để hệ thống xác định đội đi tiếp.'
+                : progressionState === 'READY_FOR_GENERATION'
+                  ? 'Đội đi tiếp đã được lưu; vòng tiếp theo đang chờ tạo cấu trúc.'
+                  : progressionState === 'ADVANCEMENT_UNSUPPORTED'
+                    ? 'Thể thức hiện tại không có quy tắc chuyển vòng được cấu hình.'
+                    : null;
 
         return {
           roundId: round.id,
@@ -706,7 +749,7 @@ export class TournamentsService {
             format: round.format,
             status: round.status,
           },
-          standings: standingsByRound.get(round.id) ?? [],
+          standings: roundStandings,
           progress: {
             totalMatches: round.matches.length,
             completedMatches: round.matches.filter(
@@ -720,6 +763,7 @@ export class TournamentsService {
           advancement: {
             supported: advancementSupported,
             state: progressionState,
+            readinessReason,
             nextRound: nextRound
               ? {
                   id: nextRound.id,

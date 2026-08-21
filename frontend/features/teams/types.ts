@@ -4,11 +4,7 @@ import type { TournamentStatus } from "@/shared/types/tournament-status";
 export type TeamStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type Gender = "MALE" | "FEMALE" | "OTHER";
 export type MemberRole =
-  | "CAPTAIN"
-  | "PLAYER"
-  | "SUBSTITUTE"
-  | "COACH"
-  | "MANAGER";
+  "CAPTAIN" | "PLAYER" | "SUBSTITUTE" | "COACH" | "MANAGER";
 
 export interface TeamWithMembers {
   id: string;
@@ -46,6 +42,37 @@ export interface TeamMember {
   memberRole: MemberRole;
   avatarUrl: string | null;
   orderIndex: number;
+}
+
+export interface TeamDetail extends TeamWithMembers {
+  members: TeamMember[];
+  tournament: {
+    id: string;
+    slug: string;
+    name: string;
+    status: TournamentStatus;
+    organizerId: string;
+  };
+  canViewSensitiveInfo: boolean;
+  history: {
+    completedMatches: number;
+    wins: number;
+    draws: number;
+    losses: number;
+    finalRank: number | null;
+    recentMatches: Array<{
+      id: string;
+      scoreA: number;
+      scoreB: number;
+      winnerTeamId: string | null;
+      outcome: "TEAM_A" | "TEAM_B" | "DRAW" | null;
+      scheduledAt: string | null;
+      playedAt: string | null;
+      teamA: { id: string; name: string; shortName: string | null } | null;
+      teamB: { id: string; name: string; shortName: string | null } | null;
+      round: { id: string; name: string; format: string };
+    }>;
+  };
 }
 
 export type ApprovedTeam = Omit<TeamWithMembers, "members">;
@@ -128,5 +155,4 @@ export interface MyTeam extends TeamWithMembers {
 }
 
 export type UpdateTeamStatusRequest =
-  | { status: "APPROVED" }
-  | { status: "REJECTED"; rejectReason: string };
+  { status: "APPROVED" } | { status: "REJECTED"; rejectReason: string };

@@ -1,4 +1,5 @@
 import type {
+  AdvanceRoundResult,
   CreateTournamentRequest,
   CreateRoundRequest,
   FindAllTournamentsParams,
@@ -9,6 +10,7 @@ import type {
   TournamentBracket,
   TournamentDetail,
   TournamentStandingsResponse,
+  UpdateTournamentLifecycleRequest,
 } from "@/features/tournaments/types";
 import { request } from "@/lib/api/client";
 import { uploadImage } from "@/lib/api/upload";
@@ -31,6 +33,15 @@ export const tournamentsApi = {
   create: (data: CreateTournamentRequest) =>
     request<Tournament>("/tournaments", {
       method: "POST",
+      body: JSON.stringify(data),
+      auth: true,
+    }),
+  updateLifecycle: (
+    tournamentId: string,
+    data: UpdateTournamentLifecycleRequest,
+  ) =>
+    request<Tournament>(`/tournaments/${tournamentId}`, {
+      method: "PATCH",
       body: JSON.stringify(data),
       auth: true,
     }),
@@ -58,6 +69,11 @@ export const tournamentsApi = {
       `/rounds/${roundId}/swiss/generate-next`,
       { method: "POST", auth: true },
     ),
+  advanceRound: (roundId: string) =>
+    request<AdvanceRoundResult>(`/rounds/${roundId}/advance`, {
+      method: "POST",
+      auth: true,
+    }),
   findMine: (tab: "organized" | "joined") =>
     request<Tournament[]>(`/users/me/tournaments?tab=${tab}`, { auth: true }),
 };

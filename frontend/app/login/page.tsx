@@ -105,7 +105,7 @@ export default function LoginPage() {
               onClick={() => setShowPassword((visible) => !visible)}
               aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
               aria-pressed={showPassword}
-              className="absolute right-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-ink-faint transition hover:bg-white/5 hover:text-brand-hover focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+              className="absolute right-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-ink-faint transition hover:bg-surface-hover hover:text-brand-hover focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
             >
               {showPassword ? <EyeSlashIcon size={19} /> : <EyeIcon size={19} />}
             </button>

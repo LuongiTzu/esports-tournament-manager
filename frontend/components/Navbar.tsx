@@ -14,6 +14,7 @@ import { logout, useAuth } from "@/features/auth/store";
 import { useLocale } from "@/features/locale/store";
 import type { Locale } from "@/features/locale/types";
 import ResolvedImage from "@/components/ResolvedImage";
+import ThemeSwitcher from "@/features/theme/ThemeSwitcher";
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -146,11 +147,12 @@ export default function Navbar() {
 
         <div className="ml-auto hidden items-center gap-1.5 lg:flex">
           <LanguageSwitcher />
+          <ThemeSwitcher />
           {!ready ? (
             <div aria-label={t("nav.loadingAccount")} className="ml-1 h-9 w-32 animate-pulse rounded-lg bg-surface-sub" />
           ) : user ? (
             <>
-              <Link href="/users/me" className="ml-1 inline-flex max-w-40 items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-ink-muted transition hover:bg-white/5 hover:text-ink">
+              <Link href="/users/me" className="ml-1 inline-flex max-w-40 items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-ink-muted transition hover:bg-surface-hover hover:text-ink">
                 <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xs font-bold text-on-brand">
                   <ResolvedImage
                     src={user.avatarUrl}
@@ -171,7 +173,7 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/login" className="ml-1 rounded-lg px-2.5 py-2 text-sm font-medium text-ink-muted transition hover:bg-white/5 hover:text-ink">
+              <Link href="/login" className="ml-1 rounded-lg px-2.5 py-2 text-sm font-medium text-ink-muted transition hover:bg-surface-hover hover:text-ink">
                 {t("nav.login")}
               </Link>
               <Link href="/register" className="rounded-lg border border-line px-3 py-2 text-sm font-semibold text-ink transition hover:border-brand/50 hover:bg-brand/5">
@@ -201,7 +203,7 @@ export default function Navbar() {
       </div>
 
       {menuOpen && (
-        <nav id="mobile-navigation" aria-label={t("nav.mobile")} className="border-t border-line bg-surface/98 px-4 py-4 shadow-2xl shadow-black/30 lg:hidden">
+        <nav id="mobile-navigation" aria-label={t("nav.mobile")} className="border-t border-line bg-surface/98 px-4 py-4 shadow-[var(--shadow-elevated)] lg:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-1">
             {mainLinks.map((link) => {
               const active = !link.href.includes("#") && isActive(pathname, link.href);
@@ -217,6 +219,10 @@ export default function Navbar() {
                 </Link>
               );
             })}
+            <div className="my-2 flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-card px-3 py-2">
+              <span className="text-sm font-medium text-ink-muted">{t("theme.label")}</span>
+              <ThemeSwitcher />
+            </div>
             <div className="my-2 border-t border-line" />
             {ready && user ? (
               <>

@@ -7,7 +7,7 @@ import {
 
 export default function TournamentCreateHero() {
   return (
-    <section className="relative isolate min-h-64 overflow-hidden rounded-3xl border border-line bg-surface-card/75 shadow-2xl shadow-black/20 sm:min-h-72">
+    <section className="relative isolate min-h-64 overflow-hidden rounded-3xl border border-line bg-surface-card/75 shadow-[var(--shadow-elevated)] sm:min-h-72">
       <div
         aria-hidden
         className="absolute left-1/2 top-1/2 -z-20 size-[30rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-brand/20"

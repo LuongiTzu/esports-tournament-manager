@@ -114,6 +114,10 @@ export interface Tournament {
   moderationStatus?: "ACTIVE" | "HIDDEN_BY_ADMIN";
   isVerified?: boolean;
   registrationOpen: boolean;
+  minTeamSize: number;
+  maxTeamSize: number;
+  registrationStartDate?: string | null;
+  registrationDeadline?: string | null;
   maxTeams?: number | null;
   startDate?: string | null;
   endDate?: string | null;
@@ -273,6 +277,7 @@ interface RoundStandingsBase {
   advancement: {
     supported: boolean;
     state: RoundProgressionState;
+    readinessReason: string | null;
     nextRound:
       | (Pick<
           TournamentRound,
@@ -331,6 +336,34 @@ export interface GenerateSwissIterationResult {
   matchIds: string[];
   bye: { matchId: string; teamId: string } | null;
   warnings: string[];
+}
+
+export interface AdvanceRoundResult {
+  roundId: string;
+  currentRound: {
+    id: string;
+    format: TournamentRound["format"];
+    orderIndex: number;
+  };
+  nextRound: {
+    id: string;
+    name: string;
+    format: TournamentRound["format"];
+  } | null;
+  advanceCount: number;
+  advanceCountPerGroup?: number;
+  qualifiedTeams: Array<
+    Pick<BracketTeam, "id" | "name" | "seed"> &
+      Partial<Pick<BracketTeam, "shortName" | "logoUrl">>
+  >;
+  teamIds: string[];
+  progressionMode: "ROUND_PARTICIPANTS" | "MATCH_LINKAGE";
+  prepared: boolean;
+  persisted: boolean;
+}
+
+export interface UpdateTournamentLifecycleRequest {
+  registrationOpen: boolean;
 }
 
 export interface CreateTournamentRequest {

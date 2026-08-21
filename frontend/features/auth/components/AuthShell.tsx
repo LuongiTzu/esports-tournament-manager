@@ -30,7 +30,7 @@ export default function AuthShell({
           className="absolute bottom-[8%] right-[6%] -z-10 size-80 rounded-full bg-brand-secondary/10 blur-3xl"
         />
 
-        <div className="mx-auto grid w-full max-w-[69.375rem] overflow-hidden rounded-[1.25rem] border border-line bg-surface-card shadow-[0_28px_70px_rgb(0_0_0_/_0.32)] md:grid-cols-[1.05fr_0.95fr]">
+        <div className="mx-auto grid w-full max-w-[69.375rem] overflow-hidden rounded-[1.25rem] border border-line bg-surface-card shadow-[var(--shadow-elevated)] md:grid-cols-[1.05fr_0.95fr]">
           {visual}
           <section className="flex min-h-[34rem] flex-col justify-center p-6 sm:p-9 md:p-8 lg:p-10">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-hover">
