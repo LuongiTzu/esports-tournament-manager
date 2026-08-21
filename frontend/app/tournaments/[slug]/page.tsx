@@ -24,6 +24,12 @@ function formatDate(d?: string | null) {
   return d ? new Date(d).toLocaleDateString("vi-VN") : "Chưa xác định";
 }
 
+const tournamentModeLabels = {
+  ONLINE: "Trực tuyến",
+  OFFLINE: "Trực tiếp",
+  HYBRID: "Kết hợp",
+} as const;
+
 export default function TournamentDetailPage({
   params,
 }: {
@@ -210,9 +216,9 @@ export default function TournamentDetailPage({
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-ink-faint">Chế độ</dt>
+            <dt className="text-xs text-ink-faint">Hình thức</dt>
             <dd className="mt-1 font-medium text-ink">
-              {tournament.visibility === "PUBLIC" ? "Công khai" : "Riêng tư"}
+              {tournamentModeLabels[tournament.mode]}
             </dd>
           </div>
         </dl>

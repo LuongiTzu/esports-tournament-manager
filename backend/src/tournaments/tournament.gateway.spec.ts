@@ -155,6 +155,7 @@ describe('TournamentGateway', () => {
       tournamentId: 't-1',
       type: 'SYSTEM',
       content: 'Hello',
+      deduplicationKey: null,
       isRead: false,
       createdAt: new Date(),
     } as const;

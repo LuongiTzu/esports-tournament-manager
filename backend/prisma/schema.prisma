@@ -30,12 +30,12 @@ enum Gender {
 
 /// Thể loại game — quyết định danh sách vị trí thi đấu hợp lệ
 enum GameGenre {
-  MOBA            /// LOL, Dota 2, Liên Quân Mobile
-  FPS             /// Valorant, Counter-Strike 2
-  SPORTS          /// FC Online, PES
-  BATTLE_ROYALE   /// PUBG, Free Fire
-  FIGHTING        /// Tekken, Street Fighter
-  CARD            /// Hearthstone, Yu-Gi-Oh
+  MOBA /// LOL, Dota 2, Liên Quân Mobile
+  FPS /// Valorant, Counter-Strike 2
+  SPORTS /// FC Online, PES
+  BATTLE_ROYALE /// PUBG, Free Fire
+  FIGHTING /// Tekken, Street Fighter
+  CARD /// Hearthstone, Yu-Gi-Oh
   OTHER
 }
 
@@ -54,11 +54,11 @@ enum Visibility {
 
 /// Vòng đời giải đấu
 enum TournamentStatus {
-  DRAFT           /// Bản nháp, chưa công bố
-  REGISTRATION    /// Đang mở đăng ký
-  ONGOING         /// Đang thi đấu
-  COMPLETED       /// Đã kết thúc
-  CANCELLED       /// Đã hủy
+  DRAFT /// Bản nháp, chưa công bố
+  REGISTRATION /// Đang mở đăng ký
+  ONGOING /// Đang thi đấu
+  COMPLETED /// Đã kết thúc
+  CANCELLED /// Đã hủy
 }
 
 /// Hình thức tổ chức giải đấu
@@ -76,11 +76,11 @@ enum ModerationStatus {
 
 /// Thể thức thi đấu của từng Round
 enum RoundFormat {
-  ROUND_ROBIN     /// Vòng tròn tính điểm
-  GROUP_STAGE     /// Vòng bảng
-  SWISS           /// Thụy Sĩ
-  PLAYOFF         /// Playoff (Single Elimination)
-  DOUBLE_ELIM     /// Nhánh thắng - thua
+  ROUND_ROBIN /// Vòng tròn tính điểm
+  GROUP_STAGE /// Vòng bảng
+  SWISS /// Thụy Sĩ
+  PLAYOFF /// Playoff (Single Elimination)
+  DOUBLE_ELIM /// Nhánh thắng - thua
 }
 
 /// Trạng thái của Round
@@ -99,11 +99,11 @@ enum RegistrationStatus {
 
 /// Vai trò của thành viên trong đội
 enum MemberRole {
-  CAPTAIN     /// Đội trưởng — đúng 1 người mỗi đội
-  PLAYER      /// Thành viên chính thức
-  SUBSTITUTE  /// Dự bị
-  COACH       /// Huấn luyện viên
-  MANAGER     /// Quản lý đội
+  CAPTAIN /// Đội trưởng — đúng 1 người mỗi đội
+  PLAYER /// Thành viên chính thức
+  SUBSTITUTE /// Dự bị
+  COACH /// Huấn luyện viên
+  MANAGER /// Quản lý đội
 }
 
 /// Trạng thái trận đấu
@@ -175,34 +175,34 @@ enum BannedKeywordCategory {
 
 /// Tài khoản hệ thống - Admin hoặc Signed-up User (BTC + Người tham gia gộp chung)
 model User {
-  id              String    @id @default(cuid())
-  email           String    @unique
-  passwordHash    String    @map("password_hash")  /// Mật khẩu mã hóa bcrypt
-  displayName     String    @map("display_name")
-  avatarUrl       String?   @map("avatar_url")
-  birthDate       DateTime? @map("birth_date")   /// Ngày sinh
-  currentAddress  String?   @map("current_address")  /// Nơi ở hiện tại
-  phoneNumber     String?   @map("phone_number")     /// Số điện thoại
-  gender          Gender?   /// Giới tính
-  bio             String?   /// Giới thiệu bản thân
-  role            Role      @default(SIGNED_UP_USER)
-  isLocked        Boolean   @default(false) @map("is_locked")  /// Admin khóa tài khoản
-  refreshToken    String?   @map("refresh_token")  /// Hash refresh token
-  tokenVersion    Int       @default(0) @map("token_version")  /// Tăng lên khi logout/đổi mật khẩu để vô hiệu access token cũ
-  resetPasswordToken    String?   @map("reset_password_token")  /// Hash token đặt lại mật khẩu
-  resetPasswordExpires  DateTime? @map("reset_password_expires")  /// Hạn sử dụng token đặt lại mật khẩu
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  passwordHash         String    @map("password_hash") /// Mật khẩu mã hóa bcrypt
+  displayName          String    @map("display_name")
+  avatarUrl            String?   @map("avatar_url")
+  birthDate            DateTime? @map("birth_date") /// Ngày sinh
+  currentAddress       String?   @map("current_address") /// Nơi ở hiện tại
+  phoneNumber          String?   @map("phone_number") /// Số điện thoại
+  gender               Gender? /// Giới tính
+  bio                  String? /// Giới thiệu bản thân
+  role                 Role      @default(SIGNED_UP_USER)
+  isLocked             Boolean   @default(false) @map("is_locked") /// Admin khóa tài khoản
+  refreshToken         String?   @map("refresh_token") /// Hash refresh token
+  tokenVersion         Int       @default(0) @map("token_version") /// Tăng lên khi logout/đổi mật khẩu để vô hiệu access token cũ
+  resetPasswordToken   String?   @map("reset_password_token") /// Hash token đặt lại mật khẩu
+  resetPasswordExpires DateTime? @map("reset_password_expires") /// Hạn sử dụng token đặt lại mật khẩu
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  organizedTournaments Tournament[]  @relation("OrganizerTournaments")
-  captainedTeams       Team[]        @relation("CaptainedTeams")
+  organizedTournaments Tournament[]   @relation("OrganizerTournaments")
+  captainedTeams       Team[]         @relation("CaptainedTeams")
   teamMembers          TeamMember[]
   comments             Comment[]
   notifications        Notification[]
-  reportedReports      Report[]      @relation("ReporterReports")
-  reviewedReports      Report[]      @relation("ReviewedReports")
+  reportedReports      Report[]       @relation("ReporterReports")
+  reviewedReports      Report[]       @relation("ReviewedReports")
 
   @@map("users")
 }
@@ -210,15 +210,15 @@ model User {
 /// Danh mục tựa game hỗ trợ
 model Game {
   id           String           @id @default(cuid())
-  name         String           @unique  /// VD: "League of Legends", "Valorant", "Tekken 8"
+  name         String           @unique /// VD: "League of Legends", "Valorant", "Tekken 8"
   iconUrl      String?          @map("icon_url")
-  genre        GameGenre        @default(OTHER)  /// Thể loại — quyết định danh sách vị trí thi đấu
-  positions    Json?             /// Mã vị trí ổn định, VD: ["TOP","JUNGLE","MID","BOT","SUPPORT"]
+  genre        GameGenre        @default(OTHER) /// Thể loại — quyết định danh sách vị trí thi đấu
+  positions    Json? /// Mã vị trí ổn định, VD: ["TOP","JUNGLE","MID","BOT","SUPPORT"]
   positionMode GamePositionMode @default(NONE) @map("position_mode")
 
-  defaultTeamSize Int @map("default_team_size")  /// Số người thi đấu mỗi bên (LOL=5, Tekken=1)
-  minTeamSize     Int @map("min_team_size")      /// Số người tối thiểu để đội hợp lệ
-  maxTeamSize     Int @map("max_team_size")      /// Số người tối đa kể cả dự bị
+  defaultTeamSize Int @map("default_team_size") /// Số người thi đấu mỗi bên (LOL=5, Tekken=1)
+  minTeamSize     Int @map("min_team_size") /// Số người tối thiểu để đội hợp lệ
+  maxTeamSize     Int @map("max_team_size") /// Số người tối đa kể cả dự bị
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -230,56 +230,56 @@ model Game {
 
 /// Giải đấu
 model Tournament {
-  id                String           @id @default(cuid())
-  name              String
-  slug              String           @unique  /// Dùng cho link chia sẻ
-  description       String?
-  rules             String?          /// Thể lệ giải đấu
-  bannerUrl         String?          @map("banner_url")
-  visibility        Visibility       @default(PUBLIC)
-  moderationStatus  ModerationStatus @default(ACTIVE) @map("moderation_status")
-  isVerified        Boolean          @default(false) @map("is_verified")
-  registrationOpen  Boolean          @default(true) @map("registration_open")
-  maxTeams          Int?             @map("max_teams")
-  startDate         DateTime?        @map("start_date")
-  endDate           DateTime?        @map("end_date")
+  id               String           @id @default(cuid())
+  name             String
+  slug             String           @unique /// Dùng cho link chia sẻ
+  description      String?
+  rules            String? /// Thể lệ giải đấu
+  bannerUrl        String?          @map("banner_url")
+  visibility       Visibility       @default(PUBLIC)
+  moderationStatus ModerationStatus @default(ACTIVE) @map("moderation_status")
+  isVerified       Boolean          @default(false) @map("is_verified")
+  registrationOpen Boolean          @default(true) @map("registration_open")
+  maxTeams         Int?             @map("max_teams")
+  startDate        DateTime?        @map("start_date")
+  endDate          DateTime?        @map("end_date")
 
   // ─── Setting mở rộng (V2) ──────────────────────────────────
-  status TournamentStatus @default(REGISTRATION)  /// Vòng đời giải đấu
-  mode   TournamentMode   @default(ONLINE)        /// Online / Offline / Hybrid
-  location String?        /// Địa điểm — bắt buộc khi mode != ONLINE
+  status   TournamentStatus @default(REGISTRATION) /// Vòng đời giải đấu
+  mode     TournamentMode   @default(ONLINE) /// Online / Offline / Hybrid
+  location String? /// Địa điểm — bắt buộc khi mode != ONLINE
 
-  minTeamSize Int @map("min_team_size")  /// Snapshot số người thi đấu chính từ Game.defaultTeamSize
-  maxTeamSize Int @map("max_team_size")  /// Tổng số vị trí cầu thủ, gồm cả dự bị
+  minTeamSize Int @map("min_team_size") /// Snapshot số người thi đấu chính từ Game.defaultTeamSize
+  maxTeamSize Int @map("max_team_size") /// Tổng số vị trí cầu thủ, gồm cả dự bị
 
-  minAge         Int?  @map("min_age")          /// Giới hạn tuổi tối thiểu của thành viên
-  maxAge         Int?  @map("max_age")          /// Giới hạn tuổi tối đa của thành viên
-  allowedGenders Json? @map("allowed_genders")  /// Giới hạn giới tính, VD ["FEMALE"]; null = không giới hạn
+  minAge         Int?  @map("min_age") /// Giới hạn tuổi tối thiểu của thành viên
+  maxAge         Int?  @map("max_age") /// Giới hạn tuổi tối đa của thành viên
+  allowedGenders Json? @map("allowed_genders") /// Giới hạn giới tính, VD ["FEMALE"]; null = không giới hạn
 
-  registrationStartDate DateTime? @map("registration_start_date")  /// Thời điểm mở đăng ký
-  registrationDeadline  DateTime? @map("registration_deadline")    /// Hạn chót đăng ký
+  registrationStartDate DateTime? @map("registration_start_date") /// Thời điểm mở đăng ký
+  registrationDeadline  DateTime? @map("registration_deadline") /// Hạn chót đăng ký
 
-  autoApproveTeams      Boolean @default(false) @map("auto_approve_teams")       /// Duyệt đội tự động, bỏ qua PENDING
-  requireMemberFullInfo Boolean @default(true)  @map("require_member_full_info") /// Bắt buộc điền đủ hồ sơ thành viên
+  autoApproveTeams      Boolean @default(false) @map("auto_approve_teams") /// Duyệt đội tự động, bỏ qua PENDING
+  requireMemberFullInfo Boolean @default(true) @map("require_member_full_info") /// Bắt buộc điền đủ hồ sơ thành viên
 
-  prizePool    String? @map("prize_pool")    /// Mô tả cơ cấu giải thưởng
+  prizePool    String? @map("prize_pool") /// Mô tả cơ cấu giải thưởng
   contactEmail String? @map("contact_email") /// Email liên hệ BTC
   contactPhone String? @map("contact_phone") /// SĐT liên hệ BTC
-  contactLink  String? @map("contact_link")  /// Fanpage / Discord của giải
+  contactLink  String? @map("contact_link") /// Fanpage / Discord của giải
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  gameId      String     @map("game_id")
-  game        Game       @relation(fields: [gameId], references: [id])
-  organizerId String     @map("organizer_id")
-  organizer   User       @relation("OrganizerTournaments", fields: [organizerId], references: [id])
+  gameId      String @map("game_id")
+  game        Game   @relation(fields: [gameId], references: [id])
+  organizerId String @map("organizer_id")
+  organizer   User   @relation("OrganizerTournaments", fields: [organizerId], references: [id])
 
-  rounds      Round[]
-  teams       Team[]
-  comments    Comment[]
-  reports     Report[]
+  rounds        Round[]
+  teams         Team[]
+  comments      Comment[]
+  reports       Report[]
   notifications Notification[]
 
   @@index([gameId, visibility, moderationStatus])
@@ -290,11 +290,11 @@ model Tournament {
 /// Vòng/giai đoạn trong giải đấu, mỗi Round có 1 thể thức riêng
 model Round {
   id         String      @id @default(cuid())
-  name       String      /// VD: "Vòng bảng", "Playoff", "Chung kết"
-  orderIndex Int         @map("order_index")  /// Thứ tự vòng trong giải
+  name       String /// VD: "Vòng bảng", "Playoff", "Chung kết"
+  orderIndex Int         @map("order_index") /// Thứ tự vòng trong giải
   format     RoundFormat /// Thể thức riêng của vòng này
-  bestOf     Int         @default(1) @map("best_of")  /// Mặc định BO1/BO3/BO5 cho cả vòng
-  settings   Json?       /// Cấu hình chi tiết (VD: {"numGroups":4, "teamsPerGroup":5, "advanceCount":2})
+  bestOf     Int         @default(1) @map("best_of") /// Mặc định BO1/BO3/BO5 cho cả vòng
+  settings   Json? /// Cấu hình canonical theo RoundFormat; legacy JSON được chuẩn hóa khi đọc
   status     RoundStatus @default(UPCOMING)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -304,8 +304,8 @@ model Round {
   tournamentId String     @map("tournament_id")
   tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
-  matches Match[]
-  groups  Group[]
+  matches       Match[]
+  groups        Group[]
   participants  RoundTeam[] @relation("RoundParticipants")
   advancedTeams RoundTeam[] @relation("RoundAdvancements")
 
@@ -335,9 +335,9 @@ model RoundTeam {
 
 /// Bảng đấu con trong 1 Round (chỉ dùng khi Round format = GROUP_STAGE)
 model Group {
-  id         String   @id @default(cuid())
-  name       String   /// VD: "Bảng A", "Bảng B"
-  orderIndex Int      @map("order_index")
+  id         String @id @default(cuid())
+  name       String /// VD: "Bảng A", "Bảng B"
+  orderIndex Int    @map("order_index")
 
   // Relations
   roundId String @map("round_id")
@@ -363,23 +363,23 @@ model GroupTeam {
 
 /// Đội tham gia 1 giải đấu cụ thể
 model Team {
-  id     String             @id @default(cuid())
-  name   String
-  shortName String?         @map("short_name")  /// Tên viết tắt / tag đội (VD: "T1", "GAM")
-  description String?       /// Giới thiệu đội
-  logoUrl String?           @map("logo_url")    /// Avatar đội
-  status RegistrationStatus @default(PENDING)
-  seed   Int?               /// Hạt giống khi xếp bracket
-  finalRank Int?            @map("final_rank")  /// Thứ hạng cuối cùng
+  id          String             @id @default(cuid())
+  name        String
+  shortName   String?            @map("short_name") /// Tên viết tắt / tag đội (VD: "T1", "GAM")
+  description String? /// Giới thiệu đội
+  logoUrl     String?            @map("logo_url") /// Avatar đội
+  status      RegistrationStatus @default(PENDING)
+  seed        Int? /// Hạt giống khi xếp bracket
+  finalRank   Int?               @map("final_rank") /// Thứ hạng cuối cùng
 
   // ─── Người đại diện (prefill từ tài khoản đăng ký) ──────────
-  contactName  String  @map("contact_name")   /// Tên người đại diện
-  contactEmail String  @map("contact_email")  /// Email đại diện
-  contactPhone String? @map("contact_phone")  /// SĐT đại diện
+  contactName  String  @map("contact_name") /// Tên người đại diện
+  contactEmail String  @map("contact_email") /// Email đại diện
+  contactPhone String? @map("contact_phone") /// SĐT đại diện
 
   // ─── Kết quả duyệt của BTC ──────────────────────────────────
-  rejectReason String?   @map("reject_reason")  /// Lý do BTC từ chối — hiển thị lại cho đội trưởng
-  reviewedAt   DateTime? @map("reviewed_at")    /// Thời điểm BTC duyệt/từ chối
+  rejectReason String?   @map("reject_reason") /// Lý do BTC từ chối — hiển thị lại cho đội trưởng
+  reviewedAt   DateTime? @map("reviewed_at") /// Thời điểm BTC duyệt/từ chối
 
   registeredAt DateTime @default(now()) @map("registered_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -388,7 +388,7 @@ model Team {
   tournamentId String     @map("tournament_id")
   tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
-  captainId String @map("captain_id")  /// Người đăng ký/đại diện đội
+  captainId String @map("captain_id") /// Người đăng ký/đại diện đội
   captain   User   @relation("CaptainedTeams", fields: [captainId], references: [id])
 
   members TeamMember[]
@@ -411,17 +411,17 @@ model Team {
 /// Thành viên trong 1 đội — hồ sơ chi tiết (V2)
 model TeamMember {
   id          String     @id @default(cuid())
-  realName    String     @map("real_name")     /// Tên thật
-  ign         String     /// Tên thi đấu (in-game name)
-  inGameId    String?    @map("in_game_id")    /// ID game (Riot ID, Steam ID, UID...)
-  birthDate   DateTime?  @map("birth_date")    /// Ngày sinh — dùng check minAge/maxAge
-  gender      Gender?    /// Giới tính
-  email       String?    /// Email liên hệ
-  phoneNumber String?    @map("phone_number")  /// SĐT liên hệ
-  position    String?    /// Vị trí thi đấu — validate theo Game.positions
-  memberRole  MemberRole @default(PLAYER) @map("member_role")  /// Chính thức / dự bị / HLV
-  avatarUrl   String?    @map("avatar_url")    /// Ảnh thành viên
-  orderIndex  Int        @default(0) @map("order_index")  /// Thứ tự hiển thị trong roster
+  realName    String     @map("real_name") /// Tên thật
+  ign         String /// Tên thi đấu (in-game name)
+  inGameId    String?    @map("in_game_id") /// ID game (Riot ID, Steam ID, UID...)
+  birthDate   DateTime?  @map("birth_date") /// Ngày sinh — dùng check minAge/maxAge
+  gender      Gender? /// Giới tính
+  email       String? /// Email liên hệ
+  phoneNumber String?    @map("phone_number") /// SĐT liên hệ
+  position    String? /// Vị trí thi đấu — validate theo Game.positions
+  memberRole  MemberRole @default(PLAYER) @map("member_role") /// Chính thức / dự bị / HLV
+  avatarUrl   String?    @map("avatar_url") /// Ảnh thành viên
+  orderIndex  Int        @default(0) @map("order_index") /// Thứ tự hiển thị trong roster
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -440,21 +440,21 @@ model TeamMember {
 
 /// Trận đấu giữa 2 đội
 model Match {
-  id              String      @id @default(cuid())
-  scoreA          Int         @default(0) @map("score_a")  /// Tổng tỉ số đội A (số ván thắng)
-  scoreB          Int         @default(0) @map("score_b")  /// Tổng tỉ số đội B
-  status          MatchStatus @default(PENDING)
-  outcome         MatchOutcome? /// Kết quả tường minh; DRAW không bị nhầm với trận chưa đấu
-  isActive        Boolean     @default(true) @map("is_active")
+  id                  String                    @id @default(cuid())
+  scoreA              Int                       @default(0) @map("score_a") /// Tổng tỉ số đội A (số ván thắng)
+  scoreB              Int                       @default(0) @map("score_b") /// Tổng tỉ số đội B
+  status              MatchStatus               @default(PENDING)
+  outcome             MatchOutcome? /// Kết quả tường minh; DRAW không bị nhầm với trận chưa đấu
+  isActive            Boolean                   @default(true) @map("is_active")
   activationCondition MatchActivationCondition? @map("activation_condition")
-  bracketType     BracketType? @map("bracket_type")  /// Chỉ dùng khi Round format = DOUBLE_ELIM
-  bracketRound    Int?        @map("bracket_round")  /// Vòng trong bracket (1, 2, 3...)
-  matchNumber     Int?        @map("match_number")   /// Thứ tự trận trong bracket_round
-  isBye           Boolean     @default(false) @map("is_bye")  /// Trận nghỉ (Swiss/Playoff lẻ đội)
-  bestOf          Int         @default(1) @map("best_of")     /// BO1/BO3/BO5 theo từng trận
-  scheduledAt     DateTime?   @map("scheduled_at")
-  playedAt        DateTime?   @map("played_at")
-  discordLink     String?     @map("discord_link")
+  bracketType         BracketType?              @map("bracket_type") /// Chỉ dùng khi Round format = DOUBLE_ELIM
+  bracketRound        Int?                      @map("bracket_round") /// Vòng trong bracket (1, 2, 3...)
+  matchNumber         Int?                      @map("match_number") /// Thứ tự trận trong bracket_round
+  isBye               Boolean                   @default(false) @map("is_bye") /// Trận nghỉ (Swiss/Playoff lẻ đội)
+  bestOf              Int                       @default(1) @map("best_of") /// BO1/BO3/BO5 theo từng trận
+  scheduledAt         DateTime?                 @map("scheduled_at")
+  playedAt            DateTime?                 @map("played_at")
+  discordLink         String?                   @map("discord_link")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -463,7 +463,7 @@ model Match {
   roundId String @map("round_id")
   round   Round  @relation(fields: [roundId], references: [id], onDelete: Cascade)
 
-  groupId String? @map("group_id")  /// Chỉ có giá trị khi Round là Group Stage
+  groupId String? @map("group_id") /// Chỉ có giá trị khi Round là Group Stage
   group   Group?  @relation(fields: [groupId], references: [id])
 
   teamAId String? @map("team_a_id")
@@ -476,14 +476,14 @@ model Match {
   winner       Team?   @relation("WinnerTeam", fields: [winnerTeamId], references: [id])
 
   // Tự tham chiếu cho bracket
-  nextMatchId        String? @map("next_match_id")
+  nextMatchId        String?    @map("next_match_id")
   nextMatchSlot      MatchSlot? @map("next_match_slot")
-  nextMatch          Match?  @relation("NextMatch", fields: [nextMatchId], references: [id])
-  prevMatches        Match[] @relation("NextMatch")
-  loserNextMatchId   String? @map("loser_next_match_id")
+  nextMatch          Match?     @relation("NextMatch", fields: [nextMatchId], references: [id])
+  prevMatches        Match[]    @relation("NextMatch")
+  loserNextMatchId   String?    @map("loser_next_match_id")
   loserNextMatchSlot MatchSlot? @map("loser_next_match_slot")
-  loserNextMatch     Match?  @relation("LoserNextMatch", fields: [loserNextMatchId], references: [id])
-  loserPrevMatches   Match[] @relation("LoserNextMatch")
+  loserNextMatch     Match?     @relation("LoserNextMatch", fields: [loserNextMatchId], references: [id])
+  loserPrevMatches   Match[]    @relation("LoserNextMatch")
 
   scores MatchScore[]
 
@@ -495,10 +495,10 @@ model Match {
 
 /// Tỉ số chi tiết từng ván/map (hỗ trợ BO3, BO5)
 model MatchScore {
-  id          String @id @default(cuid())
-  setNumber   Int    @map("set_number")  /// Số thứ tự ván (1, 2, 3...)
-  teamAScore  Int    @default(0) @map("team_a_score")  /// Điểm đội A trong ván này
-  teamBScore  Int    @default(0) @map("team_b_score")  /// Điểm đội B trong ván này
+  id         String @id @default(cuid())
+  setNumber  Int    @map("set_number") /// Số thứ tự ván (1, 2, 3...)
+  teamAScore Int    @default(0) @map("team_a_score") /// Điểm đội A trong ván này
+  teamBScore Int    @default(0) @map("team_b_score") /// Điểm đội B trong ván này
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -512,16 +512,16 @@ model MatchScore {
 
 /// Bình luận dưới giải đấu
 model Comment {
-  id        String  @id @default(cuid())
-  content   String
-  isHidden  Boolean @default(false) @map("is_hidden")  /// BTC/Admin ẩn bình luận vi phạm
+  id       String  @id @default(cuid())
+  content  String
+  isHidden Boolean @default(false) @map("is_hidden") /// BTC/Admin ẩn bình luận vi phạm
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  authorId     String     @map("author_id")
-  author       User       @relation(fields: [authorId], references: [id])
+  authorId String @map("author_id")
+  author   User   @relation(fields: [authorId], references: [id])
 
   tournamentId String     @map("tournament_id")
   tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
@@ -532,17 +532,17 @@ model Comment {
 
 /// Thông báo gửi tới người dùng
 model Notification {
-  id      String           @id @default(cuid())
-  type    NotificationType
-  content String
-  deduplicationKey String?  @unique @map("deduplication_key")
+  id               String           @id @default(cuid())
+  type             NotificationType
+  content          String
+  deduplicationKey String?          @unique @map("deduplication_key")
 
-  isRead    Boolean   @default(false) @map("is_read")
+  isRead    Boolean  @default(false) @map("is_read")
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
-  userId       String      @map("user_id")
-  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   tournamentId String?     @map("tournament_id")
   tournament   Tournament? @relation(fields: [tournamentId], references: [id])
@@ -558,18 +558,18 @@ model Report {
   description String?
   status      ReportStatus @default(PENDING)
 
-  createdAt    DateTime @default(now()) @map("created_at")
-  reviewedAt   DateTime? @map("reviewed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  reviewedAt DateTime? @map("reviewed_at")
 
   // Relations
-  tournamentId    String @map("tournament_id")
-  tournament      Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournamentId String     @map("tournament_id")
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
-  reporterUserId  String? @map("reporter_user_id")  /// Null nếu khách vãng lai
-  reporter        User?   @relation("ReporterReports", fields: [reporterUserId], references: [id])
+  reporterUserId String? @map("reporter_user_id") /// Null nếu khách vãng lai
+  reporter       User?   @relation("ReporterReports", fields: [reporterUserId], references: [id])
 
-  reviewedBy      String? @map("reviewed_by")  /// Admin xử lý
-  reviewer        User?   @relation("ReviewedReports", fields: [reviewedBy], references: [id])
+  reviewedBy String? @map("reviewed_by") /// Admin xử lý
+  reviewer   User?   @relation("ReviewedReports", fields: [reviewedBy], references: [id])
 
   @@index([status, createdAt])
   @@map("reports")
@@ -577,9 +577,9 @@ model Report {
 
 /// Danh sách từ khóa cấm dùng cho bộ lọc tự động
 model BannedKeyword {
-  id        String               @id @default(cuid())
-  keyword   String               @unique
-  category  BannedKeywordCategory
+  id       String                @id @default(cuid())
+  keyword  String                @unique
+  category BannedKeywordCategory
 
   createdAt DateTime @default(now()) @map("created_at")
 

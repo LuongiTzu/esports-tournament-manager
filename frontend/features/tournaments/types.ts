@@ -74,23 +74,23 @@ type TournamentRoundBase = {
 export type TournamentRound =
   | (TournamentRoundBase & {
       format: "ROUND_ROBIN";
-      settings: RoundRobinSettings | null;
+      settings: RoundRobinSettings;
     })
   | (TournamentRoundBase & {
       format: "GROUP_STAGE";
-      settings: GroupStageSettings | null;
+      settings: GroupStageSettings;
     })
   | (TournamentRoundBase & {
       format: "SWISS";
-      settings: SwissSettings | null;
+      settings: SwissSettings;
     })
   | (TournamentRoundBase & {
       format: "PLAYOFF";
-      settings: PlayoffSettings | null;
+      settings: PlayoffSettings;
     })
   | (TournamentRoundBase & {
       format: "DOUBLE_ELIM";
-      settings: DoubleElimSettings | null;
+      settings: DoubleElimSettings;
     });
 
 export interface Tournament {
@@ -101,6 +101,7 @@ export interface Tournament {
   rules?: string | null;
   bannerUrl?: string | null;
   visibility: "PUBLIC" | "PRIVATE";
+  mode: "ONLINE" | "OFFLINE" | "HYBRID";
   status: TournamentStatus;
   moderationStatus?: "ACTIVE" | "HIDDEN_BY_ADMIN";
   isVerified?: boolean;

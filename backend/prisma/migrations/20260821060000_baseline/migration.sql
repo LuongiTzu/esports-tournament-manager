@@ -1,8 +1,26 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('ADMIN', 'SIGNED_UP_USER');
 
 -- CreateEnum
+CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "GameGenre" AS ENUM ('MOBA', 'FPS', 'SPORTS', 'BATTLE_ROYALE', 'FIGHTING', 'CARD', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "GamePositionMode" AS ENUM ('FIXED', 'OPTIONAL', 'NONE');
+
+-- CreateEnum
 CREATE TYPE "Visibility" AS ENUM ('PUBLIC', 'PRIVATE');
+
+-- CreateEnum
+CREATE TYPE "TournamentStatus" AS ENUM ('DRAFT', 'REGISTRATION', 'ONGOING', 'COMPLETED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "TournamentMode" AS ENUM ('ONLINE', 'OFFLINE', 'HYBRID');
 
 -- CreateEnum
 CREATE TYPE "ModerationStatus" AS ENUM ('ACTIVE', 'HIDDEN_BY_ADMIN');
@@ -17,10 +35,22 @@ CREATE TYPE "RoundStatus" AS ENUM ('UPCOMING', 'ONGOING', 'COMPLETED');
 CREATE TYPE "RegistrationStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 
 -- CreateEnum
+CREATE TYPE "MemberRole" AS ENUM ('CAPTAIN', 'PLAYER', 'SUBSTITUTE', 'COACH', 'MANAGER');
+
+-- CreateEnum
 CREATE TYPE "MatchStatus" AS ENUM ('PENDING', 'ONGOING', 'COMPLETED');
 
 -- CreateEnum
+CREATE TYPE "MatchOutcome" AS ENUM ('TEAM_A', 'TEAM_B', 'DRAW');
+
+-- CreateEnum
+CREATE TYPE "MatchActivationCondition" AS ENUM ('LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL');
+
+-- CreateEnum
 CREATE TYPE "BracketType" AS ENUM ('WINNER', 'LOSER');
+
+-- CreateEnum
+CREATE TYPE "MatchSlot" AS ENUM ('A', 'B');
 
 -- CreateEnum
 CREATE TYPE "NotificationType" AS ENUM ('SCHEDULE_CHANGE', 'SCORE_UPDATE', 'TEAM_APPROVED', 'TEAM_REJECTED', 'ADMIN_WARNING', 'SYSTEM');
@@ -41,9 +71,17 @@ CREATE TABLE "users" (
     "password_hash" TEXT NOT NULL,
     "display_name" TEXT NOT NULL,
     "avatar_url" TEXT,
+    "birth_date" TIMESTAMP(3),
+    "current_address" TEXT,
+    "phone_number" TEXT,
+    "gender" "Gender",
+    "bio" TEXT,
     "role" "Role" NOT NULL DEFAULT 'SIGNED_UP_USER',
     "is_locked" BOOLEAN NOT NULL DEFAULT false,
     "refresh_token" TEXT,
+    "token_version" INTEGER NOT NULL DEFAULT 0,
+    "reset_password_token" TEXT,
+    "reset_password_expires" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -55,7 +93,12 @@ CREATE TABLE "games" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "icon_url" TEXT,
-    "team_size" INTEGER NOT NULL,
+    "genre" "GameGenre" NOT NULL DEFAULT 'OTHER',
+    "positions" JSONB,
+    "position_mode" "GamePositionMode" NOT NULL DEFAULT 'NONE',
+    "default_team_size" INTEGER NOT NULL,
+    "min_team_size" INTEGER NOT NULL,
+    "max_team_size" INTEGER NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "games_pkey" PRIMARY KEY ("id")
@@ -76,6 +119,22 @@ CREATE TABLE "tournaments" (
     "max_teams" INTEGER,
     "start_date" TIMESTAMP(3),
     "end_date" TIMESTAMP(3),
+    "status" "TournamentStatus" NOT NULL DEFAULT 'REGISTRATION',
+    "mode" "TournamentMode" NOT NULL DEFAULT 'ONLINE',
+    "location" TEXT,
+    "min_team_size" INTEGER NOT NULL,
+    "max_team_size" INTEGER NOT NULL,
+    "min_age" INTEGER,
+    "max_age" INTEGER,
+    "allowed_genders" JSONB,
+    "registration_start_date" TIMESTAMP(3),
+    "registration_deadline" TIMESTAMP(3),
+    "auto_approve_teams" BOOLEAN NOT NULL DEFAULT false,
+    "require_member_full_info" BOOLEAN NOT NULL DEFAULT true,
+    "prize_pool" TEXT,
+    "contact_email" TEXT,
+    "contact_phone" TEXT,
+    "contact_link" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "game_id" TEXT NOT NULL,
@@ -90,6 +149,7 @@ CREATE TABLE "rounds" (
     "name" TEXT NOT NULL,
     "order_index" INTEGER NOT NULL,
     "format" "RoundFormat" NOT NULL,
+    "best_of" INTEGER NOT NULL DEFAULT 1,
     "settings" JSONB,
     "status" "RoundStatus" NOT NULL DEFAULT 'UPCOMING',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -97,6 +157,16 @@ CREATE TABLE "rounds" (
     "tournament_id" TEXT NOT NULL,
 
     CONSTRAINT "rounds_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "round_teams" (
+    "round_id" TEXT NOT NULL,
+    "team_id" TEXT NOT NULL,
+    "advanced_from_round_id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "round_teams_pkey" PRIMARY KEY ("round_id","team_id")
 );
 
 -- CreateTable
@@ -121,10 +191,17 @@ CREATE TABLE "group_teams" (
 CREATE TABLE "teams" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "short_name" TEXT,
+    "description" TEXT,
     "logo_url" TEXT,
     "status" "RegistrationStatus" NOT NULL DEFAULT 'PENDING',
     "seed" INTEGER,
     "final_rank" INTEGER,
+    "contact_name" TEXT NOT NULL,
+    "contact_email" TEXT NOT NULL,
+    "contact_phone" TEXT,
+    "reject_reason" TEXT,
+    "reviewed_at" TIMESTAMP(3),
     "registered_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "tournament_id" TEXT NOT NULL,
@@ -136,8 +213,19 @@ CREATE TABLE "teams" (
 -- CreateTable
 CREATE TABLE "team_members" (
     "id" TEXT NOT NULL,
+    "real_name" TEXT NOT NULL,
     "ign" TEXT NOT NULL,
-    "contact_info" TEXT,
+    "in_game_id" TEXT,
+    "birth_date" TIMESTAMP(3),
+    "gender" "Gender",
+    "email" TEXT,
+    "phone_number" TEXT,
+    "position" TEXT,
+    "member_role" "MemberRole" NOT NULL DEFAULT 'PLAYER',
+    "avatar_url" TEXT,
+    "order_index" INTEGER NOT NULL DEFAULT 0,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
     "user_id" TEXT,
     "team_id" TEXT NOT NULL,
 
@@ -150,9 +238,14 @@ CREATE TABLE "matches" (
     "score_a" INTEGER NOT NULL DEFAULT 0,
     "score_b" INTEGER NOT NULL DEFAULT 0,
     "status" "MatchStatus" NOT NULL DEFAULT 'PENDING',
+    "outcome" "MatchOutcome",
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "activation_condition" "MatchActivationCondition",
     "bracket_type" "BracketType",
     "bracket_round" INTEGER,
     "match_number" INTEGER,
+    "is_bye" BOOLEAN NOT NULL DEFAULT false,
+    "best_of" INTEGER NOT NULL DEFAULT 1,
     "scheduled_at" TIMESTAMP(3),
     "played_at" TIMESTAMP(3),
     "discord_link" TEXT,
@@ -164,7 +257,9 @@ CREATE TABLE "matches" (
     "team_b_id" TEXT,
     "winner_team_id" TEXT,
     "next_match_id" TEXT,
+    "next_match_slot" "MatchSlot",
     "loser_next_match_id" TEXT,
+    "loser_next_match_slot" "MatchSlot",
 
     CONSTRAINT "matches_pkey" PRIMARY KEY ("id")
 );
@@ -199,6 +294,7 @@ CREATE TABLE "notifications" (
     "id" TEXT NOT NULL,
     "type" "NotificationType" NOT NULL,
     "content" TEXT NOT NULL,
+    "deduplication_key" TEXT,
     "is_read" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "user_id" TEXT NOT NULL,
@@ -245,7 +341,19 @@ CREATE UNIQUE INDEX "tournaments_slug_key" ON "tournaments"("slug");
 CREATE INDEX "tournaments_game_id_visibility_moderation_status_idx" ON "tournaments"("game_id", "visibility", "moderation_status");
 
 -- CreateIndex
+CREATE INDEX "tournaments_status_start_date_idx" ON "tournaments"("status", "start_date");
+
+-- CreateIndex
 CREATE INDEX "rounds_tournament_id_order_index_idx" ON "rounds"("tournament_id", "order_index");
+
+-- CreateIndex
+CREATE INDEX "round_teams_advanced_from_round_id_idx" ON "round_teams"("advanced_from_round_id");
+
+-- CreateIndex
+CREATE INDEX "round_teams_team_id_idx" ON "round_teams"("team_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "round_teams_advanced_from_round_id_team_id_key" ON "round_teams"("advanced_from_round_id", "team_id");
 
 -- CreateIndex
 CREATE INDEX "groups_round_id_idx" ON "groups"("round_id");
@@ -257,7 +365,19 @@ CREATE INDEX "teams_tournament_id_status_idx" ON "teams"("tournament_id", "statu
 CREATE INDEX "teams_captain_id_idx" ON "teams"("captain_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "teams_tournament_id_name_key" ON "teams"("tournament_id", "name");
+
+-- CreateIndex
+CREATE INDEX "team_members_team_id_idx" ON "team_members"("team_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "team_members_team_id_ign_key" ON "team_members"("team_id", "ign");
+
+-- CreateIndex
 CREATE INDEX "matches_round_id_group_id_idx" ON "matches"("round_id", "group_id");
+
+-- CreateIndex
+CREATE INDEX "matches_activation_condition_is_active_idx" ON "matches"("activation_condition", "is_active");
 
 -- CreateIndex
 CREATE INDEX "matches_team_a_id_team_b_id_idx" ON "matches"("team_a_id", "team_b_id");
@@ -267,6 +387,9 @@ CREATE INDEX "match_scores_match_id_idx" ON "match_scores"("match_id");
 
 -- CreateIndex
 CREATE INDEX "comments_tournament_id_created_at_idx" ON "comments"("tournament_id", "created_at");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "notifications_deduplication_key_key" ON "notifications"("deduplication_key");
 
 -- CreateIndex
 CREATE INDEX "notifications_user_id_is_read_created_at_idx" ON "notifications"("user_id", "is_read", "created_at");
@@ -285,6 +408,15 @@ ALTER TABLE "tournaments" ADD CONSTRAINT "tournaments_organizer_id_fkey" FOREIGN
 
 -- AddForeignKey
 ALTER TABLE "rounds" ADD CONSTRAINT "rounds_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "round_teams" ADD CONSTRAINT "round_teams_round_id_fkey" FOREIGN KEY ("round_id") REFERENCES "rounds"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "round_teams" ADD CONSTRAINT "round_teams_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "round_teams" ADD CONSTRAINT "round_teams_advanced_from_round_id_fkey" FOREIGN KEY ("advanced_from_round_id") REFERENCES "rounds"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "groups" ADD CONSTRAINT "groups_round_id_fkey" FOREIGN KEY ("round_id") REFERENCES "rounds"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -351,3 +483,8 @@ ALTER TABLE "reports" ADD CONSTRAINT "reports_reporter_user_id_fkey" FOREIGN KEY
 
 -- AddForeignKey
 ALTER TABLE "reports" ADD CONSTRAINT "reports_reviewed_by_fkey" FOREIGN KEY ("reviewed_by") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddCheckConstraint
+ALTER TABLE "tournaments"
+ADD CONSTRAINT "tournaments_roster_size_check"
+CHECK ("max_team_size" >= "min_team_size");

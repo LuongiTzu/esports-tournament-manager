@@ -35,15 +35,17 @@ export interface RoundRobinSettings {
 export interface GroupStageSettings {
   /** Số bảng đấu */
   numberOfGroups: number;
-  /** Số đội mỗi bảng */
-  advancingTeamsPerGroup: number;
   /** Số đội đứng đầu mỗi bảng đi tiếp */
+  advancingTeamsPerGroup: number;
+  /** Điểm thắng */
   winPoints: number;
-  /** Đá 2 lượt trong bảng */
+  /** Điểm hòa */
   drawPoints: number;
-  /** Điểm thắng/hòa/thua trong từng bảng */
+  /** Điểm thua */
   lossPoints: number;
+  /** Cho phép kết quả hòa */
   allowDraws: boolean;
+  /** Số lần mỗi cặp đội trong cùng bảng gặp nhau */
   meetingsPerPair: number;
 }
 

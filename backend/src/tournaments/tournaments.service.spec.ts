@@ -513,7 +513,23 @@ describe('TournamentsService roster snapshots', () => {
     const prisma = {
       tournament: {
         findUnique: jest.fn().mockResolvedValue(current),
-        update: jest.fn().mockResolvedValue({ id: 'tournament-1' }),
+        update: jest.fn().mockResolvedValue({
+          id: 'tournament-1',
+          rounds: [
+            {
+              id: 'group-round',
+              format: RoundFormat.GROUP_STAGE,
+              settings: {
+                numGroups: 2,
+                advanceCount: 1,
+                doubleRound: true,
+                pointsWin: 2,
+                pointsDraw: 1,
+                pointsLoss: 0,
+              },
+            },
+          ],
+        }),
       },
       game: {
         findFirst: jest.fn().mockResolvedValue({
@@ -525,12 +541,14 @@ describe('TournamentsService roster snapshots', () => {
     } as unknown as PrismaService;
     const service = new TournamentsService(
       prisma,
-      {} as RoundSettingsService,
+      new RoundSettingsService(),
       {} as StandingsService,
       {} as ContentFilterService,
     );
 
-    await service.update('tournament-1', { gameId: 'rocket-league' });
+    const result = await service.update('tournament-1', {
+      gameId: 'rocket-league',
+    });
 
     expect(prisma.tournament.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -541,6 +559,15 @@ describe('TournamentsService roster snapshots', () => {
         }),
       }),
     );
+    expect(result.rounds[0].settings).toEqual({
+      numberOfGroups: 2,
+      advancingTeamsPerGroup: 1,
+      winPoints: 2,
+      drawPoints: 1,
+      lossPoints: 0,
+      allowDraws: true,
+      meetingsPerPair: 2,
+    });
   });
 });
 

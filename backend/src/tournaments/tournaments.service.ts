@@ -370,7 +370,7 @@ export class TournamentsService {
     const merged = { ...current, ...stripUndefined(dto) };
     this.validateMergedSettings(merged);
 
-    return this.prisma.tournament.update({
+    const updated = await this.prisma.tournament.update({
       where: { id: tournamentId },
       data: {
         name: dto.name,
@@ -408,6 +408,17 @@ export class TournamentsService {
         rounds: { orderBy: { orderIndex: 'asc' } },
       },
     });
+
+    return {
+      ...updated,
+      rounds: updated.rounds.map((round) => ({
+        ...round,
+        settings: this.roundSettingsService.getEffectiveSettings(
+          round.format,
+          round.settings,
+        ),
+      })),
+    };
   }
 
   /**
