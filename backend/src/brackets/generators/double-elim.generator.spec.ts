@@ -16,7 +16,7 @@ function generate(count: number, grandFinalReset = false): MatchDraft[] {
   return new DoubleElimGenerator(new PlayoffGenerator()).generate({
     format: RoundFormat.DOUBLE_ELIM,
     teams: teams(count),
-    settings: { seeding: 'STANDARD', grandFinalReset },
+    settings: { grandFinalReset },
     bestOf: 3,
   });
 }
@@ -186,6 +186,27 @@ describe('DoubleElimGenerator', () => {
     expect(byes.every((match) => match.loserNextMatchKey === null)).toBe(true);
     expect(type(generate(6), BracketType.LOSER)).toHaveLength(6);
   });
+
+  it.each([5, 6, 7, 8])(
+    'includes every one of %i teams once in the seeded winner opening round',
+    (count) => {
+      const openingTeams = type(generate(count), BracketType.WINNER)
+        .filter((match) => match.bracketRound === 1)
+        .flatMap((match) => [match.teamA.teamId, match.teamB.teamId])
+        .filter((teamId): teamId is string => teamId !== null);
+      const playable = generate(count).filter((match) => !match.isBye);
+
+      expect(openingTeams).toHaveLength(count);
+      expect(new Set(openingTeams).size).toBe(count);
+      expect(playable).toHaveLength(2 * count - 2);
+      expect(
+        playable.every(
+          (match) =>
+            !match.teamA.teamId || match.teamA.teamId !== match.teamB.teamId,
+        ),
+      ).toBe(true);
+    },
+  );
 
   it('is deterministic', () => {
     expect(generate(8, true)).toEqual(generate(8, true));

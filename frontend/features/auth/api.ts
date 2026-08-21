@@ -5,6 +5,7 @@ import type {
   User,
 } from "@/features/auth/types";
 import { request } from "@/lib/api/client";
+import { uploadImage } from "@/lib/api/upload";
 
 export const authApi = {
   login: (data: LoginRequest) =>
@@ -23,4 +24,5 @@ export const authApi = {
       auth: true,
     }),
   getMe: () => request<User>("/users/me", { auth: true }),
+  uploadAvatar: (file: File) => uploadImage("/users/me/avatar", file),
 };

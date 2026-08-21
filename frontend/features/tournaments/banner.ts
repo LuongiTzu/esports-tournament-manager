@@ -1,3 +1,5 @@
+import { resolveImageUrl } from "@/lib/image-url";
+
 export const DEFAULT_TOURNAMENT_BANNER_URL =
   "/images/tournaments/common/backgrounds/tournament-collage.png";
 
@@ -30,7 +32,10 @@ export function getTournamentBannerUrl(
   gameName?: string | null,
 ) {
   const uploadedBanner = bannerUrl?.trim();
-  if (uploadedBanner) return uploadedBanner;
+  if (uploadedBanner) {
+    const resolvedBanner = resolveImageUrl(uploadedBanner);
+    if (resolvedBanner) return resolvedBanner;
+  }
 
   const gamePoster = gameName
     ? GAME_POSTERS[normalizeGameName(gameName)]

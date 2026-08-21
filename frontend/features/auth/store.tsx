@@ -55,6 +55,11 @@ export function clearSession() {
   setState({ user: null, ready: true });
 }
 
+export function updateCurrentUser(user: User) {
+  tokenStore.setUser(user);
+  setState({ user, ready: true });
+}
+
 export function useAuth() {
   const authState = useSyncExternalStore(
     subscribe,

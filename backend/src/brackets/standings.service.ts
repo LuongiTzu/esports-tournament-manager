@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { MatchStatus, RegistrationStatus, RoundFormat } from '@prisma/client';
+import {
+  MatchOutcome,
+  MatchStatus,
+  RegistrationStatus,
+  RoundFormat,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RoundSettingsService } from './round-settings.service';
 import { SwissService } from './swiss.service';
@@ -12,12 +17,15 @@ type StandingMatch = {
   scoreA: number;
   scoreB: number;
   winnerTeamId: string | null;
+  outcome: MatchOutcome | null;
   isBye: boolean;
 };
-type PointSettings = Pick<
-  RoundRobinSettings,
-  'pointsWin' | 'pointsDraw' | 'pointsLoss'
->;
+type PointSettings = {
+  winPoints: number;
+  drawPoints: number;
+  lossPoints: number;
+  allowDraws: boolean;
+};
 
 @Injectable()
 export class StandingsService {
@@ -98,8 +106,8 @@ export class StandingsService {
     const settings = this.settingsService.getEffectiveSettings(
       format,
       rawSettings,
-    ) as Partial<PointSettings>;
-    return calculateRows(teams, matches, pointSettings(settings));
+    );
+    return calculateRows(teams, matches, pointSettings(format, settings));
   }
 
   private async calculateGroups(roundId: string, rawSettings?: unknown) {
@@ -152,7 +160,7 @@ export class StandingsService {
               teamIds.has(match.teamAId) &&
               teamIds.has(match.teamBId),
           ),
-          pointSettings(settings),
+          pointSettings(RoundFormat.GROUP_STAGE, settings),
         );
       })(),
     }));
@@ -165,14 +173,35 @@ const matchSelect = {
   scoreA: true,
   scoreB: true,
   winnerTeamId: true,
+  outcome: true,
   isBye: true,
 } as const;
 
-function pointSettings(settings: Partial<PointSettings>): PointSettings {
+function pointSettings(format: RoundFormat, settings: unknown): PointSettings {
+  const values = settings as Record<string, unknown>;
+  if (format === RoundFormat.ROUND_ROBIN) {
+    const roundRobin = settings as RoundRobinSettings;
+    return {
+      winPoints: roundRobin.winPoints,
+      drawPoints: roundRobin.drawPoints,
+      lossPoints: roundRobin.lossPoints,
+      allowDraws: roundRobin.allowDraws,
+    };
+  }
+  if (format === RoundFormat.GROUP_STAGE) {
+    const groupStage = settings as GroupStageSettings;
+    return {
+      winPoints: groupStage.winPoints,
+      drawPoints: groupStage.drawPoints,
+      lossPoints: groupStage.lossPoints,
+      allowDraws: groupStage.allowDraws,
+    };
+  }
   return {
-    pointsWin: settings.pointsWin ?? 3,
-    pointsDraw: settings.pointsDraw ?? 1,
-    pointsLoss: settings.pointsLoss ?? 0,
+    winPoints: Number(values.pointsWin ?? 3),
+    drawPoints: Number(values.pointsDraw ?? 1),
+    lossPoints: Number(values.pointsLoss ?? 0),
+    allowDraws: false,
   };
 }
 
@@ -198,18 +227,20 @@ function calculateRows(
   for (const match of matches) {
     const a = match.teamAId ? rows.get(match.teamAId) : undefined;
     const b = match.teamBId ? rows.get(match.teamBId) : undefined;
+    const isDraw = match.outcome === MatchOutcome.DRAW;
+    if (!match.isBye && !match.winnerTeamId && !isDraw) continue;
     if (a) {
       a.played++;
       a.scoreDifference += match.scoreA - match.scoreB;
       if (match.winnerTeamId === a.id || match.isBye) {
         a.wins++;
-        a.points += points.pointsWin;
-      } else if (!match.winnerTeamId) {
+        a.points += points.winPoints;
+      } else if (isDraw) {
         a.draws++;
-        a.points += points.pointsDraw;
+        if (points.allowDraws) a.points += points.drawPoints;
       } else {
         a.losses++;
-        a.points += points.pointsLoss;
+        a.points += points.lossPoints;
       }
     }
     if (b) {
@@ -217,13 +248,13 @@ function calculateRows(
       b.scoreDifference += match.scoreB - match.scoreA;
       if (match.winnerTeamId === b.id) {
         b.wins++;
-        b.points += points.pointsWin;
-      } else if (!match.winnerTeamId) {
+        b.points += points.winPoints;
+      } else if (isDraw) {
         b.draws++;
-        b.points += points.pointsDraw;
+        if (points.allowDraws) b.points += points.drawPoints;
       } else {
         b.losses++;
-        b.points += points.pointsLoss;
+        b.points += points.lossPoints;
       }
     }
   }

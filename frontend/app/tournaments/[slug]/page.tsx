@@ -18,6 +18,7 @@ import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 import { ROUND_FORMAT_LABELS } from "@/features/tournaments/round-formats";
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
+import ResolvedImage from "@/components/ResolvedImage";
 
 function formatDate(d?: string | null) {
   return d ? new Date(d).toLocaleDateString("vi-VN") : "Chưa xác định";
@@ -111,13 +112,17 @@ export default function TournamentDetailPage({
       </Link>
 
       <header className="mt-4 overflow-hidden rounded-xl border border-line border-t-2 border-t-accent bg-surface-card">
-        <div
-          aria-hidden
-          className="h-48 bg-cover bg-center sm:h-60"
-          style={{
-            backgroundImage: `url(${JSON.stringify(getTournamentBannerUrl(tournament.bannerUrl, tournament.game?.name))})`,
-          }}
-        />
+        <div className="relative aspect-[16/7] max-h-72 min-h-36 overflow-hidden sm:min-h-52">
+          <ResolvedImage
+            src={getTournamentBannerUrl(
+              tournament.bannerUrl,
+              tournament.game?.name,
+            )}
+            fallbackSrc={getTournamentBannerUrl(null, tournament.game?.name)}
+            alt={`Banner giải đấu ${tournament.name}`}
+            className="absolute inset-0 size-full object-cover object-center"
+          />
+        </div>
 
         <div className="flex flex-wrap items-start justify-between gap-4 p-6 pb-0">
           <div className="min-w-0">
@@ -137,12 +142,26 @@ export default function TournamentDetailPage({
             <h1 className="mt-3 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
               {tournament.name}
             </h1>
-            <p className="mt-1.5 text-sm text-ink-muted">
-              Tổ chức bởi{" "}
-              <span className="font-medium text-ink">
-                {tournament.organizer?.displayName}
+            <div className="mt-2 inline-flex items-center gap-2 text-sm text-ink-muted">
+              <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xs font-bold text-on-brand">
+                <ResolvedImage
+                  src={tournament.organizer?.avatarUrl}
+                  alt=""
+                  className="size-full object-cover object-center"
+                  fallback={
+                    tournament.organizer?.displayName
+                      ?.charAt(0)
+                      .toUpperCase() || "?"
+                  }
+                />
               </span>
-            </p>
+              <span>
+                Tổ chức bởi{" "}
+                <span className="font-medium text-ink">
+                  {tournament.organizer?.displayName}
+                </span>
+              </span>
+            </div>
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2">
@@ -286,7 +305,15 @@ export default function TournamentDetailPage({
                 key={t.id}
                 className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-sub px-4 py-3"
               >
-                <span className="min-w-0">
+                <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-brand/10 font-bold text-brand">
+                  <ResolvedImage
+                    src={t.logoUrl}
+                    alt={`Logo ${t.name}`}
+                    className="size-full object-cover object-center"
+                    fallback={t.name.charAt(0).toUpperCase()}
+                  />
+                </span>
+                <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-ink">
                     {t.name}
                   </span>

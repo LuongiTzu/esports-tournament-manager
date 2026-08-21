@@ -1,11 +1,13 @@
 import type {
   CreateTournamentRequest,
+  CreateRoundRequest,
   FindAllTournamentsParams,
   Paginated,
   Tournament,
   TournamentDetail,
 } from "@/features/tournaments/types";
 import { request } from "@/lib/api/client";
+import { uploadImage } from "@/lib/api/upload";
 
 export const tournamentsApi = {
   findAll: (params: FindAllTournamentsParams = {}) => {
@@ -16,7 +18,9 @@ export const tournamentsApi = {
     if (params.page) query.set("page", String(params.page));
     if (params.limit) query.set("limit", String(params.limit));
     const search = query.toString();
-    return request<Paginated<Tournament>>(`/tournaments${search ? `?${search}` : ""}`);
+    return request<Paginated<Tournament>>(
+      `/tournaments${search ? `?${search}` : ""}`,
+    );
   },
   findBySlug: (slug: string) =>
     request<TournamentDetail>(`/tournaments/slug/${slug}`, { auth: true }),
@@ -26,7 +30,9 @@ export const tournamentsApi = {
       body: JSON.stringify(data),
       auth: true,
     }),
-  addRound: (tournamentId: string, data: Record<string, unknown>) =>
+  uploadBanner: (tournamentId: string, file: File) =>
+    uploadImage(`/tournaments/${tournamentId}/banner`, file),
+  addRound: (tournamentId: string, data: CreateRoundRequest) =>
     request<unknown>(`/tournaments/${tournamentId}/rounds`, {
       method: "POST",
       body: JSON.stringify(data),

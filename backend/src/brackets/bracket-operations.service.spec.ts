@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BracketOperationsService } from './bracket-operations.service';
 import { BracketsService } from './brackets.service';
 import { StandingsService } from './standings.service';
+import { RoundSettingsService } from './round-settings.service';
 
 function round(
   matches: unknown[] = [],
@@ -18,7 +19,7 @@ function round(
     id: 'round-1',
     tournamentId: 'tournament-1',
     format,
-    settings: { seeding: 'STANDARD', thirdPlaceMatch: false },
+    settings: { thirdPlaceMatch: false },
     bestOf: 3,
     _count: { groups: 0 },
     matches,
@@ -69,6 +70,7 @@ function harness(roundValue: ReturnType<typeof round>, teamCount = 4) {
     prisma,
     brackets,
     {} as StandingsService,
+    new RoundSettingsService(),
   );
   return { service, tx, brackets, teams };
 }
@@ -228,6 +230,53 @@ describe('BracketOperationsService generation', () => {
     });
   });
 
+  it('propagates a seeded bye winner into the downstream bracket slot', async () => {
+    const { service, tx, brackets } = harness(round(), 3);
+    brackets.generate = jest.fn().mockResolvedValue([
+      {
+        key: 'bye',
+        bracketRound: 1,
+        bracketType: null,
+        matchNumber: 1,
+        teamA: { teamId: 'team-1' },
+        teamB: { teamId: null },
+        nextMatchKey: 'final',
+        nextMatchSlot: 'A',
+        loserNextMatchKey: null,
+        loserNextMatchSlot: null,
+        isBye: true,
+        bestOf: 3,
+      },
+      {
+        key: 'final',
+        bracketRound: 2,
+        bracketType: null,
+        matchNumber: 1,
+        teamA: { teamId: null },
+        teamB: { teamId: null },
+        nextMatchKey: null,
+        nextMatchSlot: null,
+        loserNextMatchKey: null,
+        loserNextMatchSlot: null,
+        isBye: false,
+        bestOf: 3,
+      },
+    ] as never);
+    tx.match.create.mockImplementation(({ data }: any) =>
+      Promise.resolve({
+        id: data.isBye ? 'bye-db' : 'final-db',
+        ...data,
+      }),
+    );
+
+    await service.generate('round-1');
+
+    expect(tx.match.update).toHaveBeenCalledWith({
+      where: { id: 'final-db' },
+      data: { teamAId: 'team-1' },
+    });
+  });
+
   it('returns normalized bracket slots and linkage shape', async () => {
     const prisma = {
       round: {
@@ -266,6 +315,7 @@ describe('BracketOperationsService generation', () => {
       prisma,
       {} as BracketsService,
       {} as StandingsService,
+      new RoundSettingsService(),
     );
 
     await expect(service.getBracket('round-1')).resolves.toEqual(
@@ -284,6 +334,45 @@ describe('BracketOperationsService generation', () => {
       }),
     );
   });
+
+  it('returns legacy Swiss settings in the canonical API shape', async () => {
+    const prisma = {
+      round: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'swiss-round',
+          name: 'Swiss stage',
+          format: RoundFormat.SWISS,
+          status: 'UPCOMING',
+          bestOf: 3,
+          settings: {
+            numRounds: 5,
+            advanceCount: 4,
+            pointsWin: 3,
+            pointsDraw: 1,
+            pointsLoss: 0,
+            tiebreakers: ['BUCHHOLZ'],
+          },
+          groups: [],
+          matches: [],
+        }),
+      },
+    } as unknown as PrismaService;
+    const service = new BracketOperationsService(
+      prisma,
+      {} as BracketsService,
+      {} as StandingsService,
+      new RoundSettingsService(),
+    );
+
+    await expect(service.getBracket('swiss-round')).resolves.toEqual(
+      expect.objectContaining({
+        round: expect.objectContaining({
+          format: RoundFormat.SWISS,
+          settings: { numberOfRounds: 5, advancingTeamCount: 4 },
+        }),
+      }),
+    );
+  });
 });
 
 describe('BracketOperationsService group advancement', () => {
@@ -298,10 +387,13 @@ describe('BracketOperationsService group advancement', () => {
       orderIndex: 1,
       format: RoundFormat.GROUP_STAGE,
       settings: {
-        numGroups: groupCount,
-        teamsPerGroup: 4,
-        advanceCount,
-        doubleRound: false,
+        numberOfGroups: groupCount,
+        advancingTeamsPerGroup: advanceCount,
+        winPoints: 3,
+        drawPoints: 1,
+        lossPoints: 0,
+        allowDraws: false,
+        meetingsPerPair: 1,
       },
       matches: Array.from({ length: groupCount }, (_, index) =>
         Array.from({ length: 6 }, () => ({
@@ -397,6 +489,7 @@ describe('BracketOperationsService group advancement', () => {
         prisma,
         {} as BracketsService,
         standings,
+        new RoundSettingsService(),
       ),
       roundValue,
       participants,
@@ -439,6 +532,16 @@ describe('BracketOperationsService group advancement', () => {
     ]);
   });
 
+  it('qualifies one team from each group when configured', async () => {
+    const { service } = advanceHarness(2, 1);
+
+    const result: any = await service.advance('round-1');
+
+    expect(result.advanceCount).toBe(2);
+    expect(result.advanceCountPerGroup).toBe(1);
+    expect(result.teamIds).toEqual(['a1', 'b1']);
+  });
+
   it('blocks advancement when any group match is incomplete', async () => {
     const { service, roundValue } = advanceHarness();
     roundValue.matches[6].status = MatchStatus.PENDING;
@@ -450,7 +553,7 @@ describe('BracketOperationsService group advancement', () => {
 
   it('rejects an advance count larger than a group capacity', async () => {
     const { service, roundValue } = advanceHarness();
-    (roundValue.settings as Record<string, unknown>).advanceCount = 5;
+    (roundValue.settings as Record<string, unknown>).advancingTeamsPerGroup = 5;
 
     await expect(service.advance('round-1')).rejects.toBeInstanceOf(
       BadRequestException,
@@ -459,7 +562,7 @@ describe('BracketOperationsService group advancement', () => {
 
   it('rejects invalid group settings', async () => {
     const { service, roundValue } = advanceHarness();
-    (roundValue.settings as Record<string, unknown>).numGroups = 0;
+    (roundValue.settings as Record<string, unknown>).numberOfGroups = 0;
 
     await expect(service.advance('round-1')).rejects.toBeInstanceOf(
       BadRequestException,
@@ -497,9 +600,15 @@ describe('BracketOperationsService format-specific advancement', () => {
     standingsRows: Array<{ id?: string; teamId?: string }>,
     bracketRound = 1,
   ) {
-    const matches = [
+    const matches: Array<{
+      status: MatchStatus;
+      isActive: boolean;
+      groupId: null;
+      bracketRound: number;
+    }> = [
       {
         status: MatchStatus.COMPLETED,
+        isActive: true,
         groupId: null,
         bracketRound,
       },
@@ -563,8 +672,10 @@ describe('BracketOperationsService format-specific advancement', () => {
         prisma,
         {} as BracketsService,
         standings,
+        new RoundSettingsService(),
       ),
       participants,
+      current,
     };
   }
 
@@ -584,7 +695,7 @@ describe('BracketOperationsService format-specific advancement', () => {
   it('persists Swiss qualifiers only after the final configured Swiss round', async () => {
     const final = harnessFor(
       RoundFormat.SWISS,
-      { advanceCount: 2, numRounds: 3 },
+      { advancingTeamCount: 2, numberOfRounds: 3 },
       [{ teamId: 'swiss-1' }, { teamId: 'swiss-2' }, { teamId: 'swiss-3' }],
       3,
     );
@@ -596,13 +707,29 @@ describe('BracketOperationsService format-specific advancement', () => {
 
     const early = harnessFor(
       RoundFormat.SWISS,
-      { advanceCount: 2, numRounds: 3 },
+      { advancingTeamCount: 2, numberOfRounds: 3 },
       [{ teamId: 'swiss-1' }, { teamId: 'swiss-2' }],
       2,
     );
     await expect(early.service.advance('round-1')).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it('uses the derived Swiss round limit when numberOfRounds is automatic', async () => {
+    const automatic = harnessFor(
+      RoundFormat.SWISS,
+      { advancingTeamCount: 2, numberOfRounds: null },
+      Array.from({ length: 8 }, (_, index) => ({
+        teamId: `swiss-${index + 1}`,
+      })),
+      3,
+    );
+
+    await expect(automatic.service.advance('round-1')).resolves.toEqual(
+      expect.objectContaining({ persisted: true, advanceCount: 2 }),
+    );
+    expect(automatic.participants).toEqual(['swiss-1', 'swiss-2']);
   });
 
   it.each([RoundFormat.PLAYOFF, RoundFormat.DOUBLE_ELIM])(
@@ -620,4 +747,22 @@ describe('BracketOperationsService format-specific advancement', () => {
       expect(participants).toEqual([]);
     },
   );
+
+  it('does not treat an inactive Grand Final Reset as unfinished', async () => {
+    const { service, current } = harnessFor(
+      RoundFormat.DOUBLE_ELIM,
+      { grandFinalReset: true },
+      [],
+    );
+    current.matches.push({
+      status: MatchStatus.PENDING,
+      isActive: false,
+      groupId: null,
+      bracketRound: 2,
+    });
+
+    await expect(service.advance('round-1')).resolves.toEqual(
+      expect.objectContaining({ progressionMode: 'MATCH_LINKAGE' }),
+    );
+  });
 });

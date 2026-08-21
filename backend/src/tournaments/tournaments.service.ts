@@ -99,7 +99,7 @@ export class TournamentsService {
     const slug = await this.generateUniqueSlug(dto.name);
 
     // 6. Tạo giải đấu + rounds (transaction)
-    return this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx) => {
       const tournament = await tx.tournament.create({
         data: {
           name: dto.name,
@@ -149,6 +149,18 @@ export class TournamentsService {
         },
       });
     });
+    return created && Array.isArray(created.rounds)
+      ? {
+          ...created,
+          rounds: created.rounds.map((round) => ({
+            ...round,
+            settings: this.roundSettingsService.getEffectiveSettings(
+              round.format,
+              round.settings,
+            ),
+          })),
+        }
+      : created;
   }
 
   /**
@@ -296,7 +308,16 @@ export class TournamentsService {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
 
-    return tournament;
+    return {
+      ...tournament,
+      rounds: tournament.rounds.map((round) => ({
+        ...round,
+        settings: this.roundSettingsService.getEffectiveSettings(
+          round.format,
+          round.settings,
+        ),
+      })),
+    };
   }
 
   /**
@@ -674,7 +695,10 @@ export class TournamentsService {
           format: round.format,
           status: round.status,
           bestOf: round.bestOf,
-          settings: round.settings,
+          settings: this.roundSettingsService.getEffectiveSettings(
+            round.format,
+            round.settings,
+          ),
         },
         groups: round.groups.map((group) => ({
           id: group.id,

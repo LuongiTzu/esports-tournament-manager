@@ -13,44 +13,38 @@ import { RoundFormat } from '@prisma/client';
  * Do đó file này không import Prisma enum trực tiếp — chỉ dùng literal string tương ứng.
  */
 
-/** Tiêu chí tiebreak (thứ tự ưu tiên từ trái sang phải) */
-export type SwissTiebreaker = 'BUCHHOLZ' | 'HEAD_TO_HEAD' | 'SCORE_DIFF';
-
 /** Cách xếp hạt giống (seeding) khi sinh bracket */
-export type SeedingStrategy = 'STANDARD';
 
 /**
  * Vòng tròn tính điểm (ROUND_ROBIN)
  * VD: mỗi đội gặp mọi đội khác đúng 1 lượt, tính điểm 3-1-0.
  */
 export interface RoundRobinSettings {
-  /** Đá 2 lượt (lượt đi + lượt về, đảo sân) */
-  doubleRound: boolean;
-  /** Điểm thắng */
-  pointsWin: number;
-  /** Điểm hòa */
-  pointsDraw: number;
-  /** Điểm thua */
-  pointsLoss: number;
+  winPoints: number;
+  drawPoints: number;
+  lossPoints: number;
+  allowDraws: boolean;
+  /** Số lần mỗi cặp đội gặp nhau. */
+  meetingsPerPair: number;
 }
 
 /**
  * Vòng bảng (GROUP_STAGE)
- * Chia `numGroups` bảng, mỗi bảng `teamsPerGroup` đội, đứng đầu đi tiếp.
+ * Chia đội thực tế thành các bảng bằng nhau; số đội mỗi bảng luôn được suy ra.
  */
 export interface GroupStageSettings {
   /** Số bảng đấu */
-  numGroups: number;
+  numberOfGroups: number;
   /** Số đội mỗi bảng */
-  teamsPerGroup: number;
+  advancingTeamsPerGroup: number;
   /** Số đội đứng đầu mỗi bảng đi tiếp */
-  advanceCount: number;
+  winPoints: number;
   /** Đá 2 lượt trong bảng */
-  doubleRound: boolean;
+  drawPoints: number;
   /** Điểm thắng/hòa/thua trong từng bảng */
-  pointsWin: number;
-  pointsDraw: number;
-  pointsLoss: number;
+  lossPoints: number;
+  allowDraws: boolean;
+  meetingsPerPair: number;
 }
 
 /**
@@ -58,28 +52,20 @@ export interface GroupStageSettings {
  * Không sinh hết bracket một lần — mỗi vòng sinh sau khi vòng trước kết thúc.
  */
 export interface SwissSettings {
-  /** Tổng số vòng đấu — mặc định tính = ceil(log2(numTeams)) */
-  numRounds: number;
-  pointsWin: number;
-  pointsDraw: number;
-  pointsLoss: number;
-  /** Thứ tự tiebreak ưu tiên */
-  tiebreakers: SwissTiebreaker[];
-  /** Số đội đứng đầu đi tiếp */
-  advanceCount: number;
+  /** Null means derive ceil(log2(actual participating teams)) at generation. */
+  numberOfRounds: number | null;
+  /** Number of highest-ranked teams passed to the next Tournament Round. */
+  advancingTeamCount: number;
 }
 
 /** Playoff — Single Elimination (PLAYOFF) */
 export interface PlayoffSettings {
-  /** Cách xếp hạt giống */
-  seeding: SeedingStrategy;
   /** Có trận tranh hạng 3 hay không */
   thirdPlaceMatch: boolean;
 }
 
 /** Nhánh thắng - thua — Double Elimination (DOUBLE_ELIM) */
 export interface DoubleElimSettings {
-  seeding: SeedingStrategy;
   /** Có Grand Final Reset (nếu đội nhánh thua thắng ván 1) */
   grandFinalReset: boolean;
 }
@@ -105,34 +91,36 @@ export type RoundSettingsFor<F extends RoundFormat> = RoundSettingsMap[F];
  */
 export const DEFAULT_ROUND_SETTINGS: RoundSettingsMap = {
   [RoundFormat.ROUND_ROBIN]: {
-    doubleRound: false,
-    pointsWin: 3,
-    pointsDraw: 1,
-    pointsLoss: 0,
+    winPoints: 3,
+    drawPoints: 1,
+    lossPoints: 0,
+    allowDraws: false,
+    meetingsPerPair: 1,
   },
   [RoundFormat.GROUP_STAGE]: {
-    numGroups: 4,
-    teamsPerGroup: 4,
-    advanceCount: 2,
-    doubleRound: false,
-    pointsWin: 3,
-    pointsDraw: 1,
-    pointsLoss: 0,
+    numberOfGroups: 2,
+    advancingTeamsPerGroup: 2,
+    winPoints: 3,
+    drawPoints: 1,
+    lossPoints: 0,
+    allowDraws: false,
+    meetingsPerPair: 1,
   },
   [RoundFormat.SWISS]: {
-    numRounds: 5,
-    pointsWin: 3,
-    pointsDraw: 1,
-    pointsLoss: 0,
-    tiebreakers: ['BUCHHOLZ', 'HEAD_TO_HEAD', 'SCORE_DIFF'],
-    advanceCount: 8,
+    numberOfRounds: null,
+    advancingTeamCount: 8,
   },
   [RoundFormat.PLAYOFF]: {
-    seeding: 'STANDARD',
     thirdPlaceMatch: true,
   },
   [RoundFormat.DOUBLE_ELIM]: {
-    seeding: 'STANDARD',
     grandFinalReset: true,
   },
 };
+
+export function resolveSwissNumberOfRounds(
+  teamCount: number,
+  configuredNumberOfRounds: number | null,
+): number {
+  return configuredNumberOfRounds ?? Math.ceil(Math.log2(teamCount));
+}

@@ -2,6 +2,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import {
   MatchStatus,
+  RoundFormat,
   RoundStatus,
   TournamentMode,
   TournamentStatus,
@@ -95,6 +96,295 @@ describe('TournamentsService public listing', () => {
         ],
       }),
     );
+  });
+});
+
+describe('TournamentsService round settings', () => {
+  it('normalizes and persists settings during tournament creation', async () => {
+    const tx = {
+      tournament: {
+        create: jest.fn().mockResolvedValue({ id: 'tournament-1' }),
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tournament-1',
+          rounds: [],
+        }),
+      },
+      round: { create: jest.fn().mockResolvedValue({ id: 'round-1' }) },
+    };
+    const prisma = {
+      game: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'game-1',
+          name: 'Test Game',
+          defaultTeamSize: 5,
+          maxTeamSize: 7,
+        }),
+      },
+      tournament: { findUnique: jest.fn().mockResolvedValue(null) },
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as PrismaService;
+    const service = new TournamentsService(
+      prisma,
+      new RoundSettingsService(),
+      {} as StandingsService,
+      { validate: jest.fn() } as unknown as ContentFilterService,
+    );
+
+    await service.create('organizer-1', {
+      name: 'Round Robin Cup',
+      gameId: 'game-1',
+      maxTeamSize: 7,
+      rounds: [
+        {
+          name: 'League stage',
+          format: RoundFormat.ROUND_ROBIN,
+          bestOf: 3,
+          settings: { meetingsPerPair: 2, allowDraws: true },
+        },
+        {
+          name: 'Final stage',
+          format: RoundFormat.PLAYOFF,
+          bestOf: 5,
+          settings: { seeding: 'STANDARD', thirdPlaceMatch: false },
+        },
+      ],
+    });
+
+    expect(tx.round.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        format: RoundFormat.ROUND_ROBIN,
+        bestOf: 3,
+        settings: {
+          winPoints: 3,
+          drawPoints: 1,
+          lossPoints: 0,
+          allowDraws: true,
+          meetingsPerPair: 2,
+        },
+      }),
+    });
+    expect(tx.round.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        format: RoundFormat.PLAYOFF,
+        bestOf: 5,
+        settings: { thirdPlaceMatch: false },
+      }),
+    });
+  });
+
+  it('normalizes and persists settings through the add-round flow', async () => {
+    const round = {
+      findFirst: jest.fn().mockResolvedValue({ orderIndex: 2 }),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }) =>
+          Promise.resolve({ id: 'round-3', ...data }),
+        ),
+    };
+    const prisma = { round } as unknown as PrismaService;
+    const service = new TournamentsService(
+      prisma,
+      new RoundSettingsService(),
+      {} as StandingsService,
+      {} as ContentFilterService,
+    );
+    const settings = {
+      winPoints: 3,
+      drawPoints: 1,
+      lossPoints: 0,
+      allowDraws: true,
+      meetingsPerPair: 2,
+    };
+
+    const result = await service.addRound('tournament-1', {
+      name: 'League stage',
+      format: RoundFormat.ROUND_ROBIN,
+      bestOf: 3,
+      settings,
+    });
+
+    expect(round.create).toHaveBeenCalledWith({
+      data: {
+        name: 'League stage',
+        format: RoundFormat.ROUND_ROBIN,
+        bestOf: 3,
+        settings,
+        orderIndex: 3,
+        tournamentId: 'tournament-1',
+      },
+    });
+    expect(result).toEqual(expect.objectContaining({ settings }));
+  });
+
+  it('normalizes and persists canonical Group Stage settings through add-round', async () => {
+    const round = {
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }) =>
+          Promise.resolve({ id: 'group-round', ...data }),
+        ),
+    };
+    const service = new TournamentsService(
+      { round } as unknown as PrismaService,
+      new RoundSettingsService(),
+      {} as StandingsService,
+      {} as ContentFilterService,
+    );
+
+    const result = await service.addRound('tournament-1', {
+      name: 'Group stage',
+      format: RoundFormat.GROUP_STAGE,
+      bestOf: 3,
+      settings: {
+        numberOfGroups: 4,
+        advancingTeamsPerGroup: 2,
+        meetingsPerPair: 2,
+        allowDraws: true,
+      },
+    });
+
+    const settings = {
+      numberOfGroups: 4,
+      advancingTeamsPerGroup: 2,
+      winPoints: 3,
+      drawPoints: 1,
+      lossPoints: 0,
+      allowDraws: true,
+      meetingsPerPair: 2,
+    };
+    expect(round.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        format: RoundFormat.GROUP_STAGE,
+        bestOf: 3,
+        settings,
+      }),
+    });
+    expect(result).toEqual(expect.objectContaining({ settings }));
+  });
+
+  it.each([
+    [RoundFormat.PLAYOFF, { thirdPlaceMatch: false }],
+    [RoundFormat.DOUBLE_ELIM, { grandFinalReset: false }],
+  ] as const)(
+    'persists canonical %s settings through add-round without fixed seeding JSON',
+    async (format, settings) => {
+      const round = {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }) =>
+            Promise.resolve({ id: 'elimination-round', ...data }),
+          ),
+      };
+      const service = new TournamentsService(
+        { round } as unknown as PrismaService,
+        new RoundSettingsService(),
+        {} as StandingsService,
+        {} as ContentFilterService,
+      );
+
+      const result = await service.addRound('tournament-1', {
+        name: 'Final stage',
+        format,
+        bestOf: 5,
+        settings: { seeding: 'STANDARD', ...settings },
+      });
+
+      expect(round.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ format, bestOf: 5, settings }),
+      });
+      expect(result).toEqual(expect.objectContaining({ settings }));
+    },
+  );
+
+  it('normalizes and persists canonical Swiss settings during tournament creation', async () => {
+    const tx = {
+      tournament: {
+        create: jest.fn().mockResolvedValue({ id: 'tournament-1' }),
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tournament-1',
+          rounds: [],
+        }),
+      },
+      round: { create: jest.fn().mockResolvedValue({ id: 'swiss-round' }) },
+    };
+    const prisma = {
+      game: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'game-1',
+          name: 'Test Game',
+          defaultTeamSize: 5,
+          maxTeamSize: 7,
+        }),
+      },
+      tournament: { findUnique: jest.fn().mockResolvedValue(null) },
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as PrismaService;
+    const service = new TournamentsService(
+      prisma,
+      new RoundSettingsService(),
+      {} as StandingsService,
+      { validate: jest.fn() } as unknown as ContentFilterService,
+    );
+
+    await service.create('organizer-1', {
+      name: 'Swiss Cup',
+      gameId: 'game-1',
+      maxTeamSize: 7,
+      rounds: [
+        {
+          name: 'Swiss stage',
+          format: RoundFormat.SWISS,
+          bestOf: 3,
+          settings: { numberOfRounds: null, advancingTeamCount: 4 },
+        },
+      ],
+    });
+
+    expect(tx.round.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        format: RoundFormat.SWISS,
+        bestOf: 3,
+        settings: { numberOfRounds: null, advancingTeamCount: 4 },
+      }),
+    });
+  });
+
+  it('normalizes legacy Swiss settings through the add-round flow', async () => {
+    const round = {
+      findFirst: jest.fn().mockResolvedValue({ orderIndex: 1 }),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }) =>
+          Promise.resolve({ id: 'swiss-round', ...data }),
+        ),
+    };
+    const service = new TournamentsService(
+      { round } as unknown as PrismaService,
+      new RoundSettingsService(),
+      {} as StandingsService,
+      {} as ContentFilterService,
+    );
+
+    const result = await service.addRound('tournament-1', {
+      name: 'Swiss stage',
+      format: RoundFormat.SWISS,
+      settings: { numRounds: 5, advanceCount: 4 },
+    });
+
+    const settings = { numberOfRounds: 5, advancingTeamCount: 4 };
+    expect(round.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        format: RoundFormat.SWISS,
+        settings,
+      }),
+    });
+    expect(result).toEqual(expect.objectContaining({ settings }));
   });
 });
 

@@ -26,13 +26,13 @@ function settings(
   overrides: Partial<GroupStageSettings> = {},
 ): GroupStageSettings {
   return {
-    numGroups: 2,
-    teamsPerGroup: 4,
-    advanceCount: 2,
-    doubleRound: false,
-    pointsWin: 3,
-    pointsDraw: 1,
-    pointsLoss: 0,
+    numberOfGroups: 2,
+    advancingTeamsPerGroup: 2,
+    winPoints: 3,
+    drawPoints: 1,
+    lossPoints: 0,
+    allowDraws: false,
+    meetingsPerPair: 1,
     ...overrides,
   };
 }
@@ -42,11 +42,11 @@ describe('GroupStageGenerator', () => {
 
   it.each([
     [8, 2, 4, 6],
-    [12, 3, 4, 6],
+    [16, 4, 4, 6],
   ])(
     'allocates %i teams into %i groups and generates round-robin matches',
     (teamCount, numGroups, teamsPerGroup, matchesPerGroup) => {
-      const groupSettings = settings({ numGroups, teamsPerGroup });
+      const groupSettings = settings({ numberOfGroups: numGroups });
       const allocations = generator.allocate(
         input(teams(teamCount), groupSettings),
       );
@@ -55,7 +55,9 @@ describe('GroupStageGenerator', () => {
       );
 
       expect(allocations).toHaveLength(numGroups);
-      expect(allocations.every((group) => group.teams.length === 4)).toBe(true);
+      expect(
+        allocations.every((group) => group.teams.length === teamsPerGroup),
+      ).toBe(true);
       for (const group of allocations) {
         expect(
           matches.filter((match) => match.group?.key === group.key),
@@ -92,15 +94,32 @@ describe('GroupStageGenerator', () => {
     ]);
   });
 
-  it('rejects uneven or incomplete group capacity', () => {
-    expect(() => generator.generate(input(teams(7), settings()))).toThrow(
-      'exactly 8 approved teams',
-    );
-  });
+  it.each([
+    [8, 3, 'cannot be divided'],
+    [4, 5, 'cannot exceed'],
+    [8, 2, 'less than teamsPerGroup'],
+  ])(
+    'rejects invalid allocation for %i teams and %i groups',
+    (teamCount, numberOfGroups, message) => {
+      expect(() =>
+        generator.generate(
+          input(
+            teams(teamCount),
+            settings({
+              numberOfGroups,
+              ...(teamCount === 8 && numberOfGroups === 2
+                ? { advancingTeamsPerGroup: 4 }
+                : {}),
+            }),
+          ),
+        ),
+      ).toThrow(message);
+    },
+  );
 
   it('reuses double round-robin behavior inside every group', () => {
     const matches = generator.generate(
-      input(teams(8), settings({ doubleRound: true })),
+      input(teams(8), settings({ meetingsPerPair: 2 })),
     );
 
     expect(matches).toHaveLength(24);
@@ -117,4 +136,39 @@ describe('GroupStageGenerator', () => {
       matches.length,
     );
   });
+
+  it.each([
+    [8, 2, 1, 12],
+    [8, 2, 2, 24],
+    [16, 4, 1, 24],
+  ])(
+    'generates every pair exactly %i time(s) without cross-group matches',
+    (teamCount, numberOfGroups, meetingsPerPair, expectedMatches) => {
+      const tournamentTeams = teams(teamCount);
+      const groupSettings = settings({ numberOfGroups, meetingsPerPair });
+      const allocations = generator.allocate(
+        input(tournamentTeams, groupSettings),
+      );
+      const matches = generator.generate(input(tournamentTeams, groupSettings));
+      const groupByTeam = new Map(
+        allocations.flatMap((group) =>
+          group.teams.map((team) => [team.id, group.key] as const),
+        ),
+      );
+      const pairCounts = new Map<string, number>();
+
+      expect(matches).toHaveLength(expectedMatches);
+      for (const match of matches) {
+        const teamAId = match.teamA.teamId!;
+        const teamBId = match.teamB.teamId!;
+        expect(teamAId).not.toBe(teamBId);
+        expect(groupByTeam.get(teamAId)).toBe(groupByTeam.get(teamBId));
+        const pair = [teamAId, teamBId].sort().join(':');
+        pairCounts.set(pair, (pairCounts.get(pair) ?? 0) + 1);
+      }
+      expect(
+        [...pairCounts.values()].every((count) => count === meetingsPerPair),
+      ).toBe(true);
+    },
+  );
 });

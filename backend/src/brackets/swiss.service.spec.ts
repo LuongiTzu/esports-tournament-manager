@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { MatchStatus, RoundFormat } from '@prisma/client';
+import { MatchOutcome, MatchStatus, RoundFormat } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SwissGenerator } from './generators/swiss.generator';
 import { RoundSettingsService } from './round-settings.service';
@@ -33,6 +33,7 @@ function harness(
   options: {
     format?: RoundFormat;
     numRounds?: number;
+    automaticRounds?: boolean;
     teamCount?: number;
     matches?: StoredMatch[];
     persistError?: Error;
@@ -80,7 +81,12 @@ function harness(
       findUnique: jest.fn().mockResolvedValue({
         id: 'round-1',
         format: options.format ?? RoundFormat.SWISS,
-        settings: { numRounds: options.numRounds ?? 3 },
+        settings: options.automaticRounds
+          ? null
+          : {
+              numberOfRounds: options.numRounds ?? 3,
+              advancingTeamCount: 2,
+            },
         bestOf: 1,
         tournamentId: 'tournament-1',
       }),
@@ -113,7 +119,7 @@ describe('SwissService.generateNextSwissRound', () => {
       expect.objectContaining({
         roundId: 'round-1',
         bracketRound: 2,
-        numRounds: 3,
+        numberOfRounds: 3,
         matchCount: 2,
         matchIds: expect.arrayContaining(['generated-2', 'generated-3']),
         bye: null,
@@ -153,6 +159,14 @@ describe('SwissService.generateNextSwissRound', () => {
     );
   });
 
+  it('derives the round limit from the actual team count when automatic', async () => {
+    const { service } = harness({ automaticRounds: true, teamCount: 8 });
+
+    await expect(service.generateNextSwissRound('round-1')).resolves.toEqual(
+      expect.objectContaining({ bracketRound: 2, numberOfRounds: 3 }),
+    );
+  });
+
   it('rejects when fewer than two approved teams are eligible', async () => {
     const { service, createManyAndReturn } = harness({ teamCount: 1 });
 
@@ -163,7 +177,7 @@ describe('SwissService.generateNextSwissRound', () => {
   });
 
   it('persists and reports a bye for an odd team count', async () => {
-    const { service } = harness({ teamCount: 5 });
+    const { service, createManyAndReturn } = harness({ teamCount: 5 });
 
     const result = await service.generateNextSwissRound('round-1');
 
@@ -173,6 +187,17 @@ describe('SwissService.generateNextSwissRound', () => {
       teamId: expect.any(String),
     });
     expect(result.matches.filter((match) => match.isBye)).toHaveLength(1);
+    expect(createManyAndReturn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([
+          expect.objectContaining({
+            isBye: true,
+            outcome: MatchOutcome.TEAM_A,
+            teamBId: null,
+          }),
+        ]),
+      }),
+    );
   });
 
   it('propagates persistence failure from the transaction', async () => {

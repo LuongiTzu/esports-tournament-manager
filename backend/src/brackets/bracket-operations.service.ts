@@ -17,6 +17,12 @@ import { UpdateSeedsDto } from './dto/bracket-operations.dto';
 import { MatchDraft } from './types/bracket-generator';
 import { StandingsService } from './standings.service';
 import { TournamentEventsService } from '../tournaments/tournament-events.service';
+import { RoundSettingsService } from './round-settings.service';
+import {
+  GroupStageSettings,
+  resolveSwissNumberOfRounds,
+  SwissSettings,
+} from './types/round-settings';
 
 @Injectable()
 export class BracketOperationsService {
@@ -24,6 +30,7 @@ export class BracketOperationsService {
     private readonly prisma: PrismaService,
     private readonly brackets: BracketsService,
     private readonly standings: StandingsService,
+    private readonly settingsService: RoundSettingsService,
     @Optional() private readonly events?: TournamentEventsService,
   ) {}
 
@@ -161,14 +168,22 @@ export class BracketOperationsService {
         format: true,
         settings: true,
         matches: {
-          select: { status: true, groupId: true, bracketRound: true },
+          select: {
+            status: true,
+            isActive: true,
+            groupId: true,
+            bracketRound: true,
+          },
         },
       },
     });
     if (!round) throw new NotFoundException('Không tìm thấy vòng đấu');
     if (
       !round.matches.length ||
-      round.matches.some((m) => m.status !== MatchStatus.COMPLETED)
+      round.matches.some(
+        (match) =>
+          match.isActive !== false && match.status !== MatchStatus.COMPLETED,
+      )
     ) {
       throw new BadRequestException('Current round is not complete');
     }
@@ -204,52 +219,42 @@ export class BracketOperationsService {
     if (!nextRound) throw new BadRequestException('No next round exists');
 
     const settings = asRecord(round.settings) ?? {};
-    const configuredAdvanceCount = Number(settings.advanceCount ?? 0);
-    if (
-      !Number.isInteger(configuredAdvanceCount) ||
-      configuredAdvanceCount < 1
-    ) {
-      throw new BadRequestException(
-        'Round format does not define advanceCount',
-      );
-    }
     const result = await this.standings.forTournament(round.tournamentId, [
       { id: round.id, format: round.format, settings: round.settings },
     ]);
 
+    let configuredAdvanceCount: number | undefined;
     if (round.format === RoundFormat.SWISS) {
-      const configuredRounds = Number(settings.numRounds);
+      const swissSettings = this.settingsService.getEffectiveSettings(
+        RoundFormat.SWISS,
+        round.settings,
+      ) as SwissSettings;
+      const swissStandings = result.rounds[0].standings as Array<{
+        teamId: string;
+      }>;
+      const numberOfRounds = resolveSwissNumberOfRounds(
+        swissStandings.length,
+        swissSettings.numberOfRounds,
+      );
       const currentSwissRound = Math.max(
         0,
         ...round.matches.map((match) => match.bracketRound ?? 0),
       );
-      if (
-        !Number.isInteger(configuredRounds) ||
-        configuredRounds < 1 ||
-        currentSwissRound !== configuredRounds
-      ) {
+      if (currentSwissRound !== numberOfRounds) {
         throw new BadRequestException(
           'Swiss advancement is only available after the final configured round',
         );
       }
+      configuredAdvanceCount = swissSettings.advancingTeamCount;
     }
 
     if (round.format === RoundFormat.GROUP_STAGE) {
-      const numGroups = Number(settings.numGroups);
-      const teamsPerGroup = Number(settings.teamsPerGroup);
-      if (
-        !Number.isInteger(numGroups) ||
-        numGroups < 1 ||
-        !Number.isInteger(teamsPerGroup) ||
-        teamsPerGroup < 2
-      ) {
-        throw new BadRequestException('Invalid GROUP_STAGE settings');
-      }
-      if (configuredAdvanceCount > teamsPerGroup) {
-        throw new BadRequestException(
-          'advanceCount cannot exceed teamsPerGroup',
-        );
-      }
+      const groupSettings = this.settingsService.getEffectiveSettings(
+        RoundFormat.GROUP_STAGE,
+        round.settings,
+      ) as GroupStageSettings;
+      const { numberOfGroups, advancingTeamsPerGroup, meetingsPerPair } =
+        groupSettings;
 
       const groups = result.rounds[0].standings as Array<{
         groupId: string;
@@ -257,9 +262,16 @@ export class BracketOperationsService {
         orderIndex: number;
         standings: Array<{ teamId?: string; id?: string }>;
       }>;
+      if (groups.length !== numberOfGroups || groups.length === 0) {
+        throw new BadRequestException(
+          'Persisted groups do not match GROUP_STAGE settings',
+        );
+      }
+      const teamsPerGroup = groups[0].standings.length;
       if (
-        groups.length !== numGroups ||
-        groups.some((group) => group.standings.length !== teamsPerGroup)
+        teamsPerGroup < 2 ||
+        groups.some((group) => group.standings.length !== teamsPerGroup) ||
+        advancingTeamsPerGroup >= teamsPerGroup
       ) {
         throw new BadRequestException(
           'Persisted groups do not match GROUP_STAGE settings',
@@ -267,8 +279,7 @@ export class BracketOperationsService {
       }
 
       const matchesPerGroup =
-        ((teamsPerGroup * (teamsPerGroup - 1)) / 2) *
-        (settings.doubleRound === true ? 2 : 1);
+        ((teamsPerGroup * (teamsPerGroup - 1)) / 2) * meetingsPerPair;
       if (
         groups.some(
           (group) =>
@@ -284,7 +295,7 @@ export class BracketOperationsService {
         name: group.name,
         orderIndex: group.orderIndex,
         teamIds: group.standings
-          .slice(0, configuredAdvanceCount)
+          .slice(0, advancingTeamsPerGroup)
           .map((row) => row.teamId ?? row.id!),
       }));
       const teamIds = qualifiedGroups.flatMap((group) => group.teamIds);
@@ -292,11 +303,20 @@ export class BracketOperationsService {
         round,
         nextRound,
         teamIds,
-        advanceCountPerGroup: configuredAdvanceCount,
+        advanceCountPerGroup: advancingTeamsPerGroup,
         groups: qualifiedGroups,
       });
     }
 
+    configuredAdvanceCount ??= Number(settings.advanceCount ?? 0);
+    if (
+      !Number.isInteger(configuredAdvanceCount) ||
+      configuredAdvanceCount < 1
+    ) {
+      throw new BadRequestException(
+        'Round format does not define advanceCount',
+      );
+    }
     const standings = result.rounds[0].standings as Array<{
       teamId?: string;
       id?: string;
@@ -478,7 +498,10 @@ export class BracketOperationsService {
         format: round.format,
         status: round.status,
         bestOf: round.bestOf,
-        settings: round.settings,
+        settings: this.settingsService.getEffectiveSettings(
+          round.format,
+          round.settings,
+        ),
       },
       groups: round.groups.map((group) => ({
         id: group.id,
@@ -518,11 +541,17 @@ function validateTeamCount(format: RoundFormat, count: number, raw: unknown) {
   }
   const settings = asRecord(raw);
   if (format === RoundFormat.GROUP_STAGE) {
-    const expected =
-      Number(settings?.numGroups) * Number(settings?.teamsPerGroup);
-    if (count !== expected) {
+    const numberOfGroups = Number(
+      settings?.numberOfGroups ?? settings?.numGroups,
+    );
+    if (
+      !Number.isInteger(numberOfGroups) ||
+      numberOfGroups < 2 ||
+      numberOfGroups > count ||
+      count % numberOfGroups !== 0
+    ) {
       throw new BadRequestException(
-        `GROUP_STAGE requires exactly ${expected} approved teams`,
+        `GROUP_STAGE requires ${count} approved teams to divide equally into ${numberOfGroups} groups`,
       );
     }
   }
@@ -607,6 +636,17 @@ async function persistDrafts(
   const ids = new Map<string, string>();
   const rows: Array<Prisma.MatchGetPayload<object> & { draftKey: string }> = [];
   for (const draft of active) {
+    const byeWinnerTeamId = draft.isBye
+      ? (draft.teamA.teamId ?? draft.teamB.teamId)
+      : null;
+    const hasPotentialByeParticipant = Boolean(
+      draft.teamA.teamId ||
+      draft.teamA.sourceMatchKey ||
+      draft.teamB.teamId ||
+      draft.teamB.sourceMatchKey,
+    );
+    const resolvedBye =
+      draft.isBye && (byeWinnerTeamId !== null || !hasPotentialByeParticipant);
     const row = await tx.match.create({
       data: {
         roundId,
@@ -620,9 +660,22 @@ async function persistDrafts(
         isActive: !draft.activationCondition,
         activationCondition: draft.activationCondition,
         bestOf: draft.bestOf,
-        status: draft.isBye ? MatchStatus.COMPLETED : MatchStatus.PENDING,
-        scoreA: draft.isBye ? 1 : 0,
-        winnerTeamId: draft.isBye ? draft.teamA.teamId : null,
+        status: resolvedBye ? MatchStatus.COMPLETED : MatchStatus.PENDING,
+        scoreA:
+          byeWinnerTeamId !== null && byeWinnerTeamId === draft.teamA.teamId
+            ? 1
+            : 0,
+        scoreB:
+          byeWinnerTeamId !== null && byeWinnerTeamId === draft.teamB.teamId
+            ? 1
+            : 0,
+        winnerTeamId: byeWinnerTeamId,
+        outcome:
+          byeWinnerTeamId !== null && byeWinnerTeamId === draft.teamA.teamId
+            ? 'TEAM_A'
+            : byeWinnerTeamId !== null && byeWinnerTeamId === draft.teamB.teamId
+              ? 'TEAM_B'
+              : null,
       },
     });
     ids.set(draft.key, row.id);
@@ -641,7 +694,57 @@ async function persistDrafts(
       },
     });
   }
+  await propagateInitialByeWinners(tx, active, ids);
   return rows;
+}
+
+async function propagateInitialByeWinners(
+  tx: Prisma.TransactionClient,
+  drafts: MatchDraft[],
+  ids: Map<string, string>,
+) {
+  const draftsByKey = new Map(drafts.map((draft) => [draft.key, draft]));
+  const assigned = new Map(
+    drafts.map((draft) => [
+      draft.key,
+      { teamAId: draft.teamA.teamId, teamBId: draft.teamB.teamId },
+    ]),
+  );
+  const queue = drafts
+    .filter((draft) => draft.isBye && draft.teamA.teamId)
+    .map((draft) => ({ draft, winnerTeamId: draft.teamA.teamId! }));
+
+  while (queue.length) {
+    const { draft, winnerTeamId } = queue.shift()!;
+    if (!draft.nextMatchKey || !draft.nextMatchSlot) continue;
+    const target = draftsByKey.get(draft.nextMatchKey);
+    const targetState = assigned.get(draft.nextMatchKey);
+    if (!target || !targetState) {
+      throw new Error('Generated bye progression target is missing');
+    }
+    const field = draft.nextMatchSlot === 'A' ? 'teamAId' : 'teamBId';
+    if (targetState[field] && targetState[field] !== winnerTeamId) {
+      throw new Error('Generated bye progression slot is already occupied');
+    }
+    targetState[field] = winnerTeamId;
+    const completesBye = target.isBye;
+    await tx.match.update({
+      where: { id: ids.get(target.key)! },
+      data: {
+        [field]: winnerTeamId,
+        ...(completesBye
+          ? {
+              status: MatchStatus.COMPLETED,
+              scoreA: field === 'teamAId' ? 1 : 0,
+              scoreB: field === 'teamBId' ? 1 : 0,
+              winnerTeamId,
+              outcome: field === 'teamAId' ? 'TEAM_A' : 'TEAM_B',
+            }
+          : {}),
+      },
+    });
+    if (completesBye) queue.push({ draft: target, winnerTeamId });
+  }
 }
 
 function uniqueGroups(drafts: MatchDraft[]) {

@@ -20,55 +20,51 @@ export class RoundRobinGenerator implements IBracketGenerator<
     const slots: (string | null)[] = input.teams.map((team) => team.id);
     if (slots.length % 2 === 1) slots.push(null);
 
-    const firstHalf = this.generateHalf(slots, input.bestOf, 1);
-    if (!input.settings.doubleRound) return firstHalf;
-
-    const roundsPerHalf = slots.length - 1;
-    const secondHalf = firstHalf.map((match) => {
-      const bracketRound = match.bracketRound + roundsPerHalf;
-      const teamA = match.isBye ? match.teamA : match.teamB;
-      const teamB = match.isBye ? match.teamB : match.teamA;
-
-      return {
-        ...match,
-        key: this.matchKey(bracketRound, match.matchNumber),
-        teamA,
-        teamB,
-        bracketRound,
-      };
-    });
-
-    return [...firstHalf, ...secondHalf];
+    const firstCycle = this.generateCycle(slots, input.bestOf);
+    const roundsPerCycle = slots.length - 1;
+    return Array.from(
+      { length: input.settings.meetingsPerPair },
+      (_, cycleIndex) =>
+        firstCycle.map((match) => {
+          const bracketRound = match.bracketRound + cycleIndex * roundsPerCycle;
+          const reverseSides = cycleIndex % 2 === 1;
+          return {
+            ...match,
+            key: this.matchKey(bracketRound, match.matchNumber),
+            teamA: reverseSides ? match.teamB : match.teamA,
+            teamB: reverseSides ? match.teamA : match.teamB,
+            bracketRound,
+          };
+        }),
+    ).flat();
   }
 
-  private generateHalf(
+  private generateCycle(
     initialSlots: (string | null)[],
     bestOf: number,
-    firstRound: number,
   ): MatchDraft[] {
     const rotation = [...initialSlots];
     const roundCount = rotation.length - 1;
     const matches: MatchDraft[] = [];
 
     for (let roundOffset = 0; roundOffset < roundCount; roundOffset++) {
-      const bracketRound = firstRound + roundOffset;
+      const bracketRound = roundOffset + 1;
+      let matchNumber = 0;
 
       for (let index = 0; index < rotation.length / 2; index++) {
         const left = rotation[index];
         const right = rotation[rotation.length - 1 - index];
-        const isBye = left === null || right === null;
-        const teamAId = left ?? right;
-        const teamBId = isBye ? null : right;
-        const matchNumber = index + 1;
+        if (left === null || right === null) continue;
+        matchNumber++;
 
         matches.push({
           key: this.matchKey(bracketRound, matchNumber),
-          teamA: { teamId: teamAId },
-          teamB: { teamId: teamBId },
+          teamA: { teamId: left },
+          teamB: { teamId: right },
           bracketRound,
           bracketType: null,
           matchNumber,
-          isBye,
+          isBye: false,
           bestOf,
           nextMatchKey: null,
           nextMatchSlot: null,

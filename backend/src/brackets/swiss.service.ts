@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  MatchOutcome,
   MatchStatus,
   Prisma,
   RegistrationStatus,
@@ -13,7 +14,10 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { SwissGenerator } from './generators/swiss.generator';
 import { RoundSettingsService } from './round-settings.service';
-import { SwissSettings } from './types/round-settings';
+import {
+  resolveSwissNumberOfRounds,
+  SwissSettings,
+} from './types/round-settings';
 import { SwissMatchSnapshot } from './types/swiss';
 
 @Injectable()
@@ -128,17 +132,12 @@ export class SwissService {
         RoundFormat.SWISS,
         rawSettings,
       )) as SwissSettings;
-      const configuredRounds =
-        rawSettings &&
-        Object.prototype.hasOwnProperty.call(rawSettings, 'numRounds')
-          ? settings.numRounds
-          : undefined;
-      const numRounds = this.generator.resolveNumRounds(
+      const numberOfRounds = resolveSwissNumberOfRounds(
         teams.length,
-        configuredRounds,
+        settings.numberOfRounds,
       );
       const nextRound = currentRound + 1;
-      if (nextRound > numRounds) {
+      if (nextRound > numberOfRounds) {
         throw new BadRequestException(
           'All configured Swiss rounds are complete',
         );
@@ -166,6 +165,7 @@ export class SwissService {
           scoreA: draft.isBye ? 1 : 0,
           scoreB: 0,
           winnerTeamId: draft.isBye ? draft.teamA.teamId : null,
+          outcome: draft.isBye ? MatchOutcome.TEAM_A : null,
         })),
         select: {
           id: true,
@@ -180,7 +180,7 @@ export class SwissService {
       return {
         roundId,
         bracketRound: nextRound,
-        numRounds,
+        numberOfRounds,
         matchCount: persistedMatches.length,
         matchIds: persistedMatches.map((match) => match.id),
         matches: persistedMatches,

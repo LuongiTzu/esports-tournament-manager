@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/features/auth/store";
+import ImageUploadPicker from "@/components/ImageUploadPicker";
+import ResolvedImage from "@/components/ResolvedImage";
+import { authApi } from "@/features/auth/api";
+import { updateCurrentUser, useAuth } from "@/features/auth/store";
 import { tournamentsApi } from "@/features/tournaments/api";
 import TournamentCard from "@/features/tournaments/components/TournamentCard";
 import type { Tournament } from "@/features/tournaments/types";
@@ -18,6 +21,10 @@ export default function MyProfilePage() {
   const router = useRouter();
   const { user, ready } = useAuth();
   const [tab, setTab] = useState<"organized" | "joined">("organized");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const [avatarSuccess, setAvatarSuccess] = useState("");
   /** Gắn kết quả với tab đã sinh ra nó để suy trạng thái tải, tránh setState trong effect */
   const [result, setResult] = useState<{
     tab: "organized" | "joined";
@@ -47,17 +54,72 @@ export default function MyProfilePage() {
   const loading = result?.tab !== tab;
   const tournaments = result?.data ?? [];
 
+  const uploadAvatar = async () => {
+    if (!avatarFile || !user) return;
+    setAvatarUploading(true);
+    setAvatarError("");
+    setAvatarSuccess("");
+    try {
+      const uploaded = await authApi.uploadAvatar(avatarFile);
+      updateCurrentUser({ ...user, avatarUrl: uploaded.url });
+      setAvatarFile(null);
+      setAvatarSuccess("Ảnh đại diện đã được cập nhật.");
+    } catch (uploadError) {
+      setAvatarError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Không thể cập nhật ảnh đại diện.",
+      );
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-10">
-      <div className="flex items-center gap-4">
-        <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-brand text-xl font-bold text-on-brand">
-          {user?.displayName?.charAt(0).toUpperCase() || "?"}
+      <div className="rounded-2xl border border-line bg-surface-card p-5 sm:p-6">
+        <div className="flex items-center gap-4">
+          <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xl font-bold text-on-brand">
+            <ResolvedImage
+              src={user?.avatarUrl}
+              alt={user ? `Ảnh đại diện của ${user.displayName}` : "Ảnh đại diện"}
+              className="size-full object-cover object-center"
+              fallback={user?.displayName?.charAt(0).toUpperCase() || "?"}
+            />
+          </div>
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-bold text-ink">
+              {user?.displayName}
+            </h1>
+            <p className="truncate text-sm text-ink-muted">{user?.email}</p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <h1 className="truncate text-xl font-bold text-ink">
-            {user?.displayName}
-          </h1>
-          <p className="truncate text-sm text-ink-muted">{user?.email}</p>
+
+        <div className="mt-5 border-t border-line pt-5">
+          <ImageUploadPicker
+            label="Đổi ảnh đại diện"
+            file={avatarFile}
+            onFileChange={(file) => {
+              setAvatarFile(file);
+              setAvatarError("");
+              setAvatarSuccess("");
+            }}
+            existingUrl={user?.avatarUrl}
+            variant="avatar"
+            uploading={avatarUploading}
+            uploadError={avatarError}
+            successMessage={avatarSuccess}
+          />
+          {avatarFile && (
+            <button
+              type="button"
+              disabled={avatarUploading}
+              onClick={uploadAvatar}
+              className={`${primaryButtonClass} mt-4`}
+            >
+              {avatarUploading ? "Đang tải lên…" : "Lưu ảnh đại diện"}
+            </button>
+          )}
         </div>
       </div>
 

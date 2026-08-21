@@ -15,8 +15,8 @@ export interface SwissStanding {
   rank: number;
   teamId: string;
   points: number;
+  played: number;
   wins: number;
-  draws: number;
   losses: number;
   byes: number;
   buchholz: number;

@@ -13,6 +13,7 @@ import {
 import { logout, useAuth } from "@/features/auth/store";
 import { useLocale } from "@/features/locale/store";
 import type { Locale } from "@/features/locale/types";
+import ResolvedImage from "@/components/ResolvedImage";
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -149,8 +150,16 @@ export default function Navbar() {
             <div aria-label={t("nav.loadingAccount")} className="ml-1 h-9 w-32 animate-pulse rounded-lg bg-surface-sub" />
           ) : user ? (
             <>
-              <Link href="/users/me" className="ml-1 max-w-32 truncate rounded-lg px-2.5 py-2 text-sm font-medium text-ink-muted transition hover:bg-white/5 hover:text-ink">
-                {user.displayName}
+              <Link href="/users/me" className="ml-1 inline-flex max-w-40 items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-ink-muted transition hover:bg-white/5 hover:text-ink">
+                <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xs font-bold text-on-brand">
+                  <ResolvedImage
+                    src={user.avatarUrl}
+                    alt=""
+                    className="size-full object-cover object-center"
+                    fallback={user.displayName.charAt(0).toUpperCase()}
+                  />
+                </span>
+                <span className="truncate">{user.displayName}</span>
               </Link>
               <Link href="/tournaments/new" className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-brand px-3.5 py-2 text-sm font-semibold text-on-brand shadow-md shadow-brand/20 transition hover:brightness-110 hover:shadow-glow-brand">
                 <PlusIcon size={16} weight="bold" />
@@ -211,7 +220,17 @@ export default function Navbar() {
             <div className="my-2 border-t border-line" />
             {ready && user ? (
               <>
-                <Link href="/users/me" onClick={closeMenu} className="truncate px-3 py-2 text-sm text-ink-muted">{user.displayName}</Link>
+                <Link href="/users/me" onClick={closeMenu} className="inline-flex items-center gap-2 truncate px-3 py-2 text-sm text-ink-muted">
+                  <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xs font-bold text-on-brand">
+                    <ResolvedImage
+                      src={user.avatarUrl}
+                      alt=""
+                      className="size-full object-cover object-center"
+                      fallback={user.displayName.charAt(0).toUpperCase()}
+                    />
+                  </span>
+                  <span className="truncate">{user.displayName}</span>
+                </Link>
                 <Link href="/tournaments/new" onClick={closeMenu} className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-brand px-3 py-2.5 text-sm font-semibold text-on-brand">
                   <PlusIcon size={16} weight="bold" />
                   {t("nav.createTournament")}

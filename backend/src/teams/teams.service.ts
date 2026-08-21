@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import {
   MemberRole,
+  MatchOutcome,
   MatchStatus,
   NotificationType,
   Prisma,
@@ -179,6 +180,7 @@ export class TeamsService {
         scoreA: true,
         scoreB: true,
         winnerTeamId: true,
+        outcome: true,
         scheduledAt: true,
         playedAt: true,
         teamA: { select: { id: true, name: true, shortName: true } },
@@ -190,8 +192,9 @@ export class TeamsService {
       completedMatches: completedMatches.length,
       wins: completedMatches.filter((match) => match.winnerTeamId === team.id)
         .length,
-      draws: completedMatches.filter((match) => match.winnerTeamId === null)
-        .length,
+      draws: completedMatches.filter(
+        (match) => match.outcome === MatchOutcome.DRAW,
+      ).length,
       losses: completedMatches.filter(
         (match) =>
           match.winnerTeamId !== null && match.winnerTeamId !== team.id,

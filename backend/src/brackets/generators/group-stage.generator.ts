@@ -32,10 +32,11 @@ export class GroupStageGenerator implements IBracketGenerator<
           format: RoundFormat.ROUND_ROBIN,
           teams: group.teams,
           settings: {
-            doubleRound: input.settings.doubleRound,
-            pointsWin: input.settings.pointsWin,
-            pointsDraw: input.settings.pointsDraw,
-            pointsLoss: input.settings.pointsLoss,
+            meetingsPerPair: input.settings.meetingsPerPair,
+            winPoints: input.settings.winPoints,
+            drawPoints: input.settings.drawPoints,
+            lossPoints: input.settings.lossPoints,
+            allowDraws: input.settings.allowDraws,
           },
           bestOf: input.bestOf,
         })
@@ -54,15 +55,21 @@ export class GroupStageGenerator implements IBracketGenerator<
   allocate(
     input: BracketGeneratorInput<typeof RoundFormat.GROUP_STAGE>,
   ): GroupAllocation[] {
-    const { numGroups, teamsPerGroup, advanceCount } = input.settings;
-    if (advanceCount > teamsPerGroup) {
-      throw new RangeError('advanceCount cannot exceed teamsPerGroup');
-    }
-
-    const requiredTeams = numGroups * teamsPerGroup;
-    if (input.teams.length !== requiredTeams) {
+    const { numberOfGroups, advancingTeamsPerGroup } = input.settings;
+    if (numberOfGroups > input.teams.length) {
       throw new RangeError(
-        `GROUP_STAGE requires exactly ${requiredTeams} approved teams`,
+        'numberOfGroups cannot exceed the participating team count',
+      );
+    }
+    if (input.teams.length % numberOfGroups !== 0) {
+      throw new RangeError(
+        `GROUP_STAGE requires equal-sized groups: ${input.teams.length} teams cannot be divided into ${numberOfGroups} groups`,
+      );
+    }
+    const teamsPerGroup = input.teams.length / numberOfGroups;
+    if (advancingTeamsPerGroup >= teamsPerGroup) {
+      throw new RangeError(
+        'advancingTeamsPerGroup must be less than teamsPerGroup',
       );
     }
 
@@ -73,7 +80,7 @@ export class GroupStageGenerator implements IBracketGenerator<
 
     const sorted = [...input.teams].sort(compareTeams);
     const groups: GroupAllocation[] = Array.from(
-      { length: numGroups },
+      { length: numberOfGroups },
       (_, index) => ({
         key: `group-${index + 1}`,
         name: `Group ${String.fromCharCode(65 + index)}`,
@@ -83,9 +90,11 @@ export class GroupStageGenerator implements IBracketGenerator<
     );
 
     sorted.forEach((team, index) => {
-      const position = index % (numGroups * 2);
+      const position = index % (numberOfGroups * 2);
       const groupIndex =
-        position < numGroups ? position : numGroups * 2 - 1 - position;
+        position < numberOfGroups
+          ? position
+          : numberOfGroups * 2 - 1 - position;
       groups[groupIndex].teams.push(team);
     });
 

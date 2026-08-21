@@ -15,7 +15,7 @@ function generate(count: number, thirdPlaceMatch = false): MatchDraft[] {
   return new PlayoffGenerator().generate({
     format: RoundFormat.PLAYOFF,
     teams: teams(count),
-    settings: { seeding: 'STANDARD', thirdPlaceMatch },
+    settings: { thirdPlaceMatch },
     bestOf: 3,
   });
 }
@@ -81,6 +81,22 @@ describe('PlayoffGenerator', () => {
       expect.arrayContaining(Array.from({ length: byeCount }, (_, i) => i + 1)),
     );
   });
+
+  it.each([3, 5, 6, 7, 8])(
+    'includes every one of %i teams exactly once in the opening round',
+    (count) => {
+      const openingTeams = generate(count)
+        .filter((match) => match.bracketRound === 1)
+        .flatMap((match) => [match.teamA.teamId, match.teamB.teamId])
+        .filter((teamId): teamId is string => teamId !== null);
+
+      expect(openingTeams).toHaveLength(count);
+      expect(new Set(openingTeams).size).toBe(count);
+      expect(
+        standard(generate(count)).filter((match) => !match.isBye),
+      ).toHaveLength(count - 1);
+    },
+  );
 
   it('links every non-final match to the correct next match and slot', () => {
     const result = standard(generate(8));
@@ -167,7 +183,7 @@ describe('PlayoffGenerator', () => {
     const input = {
       format: RoundFormat.PLAYOFF,
       teams: inputTeams,
-      settings: { seeding: 'STANDARD' as const, thirdPlaceMatch: false },
+      settings: { thirdPlaceMatch: false },
       bestOf: 1,
     };
 

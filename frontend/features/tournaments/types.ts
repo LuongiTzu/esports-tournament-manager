@@ -2,6 +2,97 @@ import type { Game, GameRef } from "@/features/games/types";
 import type { ApprovedTeam } from "@/features/teams/types";
 import type { TournamentStatus } from "@/shared/types/tournament-status";
 
+export interface RoundRobinSettings {
+  winPoints: number;
+  drawPoints: number;
+  lossPoints: number;
+  allowDraws: boolean;
+  meetingsPerPair: number;
+}
+
+export interface GroupStageSettings {
+  numberOfGroups: number;
+  advancingTeamsPerGroup: number;
+  winPoints: number;
+  drawPoints: number;
+  lossPoints: number;
+  allowDraws: boolean;
+  meetingsPerPair: number;
+}
+
+export interface SwissSettings {
+  numberOfRounds: number | null;
+  advancingTeamCount: number;
+}
+
+export interface PlayoffSettings {
+  thirdPlaceMatch: boolean;
+}
+
+export interface DoubleElimSettings {
+  grandFinalReset: boolean;
+}
+
+export type CreateRoundRequest =
+  | {
+      name: string;
+      format: "ROUND_ROBIN";
+      bestOf: number;
+      settings: RoundRobinSettings;
+    }
+  | {
+      name: string;
+      format: "GROUP_STAGE";
+      bestOf: number;
+      settings: GroupStageSettings;
+    }
+  | {
+      name: string;
+      format: "SWISS";
+      bestOf: number;
+      settings: SwissSettings;
+    }
+  | {
+      name: string;
+      format: "PLAYOFF";
+      bestOf: number;
+      settings: PlayoffSettings;
+    }
+  | {
+      name: string;
+      format: "DOUBLE_ELIM";
+      bestOf: number;
+      settings: DoubleElimSettings;
+    };
+
+type TournamentRoundBase = {
+  id: string;
+  name: string;
+  bestOf: number;
+};
+
+export type TournamentRound =
+  | (TournamentRoundBase & {
+      format: "ROUND_ROBIN";
+      settings: RoundRobinSettings | null;
+    })
+  | (TournamentRoundBase & {
+      format: "GROUP_STAGE";
+      settings: GroupStageSettings | null;
+    })
+  | (TournamentRoundBase & {
+      format: "SWISS";
+      settings: SwissSettings | null;
+    })
+  | (TournamentRoundBase & {
+      format: "PLAYOFF";
+      settings: PlayoffSettings | null;
+    })
+  | (TournamentRoundBase & {
+      format: "DOUBLE_ELIM";
+      settings: DoubleElimSettings | null;
+    });
+
 export interface Tournament {
   id: string;
   name: string;
@@ -19,7 +110,7 @@ export interface Tournament {
   endDate?: string | null;
   game?: GameRef;
   organizer?: { id: string; displayName: string; avatarUrl?: string | null };
-  rounds?: Array<{ id: string; name: string; format: string }>;
+  rounds?: TournamentRound[];
   _count?: { teams: number; comments?: number };
   createdAt: string;
 }
@@ -73,5 +164,5 @@ export interface CreateTournamentRequest {
   contactEmail?: string;
   contactPhone?: string;
   contactLink?: string;
-  rounds: Array<{ name: string; format: string; bestOf: number }>;
+  rounds: CreateRoundRequest[];
 }

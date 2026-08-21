@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BracketsCurlyIcon,
@@ -21,19 +22,94 @@ import {
   labelClass,
   secondaryButtonClass,
 } from "@/components/ui";
+import ImageUploadPicker from "@/components/ImageUploadPicker";
 import { clearSession, useAuth } from "@/features/auth/store";
 import { gamesApi } from "@/features/games/api";
 import { accentVars } from "@/features/games/game-accent";
 import type { Game } from "@/features/games/types";
 import { tournamentsApi } from "@/features/tournaments/api";
-import { ROUND_FORMATS } from "@/features/tournaments/round-formats";
+import {
+  ROUND_FORMATS,
+  type RoundFormatValue,
+} from "@/features/tournaments/round-formats";
 import TournamentCreateHero from "@/features/tournaments/components/TournamentCreateHero";
+import type { CreateRoundRequest } from "@/features/tournaments/types";
 import { ApiError } from "@/lib/api/client";
 
 interface RoundForm {
   name: string;
-  format: string;
+  format: RoundFormatValue;
   bestOf: string;
+  roundRobin: {
+    winPoints: string;
+    drawPoints: string;
+    lossPoints: string;
+    allowDraws: boolean;
+    meetingsPerPair: string;
+  };
+  groupStage: {
+    numberOfGroups: string;
+    advancingTeamsPerGroup: string;
+    winPoints: string;
+    drawPoints: string;
+    lossPoints: string;
+    allowDraws: boolean;
+    meetingsPerPair: string;
+  };
+  swiss: {
+    numberOfRounds: string;
+    advancingTeamCount: string;
+  };
+  playoff: {
+    thirdPlaceMatch: boolean;
+  };
+  doubleElim: {
+    grandFinalReset: boolean;
+  };
+}
+
+const DEFAULT_ROUND_ROBIN_SETTINGS: RoundForm["roundRobin"] = {
+  winPoints: "3",
+  drawPoints: "1",
+  lossPoints: "0",
+  allowDraws: false,
+  meetingsPerPair: "1",
+};
+
+const DEFAULT_GROUP_STAGE_SETTINGS: RoundForm["groupStage"] = {
+  numberOfGroups: "2",
+  advancingTeamsPerGroup: "2",
+  winPoints: "3",
+  drawPoints: "1",
+  lossPoints: "0",
+  allowDraws: false,
+  meetingsPerPair: "1",
+};
+
+const DEFAULT_SWISS_SETTINGS: RoundForm["swiss"] = {
+  numberOfRounds: "",
+  advancingTeamCount: "8",
+};
+
+const DEFAULT_PLAYOFF_SETTINGS: RoundForm["playoff"] = {
+  thirdPlaceMatch: true,
+};
+
+const DEFAULT_DOUBLE_ELIM_SETTINGS: RoundForm["doubleElim"] = {
+  grandFinalReset: true,
+};
+
+function createRoundForm(name: string, format: RoundFormatValue): RoundForm {
+  return {
+    name,
+    format,
+    bestOf: "1",
+    roundRobin: { ...DEFAULT_ROUND_ROBIN_SETTINGS },
+    groupStage: { ...DEFAULT_GROUP_STAGE_SETTINGS },
+    swiss: { ...DEFAULT_SWISS_SETTINGS },
+    playoff: { ...DEFAULT_PLAYOFF_SETTINGS },
+    doubleElim: { ...DEFAULT_DOUBLE_ELIM_SETTINGS },
+  };
 }
 
 interface TournamentFormState {
@@ -174,10 +250,16 @@ export default function TournamentCreateForm() {
   const [gamesError, setGamesError] = useState(false);
   const [form, setForm] = useState<TournamentFormState>(INITIAL_FORM);
   const [rounds, setRounds] = useState<RoundForm[]>([
-    { name: "Vòng bảng", format: "GROUP_STAGE", bestOf: "1" },
+    createRoundForm("Vòng bảng", "GROUP_STAGE"),
   ]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [createdTournament, setCreatedTournament] = useState<{
+    id: string;
+    slug: string;
+    uploadError: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -216,9 +298,7 @@ export default function TournamentCreateForm() {
   ) => {
     const { name, value, type } = event.target;
     const nextValue =
-      type === "checkbox"
-        ? (event.target as HTMLInputElement).checked
-        : value;
+      type === "checkbox" ? (event.target as HTMLInputElement).checked : value;
 
     setForm((current) => ({ ...current, [name]: nextValue }));
   };
@@ -228,8 +308,7 @@ export default function TournamentCreateForm() {
     setForm((current) => ({
       ...current,
       status,
-      registrationOpen:
-        status === "DRAFT" ? false : current.registrationOpen,
+      registrationOpen: status === "DRAFT" ? false : current.registrationOpen,
     }));
   };
 
@@ -243,7 +322,9 @@ export default function TournamentCreateForm() {
     }));
   };
 
-  const toggleGender = (gender: TournamentFormState["allowedGenders"][number]) => {
+  const toggleGender = (
+    gender: TournamentFormState["allowedGenders"][number],
+  ) => {
     setForm((current) => ({
       ...current,
       allowedGenders: current.allowedGenders.includes(gender)
@@ -254,12 +335,87 @@ export default function TournamentCreateForm() {
 
   const updateRound = (
     index: number,
-    field: keyof RoundForm,
+    field: "name" | "format" | "bestOf",
     value: string,
   ) => {
     setRounds((current) =>
       current.map((round, roundIndex) =>
-        roundIndex === index ? { ...round, [field]: value } : round,
+        roundIndex === index
+          ? {
+              ...round,
+              [field]: field === "format" ? (value as RoundFormatValue) : value,
+            }
+          : round,
+      ),
+    );
+  };
+
+  const updateRoundRobinSettings = (
+    index: number,
+    field: keyof RoundForm["roundRobin"],
+    value: string | boolean,
+  ) => {
+    setRounds((current) =>
+      current.map((round, roundIndex) =>
+        roundIndex === index
+          ? {
+              ...round,
+              roundRobin: { ...round.roundRobin, [field]: value },
+            }
+          : round,
+      ),
+    );
+  };
+
+  const updateGroupStageSettings = (
+    index: number,
+    field: keyof RoundForm["groupStage"],
+    value: string | boolean,
+  ) => {
+    setRounds((current) =>
+      current.map((round, roundIndex) =>
+        roundIndex === index
+          ? {
+              ...round,
+              groupStage: { ...round.groupStage, [field]: value },
+            }
+          : round,
+      ),
+    );
+  };
+
+  const updateSwissSettings = (
+    index: number,
+    field: keyof RoundForm["swiss"],
+    value: string,
+  ) => {
+    setRounds((current) =>
+      current.map((round, roundIndex) =>
+        roundIndex === index
+          ? { ...round, swiss: { ...round.swiss, [field]: value } }
+          : round,
+      ),
+    );
+  };
+
+  const updateEliminationSetting = (
+    index: number,
+    format: "PLAYOFF" | "DOUBLE_ELIM",
+    checked: boolean,
+  ) => {
+    setRounds((current) =>
+      current.map((round, roundIndex) =>
+        roundIndex !== index
+          ? round
+          : format === "PLAYOFF"
+            ? {
+                ...round,
+                playoff: { ...round.playoff, thirdPlaceMatch: checked },
+              }
+            : {
+                ...round,
+                doubleElim: { ...round.doubleElim, grandFinalReset: checked },
+              },
       ),
     );
   };
@@ -267,11 +423,7 @@ export default function TournamentCreateForm() {
   const addRound = () => {
     setRounds((current) => [
       ...current,
-      {
-        name: `Vòng ${current.length + 1}`,
-        format: "PLAYOFF",
-        bestOf: "1",
-      },
+      createRoundForm(`Vòng ${current.length + 1}`, "PLAYOFF"),
     ]);
   };
 
@@ -324,6 +476,112 @@ export default function TournamentCreateForm() {
     if (rounds.some((round) => !round.name.trim())) {
       return "Tên vòng đấu không được để trống.";
     }
+    for (const round of rounds) {
+      if (round.format !== "SWISS") continue;
+      const numberOfRounds = optionalNumber(round.swiss.numberOfRounds);
+      const advancingTeamCount = Number(round.swiss.advancingTeamCount);
+      if (
+        numberOfRounds !== undefined &&
+        (!Number.isInteger(numberOfRounds) ||
+          numberOfRounds < 1 ||
+          numberOfRounds > 20)
+      ) {
+        return "S\u1ed1 v\u00f2ng Swiss ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean t\u1eeb 1 \u0111\u1ebfn 20, ho\u1eb7c \u0111\u1ec3 tr\u1ed1ng \u0111\u1ec3 t\u1ef1 \u0111\u1ed9ng t\u00ednh.";
+      }
+      if (
+        !Number.isInteger(advancingTeamCount) ||
+        advancingTeamCount < 1 ||
+        advancingTeamCount > 256
+      ) {
+        return "S\u1ed1 \u0111\u1ed9i \u0111i ti\u1ebfp t\u1eeb Swiss ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean t\u1eeb 1 \u0111\u1ebfn 256.";
+      }
+    }
+    for (const round of rounds) {
+      if (round.format !== "GROUP_STAGE") continue;
+      const values = round.groupStage;
+      const numberOfGroups = Number(values.numberOfGroups);
+      const advancingTeamsPerGroup = Number(values.advancingTeamsPerGroup);
+      const winPoints = Number(values.winPoints);
+      const drawPoints = Number(values.drawPoints);
+      const lossPoints = Number(values.lossPoints);
+      const meetingsPerPair = Number(values.meetingsPerPair);
+      if (
+        !Number.isInteger(numberOfGroups) ||
+        numberOfGroups < 2 ||
+        numberOfGroups > 16
+      ) {
+        return "S\u1ed1 b\u1ea3ng ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean t\u1eeb 2 \u0111\u1ebfn 16.";
+      }
+      if (
+        !Number.isInteger(advancingTeamsPerGroup) ||
+        advancingTeamsPerGroup < 1
+      ) {
+        return "S\u1ed1 \u0111\u1ed9i \u0111i ti\u1ebfp m\u1ed7i b\u1ea3ng ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean d\u01b0\u01a1ng.";
+      }
+      if (
+        ![winPoints, drawPoints, lossPoints].every(
+          (value) => Number.isInteger(value) && value >= 0 && value <= 100,
+        )
+      ) {
+        return "\u0110i\u1ec3m v\u00f2ng b\u1ea3ng ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean t\u1eeb 0 \u0111\u1ebfn 100.";
+      }
+      if (
+        !Number.isInteger(meetingsPerPair) ||
+        meetingsPerPair < 1 ||
+        meetingsPerPair > 4
+      ) {
+        return "S\u1ed1 l\u01b0\u1ee3t g\u1eb7p nhau ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean t\u1eeb 1 \u0111\u1ebfn 4.";
+      }
+      if (winPoints <= lossPoints) {
+        return "\u0110i\u1ec3m th\u1eafng ph\u1ea3i l\u1edbn h\u01a1n \u0111i\u1ec3m thua.";
+      }
+      if (
+        values.allowDraws &&
+        (winPoints <= drawPoints || drawPoints < lossPoints)
+      ) {
+        return "Khi cho ph\u00e9p h\u00f2a, \u0111i\u1ec3m ph\u1ea3i th\u1ecfa: th\u1eafng > h\u00f2a \u2265 thua.";
+      }
+      const maxTeams = optionalNumber(form.maxTeams);
+      if (maxTeams !== undefined) {
+        if (maxTeams % numberOfGroups !== 0) {
+          return "S\u1ed1 \u0111\u1ed9i t\u1ed1i \u0111a ph\u1ea3i chia h\u1ebft cho s\u1ed1 b\u1ea3ng \u0111\u1ec3 c\u00e1c b\u1ea3ng b\u1eb1ng nhau.";
+        }
+        if (advancingTeamsPerGroup >= maxTeams / numberOfGroups) {
+          return "S\u1ed1 \u0111\u1ed9i \u0111i ti\u1ebfp m\u1ed7i b\u1ea3ng ph\u1ea3i \u00edt h\u01a1n s\u1ed1 \u0111\u1ed9i d\u1ef1 ki\u1ebfn trong b\u1ea3ng.";
+        }
+      }
+    }
+    for (const round of rounds) {
+      if (round.format !== "ROUND_ROBIN") continue;
+      const values = round.roundRobin;
+      const winPoints = Number(values.winPoints);
+      const drawPoints = Number(values.drawPoints);
+      const lossPoints = Number(values.lossPoints);
+      const meetingsPerPair = Number(values.meetingsPerPair);
+      if (
+        ![winPoints, drawPoints, lossPoints].every(
+          (value) => Number.isInteger(value) && value >= 0 && value <= 100,
+        )
+      ) {
+        return "Điểm Round Robin phải là số nguyên từ 0 đến 100.";
+      }
+      if (
+        !Number.isInteger(meetingsPerPair) ||
+        meetingsPerPair < 1 ||
+        meetingsPerPair > 4
+      ) {
+        return "Số lượt gặp nhau phải là số nguyên từ 1 đến 4.";
+      }
+      if (winPoints <= lossPoints) {
+        return "Điểm thắng phải lớn hơn điểm thua.";
+      }
+      if (
+        values.allowDraws &&
+        (winPoints <= drawPoints || drawPoints < lossPoints)
+      ) {
+        return "Khi cho phép hòa, điểm phải thỏa: thắng > hòa ≥ thua.";
+      }
+    }
     return "";
   };
 
@@ -348,8 +606,7 @@ export default function TournamentCreateForm() {
         visibility: form.visibility,
         status: form.status,
         mode: form.mode,
-        location:
-          form.mode === "ONLINE" ? undefined : form.location.trim(),
+        location: form.mode === "ONLINE" ? undefined : form.location.trim(),
         registrationOpen: form.registrationOpen,
         maxTeams: optionalNumber(form.maxTeams),
         maxTeamSize: maximumMembers!,
@@ -367,12 +624,85 @@ export default function TournamentCreateForm() {
         contactEmail: form.contactEmail.trim() || undefined,
         contactPhone: form.contactPhone.trim() || undefined,
         contactLink: form.contactLink.trim() || undefined,
-        rounds: rounds.map((round) => ({
-          name: round.name.trim(),
-          format: round.format,
-          bestOf: Number(round.bestOf),
-        })),
+        rounds: rounds.map((round): CreateRoundRequest => {
+          const base = {
+            name: round.name.trim(),
+            bestOf: Number(round.bestOf),
+          };
+          if (round.format === "PLAYOFF") {
+            return {
+              ...base,
+              format: "PLAYOFF",
+              settings: {
+                thirdPlaceMatch: round.playoff.thirdPlaceMatch,
+              },
+            };
+          }
+          if (round.format === "DOUBLE_ELIM") {
+            return {
+              ...base,
+              format: "DOUBLE_ELIM",
+              settings: {
+                grandFinalReset: round.doubleElim.grandFinalReset,
+              },
+            };
+          }
+          if (round.format === "SWISS") {
+            return {
+              ...base,
+              format: "SWISS",
+              settings: {
+                numberOfRounds:
+                  optionalNumber(round.swiss.numberOfRounds) ?? null,
+                advancingTeamCount: Number(round.swiss.advancingTeamCount),
+              },
+            };
+          }
+          if (round.format === "GROUP_STAGE") {
+            return {
+              ...base,
+              format: "GROUP_STAGE",
+              settings: {
+                numberOfGroups: Number(round.groupStage.numberOfGroups),
+                advancingTeamsPerGroup: Number(
+                  round.groupStage.advancingTeamsPerGroup,
+                ),
+                winPoints: Number(round.groupStage.winPoints),
+                drawPoints: Number(round.groupStage.drawPoints),
+                lossPoints: Number(round.groupStage.lossPoints),
+                allowDraws: round.groupStage.allowDraws,
+                meetingsPerPair: Number(round.groupStage.meetingsPerPair),
+              },
+            };
+          }
+          return {
+            ...base,
+            format: "ROUND_ROBIN",
+            settings: {
+              winPoints: Number(round.roundRobin.winPoints),
+              drawPoints: Number(round.roundRobin.drawPoints),
+              lossPoints: Number(round.roundRobin.lossPoints),
+              allowDraws: round.roundRobin.allowDraws,
+              meetingsPerPair: Number(round.roundRobin.meetingsPerPair),
+            },
+          };
+        }),
       });
+      if (bannerFile) {
+        try {
+          await tournamentsApi.uploadBanner(tournament.id, bannerFile);
+        } catch (uploadError) {
+          setCreatedTournament({
+            id: tournament.id,
+            slug: tournament.slug,
+            uploadError:
+              uploadError instanceof Error
+                ? uploadError.message
+                : "Không thể tải banner lên.",
+          });
+          return;
+        }
+      }
       router.push(`/tournaments/${tournament.slug}`);
     } catch (submitError) {
       if (submitError instanceof ApiError && submitError.status === 401) {
@@ -389,6 +719,59 @@ export default function TournamentCreateForm() {
       setLoading(false);
     }
   };
+
+  const retryBannerUpload = async () => {
+    if (!createdTournament || !bannerFile) return;
+    setLoading(true);
+    try {
+      await tournamentsApi.uploadBanner(createdTournament.id, bannerFile);
+      router.push(`/tournaments/${createdTournament.slug}`);
+    } catch (uploadError) {
+      setCreatedTournament((current) =>
+        current
+          ? {
+              ...current,
+              uploadError:
+                uploadError instanceof Error
+                  ? uploadError.message
+                  : "Không thể tải banner lên.",
+            }
+          : current,
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (createdTournament) {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-16">
+        <section className="w-full rounded-2xl border border-approved/30 bg-surface-card p-6 shadow-xl shadow-black/10 sm:p-8">
+          <h1 className="text-xl font-bold text-ink">Giải đấu đã được tạo</h1>
+          <p className="mt-2 text-sm leading-6 text-ink-muted">
+            Banner chưa tải lên được: {createdTournament.uploadError} Giải đấu
+            vẫn được giữ nguyên và sẽ không bị tạo lại.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={retryBannerUpload}
+              className="inline-flex rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-on-brand disabled:opacity-50"
+            >
+              {loading ? "Đang tải lại…" : "Thử tải banner lại"}
+            </button>
+            <Link
+              href={`/tournaments/${createdTournament.slug}`}
+              className={secondaryButtonClass}
+            >
+              Đi tới giải đấu
+            </Link>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -451,7 +834,7 @@ export default function TournamentCreateForm() {
                 )}
               </div>
 
-              <div>
+              <div className="sm:col-span-2">
                 <label htmlFor="bannerUrl" className={labelClass}>
                   URL ảnh banner
                 </label>
@@ -466,8 +849,20 @@ export default function TournamentCreateForm() {
                   placeholder="https://example.com/tournament-banner.jpg"
                 />
                 <p className={hintClass}>
-                  Bỏ trống để sử dụng ảnh giải đấu mặc định.
+                  Có thể giữ URL ảnh ngoài hoặc chọn một tệp từ thiết bị bên dưới.
                 </p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <ImageUploadPicker
+                  label="Banner từ thiết bị"
+                  file={bannerFile}
+                  onFileChange={setBannerFile}
+                  existingUrl={form.bannerUrl}
+                  variant="banner"
+                  disabled={loading}
+                  uploading={loading && Boolean(bannerFile)}
+                />
               </div>
 
               <div className="sm:col-span-2">
@@ -762,7 +1157,11 @@ export default function TournamentCreateForm() {
                   id="startDate"
                   type="datetime-local"
                   name="startDate"
-                  min={form.registrationDeadline || form.registrationStartDate || undefined}
+                  min={
+                    form.registrationDeadline ||
+                    form.registrationStartDate ||
+                    undefined
+                  }
                   value={form.startDate}
                   onChange={handleChange}
                   className={inputClass}
@@ -903,60 +1302,491 @@ export default function TournamentCreateForm() {
               {rounds.map((round, index) => (
                 <div
                   key={index}
-                  className="grid gap-3 rounded-xl border border-line bg-surface/55 p-4 sm:grid-cols-[auto_minmax(0,1fr)_minmax(12rem,0.65fr)_7rem_auto] sm:items-center"
+                  className="rounded-xl border border-line bg-surface/55 p-4"
                 >
-                  <span className="grid size-8 place-items-center rounded-lg bg-brand/15 font-mono text-xs font-bold text-brand-hover">
-                    {index + 1}
-                  </span>
-                  <input
-                    type="text"
-                    required
-                    maxLength={100}
-                    value={round.name}
-                    onChange={(event) =>
-                      updateRound(index, "name", event.target.value)
-                    }
-                    aria-label={`Tên vòng ${index + 1}`}
-                    className={`${inputClass} bg-surface`}
-                    placeholder="Tên vòng"
-                  />
-                  <select
-                    value={round.format}
-                    onChange={(event) =>
-                      updateRound(index, "format", event.target.value)
-                    }
-                    aria-label={`Thể thức vòng ${index + 1}`}
-                    className={`${inputClass} bg-surface`}
-                  >
-                    {ROUND_FORMATS.map((format) => (
-                      <option key={format.value} value={format.value}>
-                        {format.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={round.bestOf}
-                    onChange={(event) =>
-                      updateRound(index, "bestOf", event.target.value)
-                    }
-                    aria-label={`Số ván vòng ${index + 1}`}
-                    className={`${inputClass} bg-surface`}
-                  >
-                    {[1, 3, 5, 7, 9].map((bestOf) => (
-                      <option key={bestOf} value={bestOf}>
-                        BO{bestOf}
-                      </option>
-                    ))}
-                  </select>
-                  {rounds.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeRound(index)}
-                      aria-label={`Xóa vòng ${index + 1}`}
-                      className="rounded-lg p-2 text-ink-faint transition hover:bg-rejected/10 hover:text-rejected"
-                    >
-                      <TrashIcon size={17} />
-                    </button>
+                  <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_minmax(12rem,0.65fr)_7rem_auto] sm:items-end">
+                    <span className="grid size-8 place-items-center self-center rounded-lg bg-brand/15 font-mono text-xs font-bold text-brand-hover">
+                      {index + 1}
+                    </span>
+                    <label className={labelClass}>
+                      Tên vòng
+                      <input
+                        type="text"
+                        required
+                        maxLength={100}
+                        value={round.name}
+                        onChange={(event) =>
+                          updateRound(index, "name", event.target.value)
+                        }
+                        className={`${inputClass} mt-1 bg-surface`}
+                        placeholder="Tên vòng"
+                      />
+                    </label>
+                    <label className={labelClass}>
+                      Hình thức thi đấu
+                      <select
+                        value={round.format}
+                        onChange={(event) =>
+                          updateRound(index, "format", event.target.value)
+                        }
+                        className={`${inputClass} mt-1 bg-surface`}
+                      >
+                        {ROUND_FORMATS.map((format) => (
+                          <option key={format.value} value={format.value}>
+                            {format.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={labelClass}>
+                      Best of
+                      <select
+                        value={round.bestOf}
+                        onChange={(event) =>
+                          updateRound(index, "bestOf", event.target.value)
+                        }
+                        className={`${inputClass} mt-1 bg-surface`}
+                      >
+                        {[1, 3, 5, 7, 9].map((bestOf) => (
+                          <option key={bestOf} value={bestOf}>
+                            BO{bestOf}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {rounds.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeRound(index)}
+                        aria-label={`Xóa vòng ${index + 1}`}
+                        className="mb-1 rounded-lg p-2 text-ink-faint transition hover:bg-rejected/10 hover:text-rejected"
+                      >
+                        <TrashIcon size={17} />
+                      </button>
+                    )}
+                  </div>
+
+                  {round.format === "ROUND_ROBIN" && (
+                    <div className="mt-4 border-t border-line/70 pt-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
+                        Cài đặt Round Robin
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <label className={labelClass}>
+                          Số lượt gặp nhau
+                          <input
+                            type="number"
+                            min={1}
+                            max={4}
+                            step={1}
+                            value={round.roundRobin.meetingsPerPair}
+                            onChange={(event) =>
+                              updateRoundRobinSettings(
+                                index,
+                                "meetingsPerPair",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface`}
+                          />
+                          <span className={`${hintClass} mt-1 block`}>
+                            Số lượt mỗi cặp đội gặp nhau trong vòng này (1–4).
+                          </span>
+                        </label>
+                        <label className={labelClass}>
+                          Điểm thắng
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={round.roundRobin.winPoints}
+                            onChange={(event) =>
+                              updateRoundRobinSettings(
+                                index,
+                                "winPoints",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface`}
+                          />
+                        </label>
+                        <label className={labelClass}>
+                          Điểm thua
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={round.roundRobin.lossPoints}
+                            onChange={(event) =>
+                              updateRoundRobinSettings(
+                                index,
+                                "lossPoints",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface`}
+                          />
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-line bg-surface/70 px-3 py-2.5 sm:self-start lg:mt-5">
+                          <input
+                            type="checkbox"
+                            checked={round.roundRobin.allowDraws}
+                            onChange={(event) =>
+                              updateRoundRobinSettings(
+                                index,
+                                "allowDraws",
+                                event.target.checked,
+                              )
+                            }
+                            className="size-4 accent-[var(--color-brand)]"
+                          />
+                          <span className="text-sm font-semibold text-ink">
+                            Cho phép hòa
+                          </span>
+                        </label>
+                        <label
+                          className={`${labelClass} ${
+                            round.roundRobin.allowDraws ? "" : "opacity-50"
+                          }`}
+                        >
+                          Điểm hòa
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={1}
+                            disabled={!round.roundRobin.allowDraws}
+                            value={round.roundRobin.drawPoints}
+                            onChange={(event) =>
+                              updateRoundRobinSettings(
+                                index,
+                                "drawPoints",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface disabled:cursor-not-allowed`}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                  {round.format === "SWISS" && (
+                    <div className="mt-4 border-t border-line/70 pt-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
+                        Cài đặt Swiss
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <label className={labelClass}>
+                          Số vòng Swiss
+                          <input
+                            type="number"
+                            min={1}
+                            max={20}
+                            step={1}
+                            value={round.swiss.numberOfRounds}
+                            onChange={(event) =>
+                              updateSwissSettings(
+                                index,
+                                "numberOfRounds",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface`}
+                            placeholder="Tự động"
+                          />
+                          <span className={`${hintClass} mt-1 block`}>
+                            Số lượt ghép cặp Swiss. Để trống để hệ thống tính từ
+                            số đội thực tế khi sinh vòng.
+                          </span>
+                        </label>
+                        <label className={labelClass}>
+                          Số đội đi tiếp
+                          <input
+                            type="number"
+                            min={1}
+                            max={256}
+                            step={1}
+                            value={round.swiss.advancingTeamCount}
+                            onChange={(event) =>
+                              updateSwissSettings(
+                                index,
+                                "advancingTeamCount",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface`}
+                          />
+                          <span className={`${hintClass} mt-1 block`}>
+                            Các đội đứng đầu bảng xếp hạng cuối cùng sẽ vào vòng
+                            tiếp theo.
+                          </span>
+                        </label>
+                      </div>
+                      <div className="mt-3 rounded-lg border border-line bg-surface/70 px-3 py-2.5 text-xs leading-5 text-ink-muted">
+                        <p>
+                          Đội có thành tích gần nhau được ưu tiên ghép cặp. Hệ
+                          thống tránh tái đấu khi còn phương án hợp lệ; các trận
+                          Swiss phải có đội thắng.
+                        </p>
+                        {!round.swiss.numberOfRounds &&
+                          optionalNumber(form.maxTeams) !== undefined && (
+                            <p className="mt-1">
+                              Dự kiến theo sức chứa tối đa:{" "}
+                              {Math.ceil(
+                                Math.log2(optionalNumber(form.maxTeams)!),
+                              )}{" "}
+                              vòng. Số vòng thực tế được tính lại khi sinh vòng.
+                            </p>
+                          )}
+                      </div>
+                    </div>
+                  )}
+                  {round.format === "PLAYOFF" && (
+                    <div className="mt-4 border-t border-line/70 pt-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
+                        Cài đặt loại trực tiếp
+                      </p>
+                      <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-surface/70 px-3 py-3">
+                        <input
+                          type="checkbox"
+                          checked={round.playoff.thirdPlaceMatch}
+                          onChange={(event) =>
+                            updateEliminationSetting(
+                              index,
+                              "PLAYOFF",
+                              event.target.checked,
+                            )
+                          }
+                          className="mt-0.5 size-4 accent-[var(--color-brand)]"
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold text-ink">
+                            Thi đấu tranh hạng ba
+                          </span>
+                          <span className={`${hintClass} mt-1 block`}>
+                            Hai đội thua ở bán kết thi đấu thêm một trận để xác
+                            định hạng ba.
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                  {round.format === "DOUBLE_ELIM" && (
+                    <div className="mt-4 border-t border-line/70 pt-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
+                        Cài đặt nhánh thắng - nhánh thua
+                      </p>
+                      <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-surface/70 px-3 py-3">
+                        <input
+                          type="checkbox"
+                          checked={round.doubleElim.grandFinalReset}
+                          onChange={(event) =>
+                            updateEliminationSetting(
+                              index,
+                              "DOUBLE_ELIM",
+                              event.target.checked,
+                            )
+                          }
+                          className="mt-0.5 size-4 accent-[var(--color-brand)]"
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold text-ink">
+                            Grand Final Reset
+                          </span>
+                          <span className={`${hintClass} mt-1 block`}>
+                            Nếu đội từ nhánh thua thắng Grand Final đầu tiên,
+                            hai đội sẽ đấu thêm một trận quyết định.
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                  {round.format === "GROUP_STAGE" && (
+                    <div className="mt-4 border-t border-line/70 pt-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
+                        Cài đặt vòng bảng
+                      </p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <label className={labelClass}>
+                          Số bảng
+                          <input
+                            type="number"
+                            min={2}
+                            max={16}
+                            step={1}
+                            value={round.groupStage.numberOfGroups}
+                            onChange={(event) =>
+                              updateGroupStageSettings(
+                                index,
+                                "numberOfGroups",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface`}
+                          />
+                        </label>
+                        <label className={labelClass}>
+                          Số đội đi tiếp mỗi bảng
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={round.groupStage.advancingTeamsPerGroup}
+                            onChange={(event) =>
+                              updateGroupStageSettings(
+                                index,
+                                "advancingTeamsPerGroup",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface`}
+                          />
+                        </label>
+                        <label className={labelClass}>
+                          Số lượt gặp nhau
+                          <select
+                            value={round.groupStage.meetingsPerPair}
+                            onChange={(event) =>
+                              updateGroupStageSettings(
+                                index,
+                                "meetingsPerPair",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface`}
+                          >
+                            {[1, 2, 3, 4].map((meetings) => (
+                              <option key={meetings} value={meetings}>
+                                {meetings}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className={labelClass}>
+                          Điểm thắng
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={round.groupStage.winPoints}
+                            onChange={(event) =>
+                              updateGroupStageSettings(
+                                index,
+                                "winPoints",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface`}
+                          />
+                        </label>
+                        <label className={labelClass}>
+                          Điểm thua
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={round.groupStage.lossPoints}
+                            onChange={(event) =>
+                              updateGroupStageSettings(
+                                index,
+                                "lossPoints",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface`}
+                          />
+                        </label>
+                        <label
+                          className={`${labelClass} ${
+                            round.groupStage.allowDraws ? "" : "opacity-50"
+                          }`}
+                        >
+                          Điểm hòa
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            step={1}
+                            disabled={!round.groupStage.allowDraws}
+                            value={round.groupStage.drawPoints}
+                            onChange={(event) =>
+                              updateGroupStageSettings(
+                                index,
+                                "drawPoints",
+                                event.target.value,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface disabled:cursor-not-allowed`}
+                          />
+                        </label>
+                        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-line bg-surface/70 px-3 py-2.5 sm:self-start">
+                          <input
+                            type="checkbox"
+                            checked={round.groupStage.allowDraws}
+                            onChange={(event) =>
+                              updateGroupStageSettings(
+                                index,
+                                "allowDraws",
+                                event.target.checked,
+                              )
+                            }
+                            className="size-4 accent-[var(--color-brand)]"
+                          />
+                          <span className="text-sm font-semibold text-ink">
+                            Cho phép hòa
+                          </span>
+                        </label>
+                      </div>
+                      <div className="mt-3 space-y-1 rounded-lg border border-line bg-surface/70 px-3 py-2.5 text-xs text-ink-muted">
+                        {(() => {
+                          const maxTeams = optionalNumber(form.maxTeams);
+                          const numberOfGroups = Number(
+                            round.groupStage.numberOfGroups,
+                          );
+                          const advancingTeamsPerGroup = Number(
+                            round.groupStage.advancingTeamsPerGroup,
+                          );
+                          const hasValidPreview =
+                            maxTeams !== undefined &&
+                            Number.isInteger(numberOfGroups) &&
+                            numberOfGroups >= 2;
+                          const capacityDivides =
+                            hasValidPreview && maxTeams % numberOfGroups === 0;
+                          return (
+                            <>
+                              {capacityDivides ? (
+                                <p>
+                                  Dự kiến theo sức chứa tối đa:{" "}
+                                  {maxTeams / numberOfGroups} đội / bảng.
+                                </p>
+                              ) : hasValidPreview ? (
+                                <p className="text-rejected" role="alert">
+                                  Sức chứa tối đa {maxTeams} đội không thể chia
+                                  đều vào {numberOfGroups} bảng.
+                                </p>
+                              ) : (
+                                <p>
+                                  Số đội mỗi bảng sẽ được tính từ các đội thực
+                                  tế khi sinh vòng.
+                                </p>
+                              )}
+                              {Number.isInteger(numberOfGroups) &&
+                                Number.isInteger(advancingTeamsPerGroup) && (
+                                  <p>
+                                    Tổng{" "}
+                                    {numberOfGroups * advancingTeamsPerGroup}{" "}
+                                    đội vào vòng tiếp theo.
+                                  </p>
+                                )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
                   )}
                 </div>
               ))}
@@ -971,7 +1801,8 @@ export default function TournamentCreateForm() {
 
           <div className="sticky bottom-4 z-30 flex flex-col-reverse gap-3 rounded-2xl border border-line bg-surface-card/95 p-4 shadow-2xl shadow-black/35 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-5 text-ink-faint">
-              Slug, người tổ chức và trạng thái xác minh được hệ thống tự quản lý.
+              Slug, người tổ chức và trạng thái xác minh được hệ thống tự quản
+              lý.
             </p>
             <div className="flex justify-end gap-3">
               <button

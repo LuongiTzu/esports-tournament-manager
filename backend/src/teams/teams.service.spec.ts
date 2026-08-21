@@ -202,18 +202,21 @@ describe('TeamsService public history', () => {
           {
             id: 'm-win',
             winnerTeamId: 'team-1',
+            outcome: 'TEAM_A',
             scoreA: 2,
             scoreB: 0,
           },
           {
             id: 'm-draw',
             winnerTeamId: null,
+            outcome: 'DRAW',
             scoreA: 1,
             scoreB: 1,
           },
           {
             id: 'm-loss',
             winnerTeamId: 'team-2',
+            outcome: 'TEAM_B',
             scoreA: 0,
             scoreB: 2,
           },

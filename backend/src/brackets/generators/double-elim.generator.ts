@@ -24,7 +24,7 @@ export class DoubleElimGenerator implements IBracketGenerator<
     const playoffDrafts = this.playoffGenerator.generate({
       format: RoundFormat.PLAYOFF,
       teams: input.teams,
-      settings: { seeding: 'STANDARD', thirdPlaceMatch: false },
+      settings: { thirdPlaceMatch: false },
       bestOf: input.bestOf,
     });
     const winner = playoffDrafts.map(toWinnerDraft);
@@ -234,7 +234,18 @@ function loserParticipant(match: MatchDraft): MatchDraft['teamA'] {
 }
 
 function winnerParticipant(match: MatchDraft): MatchDraft['teamA'] {
+  if (
+    match.isBye &&
+    !hasParticipantSource(match.teamA) &&
+    !hasParticipantSource(match.teamB)
+  ) {
+    return { teamId: null };
+  }
   return { teamId: null, sourceMatchKey: match.key, sourceResult: 'WINNER' };
+}
+
+function hasParticipantSource(participant: MatchDraft['teamA']): boolean {
+  return Boolean(participant.teamId || participant.sourceMatchKey);
 }
 
 function byRound(matches: MatchDraft[], round: number): MatchDraft[] {

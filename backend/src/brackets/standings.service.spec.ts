@@ -1,4 +1,4 @@
-import { RoundFormat } from '@prisma/client';
+import { MatchOutcome, RoundFormat } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StandingsService } from './standings.service';
 import { SwissService } from './swiss.service';
@@ -38,6 +38,7 @@ describe('StandingsService', () => {
             scoreA: 1,
             scoreB: 0,
             winnerTeamId: 'a1',
+            outcome: MatchOutcome.TEAM_A,
             isBye: false,
           },
           {
@@ -47,6 +48,7 @@ describe('StandingsService', () => {
             scoreA: 2,
             scoreB: 2,
             winnerTeamId: null,
+            outcome: MatchOutcome.DRAW,
             isBye: false,
           },
           // This cross-group match must not affect either group.
@@ -57,6 +59,7 @@ describe('StandingsService', () => {
             scoreA: 99,
             scoreB: 0,
             winnerTeamId: 'b1',
+            outcome: MatchOutcome.TEAM_A,
             isBye: false,
           },
         ]),
@@ -64,9 +67,13 @@ describe('StandingsService', () => {
     } as unknown as PrismaService;
     const settings = {
       getEffectiveSettings: jest.fn().mockReturnValue({
-        pointsWin: 5,
-        pointsDraw: 2,
-        pointsLoss: 0,
+        winPoints: 5,
+        drawPoints: 2,
+        lossPoints: 0,
+        allowDraws: true,
+        numberOfGroups: 2,
+        advancingTeamsPerGroup: 1,
+        meetingsPerPair: 1,
       }),
     } as unknown as RoundSettingsService;
     const service = new StandingsService(prisma, {} as SwissService, settings);
@@ -75,7 +82,12 @@ describe('StandingsService', () => {
       {
         id: 'r-1',
         format: RoundFormat.GROUP_STAGE,
-        settings: { pointsWin: 5, pointsDraw: 2, pointsLoss: 0 },
+        settings: {
+          winPoints: 5,
+          drawPoints: 2,
+          lossPoints: 0,
+          allowDraws: true,
+        },
       },
     ]);
     const groups = result.rounds[0].standings as Array<{
@@ -107,6 +119,7 @@ describe('StandingsService', () => {
             scoreA: 2,
             scoreB: 0,
             winnerTeamId: 'a',
+            outcome: MatchOutcome.TEAM_A,
             isBye: false,
           },
         ]),
@@ -138,6 +151,82 @@ describe('StandingsService', () => {
     ]);
   });
 
+  it('uses alternative Group Stage scoring instead of hardcoded 3/1/0', async () => {
+    const prisma = {
+      group: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'g-a',
+            name: 'Group A',
+            orderIndex: 1,
+            teamAssignments: [
+              { team: { id: 'a', name: 'A', seed: 1 } },
+              { team: { id: 'b', name: 'B', seed: 2 } },
+              { team: { id: 'c', name: 'C', seed: 3 } },
+            ],
+          },
+        ]),
+      },
+      match: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            groupId: 'g-a',
+            teamAId: 'a',
+            teamBId: 'b',
+            scoreA: 1,
+            scoreB: 0,
+            winnerTeamId: 'a',
+            outcome: MatchOutcome.TEAM_A,
+            isBye: false,
+          },
+          {
+            groupId: 'g-a',
+            teamAId: 'a',
+            teamBId: 'c',
+            scoreA: 0,
+            scoreB: 0,
+            winnerTeamId: null,
+            outcome: MatchOutcome.DRAW,
+            isBye: false,
+          },
+        ]),
+      },
+    } as unknown as PrismaService;
+    const service = new StandingsService(
+      prisma,
+      {} as SwissService,
+      new RoundSettingsService(),
+    );
+
+    const result = await service.forTournament('t-1', [
+      {
+        id: 'group-round',
+        format: RoundFormat.GROUP_STAGE,
+        settings: {
+          numberOfGroups: 2,
+          advancingTeamsPerGroup: 1,
+          winPoints: 2,
+          drawPoints: 0,
+          lossPoints: 0,
+          allowDraws: true,
+          meetingsPerPair: 1,
+        },
+      },
+    ]);
+    const rows = (
+      result.rounds[0].standings as Array<{
+        standings: Array<{ id: string; points: number; draws: number }>;
+      }>
+    )[0].standings;
+
+    expect(rows.map(({ id, points }) => [id, points])).toEqual([
+      ['a', 2],
+      ['c', 0],
+      ['b', 0],
+    ]);
+    expect(rows[0].draws).toBe(1);
+  });
+
   it('uses each round own win, draw and loss point settings', async () => {
     const prisma = {
       roundTeam: { findMany: jest.fn().mockResolvedValue([]) },
@@ -156,6 +245,7 @@ describe('StandingsService', () => {
             scoreA: 2,
             scoreB: 0,
             winnerTeamId: 'a',
+            outcome: MatchOutcome.TEAM_A,
             isBye: false,
           },
           {
@@ -164,6 +254,7 @@ describe('StandingsService', () => {
             scoreA: 1,
             scoreB: 1,
             winnerTeamId: null,
+            outcome: MatchOutcome.DRAW,
             isBye: false,
           },
         ]),
@@ -179,7 +270,18 @@ describe('StandingsService', () => {
       {
         id: 'r-custom',
         format: RoundFormat.ROUND_ROBIN,
-        settings: { pointsWin: 5, pointsDraw: 2, pointsLoss: 1 },
+        settings: {
+          winPoints: 2,
+          drawPoints: 1,
+          lossPoints: 0,
+          allowDraws: true,
+          meetingsPerPair: 1,
+        },
+      },
+      {
+        id: 'r-default-draws',
+        format: RoundFormat.ROUND_ROBIN,
+        settings: { allowDraws: true },
       },
       {
         id: 'r-default',
@@ -190,19 +292,28 @@ describe('StandingsService', () => {
       id: string;
       points: number;
     }>;
-    const defaults = result.rounds[1].standings as Array<{
+    const defaultDraws = result.rounds[1].standings as Array<{
+      id: string;
+      points: number;
+    }>;
+    const defaults = result.rounds[2].standings as Array<{
       id: string;
       points: number;
     }>;
 
     expect(custom.map(({ id, points }) => [id, points])).toEqual([
-      ['a', 7],
-      ['c', 2],
-      ['b', 1],
+      ['a', 3],
+      ['c', 1],
+      ['b', 0],
     ]);
-    expect(defaults.map(({ id, points }) => [id, points])).toEqual([
+    expect(defaultDraws.map(({ id, points }) => [id, points])).toEqual([
       ['a', 4],
       ['c', 1],
+      ['b', 0],
+    ]);
+    expect(defaults.map(({ id, points }) => [id, points])).toEqual([
+      ['a', 3],
+      ['c', 0],
       ['b', 0],
     ]);
   });

@@ -4,6 +4,7 @@ import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
+import ImageUploadPicker from "@/components/ImageUploadPicker";
 import { useAuth } from "@/features/auth/store";
 import { accentVars } from "@/features/games/game-accent";
 import { gamePositionLabel } from "@/features/games/position-labels";
@@ -80,12 +81,18 @@ export default function RegisterTeamPage({
 
   const [name, setName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [members, setMembers] = useState<MemberForm[]>([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [registeredTeam, setRegisteredTeam] = useState<{
+    id: string;
+    name: string;
+    uploadError: string;
+  } | null>(null);
   const initializedSlug = useRef<string | null>(null);
 
   useEffect(() => {
@@ -168,7 +175,7 @@ export default function RegisterTeamPage({
 
     setSubmitting(true);
     try {
-      await teamsApi.register(slug, {
+      const team = await teamsApi.register(slug, {
         name: name.trim(),
         logoUrl: logoUrl.trim() || undefined,
         contactName: contactName.trim(),
@@ -191,9 +198,25 @@ export default function RegisterTeamPage({
           orderIndex: index,
         })),
       });
+      if (logoFile) {
+        try {
+          await teamsApi.uploadLogo(team.id, logoFile);
+        } catch (uploadError) {
+          setRegisteredTeam({
+            id: team.id,
+            name: team.name,
+            uploadError:
+              uploadError instanceof Error
+                ? uploadError.message
+                : "Không thể tải logo lên.",
+          });
+          return;
+        }
+      }
       router.push(`/tournaments/${slug}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng ký đội thất bại");
+    } finally {
       setSubmitting(false);
     }
   };
@@ -236,6 +259,58 @@ export default function RegisterTeamPage({
   const genderOptions = rules.allowedGenders?.length
     ? GENDER_OPTIONS.filter((option) => rules.allowedGenders?.includes(option.value))
     : GENDER_OPTIONS;
+
+  const retryLogoUpload = async () => {
+    if (!registeredTeam || !logoFile) return;
+    setSubmitting(true);
+    try {
+      await teamsApi.uploadLogo(registeredTeam.id, logoFile);
+      router.push(`/tournaments/${slug}`);
+    } catch (uploadError) {
+      setRegisteredTeam((current) =>
+        current
+          ? {
+              ...current,
+              uploadError:
+                uploadError instanceof Error
+                  ? uploadError.message
+                  : "Không thể tải logo lên.",
+            }
+          : current,
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (registeredTeam) {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-16">
+        <section className="w-full rounded-2xl border border-approved/30 bg-surface-card p-6 shadow-xl shadow-black/10 sm:p-8">
+          <h1 className="text-xl font-bold text-ink">
+            Đội {registeredTeam.name} đã được đăng ký
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-ink-muted">
+            Logo chưa tải lên được: {registeredTeam.uploadError} Hồ sơ đội vẫn
+            được giữ nguyên và sẽ không bị đăng ký lại.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={retryLogoUpload}
+              className="inline-flex rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-on-brand disabled:opacity-50"
+            >
+              {submitting ? "Đang tải lại…" : "Thử tải logo lại"}
+            </button>
+            <Link href={`/tournaments/${slug}`} className={secondaryButtonClass}>
+              Đi tới giải đấu
+            </Link>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -303,8 +378,20 @@ export default function RegisterTeamPage({
                   className={inputClass}
                   placeholder="https://..."
                 />
-                <p className={hintClass}>Không bắt buộc.</p>
+                <p className={hintClass}>
+                  Có thể giữ link ảnh ngoài hoặc chọn tệp từ thiết bị bên dưới.
+                </p>
               </div>
+
+              <ImageUploadPicker
+                label="Logo từ thiết bị"
+                file={logoFile}
+                onFileChange={setLogoFile}
+                existingUrl={logoUrl}
+                variant="square"
+                disabled={submitting}
+                uploading={submitting && Boolean(logoFile)}
+              />
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>

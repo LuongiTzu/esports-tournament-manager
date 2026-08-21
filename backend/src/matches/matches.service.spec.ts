@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
 /* eslint-disable @typescript-eslint/unbound-method */
 import {
   MatchActivationCondition,
+  MatchOutcome,
   MatchSlot,
   MatchStatus,
   NotificationType,
@@ -23,8 +24,11 @@ function match(overrides: Record<string, unknown> = {}) {
     isActive: true,
     activationCondition: null,
     bracketType: null,
+    bracketRound: 1,
+    matchNumber: 1,
     bestOf: 3,
     winnerTeamId: null,
+    outcome: null,
     playedAt: null,
     scheduledAt: null,
     updatedAt: new Date('2026-08-14T00:00:00.000Z'),
@@ -35,6 +39,7 @@ function match(overrides: Record<string, unknown> = {}) {
     round: {
       id: 'round-1',
       format: RoundFormat.PLAYOFF,
+      settings: null,
       tournamentId: 'tournament-1',
     },
     scores: [],
@@ -57,7 +62,20 @@ function harness(
       findUnique: jest.fn(({ where }: { where: { id: string } }) =>
         Promise.resolve(rows[where.id] ?? null),
       ),
-      findMany: jest.fn(),
+      findMany: jest.fn(async (): Promise<Array<Record<string, unknown>>> =>
+        Object.values(rows).map((row) => ({
+          id: row.id,
+          status: row.status ?? MatchStatus.PENDING,
+          isActive: row.isActive !== false,
+          bracketType: row.bracketType ?? null,
+          bracketRound: row.bracketRound ?? 1,
+          matchNumber: row.matchNumber ?? 1,
+          winnerTeamId: row.winnerTeamId ?? null,
+          scheduledAt: row.scheduledAt ?? null,
+          updatedAt: row.updatedAt ?? new Date('2026-08-14T00:00:00.000Z'),
+          round: row.round,
+        })),
+      ),
       update: jest.fn(
         ({
           where,
@@ -168,11 +186,155 @@ describe('MatchesService results', () => {
           scoreB,
           status: MatchStatus.COMPLETED,
           winnerTeamId: scoreA > scoreB ? 'team-a' : 'team-b',
+          outcome: scoreA > scoreB ? MatchOutcome.TEAM_A : MatchOutcome.TEAM_B,
           playedAt: expect.any(Date) as Date,
         }),
       );
     },
   );
+
+  it('accepts an enabled Round Robin draw without advancing either team', async () => {
+    const { service, rows } = harness(
+      match({
+        nextMatchId: 'next',
+        nextMatchSlot: MatchSlot.A,
+        round: {
+          id: 'round-robin',
+          format: RoundFormat.ROUND_ROBIN,
+          settings: { allowDraws: true },
+          tournamentId: 'tournament-1',
+        },
+      }),
+      {
+        next: {
+          id: 'next',
+          status: MatchStatus.PENDING,
+          teamAId: null,
+          teamBId: null,
+        },
+      },
+    );
+
+    await service.update('match-1', {
+      scoreA: 1,
+      scoreB: 1,
+      status: MatchStatus.COMPLETED,
+    });
+
+    expect(rows['match-1']).toEqual(
+      expect.objectContaining({
+        winnerTeamId: null,
+        outcome: MatchOutcome.DRAW,
+        status: MatchStatus.COMPLETED,
+      }),
+    );
+    expect(rows.next).toEqual(
+      expect.objectContaining({ teamAId: null, teamBId: null }),
+    );
+  });
+
+  it('accepts an enabled Group Stage draw with an explicit DRAW outcome', async () => {
+    const { service, rows } = harness(
+      match({
+        round: {
+          id: 'group-stage',
+          format: RoundFormat.GROUP_STAGE,
+          settings: { allowDraws: true },
+          tournamentId: 'tournament-1',
+        },
+      }),
+    );
+
+    await service.update('match-1', {
+      scoreA: 1,
+      scoreB: 1,
+      status: MatchStatus.COMPLETED,
+    });
+
+    expect(rows['match-1']).toEqual(
+      expect.objectContaining({
+        winnerTeamId: null,
+        outcome: MatchOutcome.DRAW,
+        status: MatchStatus.COMPLETED,
+      }),
+    );
+  });
+
+  it('accepts a decisive Swiss result', async () => {
+    const { service, rows } = harness(
+      match({
+        round: {
+          id: 'swiss-round',
+          format: RoundFormat.SWISS,
+          settings: { numberOfRounds: 3, advancingTeamCount: 2 },
+          tournamentId: 'tournament-1',
+        },
+      }),
+    );
+
+    await service.update('match-1', {
+      scoreA: 2,
+      scoreB: 0,
+      status: MatchStatus.COMPLETED,
+    });
+
+    expect(rows['match-1']).toEqual(
+      expect.objectContaining({
+        winnerTeamId: 'team-a',
+        outcome: MatchOutcome.TEAM_A,
+        status: MatchStatus.COMPLETED,
+      }),
+    );
+  });
+
+  it('rejects a draw score that exceeds the best-of game count', async () => {
+    const { service } = harness(
+      match({
+        round: {
+          id: 'r1',
+          format: RoundFormat.ROUND_ROBIN,
+          settings: { allowDraws: true },
+          tournamentId: 't1',
+        },
+      }),
+    );
+
+    await expect(
+      service.update('match-1', {
+        scoreA: 2,
+        scoreB: 2,
+        status: MatchStatus.COMPLETED,
+      }),
+    ).rejects.toThrow('Score exceeds the maximum game count');
+  });
+
+  it.each([
+    [RoundFormat.ROUND_ROBIN, { allowDraws: false }],
+    [RoundFormat.GROUP_STAGE, { allowDraws: false }],
+    [RoundFormat.PLAYOFF, null],
+    [RoundFormat.DOUBLE_ELIM, null],
+    [RoundFormat.SWISS, null],
+  ])('rejects a draw for %s', async (format, settings) => {
+    const { service, tx } = harness(
+      match({
+        round: {
+          id: 'round-1',
+          format,
+          settings,
+          tournamentId: 'tournament-1',
+        },
+      }),
+    );
+
+    await expect(
+      service.update('match-1', {
+        scoreA: 1,
+        scoreB: 1,
+        status: MatchStatus.COMPLETED,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(tx.match.update).not.toHaveBeenCalled();
+  });
 
   it('rejects an impossible score and leaves writes untouched', async () => {
     const { service, tx } = harness(match({ bestOf: 3 }));
@@ -238,6 +400,89 @@ describe('MatchesService results', () => {
     );
   });
 
+  it('auto-completes and advances through a structural loser-bracket bye', async () => {
+    const source = match({
+      id: 'winner-source',
+      nextMatchId: 'winner-next',
+      nextMatchSlot: MatchSlot.A,
+      loserNextMatchId: 'loser-bye',
+      loserNextMatchSlot: MatchSlot.A,
+      round: {
+        id: 'double-round',
+        format: RoundFormat.DOUBLE_ELIM,
+        settings: { grandFinalReset: false },
+        tournamentId: 'tournament-1',
+      },
+    });
+    const { service, rows } = harness(source, {
+      'winner-next': match({
+        id: 'winner-next',
+        teamAId: null,
+        teamBId: null,
+      }),
+      'loser-bye': match({
+        id: 'loser-bye',
+        teamAId: null,
+        teamBId: null,
+        isBye: true,
+        nextMatchId: 'loser-next',
+        nextMatchSlot: MatchSlot.B,
+      }),
+      'loser-next': match({
+        id: 'loser-next',
+        teamAId: null,
+        teamBId: null,
+      }),
+    });
+
+    await service.putScores('winner-source', games(['A', 'A']));
+
+    expect(rows['loser-bye']).toEqual(
+      expect.objectContaining({
+        teamAId: 'team-b',
+        status: MatchStatus.COMPLETED,
+        winnerTeamId: 'team-b',
+        outcome: MatchOutcome.TEAM_A,
+      }),
+    );
+    expect(rows['loser-next']).toEqual(
+      expect.objectContaining({ teamBId: 'team-b' }),
+    );
+  });
+
+  it('waits for an enabled third-place match before completing Single Elimination', async () => {
+    const final = match({
+      id: 'playoff-final',
+      teamAId: 'champion',
+      teamBId: 'runner-up',
+      bracketRound: 2,
+      matchNumber: 1,
+    });
+    const { service, tx } = harness(final, {
+      'third-place': match({
+        id: 'third-place',
+        teamAId: 'bronze',
+        teamBId: 'fourth',
+        bracketRound: 2,
+        matchNumber: 2,
+      }),
+    });
+
+    await service.putScores('playoff-final', games(['A', 'A']));
+    expect(tx.round.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: { status: 'COMPLETED' } }),
+    );
+
+    await service.putScores('third-place', games(['A', 'A']));
+    expect(tx.team.update).toHaveBeenCalledWith({
+      where: { id: 'champion' },
+      data: { finalRank: 1 },
+    });
+    expect(tx.round.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { status: 'COMPLETED' } }),
+    );
+  });
+
   it('rolls back old placements before advancing a changed winner', async () => {
     const { service, rows } = harness(
       match({
@@ -245,6 +490,7 @@ describe('MatchesService results', () => {
         scoreB: 0,
         status: MatchStatus.COMPLETED,
         winnerTeamId: 'team-a',
+        outcome: MatchOutcome.TEAM_A,
         nextMatchId: 'next',
         nextMatchSlot: MatchSlot.A,
       }),

@@ -67,7 +67,7 @@ export class BracketsController {
       example: {
         roundId: 'round-id',
         bracketRound: 2,
-        numRounds: 5,
+        numberOfRounds: 5,
         matchCount: 4,
         matchIds: ['match-id-1', 'match-id-2'],
         matches: [],

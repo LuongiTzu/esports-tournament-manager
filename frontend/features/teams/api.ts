@@ -7,6 +7,7 @@ import type {
   UpdateTeamStatusRequest,
 } from "@/features/teams/types";
 import { request } from "@/lib/api/client";
+import { uploadImage } from "@/lib/api/upload";
 
 export const teamsApi = {
   getRegistrationForm: (slug: string) =>
@@ -25,6 +26,10 @@ export const teamsApi = {
       body: JSON.stringify(data),
       auth: true,
     }),
+  uploadLogo: (teamId: string, file: File) =>
+    uploadImage(`/teams/${teamId}/logo`, file),
+  uploadMemberAvatar: (teamId: string, memberId: string, file: File) =>
+    uploadImage(`/teams/${teamId}/members/${memberId}/avatar`, file),
   updateStatus: (teamId: string, data: UpdateTeamStatusRequest) =>
     request<TeamWithMembers>(`/teams/${teamId}/status`, {
       method: "PATCH",

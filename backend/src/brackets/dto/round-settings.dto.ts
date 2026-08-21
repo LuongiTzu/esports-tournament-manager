@@ -1,13 +1,4 @@
-import {
-  IsBoolean,
-  IsEnum,
-  IsInt,
-  IsArray,
-  ArrayUnique,
-  ArrayMinSize,
-  Min,
-  Max,
-} from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, Min, Max } from 'class-validator';
 import { RoundFormat } from '@prisma/client';
 
 /**
@@ -21,114 +12,87 @@ import { RoundFormat } from '@prisma/client';
 
 /** Vòng tròn tính điểm */
 export class RoundRobinSettingsDto {
-  @IsBoolean({ message: 'doubleRound phải là boolean' })
-  doubleRound!: boolean;
+  @IsInt({ message: 'winPoints phải là số nguyên' })
+  @Min(0, { message: 'winPoints không được âm' })
+  @Max(100, { message: 'winPoints tối đa là 100' })
+  winPoints!: number;
 
-  @IsInt({ message: 'pointsWin phải là số nguyên' })
-  @Min(1, { message: 'pointsWin tối thiểu là 1' })
-  @Max(10, { message: 'pointsWin tối đa là 10' })
-  pointsWin!: number;
+  @IsInt({ message: 'drawPoints phải là số nguyên' })
+  @Min(0, { message: 'drawPoints không được âm' })
+  @Max(100, { message: 'drawPoints tối đa là 100' })
+  drawPoints!: number;
 
-  @IsInt({ message: 'pointsDraw phải là số nguyên' })
-  @Min(0, { message: 'pointsDraw tối thiểu là 0' })
-  @Max(10, { message: 'pointsDraw tối đa là 10' })
-  pointsDraw!: number;
+  @IsInt({ message: 'lossPoints phải là số nguyên' })
+  @Min(0, { message: 'lossPoints không được âm' })
+  @Max(100, { message: 'lossPoints tối đa là 100' })
+  lossPoints!: number;
 
-  @IsInt({ message: 'pointsLoss phải là số nguyên' })
-  @Min(0, { message: 'pointsLoss tối thiểu là 0' })
-  @Max(10, { message: 'pointsLoss tối đa là 10' })
-  pointsLoss!: number;
+  @IsBoolean({ message: 'allowDraws phải là boolean' })
+  allowDraws!: boolean;
+
+  @IsInt({ message: 'meetingsPerPair phải là số nguyên' })
+  @Min(1, { message: 'meetingsPerPair tối thiểu là 1' })
+  @Max(4, { message: 'meetingsPerPair tối đa là 4' })
+  meetingsPerPair!: number;
 }
 
 /** Vòng bảng */
 export class GroupStageSettingsDto {
-  @IsInt({ message: 'numGroups phải là số nguyên' })
-  @Min(1, { message: 'numGroups tối thiểu là 1' })
-  @Max(16, { message: 'numGroups tối đa là 16' })
-  numGroups!: number;
+  @IsInt({ message: 'numberOfGroups phải là số nguyên' })
+  @Min(2, { message: 'numberOfGroups tối thiểu là 2' })
+  @Max(16, { message: 'numberOfGroups tối đa là 16' })
+  numberOfGroups!: number;
 
-  @IsInt({ message: 'teamsPerGroup phải là số nguyên' })
-  @Min(2, { message: 'teamsPerGroup tối thiểu là 2' })
-  @Max(32, { message: 'teamsPerGroup tối đa là 32' })
-  teamsPerGroup!: number;
+  @IsInt({ message: 'advancingTeamsPerGroup phải là số nguyên' })
+  @Min(1, { message: 'advancingTeamsPerGroup tối thiểu là 1' })
+  advancingTeamsPerGroup!: number;
 
-  @IsInt({ message: 'advanceCount phải là số nguyên' })
-  @Min(1, { message: 'advanceCount tối thiểu là 1' })
-  advanceCount!: number;
+  @IsInt({ message: 'winPoints phải là số nguyên' })
+  @Min(0, { message: 'winPoints không được âm' })
+  @Max(100, { message: 'winPoints tối đa là 100' })
+  winPoints!: number;
 
-  @IsBoolean({ message: 'doubleRound phải là boolean' })
-  doubleRound!: boolean;
+  @IsInt({ message: 'drawPoints phải là số nguyên' })
+  @Min(0, { message: 'drawPoints không được âm' })
+  @Max(100, { message: 'drawPoints tối đa là 100' })
+  drawPoints!: number;
 
-  @IsInt({ message: 'pointsWin phải là số nguyên' })
-  @Min(1, { message: 'pointsWin tối thiểu là 1' })
-  @Max(10, { message: 'pointsWin tối đa là 10' })
-  pointsWin!: number;
+  @IsInt({ message: 'lossPoints phải là số nguyên' })
+  @Min(0, { message: 'lossPoints không được âm' })
+  @Max(100, { message: 'lossPoints tối đa là 100' })
+  lossPoints!: number;
 
-  @IsInt({ message: 'pointsDraw phải là số nguyên' })
-  @Min(0, { message: 'pointsDraw tối thiểu là 0' })
-  @Max(10, { message: 'pointsDraw tối đa là 10' })
-  pointsDraw!: number;
+  @IsBoolean({ message: 'allowDraws phải là boolean' })
+  allowDraws!: boolean;
 
-  @IsInt({ message: 'pointsLoss phải là số nguyên' })
-  @Min(0, { message: 'pointsLoss tối thiểu là 0' })
-  @Max(10, { message: 'pointsLoss tối đa là 10' })
-  pointsLoss!: number;
+  @IsInt({ message: 'meetingsPerPair phải là số nguyên' })
+  @Min(1, { message: 'meetingsPerPair tối thiểu là 1' })
+  @Max(4, { message: 'meetingsPerPair tối đa là 4' })
+  meetingsPerPair!: number;
 }
 
 /** Thụy Sĩ */
 export class SwissSettingsDto {
-  @IsInt({ message: 'numRounds phải là số nguyên' })
-  @Min(1, { message: 'numRounds tối thiểu là 1' })
-  @Max(20, { message: 'numRounds tối đa là 20' })
-  numRounds!: number;
+  @IsOptional()
+  @IsInt({ message: 'numberOfRounds phải là số nguyên' })
+  @Min(1, { message: 'numberOfRounds tối thiểu là 1' })
+  @Max(20, { message: 'numberOfRounds tối đa là 20' })
+  numberOfRounds!: number | null;
 
-  @IsInt({ message: 'pointsWin phải là số nguyên' })
-  @Min(1, { message: 'pointsWin tối thiểu là 1' })
-  @Max(10, { message: 'pointsWin tối đa là 10' })
-  pointsWin!: number;
-
-  @IsInt({ message: 'pointsDraw phải là số nguyên' })
-  @Min(0, { message: 'pointsDraw tối thiểu là 0' })
-  @Max(10, { message: 'pointsDraw tối đa là 10' })
-  pointsDraw!: number;
-
-  @IsInt({ message: 'pointsLoss phải là số nguyên' })
-  @Min(0, { message: 'pointsLoss tối thiểu là 0' })
-  @Max(10, { message: 'pointsLoss tối đa là 10' })
-  pointsLoss!: number;
-
-  @IsArray({ message: 'tiebreakers phải là mảng' })
-  @ArrayMinSize(1, { message: 'tiebreakers phải có ít nhất 1 giá trị' })
-  @ArrayUnique({ message: 'tiebreakers không được trùng giá trị' })
-  @IsEnum(['BUCHHOLZ', 'HEAD_TO_HEAD', 'SCORE_DIFF'] as const, {
-    each: true,
-    message: 'Tiebreaker không hợp lệ (BUCHHOLZ, HEAD_TO_HEAD, SCORE_DIFF)',
-  })
-  tiebreakers!: ('BUCHHOLZ' | 'HEAD_TO_HEAD' | 'SCORE_DIFF')[];
-
-  @IsInt({ message: 'advanceCount phải là số nguyên' })
-  @Min(1, { message: 'advanceCount tối thiểu là 1' })
-  advanceCount!: number;
+  @IsInt({ message: 'advancingTeamCount phải là số nguyên' })
+  @Min(1, { message: 'advancingTeamCount tối thiểu là 1' })
+  @Max(256, { message: 'advancingTeamCount tối đa là 256' })
+  advancingTeamCount!: number;
 }
 
 /** Playoff — Single Elimination */
 export class PlayoffSettingsDto {
-  @IsEnum(['STANDARD'] as const, {
-    message: 'seeding không hợp lệ (chỉ hỗ trợ STANDARD)',
-  })
-  seeding!: 'STANDARD';
-
   @IsBoolean({ message: 'thirdPlaceMatch phải là boolean' })
   thirdPlaceMatch!: boolean;
 }
 
 /** Double Elimination */
 export class DoubleElimSettingsDto {
-  @IsEnum(['STANDARD'] as const, {
-    message: 'seeding không hợp lệ (chỉ hỗ trợ STANDARD)',
-  })
-  seeding!: 'STANDARD';
-
   @IsBoolean({ message: 'grandFinalReset phải là boolean' })
   grandFinalReset!: boolean;
 }

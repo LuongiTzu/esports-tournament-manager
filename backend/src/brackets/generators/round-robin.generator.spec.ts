@@ -12,13 +12,13 @@ function teams(count: number): BracketTeam[] {
   }));
 }
 
-function generate(count: number, doubleRound = false): MatchDraft[] {
+function generate(count: number, meetingsPerPair = 1): MatchDraft[] {
   return new RoundRobinGenerator().generate({
     format: RoundFormat.ROUND_ROBIN,
     teams: teams(count),
     settings: {
       ...DEFAULT_ROUND_SETTINGS[RoundFormat.ROUND_ROBIN],
-      doubleRound,
+      meetingsPerPair,
     },
     bestOf: 3,
   });
@@ -42,7 +42,7 @@ function pairKey(match: MatchDraft): string | null {
 describe('RoundRobinGenerator', () => {
   it.each([
     [4, 3, 6],
-    [5, 5, 15],
+    [5, 5, 10],
     [6, 5, 15],
     [8, 7, 28],
   ])(
@@ -56,18 +56,16 @@ describe('RoundRobinGenerator', () => {
     },
   );
 
-  it('gives each of 5 teams exactly one bye', () => {
-    const byes = generate(5).filter((match) => match.isBye);
+  it('does not persist fake bye matches for odd team counts', () => {
+    const result = generate(5);
 
-    expect(byes).toHaveLength(5);
-    expect(new Set(byes.map((match) => match.teamA.teamId))).toEqual(
-      new Set(teams(5).map((team) => team.id)),
-    );
-    expect(byes.every((match) => match.teamB.teamId === null)).toBe(true);
+    expect(result).toHaveLength(10);
+    expect(result.every((match) => !match.isBye)).toBe(true);
+    expect(result.every((match) => match.teamB.teamId !== null)).toBe(true);
   });
 
-  it('generates a reversed second half when doubleRound is enabled', () => {
-    const result = generate(4, true);
+  it('reverses sides on the second meeting cycle', () => {
+    const result = generate(4, 2);
     const firstHalf = result.filter((match) => match.bracketRound <= 3);
     const secondHalf = result.filter((match) => match.bracketRound > 3);
 
@@ -79,17 +77,43 @@ describe('RoundRobinGenerator', () => {
     });
   });
 
+  it.each([
+    [4, 1, 6],
+    [4, 2, 12],
+    [5, 1, 10],
+    [5, 2, 20],
+    [6, 1, 15],
+  ])(
+    'generates %i teams x %i meetings as %i real matches',
+    (count, meetings, expected) => {
+      expect(generate(count, meetings)).toHaveLength(expected);
+    },
+  );
+
   it.each([4, 5, 6, 8])(
-    'contains every matchup exactly once for %i teams',
+    'contains every matchup exactly K times for %i teams',
     (count) => {
-      const keys = generate(count)
+      const meetings = 3;
+      const keys = generate(count, meetings)
         .map(pairKey)
         .filter((key) => key !== null);
 
-      expect(keys).toHaveLength((count * (count - 1)) / 2);
-      expect(new Set(keys).size).toBe(keys.length);
+      expect(keys).toHaveLength(((count * (count - 1)) / 2) * meetings);
+      const counts = new Map<string, number>();
+      keys.forEach((key) => counts.set(key, (counts.get(key) ?? 0) + 1));
+      expect([...counts.values()].every((value) => value === meetings)).toBe(
+        true,
+      );
     },
   );
+
+  it('never schedules a team against itself', () => {
+    expect(
+      generate(5, 4).every(
+        (match) => match.teamA.teamId !== match.teamB.teamId,
+      ),
+    ).toBe(true);
+  });
 
   it.each([4, 5, 6, 8])(
     'schedules every team exactly once per round for %i teams',
@@ -100,8 +124,8 @@ describe('RoundRobinGenerator', () => {
             (id): id is string => id !== null,
           ),
         );
-        expect(appearances).toHaveLength(count);
-        expect(new Set(appearances).size).toBe(count);
+        expect(appearances).toHaveLength(count - (count % 2));
+        expect(new Set(appearances).size).toBe(count - (count % 2));
       }
     },
   );
@@ -147,11 +171,10 @@ describe('RoundRobinGenerator', () => {
 
   it('assigns deterministic match numbers and keys within every round', () => {
     for (const [roundNumber, matches] of rounds(generate(5))) {
-      expect(matches.map((match) => match.matchNumber)).toEqual([1, 2, 3]);
+      expect(matches.map((match) => match.matchNumber)).toEqual([1, 2]);
       expect(matches.map((match) => match.key)).toEqual([
         `round-robin-${roundNumber}-1`,
         `round-robin-${roundNumber}-2`,
-        `round-robin-${roundNumber}-3`,
       ]);
     }
   });

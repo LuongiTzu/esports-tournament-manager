@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import {
   MatchActivationCondition,
+  MatchOutcome,
   MatchSlot,
   MatchStatus,
   NotificationType,
@@ -39,6 +40,7 @@ const matchResultSelect = {
   bracketType: true,
   bestOf: true,
   winnerTeamId: true,
+  outcome: true,
   playedAt: true,
   scheduledAt: true,
   updatedAt: true,
@@ -46,7 +48,14 @@ const matchResultSelect = {
   nextMatchSlot: true,
   loserNextMatchId: true,
   loserNextMatchSlot: true,
-  round: { select: { id: true, format: true, tournamentId: true } },
+  round: {
+    select: {
+      id: true,
+      format: true,
+      settings: true,
+      tournamentId: true,
+    },
+  },
   scores: {
     select: { setNumber: true, teamAScore: true, teamBScore: true },
     orderBy: { setNumber: 'asc' as const },
@@ -111,7 +120,8 @@ export class MatchesService {
       const scoreA = dto.scoreA ?? match.scoreA;
       const scoreB = dto.scoreB ?? match.scoreB;
       const status = dto.status ?? match.status;
-      const winnerTeamId = this.validateResult(match, scoreA, scoreB, status);
+      const outcome = this.validateResult(match, scoreA, scoreB, status);
+      const winnerTeamId = outcome.winnerTeamId;
       const scheduleChanged =
         dto.scheduledAt !== undefined &&
         !sameDate(match.scheduledAt, toNullableDate(dto.scheduledAt));
@@ -123,7 +133,8 @@ export class MatchesService {
         scoreA !== match.scoreA ||
         scoreB !== match.scoreB ||
         status !== match.status ||
-        winnerTeamId !== match.winnerTeamId;
+        winnerTeamId !== match.winnerTeamId ||
+        outcome.outcome !== match.outcome;
 
       if (match.status === MatchStatus.COMPLETED) {
         await this.rollbackPreviousAdvancement(tx, match, winnerTeamId, status);
@@ -143,6 +154,7 @@ export class MatchesService {
           discordLink: dto.discordLink,
           status: dto.status,
           winnerTeamId,
+          outcome: outcome.outcome,
           playedAt:
             status === MatchStatus.COMPLETED
               ? (match.playedAt ?? new Date())
@@ -150,8 +162,9 @@ export class MatchesService {
         },
       });
 
-      if (status === MatchStatus.COMPLETED) {
-        await this.advanceResult(tx, match, winnerTeamId!);
+      if (status === MatchStatus.COMPLETED && winnerTeamId) {
+        await this.advanceResult(tx, match, winnerTeamId);
+        await this.completeEliminationIfReady(tx, match);
       }
       const revision = updated.updatedAt.toISOString();
       return {
@@ -201,17 +214,19 @@ export class MatchesService {
       const status = calculated.completed
         ? MatchStatus.COMPLETED
         : MatchStatus.ONGOING;
-      const winnerTeamId = this.validateResult(
+      const outcome = this.validateResult(
         match,
         calculated.scoreA,
         calculated.scoreB,
         status,
       );
+      const winnerTeamId = outcome.winnerTeamId;
       const resultChanged =
         calculated.scoreA !== match.scoreA ||
         calculated.scoreB !== match.scoreB ||
         status !== match.status ||
         winnerTeamId !== match.winnerTeamId ||
+        outcome.outcome !== match.outcome ||
         !sameScores(match.scores, dto.scores);
 
       if (match.status === MatchStatus.COMPLETED) {
@@ -229,6 +244,7 @@ export class MatchesService {
           scoreB: calculated.scoreB,
           status,
           winnerTeamId,
+          outcome: outcome.outcome,
           playedAt:
             status === MatchStatus.COMPLETED
               ? (match.playedAt ?? new Date())
@@ -237,8 +253,9 @@ export class MatchesService {
         include: { scores: { orderBy: { setNumber: 'asc' } } },
       });
 
-      if (status === MatchStatus.COMPLETED) {
-        await this.advanceResult(tx, match, winnerTeamId!);
+      if (status === MatchStatus.COMPLETED && winnerTeamId) {
+        await this.advanceResult(tx, match, winnerTeamId);
+        await this.completeEliminationIfReady(tx, match);
       }
       return {
         updated,
@@ -448,7 +465,7 @@ export class MatchesService {
     scoreA: number,
     scoreB: number,
     status: MatchStatus,
-  ): string | null {
+  ): { winnerTeamId: string | null; outcome: MatchOutcome | null } {
     this.validateBestOf(match.bestOf);
     const winsRequired = Math.floor(match.bestOf / 2) + 1;
     if (scoreA > winsRequired || scoreB > winsRequired) {
@@ -463,17 +480,43 @@ export class MatchesService {
       if (scoreA === winsRequired || scoreB === winsRequired) {
         throw new BadRequestException('A clinched series must be COMPLETED');
       }
-      return null;
+      return { winnerTeamId: null, outcome: null };
     }
     if (!match.teamAId || !match.teamBId) {
       throw new BadRequestException('Both match slots must be populated');
+    }
+    if (scoreA === scoreB) {
+      if (!this.allowsDraw(match)) {
+        throw new BadRequestException(
+          'Completed match must have one valid winner',
+        );
+      }
+      return { winnerTeamId: null, outcome: MatchOutcome.DRAW };
     }
     if ((scoreA === winsRequired) === (scoreB === winsRequired)) {
       throw new BadRequestException(
         'Completed match must have one valid winner',
       );
     }
-    return scoreA === winsRequired ? match.teamAId : match.teamBId;
+    return scoreA === winsRequired
+      ? { winnerTeamId: match.teamAId, outcome: MatchOutcome.TEAM_A }
+      : { winnerTeamId: match.teamBId, outcome: MatchOutcome.TEAM_B };
+  }
+
+  private allowsDraw(match: ResultMatch): boolean {
+    if (
+      match.round.format !== RoundFormat.ROUND_ROBIN &&
+      match.round.format !== RoundFormat.GROUP_STAGE
+    ) {
+      return false;
+    }
+    const settings = match.round.settings;
+    return (
+      typeof settings === 'object' &&
+      settings !== null &&
+      !Array.isArray(settings) &&
+      (settings as Record<string, unknown>).allowDraws === true
+    );
   }
 
   private assertActive(match: ResultMatch) {
@@ -540,7 +583,7 @@ export class MatchesService {
     const oldLoser =
       oldWinner === match.teamAId ? match.teamBId : match.teamAId;
     if (await this.rollbackConditionalReset(tx, match)) {
-      await this.rollbackChampion(tx, match, oldWinner);
+      await this.rollbackEliminationCompletion(tx, match, oldWinner);
       return;
     }
     const routes = [
@@ -581,7 +624,7 @@ export class MatchesService {
       });
       target[field] = null;
     }
-    await this.rollbackChampion(tx, match, oldWinner);
+    await this.rollbackEliminationCompletion(tx, match, oldWinner);
   }
 
   private async advanceResult(
@@ -608,9 +651,6 @@ export class MatchesService {
       match.loserNextMatchSlot,
       loserTeamId,
     );
-    if (this.isDecisiveDoubleElimFinal(match)) {
-      await this.finalizeChampion(tx, match, winnerTeamId);
-    }
   }
 
   private async processConditionalReset(
@@ -647,7 +687,6 @@ export class MatchesService {
     // The generator always places the Winner Bracket champion in Grand Final
     // slot A and the Loser Bracket champion in slot B.
     if (winnerTeamId !== match.teamBId) {
-      await this.finalizeChampion(tx, match, winnerTeamId);
       return true;
     }
 
@@ -732,20 +771,48 @@ export class MatchesService {
     return true;
   }
 
-  private isDecisiveDoubleElimFinal(match: ResultMatch): boolean {
-    return (
-      match.round?.format === RoundFormat.DOUBLE_ELIM &&
-      match.bracketType === null &&
-      (match.activationCondition !== null ||
-        (!match.nextMatchId && !match.loserNextMatchId))
-    );
-  }
+  private async completeEliminationIfReady(tx: Tx, match: ResultMatch) {
+    if (
+      match.round.format !== RoundFormat.PLAYOFF &&
+      match.round.format !== RoundFormat.DOUBLE_ELIM
+    ) {
+      return;
+    }
+    const matches = await tx.match.findMany({
+      where: { roundId: match.round.id },
+      select: {
+        status: true,
+        isActive: true,
+        bracketType: true,
+        bracketRound: true,
+        matchNumber: true,
+        winnerTeamId: true,
+      },
+    });
+    const required = matches.filter((candidate) => candidate.isActive);
+    if (
+      required.length === 0 ||
+      required.some((candidate) => candidate.status !== MatchStatus.COMPLETED)
+    ) {
+      return;
+    }
+    const championship = required
+      .filter(
+        (candidate) =>
+          candidate.bracketType === null &&
+          candidate.matchNumber === 1 &&
+          candidate.winnerTeamId !== null,
+      )
+      .sort(
+        (left, right) => (right.bracketRound ?? 0) - (left.bracketRound ?? 0),
+      )[0];
+    if (!championship?.winnerTeamId) return;
 
-  private async finalizeChampion(
-    tx: Tx,
-    match: ResultMatch,
-    winnerTeamId: string,
-  ) {
+    await tx.round.update({
+      where: { id: match.round.id },
+      data: { status: RoundStatus.COMPLETED },
+    });
+    const winnerTeamId = championship.winnerTeamId;
     await tx.team.updateMany({
       where: {
         tournamentId: match.round.tournamentId,
@@ -768,26 +835,29 @@ export class MatchesService {
     });
   }
 
-  private async rollbackChampion(
+  private async rollbackEliminationCompletion(
     tx: Tx,
     match: ResultMatch,
     oldWinnerTeamId: string | null,
   ) {
-    if (!oldWinnerTeamId || !this.isDecisiveDoubleElimFinal(match)) return;
-    const cleared = await tx.team.updateMany({
+    if (
+      !oldWinnerTeamId ||
+      (match.round.format !== RoundFormat.PLAYOFF &&
+        match.round.format !== RoundFormat.DOUBLE_ELIM)
+    )
+      return;
+    await tx.team.updateMany({
       where: { id: oldWinnerTeamId, finalRank: 1 },
       data: { finalRank: null },
     });
-    if (cleared.count > 0) {
-      await tx.round.update({
-        where: { id: match.round.id },
-        data: { status: RoundStatus.ONGOING },
-      });
-      await tx.tournament.update({
-        where: { id: match.round.tournamentId },
-        data: { status: TournamentStatus.ONGOING },
-      });
-    }
+    await tx.round.update({
+      where: { id: match.round.id },
+      data: { status: RoundStatus.ONGOING },
+    });
+    await tx.tournament.update({
+      where: { id: match.round.tournamentId },
+      data: { status: TournamentStatus.ONGOING },
+    });
   }
 
   private async placeTeam(
@@ -802,7 +872,14 @@ export class MatchesService {
     }
     const target = await tx.match.findUnique({
       where: { id: targetId },
-      select: { teamAId: true, teamBId: true },
+      select: {
+        teamAId: true,
+        teamBId: true,
+        status: true,
+        isBye: true,
+        nextMatchId: true,
+        nextMatchSlot: true,
+      },
     });
     if (!target) throw new ConflictException('Downstream match not found');
     const field = slot === MatchSlot.A ? 'teamAId' : 'teamBId';
@@ -813,8 +890,28 @@ export class MatchesService {
     }
     await tx.match.update({
       where: { id: targetId },
-      data: { [field]: teamId },
+      data: {
+        [field]: teamId,
+        ...(target.isBye && target.status !== MatchStatus.COMPLETED
+          ? {
+              status: MatchStatus.COMPLETED,
+              scoreA: field === 'teamAId' ? 1 : 0,
+              scoreB: field === 'teamBId' ? 1 : 0,
+              winnerTeamId: teamId,
+              outcome:
+                field === 'teamAId' ? MatchOutcome.TEAM_A : MatchOutcome.TEAM_B,
+            }
+          : {}),
+      },
     });
+    if (target.isBye && target.status !== MatchStatus.COMPLETED) {
+      await this.placeTeam(
+        tx,
+        target.nextMatchId,
+        target.nextMatchSlot,
+        teamId,
+      );
+    }
   }
 }
 

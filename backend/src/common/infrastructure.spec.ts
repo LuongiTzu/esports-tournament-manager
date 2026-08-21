@@ -1,20 +1,25 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
   Body,
   Controller,
-  INestApplication,
   Post,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { IsString, MinLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { existsSync, unlinkSync } from 'fs';
 import request from 'supertest';
-import { configureApp } from '../main';
-import { imageUploadOptions, UPLOAD_ROOT } from '../uploads/upload.config';
+import { configureApp, configureStaticAssets } from '../main';
+import {
+  imageUploadOptions,
+  MAX_IMAGE_SIZE,
+  UPLOAD_ROOT,
+} from '../uploads/upload.config';
+import { ImageStorageService } from '../uploads/image-storage.service';
 import { join } from 'path';
 
 class NestedDto {
@@ -31,10 +36,12 @@ class ValidationDto {
 
 @Controller('infrastructure-test')
 class InfrastructureController {
+  constructor(private readonly storage: ImageStorageService) {}
+
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', imageUploadOptions))
   upload(@UploadedFile() file: Express.Multer.File) {
-    return { url: `/uploads/${file.filename}` };
+    return this.storage.store('user-avatars', file);
   }
 
   @Post('validation')
@@ -44,14 +51,16 @@ class InfrastructureController {
 }
 
 describe('backend infrastructure', () => {
-  let app: INestApplication;
+  let app: NestExpressApplication;
   const createdFiles: string[] = [];
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [InfrastructureController],
+      providers: [ImageStorageService],
     }).compile();
-    app = moduleRef.createNestApplication();
+    app = moduleRef.createNestApplication<NestExpressApplication>();
+    configureStaticAssets(app);
     configureApp(app);
     await app.init();
   });
@@ -79,19 +88,62 @@ describe('backend infrastructure', () => {
     });
   });
 
-  it('stores a valid upload under a generated safe filename', async () => {
+  it.each([
+    ['JPEG', 'image/jpeg', 'jpg', Buffer.from([0xff, 0xd8, 0xff, 0xdb, 0x00])],
+    [
+      'PNG',
+      'image/png',
+      'png',
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    ],
+    ['WebP', 'image/webp', 'webp', Buffer.from('RIFF0000WEBP', 'ascii')],
+  ])(
+    'stores and publicly serves a valid %s under a generated safe filename',
+    async (_label, contentType, extension, contents) => {
+      const response = await request(app.getHttpServer())
+        .post('/api/infrastructure-test/upload')
+        .attach('file', contents, {
+          filename: `../../unsafe.${extension}`,
+          contentType,
+        })
+        .expect(201);
+      const url = (response.body as { data: { url: string } }).data.url;
+      const filename = url.replace('/uploads/', '');
+      createdFiles.push(filename);
+      expect(filename).toMatch(
+        new RegExp(`^user-avatars/[0-9a-f-]{36}\\.${extension}$`),
+      );
+      expect(existsSync(join(UPLOAD_ROOT, filename))).toBe(true);
+      await request(app.getHttpServer()).get(url).expect(200, contents);
+    },
+  );
+
+  it('rejects a spoofed image MIME when file contents do not match', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/infrastructure-test/upload')
-      .attach('file', Buffer.from([0x89, 0x50, 0x4e, 0x47]), {
-        filename: '../../avatar.png',
+      .attach('file', Buffer.from('not really a PNG'), {
+        filename: 'spoofed.png',
         contentType: 'image/png',
       })
-      .expect(201);
-    const url = (response.body as { data: { url: string } }).data.url;
-    const filename = url.replace('/uploads/', '');
-    createdFiles.push(filename);
-    expect(filename).toMatch(/^[0-9a-f-]{36}\.png$/);
-    expect(existsSync(join(UPLOAD_ROOT, filename))).toBe(true);
+      .expect(400);
+
+    expect(response.body.message).toBe(
+      'Image content does not match a supported file type',
+    );
+  });
+
+  it('rejects an oversized image before storage', async () => {
+    const contents = Buffer.alloc(MAX_IMAGE_SIZE + 1);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(
+      contents,
+    );
+    await request(app.getHttpServer())
+      .post('/api/infrastructure-test/upload')
+      .attach('file', contents, {
+        filename: 'oversized.png',
+        contentType: 'image/png',
+      })
+      .expect(413);
   });
 
   it('serves Swagger at the configured API docs path', async () => {

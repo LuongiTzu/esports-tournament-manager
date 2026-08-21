@@ -4,12 +4,8 @@ import { SwissMatchSnapshot } from '../types/swiss';
 import { SwissGenerator } from './swiss.generator';
 
 const settings: SwissSettings = {
-  numRounds: 5,
-  pointsWin: 3,
-  pointsDraw: 1,
-  pointsLoss: 0,
-  tiebreakers: ['BUCHHOLZ', 'HEAD_TO_HEAD', 'SCORE_DIFF'],
-  advanceCount: 8,
+  numberOfRounds: 5,
+  advancingTeamCount: 8,
 };
 
 function teams(count: number): BracketTeam[] {
@@ -112,6 +108,66 @@ describe('SwissGenerator', () => {
     ).toBe(true);
   });
 
+  it('pairs teams with the closest available win records', () => {
+    const result = generator.generateNext({
+      teams: teams(8),
+      matches: [
+        snapshot('team-1', 'team-5', 1, 0, 1),
+        snapshot('team-2', 'team-6', 1, 0, 1),
+        snapshot('team-3', 'team-7', 1, 0, 1),
+        snapshot('team-4', 'team-8', 1, 0, 1),
+        snapshot('team-1', 'team-6', 1, 0, 2),
+        snapshot('team-2', 'team-5', 1, 0, 2),
+        snapshot('team-7', 'team-4', 1, 0, 2),
+        snapshot('team-8', 'team-3', 1, 0, 2),
+      ],
+      settings,
+      bestOf: 3,
+      bracketRound: 3,
+    });
+    const records = new Map([
+      ['team-1', 2],
+      ['team-2', 2],
+      ['team-3', 1],
+      ['team-4', 1],
+      ['team-5', 0],
+      ['team-6', 0],
+      ['team-7', 1],
+      ['team-8', 1],
+    ]);
+
+    expect(result.matches).toHaveLength(4);
+    expect(
+      result.matches.every(
+        (match) =>
+          records.get(match.teamA.teamId!) === records.get(match.teamB.teamId!),
+      ),
+    ).toBe(true);
+  });
+
+  it('uses each team at most once and never creates a self-match', () => {
+    const result = generator.generateNext({
+      teams: teams(8),
+      matches: [],
+      settings,
+      bestOf: 3,
+      bracketRound: 1,
+    });
+    const participants = result.matches.flatMap((match) => [
+      match.teamA.teamId,
+      match.teamB.teamId,
+    ]);
+
+    expect(result.matches).toHaveLength(4);
+    expect(participants).toHaveLength(8);
+    expect(new Set(participants).size).toBe(8);
+    expect(
+      result.matches.every(
+        (match) => match.teamA.teamId !== match.teamB.teamId,
+      ),
+    ).toBe(true);
+  });
+
   it('distributes consecutive byes to different eligible teams', () => {
     const teamList = teams(17);
     const first = generator.generateNext({
@@ -153,6 +209,7 @@ describe('SwissGenerator', () => {
 
     expect(byId.get('team-1')).toMatchObject({
       points: 6,
+      played: 2,
       buchholz: 6,
       buchholzCut1: 3,
       scoreDifference: 3,
@@ -191,6 +248,17 @@ describe('SwissGenerator', () => {
 
     expect(result.map((row) => row.points)).toEqual([0, 0]);
     expect(result.map((row) => row.scoreDifference)).toEqual([0, 0]);
+  });
+
+  it('does not count an invalid tied Swiss snapshot as a played result', () => {
+    const result = generator.calculateStandings(
+      teams(2),
+      [snapshot('team-1', 'team-2', 1, 1)],
+      settings,
+    );
+
+    expect(result.map((row) => row.played)).toEqual([0, 0]);
+    expect(result.map((row) => row.points)).toEqual([0, 0]);
   });
 
   it('is deterministic for identical pairing input', () => {

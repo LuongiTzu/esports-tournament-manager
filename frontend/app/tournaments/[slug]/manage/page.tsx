@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, CheckIcon, XIcon } from "@phosphor-icons/react";
+import ResolvedImage from "@/components/ResolvedImage";
 import { useAuth } from "@/features/auth/store";
 import { accentVars } from "@/features/games/game-accent";
 import { teamsApi } from "@/features/teams/api";
@@ -201,12 +202,24 @@ export default function ManagePage({
                 className="rounded-xl border border-line bg-surface-card p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="font-semibold text-ink">{team.name}</h2>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      Đội trưởng: {team.captain?.displayName} •{" "}
-                      {team._count?.members ?? 0} thành viên
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-brand/10 font-bold text-brand">
+                      <ResolvedImage
+                        src={team.logoUrl}
+                        alt={`Logo ${team.name}`}
+                        className="size-full object-cover object-center"
+                        fallback={team.name.charAt(0).toUpperCase()}
+                      />
+                    </span>
+                    <div className="min-w-0">
+                      <h2 className="truncate font-semibold text-ink">
+                        {team.name}
+                      </h2>
+                      <p className="mt-1 text-sm text-ink-muted">
+                        Đội trưởng: {team.captain?.displayName} •{" "}
+                        {team._count?.members ?? 0} thành viên
+                      </p>
+                    </div>
                   </div>
                   <StatusBadge status={team.status} />
                 </div>

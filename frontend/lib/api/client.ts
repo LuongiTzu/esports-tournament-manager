@@ -1,6 +1,6 @@
 import { tokenStore } from "@/lib/api/token-store";
 
-const BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 interface ApiSuccessEnvelope {
@@ -65,7 +65,7 @@ async function performTokenRefresh(): Promise<string | null> {
   }
 
   try {
-    const response = await fetch(`${BASE_URL}/auth/refresh`, {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -106,17 +106,17 @@ export async function request<T>(
 ): Promise<T> {
   const { auth = false, headers = {}, ...rest } = options;
 
-  const finalHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(headers as Record<string, string>),
-  };
+  const finalHeaders = new Headers(headers);
+  if (!(rest.body instanceof FormData) && !finalHeaders.has("Content-Type")) {
+    finalHeaders.set("Content-Type", "application/json");
+  }
 
   if (auth) {
     const token = tokenStore.accessToken;
-    if (token) finalHeaders.Authorization = `Bearer ${token}`;
+    if (token) finalHeaders.set("Authorization", `Bearer ${token}`);
   }
 
-  let res = await fetch(`${BASE_URL}${path}`, {
+  let res = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
     headers: finalHeaders,
   });
@@ -124,8 +124,8 @@ export async function request<T>(
   if (auth && res.status === 401) {
     const refreshedAccessToken = await refreshAccessToken();
     if (refreshedAccessToken) {
-      finalHeaders.Authorization = `Bearer ${refreshedAccessToken}`;
-      res = await fetch(`${BASE_URL}${path}`, {
+      finalHeaders.set("Authorization", `Bearer ${refreshedAccessToken}`);
+      res = await fetch(`${API_BASE_URL}${path}`, {
         ...rest,
         headers: finalHeaders,
       });

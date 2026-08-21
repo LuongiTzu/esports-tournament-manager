@@ -113,6 +113,13 @@ enum MatchStatus {
   COMPLETED
 }
 
+/// Kết quả rõ ràng của trận đã hoàn tất; null khi trận chưa có kết quả.
+enum MatchOutcome {
+  TEAM_A
+  TEAM_B
+  DRAW
+}
+
 /// Condition that keeps a planned match inactive until its source result requires it.
 enum MatchActivationCondition {
   LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL
@@ -437,6 +444,7 @@ model Match {
   scoreA          Int         @default(0) @map("score_a")  /// Tổng tỉ số đội A (số ván thắng)
   scoreB          Int         @default(0) @map("score_b")  /// Tổng tỉ số đội B
   status          MatchStatus @default(PENDING)
+  outcome         MatchOutcome? /// Kết quả tường minh; DRAW không bị nhầm với trận chưa đấu
   isActive        Boolean     @default(true) @map("is_active")
   activationCondition MatchActivationCondition? @map("activation_condition")
   bracketType     BracketType? @map("bracket_type")  /// Chỉ dùng khi Round format = DOUBLE_ELIM

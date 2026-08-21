@@ -12,7 +12,13 @@ import {
   SwissPairingResult,
   SwissStanding,
 } from '../types/swiss';
-import { SwissSettings } from '../types/round-settings';
+import {
+  resolveSwissNumberOfRounds,
+  SwissSettings,
+} from '../types/round-settings';
+
+const SWISS_WIN_POINTS = 3;
+const SWISS_LOSS_POINTS = 0;
 
 @Injectable()
 export class SwissGenerator implements IBracketGenerator<
@@ -31,13 +37,13 @@ export class SwissGenerator implements IBracketGenerator<
   }
 
   resolveNumRounds(teamCount: number, configuredNumRounds?: number): number {
-    return configuredNumRounds ?? Math.ceil(Math.log2(teamCount));
+    return resolveSwissNumberOfRounds(teamCount, configuredNumRounds ?? null);
   }
 
   calculateStandings(
     teams: readonly BracketTeam[],
     matches: readonly SwissMatchSnapshot[],
-    settings: SwissSettings,
+    _settings: SwissSettings,
   ): SwissStanding[] {
     const completed = matches.filter((match) => match.completed || match.isBye);
     const rows = new Map<
@@ -49,8 +55,8 @@ export class SwissGenerator implements IBracketGenerator<
         {
           teamId: team.id,
           points: 0,
+          played: 0,
           wins: 0,
-          draws: 0,
           losses: 0,
           byes: 0,
           scoreDifference: 0,
@@ -63,32 +69,31 @@ export class SwissGenerator implements IBracketGenerator<
       const a = rows.get(match.teamAId);
       if (!a) continue;
       if (match.isBye || match.teamBId === null) {
-        a.points += settings.pointsWin;
+        a.points += SWISS_WIN_POINTS;
+        a.played++;
         a.wins++;
         a.byes++;
         continue;
       }
       const b = rows.get(match.teamBId);
       if (!b) continue;
+      if (match.scoreA === match.scoreB) continue;
+      a.played++;
+      b.played++;
       a.opponents.push(b.teamId);
       b.opponents.push(a.teamId);
       a.scoreDifference += match.scoreA - match.scoreB;
       b.scoreDifference += match.scoreB - match.scoreA;
       if (match.scoreA > match.scoreB) {
-        a.points += settings.pointsWin;
-        b.points += settings.pointsLoss;
+        a.points += SWISS_WIN_POINTS;
+        b.points += SWISS_LOSS_POINTS;
         a.wins++;
         b.losses++;
       } else if (match.scoreB > match.scoreA) {
-        b.points += settings.pointsWin;
-        a.points += settings.pointsLoss;
+        b.points += SWISS_WIN_POINTS;
+        a.points += SWISS_LOSS_POINTS;
         b.wins++;
         a.losses++;
-      } else {
-        a.points += settings.pointsDraw;
-        b.points += settings.pointsDraw;
-        a.draws++;
-        b.draws++;
       }
     }
 
@@ -117,12 +122,7 @@ export class SwissGenerator implements IBracketGenerator<
         b.buchholz - a.buchholz ||
         b.buchholzCut1 - a.buchholzCut1;
       if (base !== 0) return base;
-      const headToHead = headToHeadPoints(
-        a.teamId,
-        b.teamId,
-        completed,
-        settings,
-      );
+      const headToHead = headToHeadPoints(a.teamId, b.teamId, completed);
       if (headToHead !== 0) return -headToHead;
       return (
         b.scoreDifference - a.scoreDifference ||
@@ -303,7 +303,6 @@ function headToHeadPoints(
   a: string,
   b: string,
   matches: readonly SwissMatchSnapshot[],
-  settings: SwissSettings,
 ): number {
   let difference = 0;
   for (const match of matches) {
@@ -316,9 +315,9 @@ function headToHeadPoints(
     const bScore = match.teamAId === a ? match.scoreB : match.scoreA;
     difference +=
       aScore > bScore
-        ? settings.pointsWin - settings.pointsLoss
+        ? SWISS_WIN_POINTS - SWISS_LOSS_POINTS
         : aScore < bScore
-          ? settings.pointsLoss - settings.pointsWin
+          ? SWISS_LOSS_POINTS - SWISS_WIN_POINTS
           : 0;
   }
   return difference;

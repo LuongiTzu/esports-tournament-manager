@@ -2,10 +2,18 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { join } from 'path';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { UPLOAD_ROOT } from './uploads/upload.config';
+
+export function configureStaticAssets(app: NestExpressApplication): void {
+  app.useStaticAssets(UPLOAD_ROOT, {
+    prefix: '/uploads/',
+    dotfiles: 'deny',
+    index: false,
+  });
+}
 
 export function configureApp(app: INestApplication): void {
   app.setGlobalPrefix('api');
@@ -35,11 +43,7 @@ export function configureApp(app: INestApplication): void {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
-    prefix: '/uploads/',
-    dotfiles: 'deny',
-    index: false,
-  });
+  configureStaticAssets(app);
   configureApp(app);
   const port = process.env.PORT || 3001;
   await app.listen(port);

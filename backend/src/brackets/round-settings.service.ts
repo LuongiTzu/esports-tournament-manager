@@ -6,7 +6,6 @@ import {
   GroupStageSettings,
   RoundRobinSettings,
   RoundSettingsMap,
-  SwissSettings,
 } from './types/round-settings';
 import { createSettingsDtoForFormat } from './dto/round-settings.dto';
 
@@ -47,7 +46,8 @@ export class RoundSettingsService {
     const supplied = Object.fromEntries(
       Object.entries(settings).filter(([, value]) => value !== undefined),
     );
-    const merged = { ...defaults, ...supplied };
+    const canonical = canonicalizeSettings(format, supplied);
+    const merged = { ...defaults, ...canonical };
 
     // Validate bằng DTO riêng theo format
     const dtoInstance = createSettingsDtoForFormat(format, merged);
@@ -80,13 +80,25 @@ export class RoundSettingsService {
     if (!storedSettings || typeof storedSettings !== 'object') {
       return cloneJson(defaults);
     }
+    const stored = storedSettings as Record<string, unknown>;
+    const canonical = canonicalizeSettings(
+      format,
+      Object.fromEntries(
+        Object.entries(stored).filter(([, value]) => value !== undefined),
+      ),
+    );
+    const isLegacyGroupStage =
+      format === RoundFormat.GROUP_STAGE &&
+      stored.allowDraws === undefined &&
+      ['numGroups', 'teamsPerGroup', 'advanceCount', 'doubleRound'].some(
+        (key) => Object.prototype.hasOwnProperty.call(stored, key),
+      );
     return cloneJson({
       ...defaults,
-      ...Object.fromEntries(
-        Object.entries(storedSettings as Record<string, unknown>).filter(
-          ([, value]) => value !== undefined,
-        ),
-      ),
+      ...canonical,
+      // Legacy Group Stage rounds historically accepted draws. New rounds are
+      // persisted with the explicit default `allowDraws: false`.
+      ...(isLegacyGroupStage ? { allowDraws: true } : {}),
     });
   }
 
@@ -96,29 +108,122 @@ export class RoundSettingsService {
   ): void {
     if (format === RoundFormat.GROUP_STAGE) {
       const groupSettings = settings as GroupStageSettings;
-      if (groupSettings.advanceCount > groupSettings.teamsPerGroup) {
+      if (groupSettings.winPoints <= groupSettings.lossPoints) {
+        throw new BadRequestException('winPoints phải lớn hơn lossPoints');
+      }
+      if (
+        groupSettings.allowDraws &&
+        (groupSettings.winPoints <= groupSettings.drawPoints ||
+          groupSettings.drawPoints < groupSettings.lossPoints)
+      ) {
         throw new BadRequestException(
-          'advanceCount không được lớn hơn teamsPerGroup',
+          'Khi cho phép hòa, điểm phải thỏa winPoints > drawPoints >= lossPoints',
         );
       }
     }
 
-    if (
-      format === RoundFormat.ROUND_ROBIN ||
-      format === RoundFormat.GROUP_STAGE ||
-      format === RoundFormat.SWISS
-    ) {
-      const pointSettings = settings as RoundRobinSettings | SwissSettings;
+    if (format === RoundFormat.ROUND_ROBIN) {
+      const pointSettings = settings as RoundRobinSettings;
+      if (pointSettings.winPoints <= pointSettings.lossPoints) {
+        throw new BadRequestException('winPoints phải lớn hơn lossPoints');
+      }
       if (
-        pointSettings.pointsWin <= pointSettings.pointsDraw ||
-        pointSettings.pointsDraw < pointSettings.pointsLoss
+        pointSettings.allowDraws &&
+        (pointSettings.winPoints <= pointSettings.drawPoints ||
+          pointSettings.drawPoints < pointSettings.lossPoints)
       ) {
         throw new BadRequestException(
-          'Cấu hình điểm phải thỏa pointsWin > pointsDraw >= pointsLoss',
+          'Khi cho phép hòa, điểm phải thỏa winPoints > drawPoints >= lossPoints',
         );
       }
     }
   }
+}
+
+function canonicalizeSettings(
+  format: RoundFormat,
+  settings: Record<string, unknown>,
+): Record<string, unknown> {
+  if (format === RoundFormat.PLAYOFF || format === RoundFormat.DOUBLE_ELIM) {
+    const canonical = { ...settings };
+    // Seeding is fixed engine behavior, not a configurable round setting.
+    // Accept historical JSON containing the old marker but never expose it.
+    delete canonical.seeding;
+    return canonical;
+  }
+  if (format === RoundFormat.SWISS) {
+    const canonical = { ...settings };
+    if (
+      canonical.numberOfRounds === undefined &&
+      canonical.numRounds !== undefined
+    ) {
+      canonical.numberOfRounds = canonical.numRounds;
+    }
+    if (
+      canonical.advancingTeamCount === undefined &&
+      canonical.advanceCount !== undefined
+    ) {
+      canonical.advancingTeamCount = canonical.advanceCount;
+    }
+    delete canonical.numRounds;
+    delete canonical.advanceCount;
+    delete canonical.pointsWin;
+    delete canonical.pointsDraw;
+    delete canonical.pointsLoss;
+    delete canonical.tiebreakers;
+    return canonical;
+  }
+  if (
+    format !== RoundFormat.ROUND_ROBIN &&
+    format !== RoundFormat.GROUP_STAGE
+  ) {
+    return settings;
+  }
+
+  const canonical = { ...settings };
+  if (
+    format === RoundFormat.GROUP_STAGE &&
+    canonical.numberOfGroups === undefined &&
+    canonical.numGroups !== undefined
+  ) {
+    canonical.numberOfGroups = canonical.numGroups;
+  }
+  if (
+    format === RoundFormat.GROUP_STAGE &&
+    canonical.advancingTeamsPerGroup === undefined &&
+    canonical.advanceCount !== undefined
+  ) {
+    canonical.advancingTeamsPerGroup = canonical.advanceCount;
+  }
+  if (canonical.winPoints === undefined && canonical.pointsWin !== undefined) {
+    canonical.winPoints = canonical.pointsWin;
+  }
+  if (
+    canonical.drawPoints === undefined &&
+    canonical.pointsDraw !== undefined
+  ) {
+    canonical.drawPoints = canonical.pointsDraw;
+  }
+  if (
+    canonical.lossPoints === undefined &&
+    canonical.pointsLoss !== undefined
+  ) {
+    canonical.lossPoints = canonical.pointsLoss;
+  }
+  if (
+    canonical.meetingsPerPair === undefined &&
+    canonical.doubleRound !== undefined
+  ) {
+    canonical.meetingsPerPair = canonical.doubleRound === true ? 2 : 1;
+  }
+  delete canonical.pointsWin;
+  delete canonical.pointsDraw;
+  delete canonical.pointsLoss;
+  delete canonical.doubleRound;
+  delete canonical.numGroups;
+  delete canonical.teamsPerGroup;
+  delete canonical.advanceCount;
+  return canonical;
 }
 
 /** Clone các object JSON để không làm lộ tham chiếu tới defaults/input dùng chung. */

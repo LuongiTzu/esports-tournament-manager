@@ -10,6 +10,7 @@ import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 import type { TournamentView } from "@/features/tournaments/components/TournamentGrid";
 import { accentVars } from "@/features/games/game-accent";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
+import ResolvedImage from "@/components/ResolvedImage";
 
 const statusLabels: Record<Tournament["status"], TranslationKey> = {
   DRAFT: "tournaments.discovery.draft",
@@ -53,10 +54,11 @@ export default function TournamentCard({
       }`}
     >
       <div className={`relative overflow-hidden ${listView ? "h-44 sm:h-full sm:min-h-52" : "h-44"}`}>
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-500 ease-out group-hover:scale-105"
-          style={{ backgroundImage: `url(${JSON.stringify(getTournamentBannerUrl(t.bannerUrl, t.game?.name))})` }}
+        <ResolvedImage
+          src={getTournamentBannerUrl(t.bannerUrl, t.game?.name)}
+          fallbackSrc={getTournamentBannerUrl(null, t.game?.name)}
+          alt=""
+          className="absolute inset-0 size-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
         />
         <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-surface-card via-transparent to-black/10" />
         <span className={`absolute left-4 top-4 rounded-md border px-2.5 py-1 text-xs font-bold shadow-lg backdrop-blur-md ${statusClasses[t.status]}`}>
@@ -70,15 +72,12 @@ export default function TournamentCard({
         )}
 
         <span className="absolute bottom-3 right-4 grid size-14 place-items-center overflow-hidden rounded-xl border border-white/15 bg-surface/90 text-accent shadow-lg shadow-black/30 backdrop-blur-md">
-          {t.game?.iconUrl ? (
-            <span
-              aria-hidden
-              className="size-10 bg-contain bg-center bg-no-repeat"
-              style={{ backgroundImage: `url(${JSON.stringify(t.game.iconUrl)})` }}
-            />
-          ) : (
-            <GameControllerIcon size={28} weight="duotone" />
-          )}
+          <ResolvedImage
+            src={t.game?.iconUrl}
+            alt=""
+            className="size-10 object-contain object-center"
+            fallback={<GameControllerIcon size={28} weight="duotone" />}
+          />
         </span>
       </div>
 
