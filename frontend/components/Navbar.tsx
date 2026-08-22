@@ -92,6 +92,7 @@ export default function Navbar() {
     { href: "/", label: t("nav.home") },
     { href: "/tournaments", label: t("nav.tournaments") },
     ...(user ? [{ href: "/users/me", label: t("nav.myTournaments") }] : []),
+    ...(user?.role === "ADMIN" ? [{ href: "/admin", label: t("nav.admin") }] : []),
   ];
 
   return (
