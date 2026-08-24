@@ -19,6 +19,7 @@ import { VisibilityResource } from '../common/decorators/visibility.decorator';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
 import { CommentService } from './comment.service';
 import { CreateCommentDto } from './dto/comment.dto';
+import { CommentListQueryDto } from './dto/comment-list-query.dto';
 
 @ApiTags('comments')
 @Controller()
@@ -43,7 +44,7 @@ export class CommentController {
   findByTournament(
     @Param('slug') slug: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
-    @Query() query: { page?: number; limit?: number },
+    @Query() query: CommentListQueryDto,
   ) {
     return this.comments.findByTournament(slug, user, query);
   }

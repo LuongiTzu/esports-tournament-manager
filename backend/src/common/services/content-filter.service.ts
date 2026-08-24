@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
 import { BannedKeywordCategory } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ApplicationErrorCode } from '../errors/application-error-code';
 
 export type ContentFilterMode = 'reject' | 'mask';
 
@@ -50,7 +51,7 @@ export class ContentFilterService implements OnModuleInit {
     }));
     if (mode === 'reject') {
       throw new BadRequestException({
-        code: 'BANNED_CONTENT',
+        code: ApplicationErrorCode.BANNED_CONTENT,
         message: 'Content contains prohibited keywords',
         matches: details,
       });

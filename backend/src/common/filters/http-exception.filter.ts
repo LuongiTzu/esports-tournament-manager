@@ -17,11 +17,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
         : HttpStatus.INTERNAL_SERVER_ERROR;
     const body =
       exception instanceof HttpException ? exception.getResponse() : undefined;
-    const rawMessage =
-      typeof body === 'object' && body !== null && 'message' in body
-        ? (body as { message?: unknown }).message
-        : body;
-    const errors = Array.isArray(rawMessage) ? rawMessage : [];
+    const structuredBody = isRecord(body) ? body : undefined;
+    const rawMessage = structuredBody?.message ?? body;
+    const errors = Array.isArray(structuredBody?.errors)
+      ? structuredBody.errors
+      : Array.isArray(rawMessage)
+        ? rawMessage
+        : [];
     const message = Array.isArray(rawMessage)
       ? 'Validation failed'
       : typeof rawMessage === 'string'
@@ -32,10 +34,23 @@ export class HttpExceptionFilter implements ExceptionFilter {
             ? exception.message
             : 'Request failed';
 
-    response.status(status).json({
+    const publicBody: Record<string, unknown> = {
       statusCode: status,
       message,
       errors,
-    });
+    };
+
+    if (typeof structuredBody?.code === 'string') {
+      publicBody.code = structuredBody.code;
+    }
+    if (Array.isArray(structuredBody?.matches)) {
+      publicBody.matches = structuredBody.matches;
+    }
+
+    response.status(status).json(publicBody);
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

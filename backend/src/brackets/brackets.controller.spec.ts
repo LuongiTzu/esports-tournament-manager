@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common/constants';
 import { RequestMethod } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { VISIBILITY_RESOURCE_KEY } from '../common/decorators/visibility.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
+import { VisibilityGuard } from '../common/guards/visibility.guard';
 import { BracketOperationsService } from './bracket-operations.service';
 import { BracketsController } from './brackets.controller';
 import { SwissService } from './swiss.service';
@@ -73,5 +76,17 @@ describe('BracketsController', () => {
       JwtAuthGuard,
       OwnershipGuard,
     ]);
+  });
+
+  it('uses optional authentication and tournament visibility resolution', () => {
+    const method = BracketsController.prototype.getBracket;
+
+    expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
+      OptionalJwtAuthGuard,
+      VisibilityGuard,
+    ]);
+    expect(Reflect.getMetadata(VISIBILITY_RESOURCE_KEY, method)).toBe(
+      'round:id',
+    );
   });
 });

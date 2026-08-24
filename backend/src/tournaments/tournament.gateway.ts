@@ -17,6 +17,7 @@ import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { PrismaService } from '../prisma/prisma.service';
 import { TournamentEventsService } from './tournament-events.service';
 import { NotificationEventsService } from '../notifications/notification-events.service';
+import { tournamentVisibilityPolicy } from '../common/policies/tournament-visibility.policy';
 
 interface TournamentSocketData {
   user?: { id: string; role: Role };
@@ -109,25 +110,34 @@ export class TournamentGateway
     if (!tournament) throw new WsException('Tournament not found');
 
     const user = (client.data as TournamentSocketData).user;
-    const organizerOrAdmin =
-      user?.id === tournament.organizerId || user?.role === Role.ADMIN;
-    if (tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN) {
-      if (!organizerOrAdmin) throw new WsException('Tournament access denied');
-    } else if (tournament.visibility === Visibility.PRIVATE) {
-      if (!user) throw new WsException('Tournament access denied');
-      if (!organizerOrAdmin) {
-        const team = await this.prisma.team.findFirst({
-          where: {
-            tournamentId,
-            OR: [
-              { captainId: user.id },
-              { members: { some: { userId: user.id } } },
-            ],
-          },
-          select: { id: true },
-        });
-        if (!team) throw new WsException('Tournament access denied');
-      }
+    let isRelatedParticipant = false;
+    if (
+      user &&
+      tournament.visibility === Visibility.PRIVATE &&
+      tournament.moderationStatus !== ModerationStatus.HIDDEN_BY_ADMIN &&
+      !tournamentVisibilityPolicy.canView({ ...tournament, user })
+    ) {
+      const team = await this.prisma.team.findFirst({
+        where: {
+          tournamentId,
+          OR: [
+            { captainId: user.id },
+            { members: { some: { userId: user.id } } },
+          ],
+        },
+        select: { id: true },
+      });
+      isRelatedParticipant = team !== null;
+    }
+
+    if (
+      !tournamentVisibilityPolicy.canView({
+        ...tournament,
+        user,
+        isRelatedParticipant,
+      })
+    ) {
+      throw new WsException('Tournament access denied');
     }
 
     const room = TournamentGateway.room(tournamentId);

@@ -42,7 +42,7 @@ describe('TournamentsService public listing', () => {
       gameId: 'game-1',
       status: TournamentStatus.ONGOING,
       mode: TournamentMode.ONLINE,
-      isVerified: 'true',
+      isVerified: true,
     });
 
     expect(findMany).toHaveBeenCalledWith(

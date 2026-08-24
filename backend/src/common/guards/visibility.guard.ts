@@ -5,10 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ModerationStatus, Role, Visibility } from '@prisma/client';
+import { ModerationStatus, Visibility } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/strategies/jwt.strategy';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VISIBILITY_RESOURCE_KEY } from '../decorators/visibility.decorator';
+import { tournamentVisibilityPolicy } from '../policies/tournament-visibility.policy';
 
 @Injectable()
 export class VisibilityGuard implements CanActivate {
@@ -32,16 +33,16 @@ export class VisibilityGuard implements CanActivate {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
     const user = request.user;
-    const isAdmin = user?.role === Role.ADMIN;
-    const isOrganizer = user?.id === tournament.organizerId;
-
-    if (tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN) {
-      if (!isAdmin && !isOrganizer) this.deny();
+    if (tournamentVisibilityPolicy.canView({ ...tournament, user })) {
       return true;
     }
-    if (tournament.visibility === Visibility.PUBLIC) return true;
-    if (!user) this.deny();
-    if (isAdmin || isOrganizer) return true;
+    if (
+      !user ||
+      tournament.visibility !== Visibility.PRIVATE ||
+      tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN
+    ) {
+      this.deny();
+    }
 
     const belongsToTeam = await this.prisma.team.findFirst({
       where: {
@@ -53,7 +54,15 @@ export class VisibilityGuard implements CanActivate {
       },
       select: { id: true },
     });
-    if (!belongsToTeam) this.deny();
+    if (
+      !tournamentVisibilityPolicy.canView({
+        ...tournament,
+        user,
+        isRelatedParticipant: belongsToTeam !== null,
+      })
+    ) {
+      this.deny();
+    }
     return true;
   }
 
@@ -84,6 +93,14 @@ export class VisibilityGuard implements CanActivate {
           select: { tournament: { select: visibilitySelect } },
         })
         .then((team) => team?.tournament ?? null);
+    }
+    if (resource?.startsWith('round:')) {
+      return this.prisma.round
+        .findUnique({
+          where: { id: params[resource.slice(6)] },
+          select: { tournament: { select: visibilitySelect } },
+        })
+        .then((round) => round?.tournament ?? null);
     }
     const slugParam = resource?.startsWith('slug:')
       ? resource.slice(5)

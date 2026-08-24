@@ -7,14 +7,12 @@ import {
   Patch,
   Param,
   Query,
-  ParseIntPipe,
-  DefaultValuePipe,
   UseGuards,
   HttpCode,
   HttpStatus,
   BadRequestException,
 } from '@nestjs/common';
-import { ModerationStatus, ReportStatus, Role } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -30,6 +28,12 @@ import {
   ReviewReportDto,
   VerifyTournamentDto,
 } from './dto/moderation.dto';
+import {
+  AdminCommentListQueryDto,
+  AdminReportListQueryDto,
+  AdminTournamentListQueryDto,
+  AdminUsersQueryDto,
+} from './dto/admin-query.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -38,11 +42,8 @@ export class AdminController {
   constructor(private adminService: AdminService) {}
 
   @Get('tournaments')
-  listTournaments(@Query('moderationStatus') status?: ModerationStatus) {
-    if (status && !Object.values(ModerationStatus).includes(status)) {
-      throw new BadRequestException('Invalid moderationStatus');
-    }
-    return this.adminService.listTournaments(status);
+  listTournaments(@Query() query: AdminTournamentListQueryDto) {
+    return this.adminService.listTournaments(query.moderationStatus);
   }
 
   @Patch('tournaments/:id/moderation')
@@ -58,11 +59,8 @@ export class AdminController {
   }
 
   @Get('reports')
-  listReports(@Query('status') status?: ReportStatus) {
-    if (status && !Object.values(ReportStatus).includes(status)) {
-      throw new BadRequestException('Invalid report status');
-    }
-    return this.adminService.listReports(status);
+  listReports(@Query() query: AdminReportListQueryDto) {
+    return this.adminService.listReports(query.status);
   }
 
   @Patch('reports/:id')
@@ -75,17 +73,8 @@ export class AdminController {
   }
 
   @Get('comments')
-  listComments(
-    @Query('isHidden') isHiddenRaw?: string,
-    @Query('search') search?: string,
-  ) {
-    if (isHiddenRaw && !['true', 'false'].includes(isHiddenRaw)) {
-      throw new BadRequestException('isHidden must be true or false');
-    }
-    return this.adminService.listComments({
-      isHidden: isHiddenRaw === undefined ? undefined : isHiddenRaw === 'true',
-      search,
-    });
+  listComments(@Query() query: AdminCommentListQueryDto) {
+    return this.adminService.listComments(query);
   }
 
   @Patch('comments/:id/hide')
@@ -141,26 +130,13 @@ export class AdminController {
    * Danh sách người dùng (phân trang) — admin
    */
   @Get('users')
-  listUsers(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-    @Query('search') search?: string,
-    @Query('isLocked') isLockedRaw?: string,
-    @Query('role') role?: Role,
-  ) {
-    if (isLockedRaw && !['true', 'false'].includes(isLockedRaw)) {
-      throw new BadRequestException('isLocked must be true or false');
-    }
-    if (role && !Object.values(Role).includes(role)) {
-      throw new BadRequestException('Invalid role');
-    }
-    // Giới hạn limit hợp lệ
-    const safeLimit = Math.min(Math.max(limit, 1), 100);
-    const safePage = Math.max(page, 1);
+  listUsers(@Query() query: AdminUsersQueryDto) {
+    const safeLimit = Math.min(query.limit ?? 20, 100);
+    const safePage = query.page ?? 1;
     return this.adminService.listUsers(safePage, safeLimit, {
-      search,
-      isLocked: isLockedRaw === undefined ? undefined : isLockedRaw === 'true',
-      role,
+      search: query.search,
+      isLocked: query.isLocked,
+      role: query.role,
     });
   }
 

@@ -73,6 +73,7 @@ describe('TournamentGateway', () => {
       user: { id: 'user-1', role: Role.SIGNED_UP_USER },
       readOnly: true,
     });
+    expect(client.join).toHaveBeenCalledWith('user:user-1');
     expect(client.disconnect).not.toHaveBeenCalled();
   });
 
@@ -117,6 +118,25 @@ describe('TournamentGateway', () => {
     ).rejects.toThrow('Tournament access denied');
   });
 
+  it('denies an unrelated authenticated client access to a private room', async () => {
+    const { gateway, prisma } = harness({
+      id: 't-1',
+      organizerId: 'organizer',
+      visibility: Visibility.PRIVATE,
+      moderationStatus: ModerationStatus.ACTIVE,
+    });
+    jest.mocked(prisma.team.findFirst).mockResolvedValue(null);
+    const client = socket();
+    client.data = {
+      readOnly: true,
+      user: { id: 'unrelated', role: Role.SIGNED_UP_USER },
+    };
+
+    await expect(
+      gateway.joinTournament(client, { tournamentId: 't-1' }),
+    ).rejects.toThrow('Tournament access denied');
+  });
+
   it('allows an authorized team member into a private room', async () => {
     const { gateway, prisma } = harness({
       id: 't-1',
@@ -136,6 +156,87 @@ describe('TournamentGateway', () => {
     await expect(
       gateway.joinTournament(client, { tournamentId: 't-1' }),
     ).resolves.toEqual(expect.objectContaining({ room: 'tournament:t-1' }));
+  });
+
+  it.each([
+    ['organizer', { id: 'organizer', role: Role.SIGNED_UP_USER }],
+    ['admin', { id: 'admin', role: Role.ADMIN }],
+  ] as const)('allows the %s into a private room', async (_actor, user) => {
+    const { gateway, prisma } = harness({
+      id: 't-1',
+      organizerId: 'organizer',
+      visibility: Visibility.PRIVATE,
+      moderationStatus: ModerationStatus.ACTIVE,
+    });
+    const client = socket();
+    client.data = { readOnly: true, user };
+
+    await expect(
+      gateway.joinTournament(client, { tournamentId: 't-1' }),
+    ).resolves.toEqual(expect.objectContaining({ room: 'tournament:t-1' }));
+    expect(prisma.team.findFirst).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['anonymous', undefined],
+    ['unrelated user', { id: 'unrelated', role: Role.SIGNED_UP_USER }],
+    ['participant', { id: 'member', role: Role.SIGNED_UP_USER }],
+  ] as const)(
+    'denies %s access to a hidden tournament room',
+    async (_actor, user) => {
+      const { gateway, prisma } = harness({
+        id: 't-1',
+        organizerId: 'organizer',
+        visibility: Visibility.PUBLIC,
+        moderationStatus: ModerationStatus.HIDDEN_BY_ADMIN,
+      });
+      jest
+        .mocked(prisma.team.findFirst)
+        .mockResolvedValue(
+          user?.id === 'member' ? ({ id: 'team-1' } as never) : null,
+        );
+      const client = socket();
+      if (user) client.data = { readOnly: true, user };
+
+      await expect(
+        gateway.joinTournament(client, { tournamentId: 't-1' }),
+      ).rejects.toThrow('Tournament access denied');
+      expect(prisma.team.findFirst).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['organizer', { id: 'organizer', role: Role.SIGNED_UP_USER }],
+    ['admin', { id: 'admin', role: Role.ADMIN }],
+  ] as const)(
+    'allows the %s into a hidden tournament room',
+    async (_actor, user) => {
+      const { gateway } = harness({
+        id: 't-1',
+        organizerId: 'organizer',
+        visibility: Visibility.PRIVATE,
+        moderationStatus: ModerationStatus.HIDDEN_BY_ADMIN,
+      });
+      const client = socket();
+      client.data = { readOnly: true, user };
+
+      await expect(
+        gateway.joinTournament(client, { tournamentId: 't-1' }),
+      ).resolves.toEqual(expect.objectContaining({ room: 'tournament:t-1' }));
+    },
+  );
+
+  it('never accepts a client-selected user room', async () => {
+    const { gateway } = harness();
+    const client = socket();
+
+    await gateway.joinTournament(client, {
+      tournamentId: 't-1',
+      userId: 'other-user',
+    } as { tournamentId: string });
+
+    expect(client.join).toHaveBeenCalledWith('tournament:t-1');
+    expect(client.join).not.toHaveBeenCalledWith('user:other-user');
   });
 
   it('uses deterministic room names', () => {

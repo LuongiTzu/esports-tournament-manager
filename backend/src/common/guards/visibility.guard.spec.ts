@@ -5,7 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { VisibilityGuard } from './visibility.guard';
 
 type User = { id: string; role: Role };
-type Resource = 'slug:slug' | 'team:id';
+type Resource = 'slug:slug' | 'team:id' | 'round:id';
 type TournamentVisibility = {
   id: string;
   organizerId: string;
@@ -41,10 +41,14 @@ function harness(
   const findTeamById = jest
     .fn()
     .mockResolvedValue(tournament ? { tournament } : null);
+  const findRoundById = jest
+    .fn()
+    .mockResolvedValue(tournament ? { tournament } : null);
   const findTournamentBySlug = jest.fn().mockResolvedValue(tournament);
   const prisma = {
     tournament: { findUnique: findTournamentBySlug },
     team: { findUnique: findTeamById, findFirst: findMembership },
+    round: { findUnique: findRoundById },
   } as unknown as PrismaService;
   const reflector = {
     getAllAndOverride: jest.fn().mockReturnValue(resource),
@@ -54,6 +58,7 @@ function harness(
     guard: new VisibilityGuard(reflector, prisma),
     findMembership,
     findTeamById,
+    findRoundById,
     findTournamentBySlug,
   };
 }
@@ -61,6 +66,7 @@ function harness(
 const resources: Array<[string, Resource]> = [
   ['tournament team list', 'slug:slug'],
   ['direct team detail', 'team:id'],
+  ['round bracket', 'round:id'],
 ];
 
 describe.each(resources)('VisibilityGuard - %s', (_label, resource) => {
@@ -178,6 +184,30 @@ describe('VisibilityGuard resource resolution', () => {
     await guard.canActivate(context());
 
     expect(findTeamById).toHaveBeenCalledWith({
+      where: { id: 'team-1' },
+      select: {
+        tournament: {
+          select: {
+            id: true,
+            organizerId: true,
+            visibility: true,
+            moderationStatus: true,
+          },
+        },
+      },
+    });
+    expect(findTournamentBySlug).not.toHaveBeenCalled();
+  });
+
+  it('resolves the parent tournament using the requested round id', async () => {
+    const { guard, findRoundById, findTournamentBySlug } = harness(
+      'round:id',
+      activeTournament,
+    );
+
+    await guard.canActivate(context());
+
+    expect(findRoundById).toHaveBeenCalledWith({
       where: { id: 'team-1' },
       select: {
         tournament: {

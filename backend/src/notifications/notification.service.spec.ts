@@ -243,7 +243,7 @@ describe('NotificationService', () => {
     notification.count.mockResolvedValue(41);
 
     await expect(
-      service.findForUser('user-1', { page: 2, limit: 20, isRead: 'false' }),
+      service.findForUser('user-1', { page: 2, limit: 20, isRead: false }),
     ).resolves.toEqual({
       data: [],
       pagination: { page: 2, limit: 20, total: 41, totalPages: 3 },

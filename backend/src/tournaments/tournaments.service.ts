@@ -27,6 +27,7 @@ import {
   resolveSwissNumberOfRounds,
   SwissSettings,
 } from '../brackets/types/round-settings';
+import { tournamentVisibilityPolicy } from '../common/policies/tournament-visibility.policy';
 
 /** Field của Game cần trả kèm giải đấu — FE dùng để biết giới hạn đội hình */
 const GAME_SELECT = {
@@ -180,12 +181,12 @@ export class TournamentsService {
     gameId?: string;
     status?: TournamentStatus;
     mode?: TournamentMode;
-    isVerified?: string | boolean;
+    isVerified?: boolean;
     page?: number;
     limit?: number;
   }) {
-    const page = Math.max(1, Number(query.page) || 1);
-    const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+    const page = query.page ?? 1;
+    const limit = Math.min(50, query.limit ?? 20);
     const skip = (page - 1) * limit;
 
     const where: Prisma.TournamentWhereInput = {
@@ -198,22 +199,15 @@ export class TournamentsService {
     }
 
     if (query.status) {
-      if (!(query.status in TournamentStatus)) {
-        throw new BadRequestException('Trạng thái lọc không hợp lệ');
-      }
       where.status = query.status;
     }
 
     if (query.mode) {
-      if (!(query.mode in TournamentMode)) {
-        throw new BadRequestException('Hình thức tổ chức lọc không hợp lệ');
-      }
       where.mode = query.mode;
     }
 
     if (query.isVerified !== undefined) {
-      where.isVerified =
-        query.isVerified === true || query.isVerified === 'true';
+      where.isVerified = query.isVerified;
     }
 
     if (query.search) {
@@ -291,25 +285,7 @@ export class TournamentsService {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
 
-    // Kiểm tra quyền xem: giải PRIVATE chỉ chủ giải xem được
-    if (
-      tournament.visibility === Visibility.PRIVATE &&
-      !(await this.canViewPrivate(
-        tournament.id,
-        tournament.organizerId,
-        userId,
-        userRole,
-      ))
-    ) {
-      throw new NotFoundException('Không tìm thấy giải đấu');
-    }
-
-    // Giải bị Admin ẩn: chỉ chủ giải xem được
-    if (
-      tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN &&
-      tournament.organizerId !== userId &&
-      userRole !== 'ADMIN'
-    ) {
+    if (!(await this.canViewTournament(tournament, userId, userRole))) {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
 
@@ -639,22 +615,7 @@ export class TournamentsService {
       },
     });
     if (!tournament) throw new NotFoundException('Không tìm thấy giải đấu');
-    if (
-      tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN &&
-      tournament.organizerId !== userId &&
-      userRole !== 'ADMIN'
-    ) {
-      throw new NotFoundException('Không tìm thấy giải đấu');
-    }
-    if (
-      tournament.visibility === Visibility.PRIVATE &&
-      !(await this.canViewPrivate(
-        tournament.id,
-        tournament.organizerId,
-        userId,
-        userRole,
-      ))
-    ) {
+    if (!(await this.canViewTournament(tournament, userId, userRole))) {
       throw new NotFoundException('Tournament not found');
     }
     const calculated = await this.standingsService.forTournament(
@@ -919,22 +880,39 @@ export class TournamentsService {
     };
   }
 
-  private async canViewPrivate(
-    tournamentId: string,
-    organizerId: string,
+  private async canViewTournament(
+    tournament: {
+      id: string;
+      organizerId: string;
+      visibility: Visibility;
+      moderationStatus: ModerationStatus;
+    },
     userId?: string,
     userRole?: string,
   ) {
-    if (!userId) return false;
-    if (userRole === 'ADMIN' || organizerId === userId) return true;
+    const user = userId ? { id: userId, role: userRole ?? '' } : undefined;
+    if (tournamentVisibilityPolicy.canView({ ...tournament, user })) {
+      return true;
+    }
+    if (
+      !user ||
+      tournament.visibility !== Visibility.PRIVATE ||
+      tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN
+    ) {
+      return false;
+    }
     const team = await this.prisma.team.findFirst({
       where: {
-        tournamentId,
+        tournamentId: tournament.id,
         OR: [{ captainId: userId }, { members: { some: { userId } } }],
       },
       select: { id: true },
     });
-    return team !== null;
+    return tournamentVisibilityPolicy.canView({
+      ...tournament,
+      user,
+      isRelatedParticipant: team !== null,
+    });
   }
 
   private validateMergedSettings(t: {

@@ -53,8 +53,8 @@ export class CommentService {
     if (!tournament) throw new NotFoundException('Tournament not found');
     const canModerate =
       viewer?.role === Role.ADMIN || viewer?.id === tournament.organizerId;
-    const page = Math.max(1, Number(query.page) || 1);
-    const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+    const page = query.page ?? 1;
+    const limit = Math.min(50, query.limit ?? 20);
     const where = {
       tournamentId: tournament.id,
       isHidden: canModerate ? undefined : false,

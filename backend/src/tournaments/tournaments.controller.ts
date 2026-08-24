@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
-import { TournamentStatus, TournamentMode } from '@prisma/client';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
 import { VisibilityResource } from '../common/decorators/visibility.decorator';
@@ -24,6 +23,7 @@ import {
   CreateRoundDto,
 } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
+import { TournamentListQueryDto } from './dto/tournament-list-query.dto';
 
 /**
  * Controller Tournament — quản lý giải đấu (UC-U04, U05, U09, U10, U18)
@@ -39,16 +39,7 @@ export class TournamentsController {
   @Get()
   findAll(
     @Query()
-    query: {
-      q?: string;
-      search?: string;
-      gameId?: string;
-      status?: TournamentStatus;
-      mode?: TournamentMode;
-      isVerified?: string;
-      page?: number;
-      limit?: number;
-    },
+    query: TournamentListQueryDto,
   ) {
     return this.tournamentsService.findAllPublic({
       ...query,

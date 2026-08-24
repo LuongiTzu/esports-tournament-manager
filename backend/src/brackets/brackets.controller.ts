@@ -21,8 +21,11 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
+import { VisibilityResource } from '../common/decorators/visibility.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
+import { VisibilityGuard } from '../common/guards/visibility.guard';
 import { BracketOperationsService } from './bracket-operations.service';
 import { UpdateSeedsDto } from './dto/bracket-operations.dto';
 import { SwissService } from './swiss.service';
@@ -98,6 +101,8 @@ export class BracketsController {
   }
 
   @Get(':id/bracket')
+  @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
+  @VisibilityResource('round:id')
   getBracket(@Param('id') id: string) {
     return this.operations.getBracket(id);
   }

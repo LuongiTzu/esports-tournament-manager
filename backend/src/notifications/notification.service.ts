@@ -157,16 +157,13 @@ export class NotificationService {
 
   async findForUser(
     userId: string,
-    query: { page?: number; limit?: number; isRead?: string | boolean },
+    query: { page?: number; limit?: number; isRead?: boolean },
   ) {
-    const page = Math.max(1, Number(query.page) || 1);
-    const limit = Math.min(50, Math.max(1, Number(query.limit) || 20));
+    const page = query.page ?? 1;
+    const limit = Math.min(50, query.limit ?? 20);
     const where: Prisma.NotificationWhereInput = { userId };
     if (query.isRead !== undefined) {
-      if (![true, false, 'true', 'false'].includes(query.isRead)) {
-        throw new BadRequestException('isRead must be true or false');
-      }
-      where.isRead = query.isRead === true || query.isRead === 'true';
+      where.isRead = query.isRead;
     }
     const [data, total] = await Promise.all([
       this.prisma.notification.findMany({

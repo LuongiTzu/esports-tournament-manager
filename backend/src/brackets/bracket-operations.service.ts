@@ -24,6 +24,14 @@ import {
   SwissSettings,
 } from './types/round-settings';
 
+const PUBLIC_BRACKET_TEAM_SELECT = {
+  id: true,
+  name: true,
+  shortName: true,
+  logoUrl: true,
+  seed: true,
+} as const;
+
 @Injectable()
 export class BracketOperationsService {
   constructor(
@@ -482,11 +490,19 @@ export class BracketOperationsService {
       include: {
         groups: {
           orderBy: { orderIndex: 'asc' },
-          include: { teamAssignments: { include: { team: true } } },
+          include: {
+            teamAssignments: {
+              include: { team: { select: PUBLIC_BRACKET_TEAM_SELECT } },
+            },
+          },
         },
         matches: {
           orderBy: [{ bracketRound: 'asc' }, { matchNumber: 'asc' }],
-          include: { teamA: true, teamB: true, winner: true },
+          include: {
+            teamA: { select: PUBLIC_BRACKET_TEAM_SELECT },
+            teamB: { select: PUBLIC_BRACKET_TEAM_SELECT },
+            winner: { select: PUBLIC_BRACKET_TEAM_SELECT },
+          },
         },
       },
     });
@@ -507,7 +523,9 @@ export class BracketOperationsService {
         id: group.id,
         name: group.name,
         orderIndex: group.orderIndex,
-        teams: group.teamAssignments.map((assignment) => assignment.team),
+        teams: group.teamAssignments.map((assignment) =>
+          toPublicBracketTeam(assignment.team),
+        ),
       })),
       matches: round.matches.map((match) => ({
         id: match.id,
@@ -522,9 +540,12 @@ export class BracketOperationsService {
         isBye: match.isBye,
         bestOf: match.bestOf,
         scheduledAt: match.scheduledAt,
-        slots: { A: match.teamA, B: match.teamB },
+        slots: {
+          A: toPublicBracketTeam(match.teamA),
+          B: toPublicBracketTeam(match.teamB),
+        },
         score: { A: match.scoreA, B: match.scoreB },
-        winner: match.winner,
+        winner: toPublicBracketTeam(match.winner),
         nextMatch: { id: match.nextMatchId, slot: match.nextMatchSlot },
         loserNextMatch: {
           id: match.loserNextMatchId,
@@ -533,6 +554,28 @@ export class BracketOperationsService {
       })),
     };
   }
+}
+
+export interface PublicBracketTeam {
+  id: string;
+  name: string;
+  shortName: string | null;
+  logoUrl: string | null;
+  seed: number | null;
+}
+
+function toPublicBracketTeam(
+  team: PublicBracketTeam | null,
+): PublicBracketTeam | null {
+  return team
+    ? {
+        id: team.id,
+        name: team.name,
+        shortName: team.shortName,
+        logoUrl: team.logoUrl,
+        seed: team.seed,
+      }
+    : null;
 }
 
 function validateTeamCount(format: RoundFormat, count: number, raw: unknown) {

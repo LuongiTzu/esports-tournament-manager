@@ -26,6 +26,7 @@ import { RegistrationValidatorService } from './registration-validator.service';
 import { TournamentEventsService } from '../tournaments/tournament-events.service';
 import { NotificationService } from '../notifications/notification.service';
 import { ContentFilterService } from '../common/services/content-filter.service';
+import { RegistrationMemberInput } from './types/registration-member-input';
 
 /** Field roster mà người ngoài (không phải BTC/thành viên đội) được xem */
 const PUBLIC_MEMBER_SELECT = {
@@ -571,7 +572,10 @@ export class TeamsService {
     this.assertContentAllowed(dto.name, dto.description);
 
     const rules = this.validator.buildRules(tournament);
-    const { captainIndex } = await this.validator.validate(rules, dto.members);
+    const { captainIndex } = await this.validator.validate(
+      rules,
+      dto.members.map(toRegistrationValidationInput),
+    );
 
     let organizerNotification:
       | Awaited<ReturnType<NotificationService['createNotification']>>
@@ -670,7 +674,7 @@ export class TeamsService {
   /** Chạy validator trên roster hiện tại của 1 đội đã tồn tại */
   private async validateRoster(
     tournamentId: string,
-    members: TeamMemberInputDto[],
+    members: RegistrationMemberInput[],
     teamId: string,
   ) {
     const tournament = await this.prisma.tournament.findUniqueOrThrow({
@@ -689,7 +693,7 @@ export class TeamsService {
   /** Roster trong DB → dạng input của validator (giữ `id` để lọc/merge) */
   private async loadRosterAsInput(
     teamId: string,
-  ): Promise<(TeamMemberInputDto & { id: string })[]> {
+  ): Promise<(RegistrationMemberInput & { id: string })[]> {
     const members = await this.prisma.teamMember.findMany({
       where: { teamId },
       orderBy: { orderIndex: 'asc' },
@@ -877,6 +881,22 @@ export class TeamsService {
 
     return null;
   }
+}
+
+function toRegistrationValidationInput(
+  member: TeamMemberInputDto,
+): RegistrationMemberInput {
+  return {
+    realName: member.realName,
+    ign: member.ign,
+    inGameId: member.inGameId,
+    birthDate: member.birthDate,
+    gender: member.gender,
+    email: member.email,
+    phoneNumber: member.phoneNumber,
+    position: member.position,
+    memberRole: member.memberRole,
+  };
 }
 
 /** Giải đấu kèm ràng buộc của Game — đầu vào của validator và luồng tạo đội */

@@ -14,6 +14,10 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import type { JwtPayload } from './strategies/jwt.strategy';
+
+const FORGOT_PASSWORD_MESSAGE =
+  'Nếu email tồn tại, bạn sẽ nhận được liên kết đặt lại mật khẩu';
 
 @Injectable()
 export class AuthService {
@@ -129,12 +133,37 @@ export class AuthService {
   }
 
   // ─── Refresh token ───────────────────────────────────────────────
-  async refreshTokens(userId: string, refreshToken: string) {
+  async refreshTokens(refreshToken: string) {
+    let payload: JwtPayload;
+    try {
+      payload = await this.jwtService.verifyAsync<JwtPayload>(refreshToken, {
+        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException(
+        'Refresh token không hợp lệ hoặc đã hết hạn',
+      );
+    }
+
+    if (
+      typeof payload.sub !== 'string' ||
+      typeof payload.tokenVersion !== 'number'
+    ) {
+      throw new UnauthorizedException(
+        'Refresh token không hợp lệ hoặc đã hết hạn',
+      );
+    }
+
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: payload.sub },
     });
 
-    if (!user || !user.refreshToken) {
+    if (
+      !user ||
+      !user.refreshToken ||
+      user.isLocked ||
+      user.tokenVersion !== payload.tokenVersion
+    ) {
       throw new UnauthorizedException('Phiên đăng nhập không hợp lệ');
     }
 
@@ -229,10 +258,7 @@ export class AuthService {
 
     // Trả về message chung để không lộ email đã đăng ký
     if (!user) {
-      return {
-        message:
-          'Nếu email tồn tại, bạn sẽ nhận được liên kết đặt lại mật khẩu',
-      };
+      return { message: FORGOT_PASSWORD_MESSAGE };
     }
 
     // Tạo reset token JWT (hạn 15 phút)
@@ -255,13 +281,10 @@ export class AuthService {
       },
     });
 
-    // TODO: Tích hợp SMTP/email service để gửi link thực tế.
-    // Hiện tại trả token trực tiếp trong response để tiện test (dev mode).
-    return {
-      message: 'Yêu cầu đặt lại mật khẩu đã được xử lý',
-      resetToken,
-      expiresIn: '15m',
-    };
+    const environment = this.configService.get<string>('NODE_ENV');
+    return environment === 'development' || environment === 'test'
+      ? { message: FORGOT_PASSWORD_MESSAGE, resetToken, expiresIn: '15m' }
+      : { message: FORGOT_PASSWORD_MESSAGE };
   }
 
   // ─── Đặt lại mật khẩu (dùng token từ email) ────────────────────

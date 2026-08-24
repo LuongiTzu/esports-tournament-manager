@@ -9,8 +9,6 @@ import {
   Headers,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -23,21 +21,10 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthenticatedUser } from './strategies/jwt.strategy';
 
-/** Payload của refresh token sau khi verify */
-interface RefreshTokenPayload {
-  sub: string;
-  email: string;
-  role: string;
-}
-
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private authService: AuthService,
-    private jwtService: JwtService,
-    private configService: ConfigService,
-  ) {}
+  constructor(private authService: AuthService) {}
 
   /**
    * POST /api/auth/register
@@ -72,19 +59,11 @@ export class AuthController {
       throw new UnauthorizedException('Refresh token không được cung cấp');
     }
 
-    const refreshToken = authHeader.split(' ')[1];
-
-    try {
-      const payload = this.jwtService.verify<RefreshTokenPayload>(
-        refreshToken,
-        { secret: this.configService.get<string>('JWT_REFRESH_SECRET') },
-      );
-      return this.authService.refreshTokens(payload.sub, refreshToken);
-    } catch {
-      throw new UnauthorizedException(
-        'Refresh token không hợp lệ hoặc đã hết hạn',
-      );
+    const refreshToken = authHeader.slice(7).trim();
+    if (!refreshToken) {
+      throw new UnauthorizedException('Refresh token không được cung cấp');
     }
+    return this.authService.refreshTokens(refreshToken);
   }
 
   /**

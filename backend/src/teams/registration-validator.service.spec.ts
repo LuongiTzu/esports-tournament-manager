@@ -4,6 +4,7 @@ import {
   RegistrationRules,
   RegistrationValidatorService,
 } from './registration-validator.service';
+import { ApplicationErrorCode } from '../common/errors/application-error-code';
 
 function rules(overrides: Partial<RegistrationRules> = {}): RegistrationRules {
   return {
@@ -112,7 +113,10 @@ describe('RegistrationValidatorService', () => {
       ),
     ).rejects.toMatchObject({
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      response: expect.objectContaining({ errors: expect.any(Array) }),
+      response: expect.objectContaining({
+        code: ApplicationErrorCode.REGISTRATION_INVALID,
+        errors: expect.any(Array),
+      }),
       status: 422,
     });
   });

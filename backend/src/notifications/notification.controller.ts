@@ -14,6 +14,7 @@ import { Ownership } from '../common/decorators/ownership.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { CreateTournamentNotificationDto } from './dto/notification.dto';
 import { NotificationService } from './notification.service';
+import { NotificationListQueryDto } from './dto/notification-list-query.dto';
 
 @Controller()
 export class NotificationController {
@@ -34,7 +35,7 @@ export class NotificationController {
   findMine(
     @CurrentUser('id') userId: string,
     @Query()
-    query: { page?: number; limit?: number; isRead?: string },
+    query: NotificationListQueryDto,
   ) {
     return this.notifications.findForUser(userId, query);
   }

@@ -6,7 +6,8 @@ import {
   RegistrationStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { TeamMemberInputDto } from './dto/register-team.dto';
+import { ApplicationErrorCode } from '../common/errors/application-error-code';
+import { RegistrationMemberInput } from './types/registration-member-input';
 
 /** Một lỗi nghiệp vụ — FE dùng `memberIndex` + `field` để highlight đúng ô sai */
 export interface RegistrationError {
@@ -81,7 +82,7 @@ export class RegistrationValidatorService {
    */
   async validate(
     rules: RegistrationRules,
-    members: TeamMemberInputDto[],
+    members: RegistrationMemberInput[],
     excludeTeamId?: string,
   ): Promise<{ captainIndex: number }> {
     const errors: RegistrationError[] = [];
@@ -97,6 +98,7 @@ export class RegistrationValidatorService {
 
     if (errors.length) {
       throw new UnprocessableEntityException({
+        code: ApplicationErrorCode.REGISTRATION_INVALID,
         message: 'Hồ sơ đăng ký chưa hợp lệ',
         errors,
       });
@@ -110,7 +112,7 @@ export class RegistrationValidatorService {
   /** HLV/Quản lý không chiếm suất thi đấu nên không tính vào [min, max] */
   private checkTeamSize(
     rules: RegistrationRules,
-    members: TeamMemberInputDto[],
+    members: RegistrationMemberInput[],
     errors: RegistrationError[],
   ) {
     const playing = members.filter(
@@ -136,7 +138,7 @@ export class RegistrationValidatorService {
 
   private checkSubstitutes(
     rules: RegistrationRules,
-    members: TeamMemberInputDto[],
+    members: RegistrationMemberInput[],
     errors: RegistrationError[],
   ) {
     const substitutes = members.filter(
@@ -157,7 +159,7 @@ export class RegistrationValidatorService {
    * Nhưng gửi lên nhiều hơn 1 đội trưởng là mâu thuẫn dữ liệu, phải báo lỗi.
    */
   private checkCaptain(
-    members: TeamMemberInputDto[],
+    members: RegistrationMemberInput[],
     errors: RegistrationError[],
   ) {
     const captains = members
@@ -177,7 +179,7 @@ export class RegistrationValidatorService {
 
   private checkMembers(
     rules: RegistrationRules,
-    members: TeamMemberInputDto[],
+    members: RegistrationMemberInput[],
     captainIndex: number,
     errors: RegistrationError[],
   ) {
@@ -279,7 +281,7 @@ export class RegistrationValidatorService {
   // ─── Rule trùng lặp ─────────────────────────────────────────
 
   private checkDuplicatesWithinTeam(
-    members: TeamMemberInputDto[],
+    members: RegistrationMemberInput[],
     errors: RegistrationError[],
   ) {
     collectDuplicateIndexes(
@@ -309,7 +311,7 @@ export class RegistrationValidatorService {
    */
   private async checkCrossTeamDuplicates(
     rules: RegistrationRules,
-    members: TeamMemberInputDto[],
+    members: RegistrationMemberInput[],
     errors: RegistrationError[],
     excludeTeamId?: string,
   ) {
@@ -391,7 +393,9 @@ const FIELD_LABELS: Record<string, string> = {
  * Vị trí đội trưởng đã chốt. FE không gửi CAPTAIN nào → thành viên đầu tiên.
  * Dùng chung giữa validator và lúc ghi DB để 2 nơi không lệch nhau.
  */
-export function resolveCaptainIndex(members: TeamMemberInputDto[]): number {
+export function resolveCaptainIndex(
+  members: RegistrationMemberInput[],
+): number {
   const index = members.findIndex((m) => m.memberRole === MemberRole.CAPTAIN);
   return index === -1 ? 0 : index;
 }

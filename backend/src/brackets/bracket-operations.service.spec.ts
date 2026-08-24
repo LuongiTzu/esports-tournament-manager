@@ -11,6 +11,14 @@ import { BracketsService } from './brackets.service';
 import { StandingsService } from './standings.service';
 import { RoundSettingsService } from './round-settings.service';
 
+const PUBLIC_TEAM_SELECT_FOR_TEST = {
+  id: true,
+  name: true,
+  shortName: true,
+  logoUrl: true,
+  seed: true,
+};
+
 function round(
   matches: unknown[] = [],
   format: RoundFormat = RoundFormat.PLAYOFF,
@@ -300,8 +308,22 @@ describe('BracketOperationsService generation', () => {
               isBye: false,
               bestOf: 3,
               scheduledAt: null,
-              teamA: { id: 'team-1' },
-              teamB: { id: 'team-2' },
+              teamA: {
+                id: 'team-1',
+                name: 'Team One',
+                shortName: 'ONE',
+                logoUrl: null,
+                seed: 1,
+                contactEmail: 'private@example.com',
+                rejectReason: 'private moderation data',
+              },
+              teamB: {
+                id: 'team-2',
+                name: 'Team Two',
+                shortName: null,
+                logoUrl: null,
+                seed: 2,
+              },
               scoreA: 0,
               scoreB: 0,
               winner: null,
@@ -321,14 +343,30 @@ describe('BracketOperationsService generation', () => {
       new RoundSettingsService(),
     );
 
-    await expect(service.getBracket('round-1')).resolves.toEqual(
+    const result = await service.getBracket('round-1');
+    expect(result).toEqual(
       expect.objectContaining({
         round: expect.objectContaining({ format: RoundFormat.PLAYOFF }),
         groups: [],
         matches: [
           expect.objectContaining({
             groupId: 'group-a',
-            slots: { A: { id: 'team-1' }, B: { id: 'team-2' } },
+            slots: {
+              A: {
+                id: 'team-1',
+                name: 'Team One',
+                shortName: 'ONE',
+                logoUrl: null,
+                seed: 1,
+              },
+              B: {
+                id: 'team-2',
+                name: 'Team Two',
+                shortName: null,
+                logoUrl: null,
+                seed: 2,
+              },
+            },
             status: MatchStatus.PENDING,
             outcome: null,
             isBye: false,
@@ -336,6 +374,30 @@ describe('BracketOperationsService generation', () => {
             loserNextMatch: { id: null, slot: null },
           }),
         ],
+      }),
+    );
+    expect(result.matches[0].slots.A).not.toHaveProperty('contactEmail');
+    expect(result.matches[0].slots.A).not.toHaveProperty('rejectReason');
+    expect(prisma.round.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          groups: expect.objectContaining({
+            include: {
+              teamAssignments: {
+                include: {
+                  team: { select: PUBLIC_TEAM_SELECT_FOR_TEST },
+                },
+              },
+            },
+          }),
+          matches: expect.objectContaining({
+            include: {
+              teamA: { select: PUBLIC_TEAM_SELECT_FOR_TEST },
+              teamB: { select: PUBLIC_TEAM_SELECT_FOR_TEST },
+              winner: { select: PUBLIC_TEAM_SELECT_FOR_TEST },
+            },
+          }),
+        }),
       }),
     );
   });
