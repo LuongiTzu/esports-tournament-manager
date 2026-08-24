@@ -14,6 +14,21 @@ import { ContentFilterService } from '../common/services/content-filter.service'
 import { TournamentCommandService } from './tournament-command.service';
 import { TournamentQueryService } from './tournament-query.service';
 import { TournamentLifecyclePolicy } from './domain/tournament-lifecycle.policy';
+
+function addRoundPrisma(round: Record<string, jest.Mock>) {
+  const tx = {
+    $queryRaw: jest.fn(),
+    tournament: {
+      findUnique: jest.fn().mockResolvedValue({ id: 'tournament-1' }),
+    },
+    round,
+  };
+  return {
+    $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+      callback(tx),
+    ),
+  } as unknown as PrismaService;
+}
 import { TournamentsService } from './tournaments.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 
@@ -206,7 +221,7 @@ describe('TournamentsService round settings', () => {
           Promise.resolve({ id: 'round-3', ...data }),
         ),
     };
-    const prisma = { round } as unknown as PrismaService;
+    const prisma = addRoundPrisma(round);
     const service = createTournamentsService(
       prisma,
       new RoundSettingsService(),
@@ -251,7 +266,7 @@ describe('TournamentsService round settings', () => {
         ),
     };
     const service = createTournamentsService(
-      { round } as unknown as PrismaService,
+      addRoundPrisma(round),
       new RoundSettingsService(),
       {} as StandingsService,
       {} as ContentFilterService,
@@ -303,7 +318,7 @@ describe('TournamentsService round settings', () => {
           ),
       };
       const service = createTournamentsService(
-        { round } as unknown as PrismaService,
+        addRoundPrisma(round),
         new RoundSettingsService(),
         {} as StandingsService,
         {} as ContentFilterService,
@@ -388,7 +403,7 @@ describe('TournamentsService round settings', () => {
         ),
     };
     const service = createTournamentsService(
-      { round } as unknown as PrismaService,
+      addRoundPrisma(round),
       new RoundSettingsService(),
       {} as StandingsService,
       {} as ContentFilterService,

@@ -6,6 +6,7 @@ import { MatchResultPolicy } from './domain/match-result.policy';
 import { MatchQueryService } from './match-query.service';
 import { MatchResultService } from './match-result.service';
 import { MatchSchedulingService } from './match-scheduling.service';
+import { CompetitionProgressionService } from './competition-progression.service';
 
 @Module({
   imports: [CommonModule],
@@ -16,12 +17,14 @@ import { MatchSchedulingService } from './match-scheduling.service';
     MatchSchedulingService,
     MatchResultService,
     MatchResultPolicy,
+    CompetitionProgressionService,
   ],
   exports: [
     MatchesService,
     MatchQueryService,
     MatchSchedulingService,
     MatchResultService,
+    CompetitionProgressionService,
   ],
 })
 export class MatchesModule {}

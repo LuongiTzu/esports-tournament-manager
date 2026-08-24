@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { RegistrationStatus, RoundFormat } from '@prisma/client';
+import { Prisma, RegistrationStatus, RoundFormat } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroupStageGenerator } from './generators/group-stage.generator';
 import { RoundSettingsService } from './round-settings.service';
@@ -20,6 +20,9 @@ export class GroupStagePersistenceService {
 
   async generate(roundId: string) {
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "rounds" WHERE "id" = ${roundId} FOR UPDATE`,
+      );
       const round = await tx.round.findUnique({
         where: { id: roundId },
         select: {

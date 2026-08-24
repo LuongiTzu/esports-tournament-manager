@@ -309,12 +309,6 @@ export class TournamentCommandService {
   }
 
   async addRound(tournamentId: string, dto: CreateRoundDto) {
-    const lastRound = await this.prisma.round.findFirst({
-      where: { tournamentId },
-      orderBy: { orderIndex: 'desc' },
-      select: { orderIndex: true },
-    });
-
     // Chuẩn hóa settings theo format (điền defaults + validate)
     const normalizedSettings =
       await this.roundSettingsService.normalizeForFormat(
@@ -322,15 +316,32 @@ export class TournamentCommandService {
         dto.settings,
       );
 
-    return this.prisma.round.create({
-      data: {
-        name: dto.name,
-        format: dto.format,
-        bestOf: dto.bestOf ?? 1,
-        settings: normalizedSettings as unknown as Prisma.InputJsonValue,
-        orderIndex: (lastRound?.orderIndex ?? 0) + 1,
-        tournamentId,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "tournaments" WHERE "id" = ${tournamentId} FOR UPDATE`,
+      );
+      const tournament = await tx.tournament.findUnique({
+        where: { id: tournamentId },
+        select: { id: true },
+      });
+      if (!tournament) {
+        throw new NotFoundException('Không tìm thấy giải đấu');
+      }
+      const lastRound = await tx.round.findFirst({
+        where: { tournamentId },
+        orderBy: { orderIndex: 'desc' },
+        select: { orderIndex: true },
+      });
+      return tx.round.create({
+        data: {
+          name: dto.name,
+          format: dto.format,
+          bestOf: dto.bestOf ?? 1,
+          settings: normalizedSettings as unknown as Prisma.InputJsonValue,
+          orderIndex: (lastRound?.orderIndex ?? 0) + 1,
+          tournamentId,
+        },
+      });
     });
   }
 

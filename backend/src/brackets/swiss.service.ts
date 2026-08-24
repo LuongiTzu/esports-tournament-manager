@@ -19,6 +19,7 @@ import {
   SwissSettings,
 } from './types/round-settings';
 import { SwissMatchSnapshot } from './types/swiss';
+import { SwissStandingsQueryService } from './swiss-standings-query.service';
 
 @Injectable()
 export class SwissService {
@@ -28,6 +29,11 @@ export class SwissService {
     private readonly prisma: PrismaService,
     private readonly settingsService: RoundSettingsService,
     private readonly generator: SwissGenerator,
+    private readonly standingsQuery: SwissStandingsQueryService = new SwissStandingsQueryService(
+      prisma,
+      settingsService,
+      generator,
+    ),
   ) {}
 
   async generateNextSwissRound(roundId: string) {
@@ -191,75 +197,7 @@ export class SwissService {
   }
 
   async calculateSwissStandings(roundId: string) {
-    const round = await this.prisma.round.findUnique({
-      where: { id: roundId },
-      select: {
-        format: true,
-        settings: true,
-        tournamentId: true,
-        matches: {
-          select: {
-            teamAId: true,
-            teamBId: true,
-            scoreA: true,
-            scoreB: true,
-            bracketRound: true,
-            isBye: true,
-            status: true,
-          },
-        },
-      },
-    });
-    if (!round) throw new NotFoundException('Round not found');
-    if (round.format !== RoundFormat.SWISS) {
-      throw new BadRequestException('Round format must be SWISS');
-    }
-    const assignments = await this.prisma.roundTeam.findMany({
-      where: { roundId },
-      orderBy: { createdAt: 'asc' },
-      select: {
-        team: {
-          select: {
-            id: true,
-            name: true,
-            seed: true,
-            registeredAt: true,
-            tournamentId: true,
-            status: true,
-          },
-        },
-      },
-    });
-    const teams = assignments.length
-      ? assignments
-          .map((assignment) => assignment.team)
-          .filter(
-            (team) =>
-              team.tournamentId === round.tournamentId &&
-              team.status === RegistrationStatus.APPROVED,
-          )
-          .map((team) => ({
-            id: team.id,
-            name: team.name,
-            seed: team.seed,
-            registeredAt: team.registeredAt,
-          }))
-      : await this.prisma.team.findMany({
-          where: {
-            tournamentId: round.tournamentId,
-            status: RegistrationStatus.APPROVED,
-          },
-          select: { id: true, name: true, seed: true, registeredAt: true },
-        });
-    const settings = (await this.settingsService.normalizeForFormat(
-      RoundFormat.SWISS,
-      asRecord(round.settings),
-    )) as SwissSettings;
-    return this.generator.calculateStandings(
-      teams,
-      toSnapshots(round.matches),
-      settings,
-    );
+    return this.standingsQuery.calculate(roundId);
   }
 }
 

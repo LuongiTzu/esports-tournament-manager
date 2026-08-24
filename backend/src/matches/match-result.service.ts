@@ -7,15 +7,11 @@ import {
   Optional,
 } from '@nestjs/common';
 import {
-  MatchActivationCondition,
   MatchOutcome,
-  MatchSlot,
   MatchStatus,
   NotificationType,
   Prisma,
   RoundFormat,
-  RoundStatus,
-  TournamentStatus,
 } from '@prisma/client';
 import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -25,6 +21,7 @@ import {
   MatchResultPolicy,
   MatchResultRuleError,
 } from './domain/match-result.policy';
+import { CompetitionProgressionService } from './competition-progression.service';
 
 const matchResultSelect = {
   id: true,
@@ -61,8 +58,11 @@ const matchResultSelect = {
   _count: { select: { scores: true } },
 } satisfies Prisma.MatchSelect;
 
-type ResultMatch = Prisma.MatchGetPayload<{ select: typeof matchResultSelect }>;
-type Tx = Prisma.TransactionClient;
+export type ResultMatch = Prisma.MatchGetPayload<{
+  select: typeof matchResultSelect;
+}>;
+export type MatchTransactionClient = Prisma.TransactionClient;
+type Tx = MatchTransactionClient;
 
 @Injectable()
 export class MatchResultService {
@@ -73,6 +73,7 @@ export class MatchResultService {
     @Optional() private readonly events?: TournamentEventsService,
     @Optional() private readonly notifications?: NotificationService,
     private readonly resultPolicy: MatchResultPolicy = new MatchResultPolicy(),
+    private readonly progression: CompetitionProgressionService = new CompetitionProgressionService(),
   ) {}
 
   async update(matchId: string, dto: UpdateMatchDto) {
@@ -107,7 +108,12 @@ export class MatchResultService {
         outcome.outcome !== match.outcome;
 
       if (match.status === MatchStatus.COMPLETED) {
-        await this.rollbackPreviousAdvancement(tx, match, winnerTeamId, status);
+        await this.progression.rollbackPreviousAdvancement(
+          tx,
+          match,
+          winnerTeamId,
+          status,
+        );
       }
 
       const updated = await tx.match.update({
@@ -133,8 +139,8 @@ export class MatchResultService {
       });
 
       if (status === MatchStatus.COMPLETED && winnerTeamId) {
-        await this.advanceResult(tx, match, winnerTeamId);
-        await this.completeEliminationIfReady(tx, match);
+        await this.progression.advanceResult(tx, match, winnerTeamId);
+        await this.progression.completeEliminationIfReady(tx, match);
       }
       const revision = updated.updatedAt.toISOString();
       return {
@@ -201,7 +207,12 @@ export class MatchResultService {
         !sameScores(match.scores, dto.scores);
 
       if (match.status === MatchStatus.COMPLETED) {
-        await this.rollbackPreviousAdvancement(tx, match, winnerTeamId, status);
+        await this.progression.rollbackPreviousAdvancement(
+          tx,
+          match,
+          winnerTeamId,
+          status,
+        );
       }
 
       await tx.matchScore.deleteMany({ where: { matchId } });
@@ -225,8 +236,8 @@ export class MatchResultService {
       });
 
       if (status === MatchStatus.COMPLETED && winnerTeamId) {
-        await this.advanceResult(tx, match, winnerTeamId);
-        await this.completeEliminationIfReady(tx, match);
+        await this.progression.advanceResult(tx, match, winnerTeamId);
+        await this.progression.completeEliminationIfReady(tx, match);
       }
       return {
         updated,
@@ -366,353 +377,6 @@ export class MatchResultService {
         throw new BadRequestException(error.message);
       }
       throw error;
-    }
-  }
-
-  private async rollbackPreviousAdvancement(
-    tx: Tx,
-    match: ResultMatch,
-    newWinnerTeamId: string | null,
-    newStatus: MatchStatus,
-  ) {
-    if (
-      newStatus === MatchStatus.COMPLETED &&
-      newWinnerTeamId === match.winnerTeamId
-    ) {
-      return;
-    }
-    const oldWinner = match.winnerTeamId;
-    const oldLoser =
-      oldWinner === match.teamAId ? match.teamBId : match.teamAId;
-    if (await this.rollbackConditionalReset(tx, match)) {
-      await this.rollbackEliminationCompletion(tx, match, oldWinner);
-      return;
-    }
-    const routes = [
-      { id: match.nextMatchId, slot: match.nextMatchSlot, teamId: oldWinner },
-      {
-        id: match.loserNextMatchId,
-        slot: match.loserNextMatchSlot,
-        teamId: oldLoser,
-      },
-    ].filter(
-      (route): route is { id: string; slot: MatchSlot; teamId: string } =>
-        Boolean(route.id && route.slot && route.teamId),
-    );
-    const downstream = await Promise.all(
-      [...new Set(routes.map((route) => route.id))].map((id) =>
-        tx.match.findUnique({
-          where: { id },
-          select: { id: true, status: true, teamAId: true, teamBId: true },
-        }),
-      ),
-    );
-    if (downstream.some((item) => item?.status === MatchStatus.COMPLETED)) {
-      throw new ConflictException(
-        'Downstream match is completed; reset it before changing this result',
-      );
-    }
-    for (const route of routes) {
-      const target = downstream.find((item) => item?.id === route.id)!;
-      const field = route.slot === MatchSlot.A ? 'teamAId' : 'teamBId';
-      if (target[field] !== route.teamId) {
-        throw new ConflictException(
-          'Downstream slot no longer contains the previously advanced team',
-        );
-      }
-      await tx.match.update({
-        where: { id: route.id },
-        data: { [field]: null },
-      });
-      target[field] = null;
-    }
-    await this.rollbackEliminationCompletion(tx, match, oldWinner);
-  }
-
-  private async advanceResult(
-    tx: Tx,
-    match: ResultMatch,
-    winnerTeamId: string,
-  ) {
-    const loserTeamId =
-      winnerTeamId === match.teamAId ? match.teamBId : match.teamAId;
-    if (
-      await this.processConditionalReset(tx, match, winnerTeamId, loserTeamId)
-    ) {
-      return;
-    }
-    await this.placeTeam(
-      tx,
-      match.nextMatchId,
-      match.nextMatchSlot,
-      winnerTeamId,
-    );
-    await this.placeTeam(
-      tx,
-      match.loserNextMatchId,
-      match.loserNextMatchSlot,
-      loserTeamId,
-    );
-  }
-
-  private async processConditionalReset(
-    tx: Tx,
-    match: ResultMatch,
-    winnerTeamId: string,
-    loserTeamId: string | null,
-  ): Promise<boolean> {
-    if (!match.nextMatchId || match.nextMatchId !== match.loserNextMatchId) {
-      return false;
-    }
-    const reset = await tx.match.findUnique({
-      where: { id: match.nextMatchId },
-      select: {
-        id: true,
-        teamAId: true,
-        teamBId: true,
-        status: true,
-        isActive: true,
-        activationCondition: true,
-      },
-    });
-    if (
-      !reset ||
-      reset.activationCondition !==
-        MatchActivationCondition.LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL
-    ) {
-      return false;
-    }
-    if (!loserTeamId) {
-      throw new ConflictException('Grand Final loser is missing');
-    }
-
-    // The generator always places the Winner Bracket champion in Grand Final
-    // slot A and the Loser Bracket champion in slot B.
-    if (winnerTeamId !== match.teamBId) {
-      return true;
-    }
-
-    if (reset.status === MatchStatus.COMPLETED) {
-      if (
-        reset.isActive &&
-        reset.teamAId === winnerTeamId &&
-        reset.teamBId === loserTeamId
-      ) {
-        return true;
-      }
-      throw new ConflictException('Grand Final Reset is already completed');
-    }
-    if (
-      (reset.teamAId !== null && reset.teamAId !== winnerTeamId) ||
-      (reset.teamBId !== null && reset.teamBId !== loserTeamId)
-    ) {
-      throw new ConflictException(
-        'Grand Final Reset slots are already occupied',
-      );
-    }
-    if (
-      !reset.isActive ||
-      reset.teamAId !== winnerTeamId ||
-      reset.teamBId !== loserTeamId
-    ) {
-      await tx.match.update({
-        where: { id: reset.id },
-        data: {
-          isActive: true,
-          teamAId: winnerTeamId,
-          teamBId: loserTeamId,
-        },
-      });
-    }
-    return true;
-  }
-
-  private async rollbackConditionalReset(
-    tx: Tx,
-    match: ResultMatch,
-  ): Promise<boolean> {
-    if (!match.nextMatchId || match.nextMatchId !== match.loserNextMatchId) {
-      return false;
-    }
-    const reset = await tx.match.findUnique({
-      where: { id: match.nextMatchId },
-      select: {
-        id: true,
-        status: true,
-        scoreA: true,
-        scoreB: true,
-        winnerTeamId: true,
-        playedAt: true,
-        activationCondition: true,
-        _count: { select: { scores: true } },
-      },
-    });
-    if (
-      !reset ||
-      reset.activationCondition !==
-        MatchActivationCondition.LOSER_BRACKET_CHAMPION_WINS_GRAND_FINAL
-    ) {
-      return false;
-    }
-    if (
-      reset.status !== MatchStatus.PENDING ||
-      reset.scoreA !== 0 ||
-      reset.scoreB !== 0 ||
-      reset.winnerTeamId !== null ||
-      reset.playedAt !== null ||
-      reset._count.scores > 0
-    ) {
-      throw new ConflictException(
-        'Grand Final Reset has started; reset it before changing the Grand Final',
-      );
-    }
-    await tx.match.update({
-      where: { id: reset.id },
-      data: { isActive: false, teamAId: null, teamBId: null },
-    });
-    return true;
-  }
-
-  private async completeEliminationIfReady(tx: Tx, match: ResultMatch) {
-    if (
-      match.round.format !== RoundFormat.PLAYOFF &&
-      match.round.format !== RoundFormat.DOUBLE_ELIM
-    ) {
-      return;
-    }
-    const matches = await tx.match.findMany({
-      where: { roundId: match.round.id },
-      select: {
-        status: true,
-        isActive: true,
-        bracketType: true,
-        bracketRound: true,
-        matchNumber: true,
-        winnerTeamId: true,
-      },
-    });
-    const required = matches.filter((candidate) => candidate.isActive);
-    if (
-      required.length === 0 ||
-      required.some((candidate) => candidate.status !== MatchStatus.COMPLETED)
-    ) {
-      return;
-    }
-    const championship = required
-      .filter(
-        (candidate) =>
-          candidate.bracketType === null &&
-          candidate.matchNumber === 1 &&
-          candidate.winnerTeamId !== null,
-      )
-      .sort(
-        (left, right) => (right.bracketRound ?? 0) - (left.bracketRound ?? 0),
-      )[0];
-    if (!championship?.winnerTeamId) return;
-
-    await tx.round.update({
-      where: { id: match.round.id },
-      data: { status: RoundStatus.COMPLETED },
-    });
-    const winnerTeamId = championship.winnerTeamId;
-    await tx.team.updateMany({
-      where: {
-        tournamentId: match.round.tournamentId,
-        finalRank: 1,
-        id: { not: winnerTeamId },
-      },
-      data: { finalRank: null },
-    });
-    await tx.team.update({
-      where: { id: winnerTeamId },
-      data: { finalRank: 1 },
-    });
-    await tx.round.update({
-      where: { id: match.round.id },
-      data: { status: RoundStatus.COMPLETED },
-    });
-    await tx.tournament.update({
-      where: { id: match.round.tournamentId },
-      data: { status: TournamentStatus.COMPLETED },
-    });
-  }
-
-  private async rollbackEliminationCompletion(
-    tx: Tx,
-    match: ResultMatch,
-    oldWinnerTeamId: string | null,
-  ) {
-    if (
-      !oldWinnerTeamId ||
-      (match.round.format !== RoundFormat.PLAYOFF &&
-        match.round.format !== RoundFormat.DOUBLE_ELIM)
-    )
-      return;
-    await tx.team.updateMany({
-      where: { id: oldWinnerTeamId, finalRank: 1 },
-      data: { finalRank: null },
-    });
-    await tx.round.update({
-      where: { id: match.round.id },
-      data: { status: RoundStatus.ONGOING },
-    });
-    await tx.tournament.update({
-      where: { id: match.round.tournamentId },
-      data: { status: TournamentStatus.ONGOING },
-    });
-  }
-
-  private async placeTeam(
-    tx: Tx,
-    targetId: string | null,
-    slot: MatchSlot | null,
-    teamId: string | null,
-  ) {
-    if (!targetId && !slot) return;
-    if (!targetId || !slot || !teamId) {
-      throw new ConflictException('Bracket progression link is incomplete');
-    }
-    const target = await tx.match.findUnique({
-      where: { id: targetId },
-      select: {
-        teamAId: true,
-        teamBId: true,
-        status: true,
-        isBye: true,
-        nextMatchId: true,
-        nextMatchSlot: true,
-      },
-    });
-    if (!target) throw new ConflictException('Downstream match not found');
-    const field = slot === MatchSlot.A ? 'teamAId' : 'teamBId';
-    if (target[field] !== null && target[field] !== teamId) {
-      throw new ConflictException(
-        'Downstream bracket slot is already occupied',
-      );
-    }
-    await tx.match.update({
-      where: { id: targetId },
-      data: {
-        [field]: teamId,
-        ...(target.isBye && target.status !== MatchStatus.COMPLETED
-          ? {
-              status: MatchStatus.COMPLETED,
-              scoreA: field === 'teamAId' ? 1 : 0,
-              scoreB: field === 'teamBId' ? 1 : 0,
-              winnerTeamId: teamId,
-              outcome:
-                field === 'teamAId' ? MatchOutcome.TEAM_A : MatchOutcome.TEAM_B,
-            }
-          : {}),
-      },
-    });
-    if (target.isBye && target.status !== MatchStatus.COMPLETED) {
-      await this.placeTeam(
-        tx,
-        target.nextMatchId,
-        target.nextMatchSlot,
-        teamId,
-      );
     }
   }
 }

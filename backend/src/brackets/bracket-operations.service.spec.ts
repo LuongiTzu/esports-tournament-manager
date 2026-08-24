@@ -55,6 +55,7 @@ function harness(roundValue: ReturnType<typeof round>, teamCount = 4) {
     registeredAt: new Date(2026, 0, index + 1),
   }));
   const tx = {
+    $queryRaw: jest.fn(),
     round: { findUnique: jest.fn().mockResolvedValue(roundValue) },
     team: { findMany: jest.fn().mockResolvedValue(teams) },
     match: {

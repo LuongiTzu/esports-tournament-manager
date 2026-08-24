@@ -35,6 +35,7 @@ function fakePrisma(failOnGroup?: number) {
       async (callback: (tx: unknown) => Promise<unknown>) => {
         const working: FakeState = structuredClone(state);
         const tx = {
+          $queryRaw: jest.fn(),
           round: {
             findUnique: jest.fn(() =>
               Promise.resolve({
