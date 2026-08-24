@@ -27,17 +27,18 @@ describe('admin query DTOs', () => {
   });
 
   it.each([
-    [AdminCommentListQueryDto, 'isHidden'],
-    [AdminUsersQueryDto, 'isLocked'],
-  ] as const)('handles true and false for %s', async (Dto, field) => {
-    for (const [raw, expected] of [
-      ['true', true],
-      ['false', false],
-    ] as const) {
-      const query = plainToInstance(Dto, { [field]: raw });
-      await expect(validate(query)).resolves.toHaveLength(0);
-      expect(query[field]).toBe(expected);
-    }
+    ['true', true],
+    ['false', false],
+  ] as const)('handles boolean query value %s', async (raw, expected) => {
+    const commentQuery = plainToInstance(AdminCommentListQueryDto, {
+      isHidden: raw,
+    });
+    const userQuery = plainToInstance(AdminUsersQueryDto, { isLocked: raw });
+
+    await expect(validate(commentQuery)).resolves.toHaveLength(0);
+    await expect(validate(userQuery)).resolves.toHaveLength(0);
+    expect(commentQuery.isHidden).toBe(expected);
+    expect(userQuery.isLocked).toBe(expected);
   });
 
   it('rejects invalid boolean and enum filters', async () => {

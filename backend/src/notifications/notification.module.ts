@@ -16,7 +16,6 @@ import { NotificationQueryService } from './notification-query.service';
     { provide: NOTIFICATION_PUBLISHER, useExisting: NotificationService },
   ],
   exports: [
-    NotificationService,
     NotificationEventsService,
     NotificationQueryService,
     NOTIFICATION_PUBLISHER,

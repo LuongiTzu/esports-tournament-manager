@@ -15,6 +15,6 @@ import { TOURNAMENT_EVENT_PUBLISHER } from '../common/ports/tournament-event-pub
       useExisting: TournamentEventsService,
     },
   ],
-  exports: [TournamentEventsService, TOURNAMENT_EVENT_PUBLISHER],
+  exports: [TOURNAMENT_EVENT_PUBLISHER],
 })
 export class TournamentRealtimeModule {}
