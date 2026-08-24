@@ -1,6 +1,21 @@
 import type vi from "@/features/locale/dictionaries/vi";
 
 const en = {
+  "notifications.title": "Notifications",
+  "notifications.unread": "unread",
+  "notifications.markAll": "Mark all read",
+  "notifications.loading": "Loading notifications",
+  "notifications.empty": "You have no notifications yet.",
+  "notifications.loadMore": "Load more",
+  "notifications.retry": "Try again",
+  "notifications.loadError": "Notifications could not be loaded.",
+  "notifications.readError": "The read status could not be updated.",
+  "notifications.type.schedule": "Schedule changed",
+  "notifications.type.score": "Match result",
+  "notifications.type.approved": "Registration approved",
+  "notifications.type.rejected": "Registration rejected",
+  "notifications.type.adminWarning": "Administrator warning",
+  "notifications.type.system": "System notification",
   "language.label": "Change language",
   "language.vi": "Vietnamese",
   "language.en": "English",
@@ -30,7 +45,8 @@ const en = {
   "admin.shell.verifying": "Verifying administrator access",
   "admin.shell.console": "Platform console",
   "admin.shell.identity": "System administrator",
-  "footer.description": "A central platform for creating, operating, and following esports tournaments.",
+  "footer.description":
+    "A central platform for creating, operating, and following esports tournaments.",
   "footer.product": "Product",
   "footer.getStarted": "Get started",
   "footer.discover": "Discover tournaments",
@@ -40,7 +56,8 @@ const en = {
   "home.hero.badge": "Run tournaments from one central workspace",
   "home.hero.title": "Where every match is",
   "home.hero.highlight": "run with clarity.",
-  "home.hero.description": "Create tournaments, accept team registrations, configure multiple rounds, and follow the championship journey on one esports platform.",
+  "home.hero.description":
+    "Create tournaments, accept team registrations, configure multiple rounds, and follow the championship journey on one esports platform.",
   "home.hero.create": "Create tournament",
   "home.hero.discover": "Discover tournaments",
   "home.hero.illustration": "Tournament bracket illustration",
@@ -53,17 +70,21 @@ const en = {
   "home.hero.results": "Results",
   "home.featured.eyebrow": "Featured tournaments",
   "home.featured.title": "Ready for your next match",
-  "home.featured.description": "Discover a selection of public tournaments running on Esports Tournament Manager.",
+  "home.featured.description":
+    "Discover a selection of public tournaments running on Esports Tournament Manager.",
   "home.featured.viewAll": "View all tournaments",
   "home.featured.loading": "Loading featured tournaments",
   "home.featured.loadError": "Featured tournaments could not be loaded.",
   "home.featured.retry": "Try again",
   "home.featured.empty": "No public tournaments yet",
-  "home.featured.emptyHelp": "New tournaments will appear here once they are published.",
+  "home.featured.emptyHelp":
+    "New tournaments will appear here once they are published.",
   "tournaments.discovery.eyebrow": "Public arena",
   "tournaments.discovery.title": "Discover tournaments",
-  "tournaments.discovery.heroTitle": "Compete in tournaments for the games you love",
-  "tournaments.discovery.description": "Search and explore public Esports tournaments by game and current status.",
+  "tournaments.discovery.heroTitle":
+    "Compete in tournaments for the games you love",
+  "tournaments.discovery.description":
+    "Search and explore public Esports tournaments by game and current status.",
   "tournaments.discovery.filters": "Tournament filters",
   "tournaments.discovery.viewLabel": "Tournament list view",
   "tournaments.discovery.gridView": "Grid view",
@@ -74,7 +95,8 @@ const en = {
   "tournaments.discovery.sortNewest": "Newest",
   "tournaments.discovery.sortTeams": "Most registered teams",
   "tournaments.discovery.searchLabel": "Search",
-  "tournaments.discovery.searchPlaceholder": "Search by tournament or game name",
+  "tournaments.discovery.searchPlaceholder":
+    "Search by tournament or game name",
   "tournaments.discovery.statusLabel": "Status",
   "tournaments.discovery.gameLabel": "Game",
   "tournaments.discovery.allStatuses": "All statuses",
@@ -84,15 +106,18 @@ const en = {
   "tournaments.discovery.completed": "Completed",
   "tournaments.discovery.cancelled": "Cancelled",
   "tournaments.discovery.allGames": "All games",
-  "tournaments.discovery.gamesError": "The game filter could not be loaded. You can still search by name.",
+  "tournaments.discovery.gamesError":
+    "The game filter could not be loaded. You can still search by name.",
   "tournaments.discovery.loadError": "The tournament list could not be loaded.",
   "tournaments.discovery.loading": "Loading tournaments",
   "tournaments.discovery.retryHelp": "Check your connection and try again.",
   "tournaments.discovery.retry": "Try again",
   "tournaments.discovery.noMatches": "No tournaments match these filters",
   "tournaments.discovery.empty": "No public tournaments yet",
-  "tournaments.discovery.noMatchesHelp": "Change the keyword, game, or status to see different results.",
-  "tournaments.discovery.emptyHelp": "New tournaments will appear here once they are published.",
+  "tournaments.discovery.noMatchesHelp":
+    "Change the keyword, game, or status to see different results.",
+  "tournaments.discovery.emptyHelp":
+    "New tournaments will appear here once they are published.",
   "tournaments.discovery.clearFilters": "Clear filters",
   "tournaments.discovery.resultCount": "tournaments",
   "tournaments.discovery.paginationLabel": "Tournament pagination",
@@ -101,38 +126,53 @@ const en = {
   "tournaments.discovery.page": "Page",
   "home.operation.eyebrow": "Three stages",
   "home.operation.title": "Run your tournament",
-  "home.operation.description": "Three stages to run a tournament from creation to completion.",
+  "home.operation.description":
+    "Three stages to run a tournament from creation to completion.",
   "home.operation.playerAlt": "An esports player competing at a computer",
   "home.operation.step1.title": "Create a tournament",
-  "home.operation.step1.description": "Choose a game, set the details, and publish your tournament.",
+  "home.operation.step1.description":
+    "Choose a game, set the details, and publish your tournament.",
   "home.operation.step2.title": "Customize the tournament",
-  "home.operation.step2.description": "Set up rounds, formats, and receive team registrations.",
+  "home.operation.step2.description":
+    "Set up rounds, formats, and receive team registrations.",
   "home.operation.step3.title": "Run the tournament",
-  "home.operation.step3.description": "Manage teams, schedules, and update results.",
+  "home.operation.step3.description":
+    "Manage teams, schedules, and update results.",
   "home.formats.eyebrow": "Flexible by design",
   "home.formats.title": "Multiple formats, one source of truth",
-  "home.formats.description": "Combine rounds using formats the platform actually supports, from group stages to upper and lower brackets.",
+  "home.formats.description":
+    "Combine rounds using formats the platform actually supports, from group stages to upper and lower brackets.",
   "home.formats.ROUND_ROBIN.label": "Round robin",
-  "home.formats.ROUND_ROBIN.description": "Every team faces the others to create a complete and balanced ranking table.",
+  "home.formats.ROUND_ROBIN.description":
+    "Every team faces the others to create a complete and balanced ranking table.",
   "home.formats.GROUP_STAGE.label": "Group stage",
-  "home.formats.GROUP_STAGE.description": "Split teams into groups and advance the strongest representatives to the next phase.",
+  "home.formats.GROUP_STAGE.description":
+    "Split teams into groups and advance the strongest representatives to the next phase.",
   "home.formats.SWISS.label": "Swiss system",
-  "home.formats.SWISS.description": "Pair teams with similar records across multiple rounds without requiring a full round robin.",
+  "home.formats.SWISS.description":
+    "Pair teams with similar records across multiple rounds without requiring a full round robin.",
   "home.formats.PLAYOFF.label": "Single elimination",
-  "home.formats.PLAYOFF.description": "Every match decides who advances until only one champion remains.",
+  "home.formats.PLAYOFF.description":
+    "Every match decides who advances until only one champion remains.",
   "home.formats.DOUBLE_ELIM.label": "Double elimination",
-  "home.formats.DOUBLE_ELIM.description": "Teams dropping from the upper bracket continue in the lower bracket before final elimination.",
+  "home.formats.DOUBLE_ELIM.description":
+    "Teams dropping from the upper bracket continue in the lower bracket before final elimination.",
   "home.benefits.eyebrow": "Competition platform",
   "home.benefits.title": "Every participant focused on the match",
-  "home.benefits.description": "The product structure helps organizers, teams, and viewers reach the information they need.",
+  "home.benefits.description":
+    "The product structure helps organizers, teams, and viewers reach the information they need.",
   "home.benefits.centralized.title": "Centralized management",
-  "home.benefits.centralized.description": "Tournament, round, and team information stays in one workflow.",
+  "home.benefits.centralized.description":
+    "Tournament, round, and team information stays in one workflow.",
   "home.benefits.registration.title": "Team registration",
-  "home.benefits.registration.description": "Collect team and player details through the tournament form.",
+  "home.benefits.registration.description":
+    "Collect team and player details through the tournament form.",
   "home.benefits.bracket.title": "Bracket management",
-  "home.benefits.bracket.description": "Follow round structures using data managed by the backend.",
+  "home.benefits.bracket.description":
+    "Follow round structures using data managed by the backend.",
   "home.benefits.public.title": "Public visibility",
-  "home.benefits.public.description": "Viewers can discover public tournaments and follow their information.",
+  "home.benefits.public.description":
+    "Viewers can discover public tournaments and follow their information.",
   "home.benefits.journey": "One tournament. One journey.",
   "tournament.card.noDescription": "No description yet.",
   "tournament.card.teams": "teams",

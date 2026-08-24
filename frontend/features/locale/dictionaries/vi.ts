@@ -1,4 +1,19 @@
 const vi = {
+  "notifications.title": "Thông báo",
+  "notifications.unread": "chưa đọc",
+  "notifications.markAll": "Đọc tất cả",
+  "notifications.loading": "Đang tải thông báo",
+  "notifications.empty": "Bạn chưa có thông báo nào.",
+  "notifications.loadMore": "Tải thêm",
+  "notifications.retry": "Thử lại",
+  "notifications.loadError": "Không tải được thông báo.",
+  "notifications.readError": "Không thể cập nhật trạng thái đã đọc.",
+  "notifications.type.schedule": "Lịch thi đấu thay đổi",
+  "notifications.type.score": "Kết quả trận đấu",
+  "notifications.type.approved": "Đăng ký được duyệt",
+  "notifications.type.rejected": "Đăng ký bị từ chối",
+  "notifications.type.adminWarning": "Cảnh báo từ quản trị viên",
+  "notifications.type.system": "Thông báo hệ thống",
   "language.label": "Đổi ngôn ngữ",
   "language.vi": "Tiếng Việt",
   "language.en": "English",
@@ -28,7 +43,8 @@ const vi = {
   "admin.shell.verifying": "Đang xác minh quyền quản trị",
   "admin.shell.console": "Bảng điều khiển nền tảng",
   "admin.shell.identity": "Quản trị viên hệ thống",
-  "footer.description": "Nền tảng tập trung để tạo, vận hành và theo dõi các giải đấu thể thao điện tử.",
+  "footer.description":
+    "Nền tảng tập trung để tạo, vận hành và theo dõi các giải đấu thể thao điện tử.",
   "footer.product": "Sản phẩm",
   "footer.getStarted": "Bắt đầu",
   "footer.discover": "Khám phá giải đấu",
@@ -38,7 +54,8 @@ const vi = {
   "home.hero.badge": "Vận hành giải đấu trong một không gian tập trung",
   "home.hero.title": "Nơi mọi trận đấu được",
   "home.hero.highlight": "vận hành rõ ràng.",
-  "home.hero.description": "Tạo giải, tiếp nhận đội đăng ký, thiết lập nhiều vòng đấu và theo dõi hành trình vô địch trên một nền tảng dành cho esports.",
+  "home.hero.description":
+    "Tạo giải, tiếp nhận đội đăng ký, thiết lập nhiều vòng đấu và theo dõi hành trình vô địch trên một nền tảng dành cho esports.",
   "home.hero.create": "Tạo giải đấu",
   "home.hero.discover": "Khám phá giải đấu",
   "home.hero.illustration": "Minh họa sơ đồ giải đấu",
@@ -51,17 +68,21 @@ const vi = {
   "home.hero.results": "Kết quả",
   "home.featured.eyebrow": "Giải đấu nổi bật",
   "home.featured.title": "Sẵn sàng cho trận đấu tiếp theo",
-  "home.featured.description": "Khám phá một số giải đấu công khai đang được tổ chức trên Esports Tournament Manager.",
+  "home.featured.description":
+    "Khám phá một số giải đấu công khai đang được tổ chức trên Esports Tournament Manager.",
   "home.featured.viewAll": "Xem tất cả giải đấu",
   "home.featured.loading": "Đang tải giải đấu nổi bật",
   "home.featured.loadError": "Không tải được giải đấu nổi bật.",
   "home.featured.retry": "Thử lại",
   "home.featured.empty": "Chưa có giải đấu công khai",
-  "home.featured.emptyHelp": "Các giải đấu mới sẽ xuất hiện tại đây khi được công bố.",
+  "home.featured.emptyHelp":
+    "Các giải đấu mới sẽ xuất hiện tại đây khi được công bố.",
   "tournaments.discovery.eyebrow": "Đấu trường công khai",
   "tournaments.discovery.title": "Khám phá giải đấu",
-  "tournaments.discovery.heroTitle": "Tranh tài trong những tựa game bạn yêu thích",
-  "tournaments.discovery.description": "Tìm kiếm và khám phá các giải đấu Esports công khai theo tựa game và trạng thái hiện tại.",
+  "tournaments.discovery.heroTitle":
+    "Tranh tài trong những tựa game bạn yêu thích",
+  "tournaments.discovery.description":
+    "Tìm kiếm và khám phá các giải đấu Esports công khai theo tựa game và trạng thái hiện tại.",
   "tournaments.discovery.filters": "Bộ lọc giải đấu",
   "tournaments.discovery.viewLabel": "Kiểu hiển thị danh sách giải đấu",
   "tournaments.discovery.gridView": "Hiển thị dạng lưới",
@@ -82,15 +103,18 @@ const vi = {
   "tournaments.discovery.completed": "Đã kết thúc",
   "tournaments.discovery.cancelled": "Đã hủy",
   "tournaments.discovery.allGames": "Tất cả game",
-  "tournaments.discovery.gamesError": "Không tải được bộ lọc game. Bạn vẫn có thể tìm giải theo tên.",
+  "tournaments.discovery.gamesError":
+    "Không tải được bộ lọc game. Bạn vẫn có thể tìm giải theo tên.",
   "tournaments.discovery.loadError": "Không tải được danh sách giải đấu.",
   "tournaments.discovery.loading": "Đang tải giải đấu",
   "tournaments.discovery.retryHelp": "Vui lòng kiểm tra kết nối và thử lại.",
   "tournaments.discovery.retry": "Thử lại",
   "tournaments.discovery.noMatches": "Không có giải nào khớp bộ lọc",
   "tournaments.discovery.empty": "Chưa có giải đấu công khai",
-  "tournaments.discovery.noMatchesHelp": "Hãy thay đổi từ khóa, game hoặc trạng thái để xem kết quả khác.",
-  "tournaments.discovery.emptyHelp": "Các giải đấu mới sẽ xuất hiện tại đây khi được công bố.",
+  "tournaments.discovery.noMatchesHelp":
+    "Hãy thay đổi từ khóa, game hoặc trạng thái để xem kết quả khác.",
+  "tournaments.discovery.emptyHelp":
+    "Các giải đấu mới sẽ xuất hiện tại đây khi được công bố.",
   "tournaments.discovery.clearFilters": "Xóa bộ lọc",
   "tournaments.discovery.resultCount": "giải đấu",
   "tournaments.discovery.paginationLabel": "Phân trang giải đấu",
@@ -99,38 +123,53 @@ const vi = {
   "tournaments.discovery.page": "Trang",
   "home.operation.eyebrow": "Ba giai đoạn",
   "home.operation.title": "Điều hành giải",
-  "home.operation.description": "3 giai đoạn để vận hành một giải đấu từ lúc khởi tạo đến khi hoàn thành.",
+  "home.operation.description":
+    "3 giai đoạn để vận hành một giải đấu từ lúc khởi tạo đến khi hoàn thành.",
   "home.operation.playerAlt": "Tuyển thủ esports đang thi đấu trước máy tính",
   "home.operation.step1.title": "Tạo giải",
-  "home.operation.step1.description": "Chọn game, thiết lập thông tin và công bố giải đấu.",
+  "home.operation.step1.description":
+    "Chọn game, thiết lập thông tin và công bố giải đấu.",
   "home.operation.step2.title": "Tùy chỉnh giải đấu",
-  "home.operation.step2.description": "Thiết lập vòng đấu, thể thức và tiếp nhận đội đăng ký.",
+  "home.operation.step2.description":
+    "Thiết lập vòng đấu, thể thức và tiếp nhận đội đăng ký.",
   "home.operation.step3.title": "Điều hành giải",
-  "home.operation.step3.description": "Quản lý đội, lịch thi đấu và cập nhật kết quả.",
+  "home.operation.step3.description":
+    "Quản lý đội, lịch thi đấu và cập nhật kết quả.",
   "home.formats.eyebrow": "Linh hoạt theo cuộc chơi",
   "home.formats.title": "Nhiều thể thức, đúng một nguồn dữ liệu",
-  "home.formats.description": "Kết hợp các vòng đấu theo những thể thức mà hệ thống thực sự hỗ trợ, từ vòng bảng đến nhánh thắng – nhánh thua.",
+  "home.formats.description":
+    "Kết hợp các vòng đấu theo những thể thức mà hệ thống thực sự hỗ trợ, từ vòng bảng đến nhánh thắng – nhánh thua.",
   "home.formats.ROUND_ROBIN.label": "Đấu vòng tròn",
-  "home.formats.ROUND_ROBIN.description": "Mỗi đội lần lượt đối đầu với các đội còn lại để tạo nên bảng xếp hạng toàn diện.",
+  "home.formats.ROUND_ROBIN.description":
+    "Mỗi đội lần lượt đối đầu với các đội còn lại để tạo nên bảng xếp hạng toàn diện.",
   "home.formats.GROUP_STAGE.label": "Chia bảng đấu",
-  "home.formats.GROUP_STAGE.description": "Chia các đội vào nhiều bảng và chọn những đại diện xuất sắc bước vào giai đoạn tiếp theo.",
+  "home.formats.GROUP_STAGE.description":
+    "Chia các đội vào nhiều bảng và chọn những đại diện xuất sắc bước vào giai đoạn tiếp theo.",
   "home.formats.SWISS.label": "Hệ Thụy Sĩ",
-  "home.formats.SWISS.description": "Ghép các đội có thành tích tương đồng qua nhiều lượt đấu, không cần thi đấu vòng tròn toàn bộ.",
+  "home.formats.SWISS.description":
+    "Ghép các đội có thành tích tương đồng qua nhiều lượt đấu, không cần thi đấu vòng tròn toàn bộ.",
   "home.formats.PLAYOFF.label": "Loại trực tiếp",
-  "home.formats.PLAYOFF.description": "Mỗi trận đấu quyết định quyền đi tiếp, cho đến khi chỉ còn một nhà vô địch cuối cùng.",
+  "home.formats.PLAYOFF.description":
+    "Mỗi trận đấu quyết định quyền đi tiếp, cho đến khi chỉ còn một nhà vô địch cuối cùng.",
   "home.formats.DOUBLE_ELIM.label": "Nhánh thắng - nhánh thua",
-  "home.formats.DOUBLE_ELIM.description": "Đội thua ở nhánh thắng tiếp tục tranh tài tại nhánh thua trước khi bị loại hoàn toàn.",
+  "home.formats.DOUBLE_ELIM.description":
+    "Đội thua ở nhánh thắng tiếp tục tranh tài tại nhánh thua trước khi bị loại hoàn toàn.",
   "home.benefits.eyebrow": "Nền tảng thi đấu",
   "home.benefits.title": "Mọi thành phần cùng hướng về trận đấu",
-  "home.benefits.description": "Cấu trúc sản phẩm giúp ban tổ chức, đội tham gia và người xem tiếp cận đúng phần thông tin họ cần.",
+  "home.benefits.description":
+    "Cấu trúc sản phẩm giúp ban tổ chức, đội tham gia và người xem tiếp cận đúng phần thông tin họ cần.",
   "home.benefits.centralized.title": "Quản lý tập trung",
-  "home.benefits.centralized.description": "Thông tin giải, vòng đấu và đội tham gia nằm trong cùng một luồng.",
+  "home.benefits.centralized.description":
+    "Thông tin giải, vòng đấu và đội tham gia nằm trong cùng một luồng.",
   "home.benefits.registration.title": "Đăng ký đội",
-  "home.benefits.registration.description": "Tiếp nhận thông tin đội và thành viên theo biểu mẫu của giải.",
+  "home.benefits.registration.description":
+    "Tiếp nhận thông tin đội và thành viên theo biểu mẫu của giải.",
   "home.benefits.bracket.title": "Quản lý bracket",
-  "home.benefits.bracket.description": "Theo dõi cấu trúc vòng đấu từ dữ liệu do backend quản lý.",
+  "home.benefits.bracket.description":
+    "Theo dõi cấu trúc vòng đấu từ dữ liệu do backend quản lý.",
   "home.benefits.public.title": "Hiển thị công khai",
-  "home.benefits.public.description": "Người xem có thể khám phá các giải công khai và theo dõi thông tin.",
+  "home.benefits.public.description":
+    "Người xem có thể khám phá các giải công khai và theo dõi thông tin.",
   "home.benefits.journey": "Một giải đấu. Một hành trình.",
   "tournament.card.noDescription": "Chưa có mô tả.",
   "tournament.card.teams": "đội",

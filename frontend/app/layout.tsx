@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { LocaleProvider } from "@/features/locale/store";
 import { ThemeProvider } from "@/features/theme/store";
+import { RealtimeProvider } from "@/features/realtime/provider";
 
 const themeBootstrapScript = `
 (() => {
@@ -66,9 +67,11 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-surface text-ink">
         <ThemeProvider>
           <LocaleProvider>
-            <Navbar />
-            <main className="flex flex-1 flex-col">{children}</main>
-            <Footer />
+            <RealtimeProvider>
+              <Navbar />
+              <main className="flex flex-1 flex-col">{children}</main>
+              <Footer />
+            </RealtimeProvider>
           </LocaleProvider>
         </ThemeProvider>
       </body>

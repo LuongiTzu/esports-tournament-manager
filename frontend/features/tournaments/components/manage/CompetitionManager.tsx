@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRightIcon,
   ArrowsClockwiseIcon,
@@ -29,6 +29,16 @@ import MatchManagementPanel from "./MatchManagementPanel";
 import RoundProgressionSummary from "./RoundProgressionSummary";
 import RoundStandingsView from "./RoundStandingsView";
 import RoundSettingsSummary from "../competition/RoundSettingsSummary";
+import { useTournamentRealtime } from "@/features/realtime/provider";
+import type { TournamentRealtimeEvent } from "@/features/realtime/types";
+
+const COMPETITION_REFRESH_EVENTS = new Set<TournamentRealtimeEvent>([
+  "matchUpdated",
+  "scheduleUpdated",
+  "bracketGenerated",
+  "teamApproved",
+  "standingsUpdated",
+]);
 
 const ROUND_STATUS_LABELS: Record<TournamentRound["status"], string> = {
   UPCOMING: "Sắp diễn ra",
@@ -61,6 +71,7 @@ export default function CompetitionManager({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedRound =
     rounds.find((round) => round.id === selectedRoundId) ?? rounds[0];
@@ -132,6 +143,24 @@ export default function CompetitionManager({
       cancelled = true;
     };
   }, [selectedRound?.id, tournament.slug]);
+
+  useEffect(
+    () => () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    },
+    [],
+  );
+
+  useTournamentRealtime(tournament.id, (event) => {
+    if (!COMPETITION_REFRESH_EVENTS.has(event) || !selectedRound?.id) return;
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => {
+      void Promise.all([
+        loadCompetition(selectedRound.id),
+        onTournamentRefresh(),
+      ]);
+    }, 150);
+  });
 
   const generate = async () => {
     if (!selectedRound || working) return;

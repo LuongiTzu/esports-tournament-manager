@@ -1,5 +1,11 @@
 const isClient = () => typeof window !== "undefined";
 
+const accessTokenListeners = new Set<() => void>();
+
+function notifyAccessTokenChanged() {
+  accessTokenListeners.forEach((listener) => listener());
+}
+
 export const tokenStore = {
   get accessToken() {
     return isClient() ? localStorage.getItem("accessToken") : null;
@@ -8,6 +14,7 @@ export const tokenStore = {
     if (!isClient()) return;
     if (value) localStorage.setItem("accessToken", value);
     else localStorage.removeItem("accessToken");
+    notifyAccessTokenChanged();
   },
   get refreshToken() {
     return isClient() ? localStorage.getItem("refreshToken") : null;
@@ -32,5 +39,10 @@ export const tokenStore = {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
+    notifyAccessTokenChanged();
+  },
+  subscribeAccessToken(listener: () => void) {
+    accessTokenListeners.add(listener);
+    return () => accessTokenListeners.delete(listener);
   },
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CircleNotchIcon,
   TrophyIcon,
@@ -18,6 +18,16 @@ import RoundCompetitionView from "../manage/RoundCompetitionView";
 import RoundProgressionSummary from "../manage/RoundProgressionSummary";
 import RoundStandingsView from "../manage/RoundStandingsView";
 import RoundSettingsSummary from "./RoundSettingsSummary";
+import { useTournamentRealtime } from "@/features/realtime/provider";
+import type { TournamentRealtimeEvent } from "@/features/realtime/types";
+
+const COMPETITION_REFRESH_EVENTS = new Set<TournamentRealtimeEvent>([
+  "matchUpdated",
+  "scheduleUpdated",
+  "bracketGenerated",
+  "teamApproved",
+  "standingsUpdated",
+]);
 
 const ROUND_STATUS_LABELS = {
   UPCOMING: "Sắp diễn ra",
@@ -36,13 +46,21 @@ const TOURNAMENT_STATUS_LABELS: Record<
   CANCELLED: "Đã hủy",
 };
 
-export default function PublicCompetitionView({ slug }: { slug: string }) {
+export default function PublicCompetitionView({
+  slug,
+  tournamentId,
+}: {
+  slug: string;
+  tournamentId: string;
+}) {
   const [rounds, setRounds] = useState<RoundBracket[]>([]);
   const [standings, setStandings] =
     useState<TournamentStandingsResponse | null>(null);
   const [selectedRoundId, setSelectedRoundId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,7 +96,23 @@ export default function PublicCompetitionView({ slug }: { slug: string }) {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [refreshVersion, slug]);
+
+  useEffect(
+    () => () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    },
+    [],
+  );
+
+  useTournamentRealtime(tournamentId, (event) => {
+    if (!COMPETITION_REFRESH_EVENTS.has(event)) return;
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(
+      () => setRefreshVersion((version) => version + 1),
+      150,
+    );
+  });
 
   const selectedBracket = useMemo(
     () => rounds.find(({ round }) => round.id === selectedRoundId) ?? rounds[0],

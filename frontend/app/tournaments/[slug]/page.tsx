@@ -267,7 +267,7 @@ export default function TournamentDetailPage({
         </section>
       )}
 
-      <PublicCompetitionView slug={slug} />
+      <PublicCompetitionView slug={slug} tournamentId={tournament.id} />
 
       <section className="mt-6 rounded-xl border border-line bg-surface-card p-6">
         <h2 className="font-semibold text-ink">Đội đã được duyệt</h2>
