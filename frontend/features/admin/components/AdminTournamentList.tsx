@@ -2,15 +2,7 @@ import { EyeSlashIcon, SealCheckIcon } from "@phosphor-icons/react";
 import ResolvedImage from "@/components/ResolvedImage";
 import type { AdminTournament } from "@/features/admin/types";
 import { formatAdminDate } from "@/features/admin/format";
-import { useLocale } from "@/features/locale/store";
-
-const STATUS_LABELS: Record<AdminTournament["status"], string> = {
-  DRAFT: "Bản nháp",
-  REGISTRATION: "Đăng ký",
-  ONGOING: "Đang thi đấu",
-  COMPLETED: "Hoàn thành",
-  CANCELLED: "Đã hủy",
-};
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 export default function AdminTournamentList({
   tournaments,
@@ -21,14 +13,14 @@ export default function AdminTournamentList({
   selectedId: string;
   onSelect: (id: string) => void;
 }) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface-card">
       <div className="hidden grid-cols-[minmax(15rem,1.5fr)_minmax(9rem,0.8fr)_8rem_9rem] gap-3 border-b border-line bg-surface-sub/60 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-faint md:grid">
-        <span>Giải đấu</span>
-        <span>Organizer</span>
-        <span>Vòng đời</span>
-        <span>Kiểm duyệt</span>
+        <span>{t("admin.tournaments.listHeading")}</span>
+        <span>{t("admin.tournaments.organizer")}</span>
+        <span>{t("admin.tournaments.lifecycle")}</span>
+        <span>{t("admin.tournaments.moderation")}</span>
       </div>
       <div className="divide-y divide-line">
         {tournaments.map((tournament) => {
@@ -64,7 +56,7 @@ export default function AdminTournamentList({
                     )}
                   </span>
                   <span className="mt-0.5 block truncate text-xs text-ink-faint">
-                    {tournament.game.name} · Tạo {formatAdminDate(tournament.createdAt, locale)}
+                    {tournament.game.name} · {t("admin.tournaments.created")} {formatAdminDate(tournament.createdAt, locale)}
                   </span>
                 </span>
               </span>
@@ -77,7 +69,7 @@ export default function AdminTournamentList({
                 </span>
               </span>
               <span className="w-fit rounded-full border border-line bg-surface-sub px-2.5 py-1 text-xs font-semibold text-ink-muted">
-                {STATUS_LABELS[tournament.status]}
+                {t(`tournament.status.${tournament.status}` as TranslationKey)}
               </span>
               <span
                 className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -90,8 +82,8 @@ export default function AdminTournamentList({
                   <EyeSlashIcon weight="fill" />
                 )}
                 {tournament.moderationStatus === "HIDDEN_BY_ADMIN"
-                  ? "Admin đã ẩn"
-                  : "Đang hiển thị"}
+                  ? t("admin.tournaments.adminHidden")
+                  : t("admin.tournaments.platformVisible")}
               </span>
             </button>
           );

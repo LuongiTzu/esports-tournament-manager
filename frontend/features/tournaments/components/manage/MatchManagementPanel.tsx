@@ -21,23 +21,19 @@ import {
 } from "@/components/ui";
 import { matchesApi } from "@/features/matches/api";
 import type { MatchDetail } from "@/features/matches/types";
-import { ROUND_FORMAT_LABELS } from "@/features/tournaments/round-formats";
+import { roundFormatLabel } from "@/features/tournaments/round-formats";
 import type {
   MatchStatus,
   TournamentRound,
 } from "@/features/tournaments/types";
 import type { TournamentStatus } from "@/shared/types/tournament-status";
+import { formatLocalizedDate } from "@/features/locale/format";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 interface EditableGameScore {
   teamAScore: string;
   teamBScore: string;
 }
-
-const MATCH_STATUS_LABELS: Record<MatchStatus, string> = {
-  PENDING: "Chưa diễn ra",
-  ONGOING: "Đang diễn ra",
-  COMPLETED: "Đã hoàn thành",
-};
 
 function toLocalDateTime(value: string | null) {
   if (!value) return "";
@@ -46,16 +42,8 @@ function toLocalDateTime(value: string | null) {
   return local.toISOString().slice(0, 16);
 }
 
-function formatDateTime(value: string | null) {
-  return value
-    ? new Intl.DateTimeFormat("vi-VN", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(new Date(value))
-    : "Chưa lên lịch";
-}
-
 function TeamHeading({ match, slot }: { match: MatchDetail; slot: "A" | "B" }) {
+  const { t } = useLocale();
   const team = slot === "A" ? match.teamA : match.teamB;
   return (
     <div className="min-w-0 text-center">
@@ -63,7 +51,7 @@ function TeamHeading({ match, slot }: { match: MatchDetail; slot: "A" | "B" }) {
         {team ? (
           <ResolvedImage
             src={team.logoUrl}
-            alt={`Logo ${team.name}`}
+            alt={`${t("tournament.detail.teamLogoAlt")} ${team.name}`}
             className="size-full object-cover object-center"
             fallback={team.name.charAt(0).toUpperCase()}
           />
@@ -72,10 +60,10 @@ function TeamHeading({ match, slot }: { match: MatchDetail; slot: "A" | "B" }) {
         )}
       </span>
       <p className="mt-2 truncate text-sm font-semibold text-ink">
-        {team?.name ?? "Chờ xác định"}
+        {team?.name ?? t("match.awaitingTeam")}
       </p>
       {team?.seed != null && (
-        <p className="text-[11px] text-ink-faint">Seed #{team.seed}</p>
+        <p className="text-[11px] text-ink-faint">{t("match.seed")} #{team.seed}</p>
       )}
     </div>
   );
@@ -101,6 +89,7 @@ export default function MatchManagementPanel({
   onClose: () => void;
   onMutation: () => Promise<void>;
 }) {
+  const { locale, t } = useLocale();
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<"schedule" | "result" | null>(null);
@@ -135,11 +124,11 @@ export default function MatchManagementPanel({
     try {
       populate(await matchesApi.findOne(matchId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không tải được trận đấu");
+      setError(err instanceof Error ? err.message : t("match.manage.loadError"));
     } finally {
       setLoading(false);
     }
-  }, [matchId, populate]);
+  }, [matchId, populate, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,7 +140,7 @@ export default function MatchManagementPanel({
       .catch((err: unknown) => {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Không tải được trận đấu",
+            err instanceof Error ? err.message : t("match.manage.loadError"),
           );
         }
       })
@@ -161,7 +150,7 @@ export default function MatchManagementPanel({
     return () => {
       cancelled = true;
     };
-  }, [matchId, populate]);
+  }, [matchId, populate, t]);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -172,15 +161,15 @@ export default function MatchManagementPanel({
   }, [onClose, saving]);
 
   const editingReason = !match
-    ? "Không có dữ liệu trận đấu"
+    ? t("match.manage.noData")
     : match.isBye
-      ? "Trận BYE được backend tự xử lý"
+      ? t("match.manage.byeReadOnly")
       : !match.isActive
-        ? "Trận điều kiện chưa được backend kích hoạt"
+        ? t("match.manage.inactiveReadOnly")
         : !match.teamA || !match.teamB
-          ? "Chưa đủ hai đội tham gia"
+          ? t("match.manage.missingTeams")
           : tournamentStatus === "CANCELLED"
-            ? "Giải đấu đã bị hủy"
+            ? t("match.manage.cancelledTournament")
             : null;
   const editable = editingReason === null;
   const drawAllowed = allowsDraws(round);
@@ -198,7 +187,7 @@ export default function MatchManagementPanel({
       try {
         new URL(trimmedLink);
       } catch {
-        setError("Link phòng đấu phải là URL đầy đủ, ví dụ https://...");
+        setError(t("match.manage.linkInvalid"));
         return;
       }
     }
@@ -210,9 +199,9 @@ export default function MatchManagementPanel({
         scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
         discordLink: trimmedLink || null,
       });
-      await refreshAfterMutation("Đã cập nhật lịch thi đấu.");
+      await refreshAfterMutation(t("match.manage.scheduleUpdated"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Không thể cập nhật lịch");
+      setError(err instanceof Error ? err.message : t("match.manage.scheduleUpdateError"));
     } finally {
       setSaving(null);
     }
@@ -228,7 +217,7 @@ export default function MatchManagementPanel({
       parsedA < 0 ||
       parsedB < 0
     ) {
-      return "Tỷ số series phải là số nguyên không âm.";
+      return t("match.manage.seriesScoreInvalid");
     }
     const winsRequired = Math.floor(match.bestOf / 2) + 1;
     if (
@@ -236,21 +225,21 @@ export default function MatchManagementPanel({
       parsedB > winsRequired ||
       parsedA + parsedB > match.bestOf
     ) {
-      return `Tỷ số không hợp lệ với BO${match.bestOf}.`;
+      return `${t("match.manage.scoreBestOfInvalid")} BO${match.bestOf}.`;
     }
     if (resultStatus === "COMPLETED") {
       if (parsedA === parsedB && !drawAllowed) {
-        return "Thể thức này yêu cầu một đội thắng.";
+        return t("match.manage.decisiveRequired");
       }
       if (
         parsedA !== parsedB &&
         parsedA !== winsRequired &&
         parsedB !== winsRequired
       ) {
-        return `Đội thắng phải đạt ${winsRequired} ván.`;
+        return `${t("match.manage.winnerRequiredPrefix")} ${winsRequired} ${t("match.manage.gamesUnit")}`;
       }
     } else if (parsedA === winsRequired || parsedB === winsRequired) {
-      return "Series đã đủ số ván thắng và phải chuyển sang Đã hoàn thành.";
+      return t("match.manage.seriesCompleteStatus");
     }
     return { scoreA: parsedA, scoreB: parsedB };
   };
@@ -266,7 +255,7 @@ export default function MatchManagementPanel({
     if (
       resultIsCorrection &&
       !window.confirm(
-        "Sửa kết quả đã hoàn thành có thể rollback và cập nhật các slot downstream. Backend sẽ từ chối nếu downstream đã hoàn tất. Tiếp tục?",
+        t("match.manage.correctResultConfirm"),
       )
     ) {
       return;
@@ -279,10 +268,10 @@ export default function MatchManagementPanel({
         ...validated,
         status: resultStatus,
       });
-      await refreshAfterMutation("Đã cập nhật kết quả từ backend.");
+      await refreshAfterMutation(t("match.manage.resultUpdated"));
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Không thể cập nhật kết quả",
+        err instanceof Error ? err.message : t("match.manage.resultUpdateError"),
       );
     } finally {
       setSaving(null);
@@ -292,7 +281,7 @@ export default function MatchManagementPanel({
   const savePerGameScores = async () => {
     if (!match || !editable || saving) return;
     if (!gameScores.length) {
-      setError("Cần ít nhất một game score.");
+      setError(t("match.manage.gameScoreRequired"));
       return;
     }
     const parsed = gameScores.map((score, index) => ({
@@ -310,13 +299,13 @@ export default function MatchManagementPanel({
           score.teamAScore === score.teamBScore,
       )
     ) {
-      setError("Điểm từng game phải là số nguyên không âm và không được hòa.");
+      setError(t("match.manage.gameScoreInvalid"));
       return;
     }
     if (
       resultIsCorrection &&
       !window.confirm(
-        "Sửa game scores đã hoàn thành có thể rollback và cập nhật các slot downstream. Tiếp tục?",
+        t("match.manage.correctGameScoresConfirm"),
       )
     ) {
       return;
@@ -326,10 +315,10 @@ export default function MatchManagementPanel({
     setSuccess("");
     try {
       await matchesApi.putScores(match.id, { scores: parsed });
-      await refreshAfterMutation("Đã cập nhật game scores từ backend.");
+      await refreshAfterMutation(t("match.manage.gameScoresUpdated"));
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Không thể cập nhật game scores",
+        err instanceof Error ? err.message : t("match.manage.gameScoresUpdateError"),
       );
     } finally {
       setSaving(null);
@@ -356,18 +345,18 @@ export default function MatchManagementPanel({
         <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-line bg-surface-card/95 px-4 py-4 backdrop-blur sm:px-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">
-              {ROUND_FORMAT_LABELS[round.format]} · {round.name}
+              {roundFormatLabel(round.format, t)} · {round.name}
             </p>
             <h2
               id="match-panel-title"
               className="mt-1 text-lg font-bold text-ink"
             >
-              Quản lý trận {match?.matchNumber ?? ""}
+              {t("match.manage.title")} {match?.matchNumber ?? ""}
             </h2>
           </div>
           <button
             type="button"
-            aria-label="Đóng"
+            aria-label={t("common.close")}
             onClick={onClose}
             disabled={Boolean(saving)}
             className="grid size-10 shrink-0 place-items-center rounded-full text-ink-muted transition hover:bg-surface-hover hover:text-ink disabled:opacity-50"
@@ -397,16 +386,16 @@ export default function MatchManagementPanel({
 
             <div className="flex flex-wrap gap-2 text-xs">
               <span className="rounded-full bg-surface-sub px-3 py-1.5 text-ink-muted">
-                {MATCH_STATUS_LABELS[match.status]}
+                {t(`match.status.${match.status}` as TranslationKey)}
               </span>
               {match.outcome === "DRAW" && (
                 <span className="rounded-full bg-pending/10 px-3 py-1.5 font-semibold text-pending">
-                  Kết quả hòa
+                  {t("match.drawResult")}
                 </span>
               )}
               {match.winner && (
                 <span className="rounded-full bg-approved/10 px-3 py-1.5 text-approved">
-                  Thắng: {match.winner.name}
+                  {t("match.manage.winner")}: {match.winner.name}
                 </span>
               )}
               {match.isBye && (
@@ -416,29 +405,31 @@ export default function MatchManagementPanel({
               )}
               {!match.isActive && (
                 <span className="rounded-full bg-rejected/10 px-3 py-1.5 text-rejected">
-                  Chưa kích hoạt
+                  {t("match.inactive")}
                 </span>
               )}
             </div>
 
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div className="rounded-xl border border-line p-3">
-                <dt className="text-xs text-ink-faint">Vòng / lượt</dt>
+                <dt className="text-xs text-ink-faint">{t("match.manage.roundIteration")}</dt>
                 <dd className="mt-1 font-medium text-ink">
-                  {match.bracketRound ?? "Không áp dụng"}
+                  {match.bracketRound ?? t("match.manage.notApplicable")}
                 </dd>
               </div>
               <div className="rounded-xl border border-line p-3">
-                <dt className="text-xs text-ink-faint">Lịch hiện tại</dt>
+                <dt className="text-xs text-ink-faint">{t("match.manage.currentSchedule")}</dt>
                 <dd className="mt-1 font-medium text-ink">
-                  {formatDateTime(match.scheduledAt)}
+                  {match.scheduledAt
+                    ? formatLocalizedDate(match.scheduledAt, locale, { dateStyle: "medium", timeStyle: "short" })
+                    : t("match.manage.unscheduled")}
                 </dd>
               </div>
             </dl>
 
             {editingReason && (
               <p className="rounded-xl border border-pending/30 bg-pending/10 px-4 py-3 text-sm text-pending">
-                {editingReason}. Chỉ có thể xem chi tiết trận này.
+                {editingReason}. {t("match.manage.readOnlySuffix")}
               </p>
             )}
 
@@ -468,11 +459,11 @@ export default function MatchManagementPanel({
                   className="rounded-2xl border border-line p-4"
                 >
                   <h3 id="schedule-heading" className="font-bold text-ink">
-                    Lịch thi đấu
+                    {t("match.manage.schedule")}
                   </h3>
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <label>
-                      <span className={labelClass}>Ngày và giờ</span>
+                      <span className={labelClass}>{t("match.manage.dateTime")}</span>
                       <span className="relative block">
                         <CalendarBlankIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                         <input
@@ -486,7 +477,7 @@ export default function MatchManagementPanel({
                       </span>
                     </label>
                     <label>
-                      <span className={labelClass}>Link phòng đấu</span>
+                      <span className={labelClass}>{t("match.manage.roomLink")}</span>
                       <span className="relative block">
                         <LinkIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                         <input
@@ -510,7 +501,7 @@ export default function MatchManagementPanel({
                     {saving === "schedule" && (
                       <CircleNotchIcon className="animate-spin" />
                     )}
-                    Lưu lịch thi đấu
+                    {t("match.manage.saveSchedule")}
                   </button>
                 </section>
 
@@ -521,12 +512,12 @@ export default function MatchManagementPanel({
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 id="result-heading" className="font-bold text-ink">
-                        Kết quả
+                        {t("match.manage.result")}
                       </h3>
                       <p className="mt-1 text-xs text-ink-faint">
                         {drawAllowed
-                          ? "Round này cho phép kết quả hòa."
-                          : "Round này yêu cầu kết quả phân thắng bại."}
+                          ? t("match.manage.drawAllowed")
+                          : t("match.manage.decisiveOnly")}
                       </p>
                     </div>
                     {match.scores.length === 0 && (
@@ -539,8 +530,8 @@ export default function MatchManagementPanel({
                         className="text-xs font-semibold text-brand hover:underline"
                       >
                         {usePerGameScores
-                          ? "Nhập tỷ số series"
-                          : "Nhập theo từng game"}
+                          ? t("match.manage.enterSeries")
+                          : t("match.manage.enterGames")}
                       </button>
                     )}
                   </div>
@@ -559,7 +550,7 @@ export default function MatchManagementPanel({
                             type="number"
                             min={0}
                             value={score.teamAScore}
-                            aria-label={`Điểm game ${index + 1} của ${match.teamA?.name}`}
+                            aria-label={`${t("match.manage.gameScoreAria")} ${index + 1} ${t("match.manage.of")} ${match.teamA?.name}`}
                             onChange={(event) =>
                               setGameScores((current) =>
                                 current.map((item, itemIndex) =>
@@ -579,7 +570,7 @@ export default function MatchManagementPanel({
                             type="number"
                             min={0}
                             value={score.teamBScore}
-                            aria-label={`Điểm game ${index + 1} của ${match.teamB?.name}`}
+                            aria-label={`${t("match.manage.gameScoreAria")} ${index + 1} ${t("match.manage.of")} ${match.teamB?.name}`}
                             onChange={(event) =>
                               setGameScores((current) =>
                                 current.map((item, itemIndex) =>
@@ -596,7 +587,7 @@ export default function MatchManagementPanel({
                           />
                           <button
                             type="button"
-                            aria-label={`Xóa game ${index + 1}`}
+                            aria-label={`${t("match.manage.removeGame")} ${index + 1}`}
                             onClick={() =>
                               setGameScores((current) =>
                                 current.filter(
@@ -621,7 +612,7 @@ export default function MatchManagementPanel({
                           }
                           className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline"
                         >
-                          <PlusIcon /> Thêm game
+                          <PlusIcon /> {t("match.manage.addGame")}
                         </button>
                       )}
                       <button
@@ -634,8 +625,8 @@ export default function MatchManagementPanel({
                           <CircleNotchIcon className="animate-spin" />
                         )}
                         {resultIsCorrection
-                          ? "Xác nhận sửa game scores"
-                          : "Lưu game scores"}
+                          ? t("match.manage.confirmGameScoreCorrection")
+                          : t("match.manage.saveGameScores")}
                       </button>
                     </div>
                   ) : (
@@ -668,7 +659,7 @@ export default function MatchManagementPanel({
                         </label>
                       </div>
                       <label className="mt-4 block">
-                        <span className={labelClass}>Trạng thái kết quả</span>
+                        <span className={labelClass}>{t("match.manage.resultStatus")}</span>
                         <select
                           value={resultStatus}
                           onChange={(event) =>
@@ -676,9 +667,9 @@ export default function MatchManagementPanel({
                           }
                           className={inputClass}
                         >
-                          <option value="PENDING">Chưa diễn ra</option>
-                          <option value="ONGOING">Đang diễn ra</option>
-                          <option value="COMPLETED">Đã hoàn thành</option>
+                          <option value="PENDING">{t("match.status.PENDING")}</option>
+                          <option value="ONGOING">{t("match.status.ONGOING")}</option>
+                          <option value="COMPLETED">{t("match.status.COMPLETED")}</option>
                         </select>
                       </label>
                       <div className="mt-4 flex flex-wrap gap-2">
@@ -692,8 +683,8 @@ export default function MatchManagementPanel({
                             <CircleNotchIcon className="animate-spin" />
                           )}
                           {resultIsCorrection
-                            ? "Xác nhận sửa kết quả"
-                            : "Lưu kết quả"}
+                            ? t("match.manage.confirmCorrection")
+                            : t("match.manage.saveResult")}
                         </button>
                         {drawAllowed && (
                           <button
@@ -702,7 +693,7 @@ export default function MatchManagementPanel({
                             disabled={Boolean(saving)}
                             className={secondaryButtonClass}
                           >
-                            Đặt kết quả hòa
+                            {t("match.manage.setDraw")}
                           </button>
                         )}
                       </div>
@@ -715,7 +706,7 @@ export default function MatchManagementPanel({
         ) : (
           <div className="p-6">
             <p className={alertErrorClass}>
-              {error || "Không tìm thấy trận đấu"}
+              {error || t("match.manage.notFound")}
             </p>
           </div>
         )}

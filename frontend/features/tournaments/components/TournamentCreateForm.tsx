@@ -35,6 +35,7 @@ import {
 import TournamentCreateHero from "@/features/tournaments/components/TournamentCreateHero";
 import type { CreateRoundRequest } from "@/features/tournaments/types";
 import { ApiError } from "@/lib/api/client";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 interface RoundForm {
   name: string;
@@ -168,11 +169,7 @@ const INITIAL_FORM: TournamentFormState = {
   contactLink: "",
 };
 
-const genderOptions = [
-  { value: "MALE", label: "Nam" },
-  { value: "FEMALE", label: "Nữ" },
-  { value: "OTHER", label: "Khác" },
-] as const;
+const genderOptions = ["MALE", "FEMALE", "OTHER"] as const;
 
 function optionalNumber(value: string) {
   return value === "" ? undefined : Number(value);
@@ -246,11 +243,12 @@ function ToggleField({
 export default function TournamentCreateForm() {
   const router = useRouter();
   const { user, ready } = useAuth();
+  const { t } = useLocale();
   const [games, setGames] = useState<Game[]>([]);
   const [gamesError, setGamesError] = useState(false);
   const [form, setForm] = useState<TournamentFormState>(INITIAL_FORM);
-  const [rounds, setRounds] = useState<RoundForm[]>([
-    createRoundForm("Vòng bảng", "GROUP_STAGE"),
+  const [rounds, setRounds] = useState<RoundForm[]>(() => [
+    createRoundForm(t("tournament.create.defaultGroupRound"), "GROUP_STAGE"),
   ]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -423,7 +421,7 @@ export default function TournamentCreateForm() {
   const addRound = () => {
     setRounds((current) => [
       ...current,
-      createRoundForm(`Vòng ${current.length + 1}`, "PLAYOFF"),
+      createRoundForm(`${t("tournament.create.defaultRound")} ${current.length + 1}`, "PLAYOFF"),
     ]);
   };
 
@@ -435,11 +433,11 @@ export default function TournamentCreateForm() {
 
   const validateForm = () => {
     if (form.mode !== "ONLINE" && !form.location.trim()) {
-      return "Vui lòng nhập địa điểm cho giải Offline hoặc Hybrid.";
+      return t("tournament.create.locationRequired");
     }
 
     if (!selectedGame) {
-      return "Vui lòng chọn trò chơi.";
+      return t("tournament.create.gameRequired");
     }
 
     if (
@@ -448,20 +446,20 @@ export default function TournamentCreateForm() {
       maximumMembers < selectedGame.defaultTeamSize ||
       maximumMembers > selectedGame.maxTeamSize
     ) {
-      return `Số thành viên tối đa phải từ ${selectedGame.defaultTeamSize} đến ${selectedGame.maxTeamSize}.`;
+      return `${t("tournament.create.maxMembersRange")} (${selectedGame.defaultTeamSize}–${selectedGame.maxTeamSize})`;
     }
 
     const minAge = optionalNumber(form.minAge);
     const maxAge = optionalNumber(form.maxAge);
     if (minAge !== undefined && maxAge !== undefined && minAge > maxAge) {
-      return "Tuổi tối thiểu không được lớn hơn tuổi tối đa.";
+      return t("tournament.create.ageRangeInvalid");
     }
 
     const timeline = [
-      ["Thời điểm mở đăng ký", form.registrationStartDate],
-      ["Hạn đăng ký", form.registrationDeadline],
-      ["Thời điểm bắt đầu", form.startDate],
-      ["Thời điểm kết thúc", form.endDate],
+      [t("tournament.create.registrationOpensAt"), form.registrationStartDate],
+      [t("tournament.create.registrationDeadline"), form.registrationDeadline],
+      [t("tournament.create.startsAt"), form.startDate],
+      [t("tournament.create.endsAt"), form.endDate],
     ] as const;
     const suppliedDates = timeline
       .filter(([, value]) => value)
@@ -469,12 +467,12 @@ export default function TournamentCreateForm() {
 
     for (let index = 1; index < suppliedDates.length; index += 1) {
       if (suppliedDates[index][1] < suppliedDates[index - 1][1]) {
-        return `${suppliedDates[index][0]} phải sau ${suppliedDates[index - 1][0]}.`;
+        return `${suppliedDates[index][0]} ${t("tournament.create.mustBeAfter")} ${suppliedDates[index - 1][0]}.`;
       }
     }
 
     if (rounds.some((round) => !round.name.trim())) {
-      return "Tên vòng đấu không được để trống.";
+      return t("tournament.create.roundNameRequired");
     }
     for (const round of rounds) {
       if (round.format !== "SWISS") continue;
@@ -486,14 +484,14 @@ export default function TournamentCreateForm() {
           numberOfRounds < 1 ||
           numberOfRounds > 20)
       ) {
-        return "S\u1ed1 v\u00f2ng Swiss ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean t\u1eeb 1 \u0111\u1ebfn 20, ho\u1eb7c \u0111\u1ec3 tr\u1ed1ng \u0111\u1ec3 t\u1ef1 \u0111\u1ed9ng t\u00ednh.";
+        return t("tournament.create.swissRoundsInvalid");
       }
       if (
         !Number.isInteger(advancingTeamCount) ||
         advancingTeamCount < 1 ||
         advancingTeamCount > 256
       ) {
-        return "S\u1ed1 \u0111\u1ed9i \u0111i ti\u1ebfp t\u1eeb Swiss ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean t\u1eeb 1 \u0111\u1ebfn 256.";
+        return t("tournament.create.swissAdvanceInvalid");
       }
     }
     for (const round of rounds) {
@@ -510,44 +508,44 @@ export default function TournamentCreateForm() {
         numberOfGroups < 2 ||
         numberOfGroups > 16
       ) {
-        return "S\u1ed1 b\u1ea3ng ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean t\u1eeb 2 \u0111\u1ebfn 16.";
+        return t("tournament.create.groupsInvalid");
       }
       if (
         !Number.isInteger(advancingTeamsPerGroup) ||
         advancingTeamsPerGroup < 1
       ) {
-        return "S\u1ed1 \u0111\u1ed9i \u0111i ti\u1ebfp m\u1ed7i b\u1ea3ng ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean d\u01b0\u01a1ng.";
+        return t("tournament.create.advancePerGroupInvalid");
       }
       if (
         ![winPoints, drawPoints, lossPoints].every(
           (value) => Number.isInteger(value) && value >= 0 && value <= 100,
         )
       ) {
-        return "\u0110i\u1ec3m v\u00f2ng b\u1ea3ng ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean t\u1eeb 0 \u0111\u1ebfn 100.";
+        return t("tournament.create.groupPointsInvalid");
       }
       if (
         !Number.isInteger(meetingsPerPair) ||
         meetingsPerPair < 1 ||
         meetingsPerPair > 4
       ) {
-        return "S\u1ed1 l\u01b0\u1ee3t g\u1eb7p nhau ph\u1ea3i l\u00e0 s\u1ed1 nguy\u00ean t\u1eeb 1 \u0111\u1ebfn 4.";
+        return t("tournament.create.meetingsInvalid");
       }
       if (winPoints <= lossPoints) {
-        return "\u0110i\u1ec3m th\u1eafng ph\u1ea3i l\u1edbn h\u01a1n \u0111i\u1ec3m thua.";
+        return t("tournament.create.winPointsInvalid");
       }
       if (
         values.allowDraws &&
         (winPoints <= drawPoints || drawPoints < lossPoints)
       ) {
-        return "Khi cho ph\u00e9p h\u00f2a, \u0111i\u1ec3m ph\u1ea3i th\u1ecfa: th\u1eafng > h\u00f2a \u2265 thua.";
+        return t("tournament.create.drawPointsInvalid");
       }
       const maxTeams = optionalNumber(form.maxTeams);
       if (maxTeams !== undefined) {
         if (maxTeams % numberOfGroups !== 0) {
-          return "S\u1ed1 \u0111\u1ed9i t\u1ed1i \u0111a ph\u1ea3i chia h\u1ebft cho s\u1ed1 b\u1ea3ng \u0111\u1ec3 c\u00e1c b\u1ea3ng b\u1eb1ng nhau.";
+          return t("tournament.create.capacityDivisibilityInvalid");
         }
         if (advancingTeamsPerGroup >= maxTeams / numberOfGroups) {
-          return "S\u1ed1 \u0111\u1ed9i \u0111i ti\u1ebfp m\u1ed7i b\u1ea3ng ph\u1ea3i \u00edt h\u01a1n s\u1ed1 \u0111\u1ed9i d\u1ef1 ki\u1ebfn trong b\u1ea3ng.";
+          return t("tournament.create.advanceTooMany");
         }
       }
     }
@@ -563,23 +561,23 @@ export default function TournamentCreateForm() {
           (value) => Number.isInteger(value) && value >= 0 && value <= 100,
         )
       ) {
-        return "Điểm Round Robin phải là số nguyên từ 0 đến 100.";
+        return t("tournament.create.roundRobinPointsInvalid");
       }
       if (
         !Number.isInteger(meetingsPerPair) ||
         meetingsPerPair < 1 ||
         meetingsPerPair > 4
       ) {
-        return "Số lượt gặp nhau phải là số nguyên từ 1 đến 4.";
+        return t("tournament.create.meetingsInvalid");
       }
       if (winPoints <= lossPoints) {
-        return "Điểm thắng phải lớn hơn điểm thua.";
+        return t("tournament.create.winPointsInvalid");
       }
       if (
         values.allowDraws &&
         (winPoints <= drawPoints || drawPoints < lossPoints)
       ) {
-        return "Khi cho phép hòa, điểm phải thỏa: thắng > hòa ≥ thua.";
+        return t("tournament.create.drawPointsInvalid");
       }
     }
     return "";
@@ -698,7 +696,7 @@ export default function TournamentCreateForm() {
             uploadError:
               uploadError instanceof Error
                 ? uploadError.message
-                : "Không thể tải banner lên.",
+                : t("tournament.create.bannerUploadError"),
           });
           return;
         }
@@ -707,13 +705,13 @@ export default function TournamentCreateForm() {
     } catch (submitError) {
       if (submitError instanceof ApiError && submitError.status === 401) {
         clearSession();
-        setError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        setError(t("tournament.create.sessionExpired"));
         return;
       }
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Tạo giải đấu thất bại.",
+          : t("tournament.create.submitError"),
       );
     } finally {
       setLoading(false);
@@ -734,7 +732,7 @@ export default function TournamentCreateForm() {
               uploadError:
                 uploadError instanceof Error
                   ? uploadError.message
-                  : "Không thể tải banner lên.",
+                  : t("tournament.create.bannerUploadError"),
             }
           : current,
       );
@@ -747,10 +745,10 @@ export default function TournamentCreateForm() {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-16">
         <section className="w-full rounded-2xl border border-approved/30 bg-surface-card p-6 shadow-[var(--shadow-elevated)] sm:p-8">
-          <h1 className="text-xl font-bold text-ink">Giải đấu đã được tạo</h1>
+          <h1 className="text-xl font-bold text-ink">{t("tournament.create.created")}</h1>
           <p className="mt-2 text-sm leading-6 text-ink-muted">
-            Banner chưa tải lên được: {createdTournament.uploadError} Giải đấu
-            vẫn được giữ nguyên và sẽ không bị tạo lại.
+            {t("tournament.create.partialBannerPrefix")} {createdTournament.uploadError}{" "}
+            {t("tournament.create.partialBannerSuffix")}
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <button
@@ -759,13 +757,13 @@ export default function TournamentCreateForm() {
               onClick={retryBannerUpload}
               className="inline-flex rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-on-brand disabled:opacity-50"
             >
-              {loading ? "Đang tải lại…" : "Thử tải banner lại"}
+              {loading ? t("tournament.create.retryingBanner") : t("tournament.create.retryBanner")}
             </button>
             <Link
               href={`/tournaments/${createdTournament.slug}`}
               className={secondaryButtonClass}
             >
-              Đi tới giải đấu
+              {t("tournament.create.goToTournament")}
             </Link>
           </div>
         </section>
@@ -787,13 +785,13 @@ export default function TournamentCreateForm() {
         >
           <FormSection
             Icon={IdentificationCardIcon}
-            title="Thông tin giải đấu"
-            description="Những nội dung người tham gia nhìn thấy đầu tiên khi khám phá giải."
+            title={t("tournament.create.section.info")}
+            description={t("tournament.create.section.infoDescription")}
           >
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label htmlFor="name" className={labelClass}>
-                  Tên giải đấu <span className="text-rejected">*</span>
+                  {t("tournament.create.name")} <span className="text-rejected">*</span>
                 </label>
                 <input
                   id="name"
@@ -804,13 +802,13 @@ export default function TournamentCreateForm() {
                   value={form.name}
                   onChange={handleChange}
                   className={inputClass}
-                  placeholder="Ví dụ: ArenaVERSE Summer Championship 2026"
+                  placeholder={t("tournament.create.namePlaceholder")}
                 />
               </div>
 
               <div>
                 <label htmlFor="gameId" className={labelClass}>
-                  Trò chơi <span className="text-rejected">*</span>
+                  {t("tournament.create.game")} <span className="text-rejected">*</span>
                 </label>
                 <select
                   id="gameId"
@@ -820,23 +818,23 @@ export default function TournamentCreateForm() {
                   onChange={handleGameChange}
                   className={inputClass}
                 >
-                  <option value="">Chọn trò chơi</option>
+                  <option value="">{t("tournament.create.selectGame")}</option>
                   {games.map((game) => (
                     <option key={game.id} value={game.id}>
-                      {game.name} ({game.defaultTeamSize} người/đội)
+                      {game.name} ({game.defaultTeamSize} {t("tournament.create.peoplePerTeam")})
                     </option>
                   ))}
                 </select>
                 {gamesError && (
                   <p className="mt-1.5 text-xs text-rejected">
-                    Không tải được danh sách trò chơi. Vui lòng tải lại trang.
+                    {t("tournament.create.gamesLoadError")}
                   </p>
                 )}
               </div>
 
               <div className="sm:col-span-2">
                 <label htmlFor="bannerUrl" className={labelClass}>
-                  URL ảnh banner
+                  {t("tournament.create.bannerUrl")}
                 </label>
                 <input
                   id="bannerUrl"
@@ -849,13 +847,13 @@ export default function TournamentCreateForm() {
                   placeholder="https://example.com/tournament-banner.jpg"
                 />
                 <p className={hintClass}>
-                  Có thể giữ URL ảnh ngoài hoặc chọn một tệp từ thiết bị bên dưới.
+                  {t("tournament.create.bannerHint")}
                 </p>
               </div>
 
               <div className="sm:col-span-2">
                 <ImageUploadPicker
-                  label="Banner từ thiết bị"
+                  label={t("tournament.create.deviceBanner")}
                   file={bannerFile}
                   onFileChange={setBannerFile}
                   existingUrl={form.bannerUrl}
@@ -867,7 +865,7 @@ export default function TournamentCreateForm() {
 
               <div className="sm:col-span-2">
                 <label htmlFor="description" className={labelClass}>
-                  Mô tả
+                  {t("tournament.create.description")}
                 </label>
                 <textarea
                   id="description"
@@ -877,13 +875,13 @@ export default function TournamentCreateForm() {
                   value={form.description}
                   onChange={handleChange}
                   className={inputClass}
-                  placeholder="Giới thiệu mục tiêu, đối tượng và điểm nổi bật của giải đấu"
+                  placeholder={t("tournament.create.descriptionPlaceholder")}
                 />
               </div>
 
               <div className="sm:col-span-2">
                 <label htmlFor="rules" className={labelClass}>
-                  Thể lệ
+                  {t("tournament.create.rules")}
                 </label>
                 <textarea
                   id="rules"
@@ -893,7 +891,7 @@ export default function TournamentCreateForm() {
                   value={form.rules}
                   onChange={handleChange}
                   className={inputClass}
-                  placeholder="Luật thi đấu, quy định đội hình, cách xử lý vi phạm..."
+                  placeholder={t("tournament.create.rulesPlaceholder")}
                 />
               </div>
             </div>
@@ -901,13 +899,13 @@ export default function TournamentCreateForm() {
 
           <FormSection
             Icon={SlidersHorizontalIcon}
-            title="Cách tổ chức"
-            description="Quyết định giải được công bố như thế nào và thi đấu ở đâu."
+            title={t("tournament.create.section.organization")}
+            description={t("tournament.create.section.organizationDescription")}
           >
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <label htmlFor="status" className={labelClass}>
-                  Trạng thái khi tạo
+                  {t("tournament.create.initialStatus")}
                 </label>
                 <select
                   id="status"
@@ -916,13 +914,13 @@ export default function TournamentCreateForm() {
                   onChange={handleStatusChange}
                   className={inputClass}
                 >
-                  <option value="REGISTRATION">Mở đăng ký</option>
-                  <option value="DRAFT">Bản nháp</option>
+                  <option value="REGISTRATION">{t("tournament.create.openRegistration")}</option>
+                  <option value="DRAFT">{t("tournament.create.draft")}</option>
                 </select>
               </div>
               <div>
                 <label htmlFor="visibility" className={labelClass}>
-                  Chế độ hiển thị
+                  {t("tournament.create.visibility")}
                 </label>
                 <select
                   id="visibility"
@@ -931,13 +929,13 @@ export default function TournamentCreateForm() {
                   onChange={handleChange}
                   className={inputClass}
                 >
-                  <option value="PUBLIC">Công khai</option>
-                  <option value="PRIVATE">Riêng tư</option>
+                  <option value="PUBLIC">{t("tournament.create.public")}</option>
+                  <option value="PRIVATE">{t("tournament.create.private")}</option>
                 </select>
               </div>
               <div>
                 <label htmlFor="mode" className={labelClass}>
-                  Hình thức tổ chức
+                  {t("tournament.create.mode")}
                 </label>
                 <select
                   id="mode"
@@ -946,15 +944,15 @@ export default function TournamentCreateForm() {
                   onChange={handleChange}
                   className={inputClass}
                 >
-                  <option value="ONLINE">Online</option>
-                  <option value="OFFLINE">Offline</option>
-                  <option value="HYBRID">Hybrid</option>
+                  <option value="ONLINE">{t("tournament.mode.ONLINE")}</option>
+                  <option value="OFFLINE">{t("tournament.mode.OFFLINE")}</option>
+                  <option value="HYBRID">{t("tournament.mode.HYBRID")}</option>
                 </select>
               </div>
               {form.mode !== "ONLINE" && (
                 <div className="sm:col-span-2 lg:col-span-3">
                   <label htmlFor="location" className={labelClass}>
-                    Địa điểm <span className="text-rejected">*</span>
+                    {t("tournament.create.location")} <span className="text-rejected">*</span>
                   </label>
                   <input
                     id="location"
@@ -965,7 +963,7 @@ export default function TournamentCreateForm() {
                     value={form.location}
                     onChange={handleChange}
                     className={inputClass}
-                    placeholder="Nhập địa chỉ tổ chức thi đấu"
+                    placeholder={t("tournament.create.locationPlaceholder")}
                   />
                 </div>
               )}
@@ -974,13 +972,13 @@ export default function TournamentCreateForm() {
 
           <FormSection
             Icon={UsersThreeIcon}
-            title="Quy mô và điều kiện đội"
-            description="Thiết lập sức chứa giải, kích thước đội hình và giới hạn người tham gia."
+            title={t("tournament.create.section.capacity")}
+            description={t("tournament.create.section.capacityDescription")}
           >
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label htmlFor="maxTeams" className={labelClass}>
-                  Số đội tối đa
+                  {t("tournament.create.maxTeams")}
                 </label>
                 <input
                   id="maxTeams"
@@ -991,12 +989,12 @@ export default function TournamentCreateForm() {
                   value={form.maxTeams}
                   onChange={handleChange}
                   className={inputClass}
-                  placeholder="Không giới hạn"
+                  placeholder={t("common.unlimited")}
                 />
               </div>
               <div>
                 <label htmlFor="minTeamSize" className={labelClass}>
-                  Thành viên tối thiểu
+                  {t("tournament.create.minMembers")}
                 </label>
                 <input
                   id="minTeamSize"
@@ -1004,17 +1002,17 @@ export default function TournamentCreateForm() {
                   readOnly
                   value={minimumMembers ?? ""}
                   className={inputClass}
-                  placeholder="Chọn game"
+                  placeholder={t("tournament.create.selectGamePlaceholder")}
                 />
                 <p className={hintClass}>
                   {selectedGame
-                    ? `Đội hình thi đấu mặc định của ${selectedGame.name}`
-                    : "Tự động lấy theo trò chơi"}
+                    ? `${t("tournament.create.defaultRosterPrefix")} ${selectedGame.name}`
+                    : t("tournament.create.defaultRosterAutomatic")}
                 </p>
               </div>
               <div>
                 <label htmlFor="maxTeamSize" className={labelClass}>
-                  Thành viên tối đa
+                  {t("tournament.create.maxMembers")}
                 </label>
                 <input
                   id="maxTeamSize"
@@ -1027,18 +1025,18 @@ export default function TournamentCreateForm() {
                   value={form.maxTeamSize}
                   onChange={handleChange}
                   className={inputClass}
-                  placeholder="Chọn game"
+                  placeholder={t("tournament.create.selectGamePlaceholder")}
                 />
                 {selectedGame && (
                   <p className={hintClass}>
-                    Cho phép từ {selectedGame.defaultTeamSize} đến{" "}
-                    {selectedGame.maxTeamSize} cầu thủ
+                    {t("tournament.create.allowFrom")} {selectedGame.defaultTeamSize}–{selectedGame.maxTeamSize}{" "}
+                    {t("tournament.create.players")}
                   </p>
                 )}
               </div>
               <div>
                 <label htmlFor="maxSubstitutes" className={labelClass}>
-                  Dự bị tối đa
+                  {t("tournament.create.maxSubstitutes")}
                 </label>
                 <input
                   id="maxSubstitutes"
@@ -1049,7 +1047,7 @@ export default function TournamentCreateForm() {
                   placeholder="0"
                 />
                 <p className={hintClass}>
-                  Tự động tính từ số thành viên tối đa
+                  {t("tournament.create.maxSubstitutesHint")}
                 </p>
               </div>
             </div>
@@ -1057,7 +1055,7 @@ export default function TournamentCreateForm() {
             <div className="mt-6 grid gap-5 border-t border-line/70 pt-6 sm:grid-cols-2">
               <div>
                 <label htmlFor="minAge" className={labelClass}>
-                  Tuổi tối thiểu
+                  {t("tournament.create.minAge")}
                 </label>
                 <input
                   id="minAge"
@@ -1068,12 +1066,12 @@ export default function TournamentCreateForm() {
                   value={form.minAge}
                   onChange={handleChange}
                   className={inputClass}
-                  placeholder="Không giới hạn"
+                  placeholder={t("common.unlimited")}
                 />
               </div>
               <div>
                 <label htmlFor="maxAge" className={labelClass}>
-                  Tuổi tối đa
+                  {t("tournament.create.maxAge")}
                 </label>
                 <input
                   id="maxAge"
@@ -1084,33 +1082,33 @@ export default function TournamentCreateForm() {
                   value={form.maxAge}
                   onChange={handleChange}
                   className={inputClass}
-                  placeholder="Không giới hạn"
+                  placeholder={t("common.unlimited")}
                 />
               </div>
               <fieldset className="sm:col-span-2">
-                <legend className={labelClass}>Giới tính được phép</legend>
+                <legend className={labelClass}>{t("tournament.create.allowedGenders")}</legend>
                 <div className="flex flex-wrap gap-3">
                   {genderOptions.map((option) => (
                     <label
-                      key={option.value}
+                      key={option}
                       className={`cursor-pointer rounded-lg border px-4 py-2.5 text-sm font-medium transition ${
-                        form.allowedGenders.includes(option.value)
+                        form.allowedGenders.includes(option)
                           ? "border-brand/55 bg-brand/15 text-brand-hover"
                           : "border-line bg-surface text-ink-muted hover:border-line-strong"
                       }`}
                     >
                       <input
                         type="checkbox"
-                        checked={form.allowedGenders.includes(option.value)}
-                        onChange={() => toggleGender(option.value)}
+                        checked={form.allowedGenders.includes(option)}
+                        onChange={() => toggleGender(option)}
                         className="sr-only"
                       />
-                      {option.label}
+                      {t(`auth.register.gender.${option.toLowerCase()}` as TranslationKey)}
                     </label>
                   ))}
                 </div>
                 <p className={hintClass}>
-                  Không chọn mục nào nếu giải không giới hạn giới tính.
+                  {t("tournament.create.genderHint")}
                 </p>
               </fieldset>
             </div>
@@ -1118,13 +1116,13 @@ export default function TournamentCreateForm() {
 
           <FormSection
             Icon={CalendarBlankIcon}
-            title="Thời gian"
-            description="Các mốc được sắp theo thứ tự mở đăng ký, đóng đăng ký, bắt đầu và kết thúc."
+            title={t("tournament.create.section.time")}
+            description={t("tournament.create.section.timeDescription")}
           >
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
                 <label htmlFor="registrationStartDate" className={labelClass}>
-                  Mở đăng ký
+                  {t("tournament.create.registrationOpens")}
                 </label>
                 <input
                   id="registrationStartDate"
@@ -1137,7 +1135,7 @@ export default function TournamentCreateForm() {
               </div>
               <div>
                 <label htmlFor="registrationDeadline" className={labelClass}>
-                  Hạn đăng ký
+                  {t("tournament.create.registrationDeadline")}
                 </label>
                 <input
                   id="registrationDeadline"
@@ -1151,7 +1149,7 @@ export default function TournamentCreateForm() {
               </div>
               <div>
                 <label htmlFor="startDate" className={labelClass}>
-                  Bắt đầu giải
+                  {t("tournament.create.tournamentStarts")}
                 </label>
                 <input
                   id="startDate"
@@ -1169,7 +1167,7 @@ export default function TournamentCreateForm() {
               </div>
               <div>
                 <label htmlFor="endDate" className={labelClass}>
-                  Kết thúc giải
+                  {t("tournament.create.tournamentEnds")}
                 </label>
                 <input
                   id="endDate"
@@ -1186,43 +1184,43 @@ export default function TournamentCreateForm() {
 
           <FormSection
             Icon={ShieldCheckIcon}
-            title="Đăng ký và duyệt đội"
-            description="Kiểm soát cách đội gửi hồ sơ và đi vào danh sách tham dự."
+            title={t("tournament.create.section.registration")}
+            description={t("tournament.create.section.registrationDescription")}
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <ToggleField
                 name="registrationOpen"
                 checked={form.registrationOpen}
                 onChange={handleChange}
-                title="Cho phép đăng ký đội"
-                description="Các đội có thể gửi hồ sơ ngay khi giải được công bố."
+                title={t("tournament.create.allowTeamRegistration")}
+                description={t("tournament.create.allowTeamRegistrationDescription")}
               />
               <ToggleField
                 name="autoApproveTeams"
                 checked={form.autoApproveTeams}
                 onChange={handleChange}
-                title="Tự động duyệt đội"
-                description="Đội hợp lệ được duyệt ngay mà không cần chờ ban tổ chức."
+                title={t("tournament.create.autoApprove")}
+                description={t("tournament.create.autoApproveDescription")}
               />
               <ToggleField
                 name="requireMemberFullInfo"
                 checked={form.requireMemberFullInfo}
                 onChange={handleChange}
-                title="Yêu cầu đầy đủ hồ sơ thành viên"
-                description="Mỗi thành viên phải cung cấp đủ thông tin theo yêu cầu của hệ thống."
+                title={t("tournament.create.requireMemberInfo")}
+                description={t("tournament.create.requireMemberInfoDescription")}
               />
             </div>
           </FormSection>
 
           <FormSection
             Icon={TrophyIcon}
-            title="Giải thưởng và liên hệ"
-            description="Giúp đội tham gia biết quyền lợi và cách liên hệ với ban tổ chức."
+            title={t("tournament.create.section.prize")}
+            description={t("tournament.create.section.prizeDescription")}
           >
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label htmlFor="prizePool" className={labelClass}>
-                  Cơ cấu giải thưởng
+                  {t("tournament.create.prizePool")}
                 </label>
                 <textarea
                   id="prizePool"
@@ -1232,12 +1230,12 @@ export default function TournamentCreateForm() {
                   value={form.prizePool}
                   onChange={handleChange}
                   className={inputClass}
-                  placeholder="Ví dụ: Vô địch 10.000.000đ, Á quân 5.000.000đ..."
+                  placeholder={t("tournament.create.prizePlaceholder")}
                 />
               </div>
               <div>
                 <label htmlFor="contactEmail" className={labelClass}>
-                  Email liên hệ
+                  {t("tournament.create.contactEmail")}
                 </label>
                 <input
                   id="contactEmail"
@@ -1251,7 +1249,7 @@ export default function TournamentCreateForm() {
               </div>
               <div>
                 <label htmlFor="contactPhone" className={labelClass}>
-                  Số điện thoại
+                  {t("tournament.create.contactPhone")}
                 </label>
                 <input
                   id="contactPhone"
@@ -1266,7 +1264,7 @@ export default function TournamentCreateForm() {
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor="contactLink" className={labelClass}>
-                  Fanpage hoặc Discord
+                  {t("tournament.create.contactLink")}
                 </label>
                 <input
                   id="contactLink"
@@ -1284,8 +1282,8 @@ export default function TournamentCreateForm() {
 
           <FormSection
             Icon={BracketsCurlyIcon}
-            title="Các vòng đấu"
-            description="Mỗi vòng có thể dùng một thể thức và số ván thắng riêng."
+            title={t("tournament.create.section.rounds")}
+            description={t("tournament.create.section.roundsDescription")}
           >
             <div className="flex justify-end">
               <button
@@ -1294,7 +1292,7 @@ export default function TournamentCreateForm() {
                 className={`${secondaryButtonClass} px-3 py-2 text-xs`}
               >
                 <PlusIcon size={14} weight="bold" />
-                Thêm vòng
+                {t("tournament.create.addRound")}
               </button>
             </div>
 
@@ -1309,7 +1307,7 @@ export default function TournamentCreateForm() {
                       {index + 1}
                     </span>
                     <label className={labelClass}>
-                      Tên vòng
+                      {t("tournament.create.roundName")}
                       <input
                         type="text"
                         required
@@ -1319,11 +1317,11 @@ export default function TournamentCreateForm() {
                           updateRound(index, "name", event.target.value)
                         }
                         className={`${inputClass} mt-1 bg-surface`}
-                        placeholder="Tên vòng"
+                        placeholder={t("tournament.create.roundNamePlaceholder")}
                       />
                     </label>
                     <label className={labelClass}>
-                      Hình thức thi đấu
+                      {t("tournament.create.roundFormat")}
                       <select
                         value={round.format}
                         onChange={(event) =>
@@ -1333,13 +1331,13 @@ export default function TournamentCreateForm() {
                       >
                         {ROUND_FORMATS.map((format) => (
                           <option key={format.value} value={format.value}>
-                            {format.label}
+                          {t(format.labelKey)}
                           </option>
                         ))}
                       </select>
                     </label>
                     <label className={labelClass}>
-                      Best of
+                      {t("round.settings.bestOf")}
                       <select
                         value={round.bestOf}
                         onChange={(event) =>
@@ -1358,7 +1356,7 @@ export default function TournamentCreateForm() {
                       <button
                         type="button"
                         onClick={() => removeRound(index)}
-                        aria-label={`Xóa vòng ${index + 1}`}
+                        aria-label={`${t("tournament.create.removeRound")} ${index + 1}`}
                         className="mb-1 rounded-lg p-2 text-ink-faint transition hover:bg-rejected/10 hover:text-rejected"
                       >
                         <TrashIcon size={17} />
@@ -1369,11 +1367,11 @@ export default function TournamentCreateForm() {
                   {round.format === "ROUND_ROBIN" && (
                     <div className="mt-4 border-t border-line/70 pt-4">
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
-                        Cài đặt Round Robin
+                        {t("tournament.create.roundRobinSettings")}
                       </p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <label className={labelClass}>
-                          Số lượt gặp nhau
+                          {t("tournament.create.meetingsPerPair")}
                           <input
                             type="number"
                             min={1}
@@ -1390,11 +1388,11 @@ export default function TournamentCreateForm() {
                             className={`${inputClass} mt-1 bg-surface`}
                           />
                           <span className={`${hintClass} mt-1 block`}>
-                            Số lượt mỗi cặp đội gặp nhau trong vòng này (1–4).
+                            {t("tournament.create.meetingsHint")}
                           </span>
                         </label>
                         <label className={labelClass}>
-                          Điểm thắng
+                          {t("tournament.create.winPoints")}
                           <input
                             type="number"
                             min={0}
@@ -1412,7 +1410,7 @@ export default function TournamentCreateForm() {
                           />
                         </label>
                         <label className={labelClass}>
-                          Điểm thua
+                          {t("tournament.create.lossPoints")}
                           <input
                             type="number"
                             min={0}
@@ -1443,7 +1441,7 @@ export default function TournamentCreateForm() {
                             className="size-4 accent-[var(--color-brand)]"
                           />
                           <span className="text-sm font-semibold text-ink">
-                            Cho phép hòa
+                            {t("tournament.create.allowDraws")}
                           </span>
                         </label>
                         <label
@@ -1451,7 +1449,7 @@ export default function TournamentCreateForm() {
                             round.roundRobin.allowDraws ? "" : "opacity-50"
                           }`}
                         >
-                          Điểm hòa
+                          {t("tournament.create.drawPoints")}
                           <input
                             type="number"
                             min={0}
@@ -1475,11 +1473,11 @@ export default function TournamentCreateForm() {
                   {round.format === "SWISS" && (
                     <div className="mt-4 border-t border-line/70 pt-4">
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
-                        Cài đặt Swiss
+                        {t("tournament.create.swissSettings")}
                       </p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         <label className={labelClass}>
-                          Số vòng Swiss
+                          {t("tournament.create.swissRounds")}
                           <input
                             type="number"
                             min={1}
@@ -1494,15 +1492,14 @@ export default function TournamentCreateForm() {
                               )
                             }
                             className={`${inputClass} mt-1 bg-surface`}
-                            placeholder="Tự động"
+                            placeholder={t("tournament.create.automaticPlaceholder")}
                           />
                           <span className={`${hintClass} mt-1 block`}>
-                            Số lượt ghép cặp Swiss. Để trống để hệ thống tính từ
-                            số đội thực tế khi sinh vòng.
+                            {t("tournament.create.swissRoundsHint")}
                           </span>
                         </label>
                         <label className={labelClass}>
-                          Số đội đi tiếp
+                          {t("tournament.create.advancingTeams")}
                           <input
                             type="number"
                             min={1}
@@ -1519,25 +1516,22 @@ export default function TournamentCreateForm() {
                             className={`${inputClass} mt-1 bg-surface`}
                           />
                           <span className={`${hintClass} mt-1 block`}>
-                            Các đội đứng đầu bảng xếp hạng cuối cùng sẽ vào vòng
-                            tiếp theo.
+                            {t("tournament.create.advancingTeamsHint")}
                           </span>
                         </label>
                       </div>
                       <div className="mt-3 rounded-lg border border-line bg-surface/70 px-3 py-2.5 text-xs leading-5 text-ink-muted">
                         <p>
-                          Đội có thành tích gần nhau được ưu tiên ghép cặp. Hệ
-                          thống tránh tái đấu khi còn phương án hợp lệ; các trận
-                          Swiss phải có đội thắng.
+                          {t("tournament.create.swissBehavior")}
                         </p>
                         {!round.swiss.numberOfRounds &&
                           optionalNumber(form.maxTeams) !== undefined && (
                             <p className="mt-1">
-                              Dự kiến theo sức chứa tối đa:{" "}
+                              {t("tournament.create.estimatedCapacity")}:{" "}
                               {Math.ceil(
                                 Math.log2(optionalNumber(form.maxTeams)!),
                               )}{" "}
-                              vòng. Số vòng thực tế được tính lại khi sinh vòng.
+                              {t("tournament.create.actualRoundsHint")}
                             </p>
                           )}
                       </div>
@@ -1546,7 +1540,7 @@ export default function TournamentCreateForm() {
                   {round.format === "PLAYOFF" && (
                     <div className="mt-4 border-t border-line/70 pt-4">
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
-                        Cài đặt loại trực tiếp
+                        {t("tournament.create.playoffSettings")}
                       </p>
                       <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-surface/70 px-3 py-3">
                         <input
@@ -1563,11 +1557,10 @@ export default function TournamentCreateForm() {
                         />
                         <span>
                           <span className="block text-sm font-semibold text-ink">
-                            Thi đấu tranh hạng ba
+                            {t("tournament.create.thirdPlace")}
                           </span>
                           <span className={`${hintClass} mt-1 block`}>
-                            Hai đội thua ở bán kết thi đấu thêm một trận để xác
-                            định hạng ba.
+                            {t("tournament.create.thirdPlaceHint")}
                           </span>
                         </span>
                       </label>
@@ -1576,7 +1569,7 @@ export default function TournamentCreateForm() {
                   {round.format === "DOUBLE_ELIM" && (
                     <div className="mt-4 border-t border-line/70 pt-4">
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
-                        Cài đặt nhánh thắng - nhánh thua
+                        {t("tournament.create.doubleElimSettings")}
                       </p>
                       <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-surface/70 px-3 py-3">
                         <input
@@ -1593,11 +1586,10 @@ export default function TournamentCreateForm() {
                         />
                         <span>
                           <span className="block text-sm font-semibold text-ink">
-                            Grand Final Reset
+                            {t("round.settings.grandFinalReset")}
                           </span>
                           <span className={`${hintClass} mt-1 block`}>
-                            Nếu đội từ nhánh thua thắng Grand Final đầu tiên,
-                            hai đội sẽ đấu thêm một trận quyết định.
+                            {t("tournament.create.grandFinalResetHint")}
                           </span>
                         </span>
                       </label>
@@ -1606,11 +1598,11 @@ export default function TournamentCreateForm() {
                   {round.format === "GROUP_STAGE" && (
                     <div className="mt-4 border-t border-line/70 pt-4">
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
-                        Cài đặt vòng bảng
+                        {t("tournament.create.groupSettings")}
                       </p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <label className={labelClass}>
-                          Số bảng
+                          {t("tournament.create.numberOfGroups")}
                           <input
                             type="number"
                             min={2}
@@ -1628,7 +1620,7 @@ export default function TournamentCreateForm() {
                           />
                         </label>
                         <label className={labelClass}>
-                          Số đội đi tiếp mỗi bảng
+                          {t("tournament.create.advancePerGroup")}
                           <input
                             type="number"
                             min={1}
@@ -1645,7 +1637,7 @@ export default function TournamentCreateForm() {
                           />
                         </label>
                         <label className={labelClass}>
-                          Số lượt gặp nhau
+                          {t("tournament.create.meetingsPerPair")}
                           <select
                             value={round.groupStage.meetingsPerPair}
                             onChange={(event) =>
@@ -1665,7 +1657,7 @@ export default function TournamentCreateForm() {
                           </select>
                         </label>
                         <label className={labelClass}>
-                          Điểm thắng
+                          {t("tournament.create.winPoints")}
                           <input
                             type="number"
                             min={0}
@@ -1683,7 +1675,7 @@ export default function TournamentCreateForm() {
                           />
                         </label>
                         <label className={labelClass}>
-                          Điểm thua
+                          {t("tournament.create.lossPoints")}
                           <input
                             type="number"
                             min={0}
@@ -1705,7 +1697,7 @@ export default function TournamentCreateForm() {
                             round.groupStage.allowDraws ? "" : "opacity-50"
                           }`}
                         >
-                          Điểm hòa
+                          {t("tournament.create.drawPoints")}
                           <input
                             type="number"
                             min={0}
@@ -1737,7 +1729,7 @@ export default function TournamentCreateForm() {
                             className="size-4 accent-[var(--color-brand)]"
                           />
                           <span className="text-sm font-semibold text-ink">
-                            Cho phép hòa
+                            {t("tournament.create.allowDraws")}
                           </span>
                         </label>
                       </div>
@@ -1760,26 +1752,25 @@ export default function TournamentCreateForm() {
                             <>
                               {capacityDivides ? (
                                 <p>
-                                  Dự kiến theo sức chứa tối đa:{" "}
-                                  {maxTeams / numberOfGroups} đội / bảng.
+                                  {t("tournament.create.estimatedCapacity")}:{" "}
+                                  {maxTeams / numberOfGroups} {t("tournament.create.teamsPerGroupEstimated")}
                                 </p>
                               ) : hasValidPreview ? (
                                 <p className="text-rejected" role="alert">
-                                  Sức chứa tối đa {maxTeams} đội không thể chia
-                                  đều vào {numberOfGroups} bảng.
+                                  {t("tournament.create.maxTeams")} {maxTeams} {t("tournament.create.capacityCannotDivide")}{" "}
+                                  {numberOfGroups} {t("tournament.create.groupsUnit")}
                                 </p>
                               ) : (
                                 <p>
-                                  Số đội mỗi bảng sẽ được tính từ các đội thực
-                                  tế khi sinh vòng.
+                                  {t("tournament.create.teamsPerGroupActualHint")}
                                 </p>
                               )}
                               {Number.isInteger(numberOfGroups) &&
                                 Number.isInteger(advancingTeamsPerGroup) && (
                                   <p>
-                                    Tổng{" "}
+                                    {t("tournament.create.total")}{" "}
                                     {numberOfGroups * advancingTeamsPerGroup}{" "}
-                                    đội vào vòng tiếp theo.
+                                    {t("tournament.create.advanceNextRound")}
                                   </p>
                                 )}
                             </>
@@ -1801,8 +1792,7 @@ export default function TournamentCreateForm() {
 
           <div className="sticky bottom-4 z-30 flex flex-col-reverse gap-3 rounded-2xl border border-line bg-surface-card/95 p-4 shadow-[var(--shadow-elevated)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-5 text-ink-faint">
-              Slug, người tổ chức và trạng thái xác minh được hệ thống tự quản
-              lý.
+              {t("tournament.create.systemManaged")}
             </p>
             <div className="flex justify-end gap-3">
               <button
@@ -1810,14 +1800,14 @@ export default function TournamentCreateForm() {
                 onClick={() => router.back()}
                 className={secondaryButtonClass}
               >
-                Hủy
+                {t("common.cancel")}
               </button>
               <button
                 type="submit"
                 disabled={loading || !ready || !user}
                 className="inline-flex items-center justify-center rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-on-brand shadow-lg shadow-brand/15 transition hover:brightness-110 hover:shadow-glow-brand active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? "Đang tạo..." : "Tạo giải đấu"}
+                {loading ? t("tournament.create.submitting") : t("tournament.create.submit")}
               </button>
             </div>
           </div>

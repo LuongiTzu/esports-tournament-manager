@@ -1,11 +1,9 @@
+"use client";
+
 import ResolvedImage from "@/components/ResolvedImage";
 import type { BracketMatch, BracketTeam } from "@/features/tournaments/types";
-
-const STATUS_LABELS: Record<BracketMatch["status"], string> = {
-  PENDING: "Chưa đấu",
-  ONGOING: "Đang đấu",
-  COMPLETED: "Đã xong",
-};
+import { formatLocalizedDate } from "@/features/locale/format";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 function TeamSlot({
   team,
@@ -16,6 +14,7 @@ function TeamSlot({
   score: number;
   winner: boolean;
 }) {
+  const { t } = useLocale();
   return (
     <div
       className={`flex min-h-11 items-center gap-2 rounded-lg px-2.5 py-2 ${
@@ -26,7 +25,7 @@ function TeamSlot({
         {team ? (
           <ResolvedImage
             src={team.logoUrl}
-            alt={`Logo ${team.name}`}
+            alt={`${t("tournament.detail.teamLogoAlt")} ${team.name}`}
             className="size-full object-cover object-center"
             fallback={team.name.charAt(0).toUpperCase()}
           />
@@ -35,7 +34,7 @@ function TeamSlot({
         )}
       </span>
       <span className="min-w-0 flex-1 truncate text-sm font-medium">
-        {team?.name ?? "Chờ xác định"}
+        {team?.name ?? t("match.awaitingTeam")}
       </span>
       {team?.seed != null && (
         <span className="text-[10px] text-ink-faint">#{team.seed}</span>
@@ -60,6 +59,7 @@ export default function BracketMatchCard({
   linkLabels?: { winner?: string; loser?: string };
   onSelect?: (match: BracketMatch) => void;
 }) {
+  const { locale, t } = useLocale();
   const winnerId = match.winner?.id;
 
   return (
@@ -72,7 +72,7 @@ export default function BracketMatchCard({
     >
       <div className="mb-2 flex items-center justify-between gap-2 text-[11px]">
         <span className="truncate font-semibold uppercase tracking-[0.12em] text-ink-faint">
-          {label ?? `Trận ${match.matchNumber ?? "–"}`}
+          {label ?? `${t("match.label")} ${match.matchNumber ?? "–"}`}
         </span>
         <span
           className={
@@ -83,7 +83,7 @@ export default function BracketMatchCard({
                 : "text-ink-faint"
           }
         >
-          {STATUS_LABELS[match.status]}
+          {t(`match.status.${match.status}` as TranslationKey)}
         </span>
       </div>
 
@@ -91,7 +91,7 @@ export default function BracketMatchCard({
         <div className="rounded-lg border border-dashed border-brand/30 bg-brand/5 px-3 py-3 text-sm">
           <span className="font-semibold text-brand">BYE</span>
           <span className="ml-2 text-ink-muted">
-            {match.slots.A?.name ?? match.slots.B?.name ?? "Không có đội"}
+            {match.slots.A?.name ?? match.slots.B?.name ?? t("match.noTeam")}
           </span>
         </div>
       ) : (
@@ -111,28 +111,28 @@ export default function BracketMatchCard({
 
       {match.outcome === "DRAW" && (
         <p className="mt-2 rounded-md bg-pending/10 px-2 py-1 text-center text-[11px] font-semibold text-pending">
-          Kết quả hòa
+          {t("match.drawResult")}
         </p>
       )}
 
       {match.scheduledAt && (
         <p className="mt-2 text-[10px] text-ink-faint">
-          {new Intl.DateTimeFormat("vi-VN", {
+          {formatLocalizedDate(match.scheduledAt, locale, {
             dateStyle: "short",
             timeStyle: "short",
-          }).format(new Date(match.scheduledAt))}
+          })}
         </p>
       )}
 
       <div className="mt-2 flex items-center justify-between text-[10px] text-ink-faint">
         <span>BO{match.bestOf}</span>
-        {!match.isActive && <span>Chưa kích hoạt</span>}
+        {!match.isActive && <span>{t("match.inactive")}</span>}
       </div>
       {(linkLabels?.winner || linkLabels?.loser) && (
         <div className="mt-2 border-t border-line/70 pt-2 text-[10px] text-ink-faint">
-          {linkLabels.winner && <p>Thắng → {linkLabels.winner}</p>}
+          {linkLabels.winner && <p>{t("match.winnerRoute")} → {linkLabels.winner}</p>}
           {linkLabels.loser && (
-            <p className="mt-0.5">Thua → {linkLabels.loser}</p>
+            <p className="mt-0.5">{t("match.loserRoute")} → {linkLabels.loser}</p>
           )}
         </div>
       )}
@@ -142,7 +142,7 @@ export default function BracketMatchCard({
           onClick={() => onSelect(match)}
           className="mt-3 w-full rounded-lg border border-line py-2 text-xs font-semibold text-ink-muted transition hover:border-brand/50 hover:bg-brand/5 hover:text-brand"
         >
-          {match.isBye || !match.isActive ? "Xem chi tiết" : "Xem / quản lý"}
+          {match.isBye || !match.isActive ? t("match.viewDetails") : t("match.viewManage")}
         </button>
       )}
     </article>

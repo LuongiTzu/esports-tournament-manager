@@ -1,49 +1,38 @@
+"use client";
+
 import {
   ArrowDownIcon,
   CheckCircleIcon,
   UsersIcon,
 } from "@phosphor-icons/react/dist/ssr";
-import { ROUND_FORMAT_LABELS } from "@/features/tournaments/round-formats";
-import type {
-  RoundProgressionState,
-  RoundStandings,
-} from "@/features/tournaments/types";
-
-const STATE_LABELS: Record<RoundProgressionState, string> = {
-  NOT_GENERATED: "Giai đoạn chưa được tạo",
-  IN_PROGRESS: "Đang chờ hoàn tất các trận bắt buộc",
-  TERMINAL_COMPLETE: "Giai đoạn cuối đã hoàn tất",
-  ADVANCEMENT_UNSUPPORTED: "Không có quy tắc chuyển vòng được cấu hình",
-  AWAITING_ADVANCEMENT: "Đang chờ hệ thống ghi nhận đội đi tiếp",
-  READY_FOR_GENERATION: "Đội đi tiếp đã sẵn sàng; vòng sau chờ tạo cấu trúc",
-  NEXT_STAGE_GENERATED: "Vòng tiếp theo đã được tạo",
-  NEXT_STAGE_COMPLETED: "Vòng tiếp theo đã hoàn tất",
-};
+import { roundFormatLabel } from "@/features/tournaments/round-formats";
+import type { RoundStandings } from "@/features/tournaments/types";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 export default function RoundProgressionSummary({
   data,
 }: {
   data: RoundStandings;
 }) {
+  const { t } = useLocale();
   const { progress, advancement } = data;
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-stretch">
       <div className="rounded-xl border border-line bg-surface-sub p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
-          Tiến độ giai đoạn
+          {t("progress.stageProgress")}
         </p>
         <p className="mt-2 text-lg font-bold text-ink">
-          {progress.completedRequiredMatches} / {progress.requiredMatches} trận
-          bắt buộc hoàn tất
+          {progress.completedRequiredMatches} / {progress.requiredMatches}{" "}
+          {t("progress.requiredMatchesCompleted")}
         </p>
         {progress.totalMatches !== progress.requiredMatches && (
           <p className="mt-1 text-xs text-ink-faint">
-            {progress.totalMatches} trận trong cấu trúc, gồm trận điều kiện chưa
-            kích hoạt.
+            {progress.totalMatches} {t("progress.structureMatches")}
           </p>
         )}
         <p className="mt-1 text-sm text-ink-muted">
-          {STATE_LABELS[advancement.state]}
+          {t(`progress.${advancement.state}` as TranslationKey)}
         </p>
         {advancement.readinessReason && (
           <p className="mt-2 text-xs leading-relaxed text-ink-faint">
@@ -62,24 +51,24 @@ export default function RoundProgressionSummary({
       {advancement.nextRound ? (
         <div className="rounded-xl border border-brand/30 bg-brand/5 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand">
-            Vòng tiếp theo
+            {t("progress.nextRound")}
           </p>
           <p className="mt-2 font-bold text-ink">
             {advancement.nextRound.name}
           </p>
           <p className="mt-1 text-sm text-ink-muted">
-            {ROUND_FORMAT_LABELS[advancement.nextRound.format]} ·{" "}
-            {advancement.nextRound.participantCount} đội được gán ·{" "}
-            {advancement.nextRound.matchCount} trận
+            {roundFormatLabel(advancement.nextRound.format, t)} ·{" "}
+            {advancement.nextRound.participantCount} {t("progress.teamsAssigned")} ·{" "}
+            {advancement.nextRound.matchCount} {t("progress.matches")}
           </p>
         </div>
       ) : (
         <div className="rounded-xl border border-line bg-surface-sub p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
-            Đầu ra
+            {t("progress.output")}
           </p>
           <p className="mt-2 text-sm text-ink-muted">
-            Không có Tournament Round kế tiếp.
+            {t("progress.noNextRound")}
           </p>
         </div>
       )}
@@ -88,8 +77,7 @@ export default function RoundProgressionSummary({
         <div className="lg:col-span-3 rounded-xl border border-approved/30 bg-approved/5 p-4">
           <p className="flex items-center gap-2 text-sm font-semibold text-approved">
             <CheckCircleIcon weight="fill" />{" "}
-            {advancement.qualifiedTeams.length} đội đã được hệ thống xác nhận đi
-            tiếp
+            {advancement.qualifiedTeams.length} {t("progress.teamsConfirmed")}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {advancement.qualifiedTeams.map(({ team }) => (
@@ -108,11 +96,11 @@ export default function RoundProgressionSummary({
         <div className="lg:col-span-3 flex items-start gap-3 rounded-xl border border-line px-4 py-3 text-sm text-ink-muted">
           <UsersIcon className="mt-0.5 shrink-0 text-brand" />
           <span>
-            Giai đoạn này có{" "}
-            <strong className="text-ink">{data.participants.length} đội</strong>{" "}
-            được gán
+            {t("progress.thisStageHas")}{" "}
+            <strong className="text-ink">{data.participants.length} {t("standings.team").toLocaleLowerCase()}</strong>{" "}
+            {t("progress.assigned")}
             {data.participants.some((item) => item.advancedFromRound)
-              ? " từ kết quả giai đoạn trước."
+              ? ` ${t("progress.fromPrevious")}`
               : "."}
           </span>
         </div>

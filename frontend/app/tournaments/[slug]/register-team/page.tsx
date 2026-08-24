@@ -17,6 +17,7 @@ import {
   labelClass,
   secondaryButtonClass,
 } from "@/components/ui";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 interface MemberForm {
   realName: string;
@@ -28,11 +29,7 @@ interface MemberForm {
   position: string;
 }
 
-const GENDER_OPTIONS: Array<{ value: Gender; label: string }> = [
-  { value: "MALE", label: "Nam" },
-  { value: "FEMALE", label: "Nữ" },
-  { value: "OTHER", label: "Khác" },
-];
+const GENDER_OPTIONS: Gender[] = ["MALE", "FEMALE", "OTHER"];
 
 function emptyMember(): MemberForm {
   return {
@@ -74,6 +71,7 @@ export default function RegisterTeamPage({
   const { slug } = use(params);
   const router = useRouter();
   const { user, ready } = useAuth();
+  const { locale, t } = useLocale();
 
   const [config, setConfig] = useState<TeamRegistrationForm | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -116,11 +114,11 @@ export default function RegisterTeamPage({
       })
       .catch((err) =>
         setLoadError(
-          err instanceof Error ? err.message : "Không tải được thông tin đăng ký",
+          err instanceof Error ? err.message : t("team.register.loadError"),
         ),
       )
       .finally(() => setLoading(false));
-  }, [slug, ready, user, router]);
+  }, [slug, ready, user, router, t]);
 
   const updateMember = (
     index: number,
@@ -140,19 +138,19 @@ export default function RegisterTeamPage({
     setError("");
 
     if (!contactName.trim()) {
-      setError("Tên người đại diện là bắt buộc");
+      setError(t("team.register.contactNameRequired"));
       return;
     }
     if (!contactEmail.trim()) {
-      setError("Email người đại diện là bắt buộc");
+      setError(t("team.register.contactEmailRequired"));
       return;
     }
     if (!/^\S+@\S+\.\S+$/.test(contactEmail.trim())) {
-      setError("Email người đại diện không hợp lệ");
+      setError(t("team.register.contactEmailInvalid"));
       return;
     }
     if (!contactPhone.trim()) {
-      setError("Số điện thoại đại diện là bắt buộc");
+      setError(t("team.register.contactPhoneRequired"));
       return;
     }
     if (
@@ -160,7 +158,7 @@ export default function RegisterTeamPage({
       members.length > config.tournament.maxTeamSize
     ) {
       setError(
-        `Giải đấu yêu cầu từ ${config.tournament.minTeamSize} đến ${config.tournament.maxTeamSize} thành viên`,
+        `${t("team.register.rosterRangePrefix")} ${config.tournament.minTeamSize} ${t("team.register.rangeConnector")} ${config.tournament.maxTeamSize} ${t("team.register.rosterRangeSuffix")}`,
       );
       return;
     }
@@ -169,7 +167,7 @@ export default function RegisterTeamPage({
       config.tournament.requireMemberFullInfo &&
       members.some((member) => !member.position)
     ) {
-      setError("Vui lòng chọn vị trí cho tất cả thành viên");
+      setError(t("team.register.positionRequired"));
       return;
     }
 
@@ -208,14 +206,14 @@ export default function RegisterTeamPage({
             uploadError:
               uploadError instanceof Error
                 ? uploadError.message
-                : "Không thể tải logo lên.",
+                : t("team.register.logoUploadError"),
           });
           return;
         }
       }
       router.push(`/tournaments/${slug}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đăng ký đội thất bại");
+      setError(err instanceof Error ? err.message : t("team.register.submitError"));
     } finally {
       setSubmitting(false);
     }
@@ -236,10 +234,10 @@ export default function RegisterTeamPage({
     return (
       <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-16 text-center">
         <p className={alertErrorClass}>
-          {loadError || "Không tìm thấy thông tin đăng ký"}
+          {loadError || t("team.register.notFound")}
         </p>
         <Link href="/" className="mt-4 inline-block text-sm text-brand hover:underline">
-          Về danh sách giải
+          {t("tournament.detail.backToList")}
         </Link>
       </div>
     );
@@ -257,7 +255,7 @@ export default function RegisterTeamPage({
   const showsPosition =
     config.game.positionMode !== "NONE" && config.game.positions.length > 0;
   const genderOptions = rules.allowedGenders?.length
-    ? GENDER_OPTIONS.filter((option) => rules.allowedGenders?.includes(option.value))
+    ? GENDER_OPTIONS.filter((option) => rules.allowedGenders?.includes(option))
     : GENDER_OPTIONS;
 
   const retryLogoUpload = async () => {
@@ -274,7 +272,7 @@ export default function RegisterTeamPage({
               uploadError:
                 uploadError instanceof Error
                   ? uploadError.message
-                  : "Không thể tải logo lên.",
+                : t("team.register.logoUploadError"),
             }
           : current,
       );
@@ -288,11 +286,11 @@ export default function RegisterTeamPage({
       <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-16">
         <section className="w-full rounded-2xl border border-approved/30 bg-surface-card p-6 shadow-[var(--shadow-elevated)] sm:p-8">
           <h1 className="text-xl font-bold text-ink">
-            Đội {registeredTeam.name} đã được đăng ký
+            {t("team.register.createdPrefix")} {registeredTeam.name} {t("team.register.createdSuffix")}
           </h1>
           <p className="mt-2 text-sm leading-6 text-ink-muted">
-            Logo chưa tải lên được: {registeredTeam.uploadError} Hồ sơ đội vẫn
-            được giữ nguyên và sẽ không bị đăng ký lại.
+            {t("team.register.partialUploadPrefix")} {registeredTeam.uploadError}{" "}
+            {t("team.register.partialUploadSuffix")}
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <button
@@ -301,10 +299,10 @@ export default function RegisterTeamPage({
               onClick={retryLogoUpload}
               className="inline-flex rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-on-brand disabled:opacity-50"
             >
-              {submitting ? "Đang tải lại…" : "Thử tải logo lại"}
+              {submitting ? t("team.register.retryingLogo") : t("team.register.retryLogo")}
             </button>
             <Link href={`/tournaments/${slug}`} className={secondaryButtonClass}>
-              Đi tới giải đấu
+              {t("team.register.goToTournament")}
             </Link>
           </div>
         </section>
@@ -326,32 +324,32 @@ export default function RegisterTeamPage({
       </Link>
 
       <h1 className="mt-4 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-        Đăng ký đội tham gia
+        {t("team.register.title")}
       </h1>
       <p className="mt-2 text-sm text-ink-muted">
-        Đội của bạn sẽ ở trạng thái chờ duyệt cho tới khi ban tổ chức xác nhận.
+        {t("team.register.subtitle")}
       </p>
 
       {!config.canRegister ? (
         <div className="mt-8 rounded-xl border border-line bg-surface-card px-6 py-12 text-center">
-          <p className="font-medium text-ink">Hiện không thể đăng ký đội</p>
+          <p className="font-medium text-ink">{t("team.register.unavailable")}</p>
           <p className="mt-2 text-sm text-ink-muted">{config.reason}</p>
           <Link
             href={`/tournaments/${slug}`}
             className={`${secondaryButtonClass} mt-5`}
           >
-            Về trang giải đấu
+            {t("team.register.back")}
           </Link>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <section className="rounded-xl border border-line bg-surface-card p-6">
-            <h2 className="font-semibold text-ink">Thông tin đội</h2>
+            <h2 className="font-semibold text-ink">{t("team.register.teamInfo")}</h2>
 
             <div className="mt-5 space-y-5">
               <div>
                 <label htmlFor="teamName" className={labelClass}>
-                  Tên đội
+                  {t("team.register.teamName")}
                 </label>
                 <input
                   id="teamName"
@@ -361,13 +359,13 @@ export default function RegisterTeamPage({
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   className={inputClass}
-                  placeholder="Tên đội của bạn"
+                  placeholder={t("team.register.teamNamePlaceholder")}
                 />
               </div>
 
               <div>
                 <label htmlFor="logoUrl" className={labelClass}>
-                  Link logo đội
+                  {t("team.register.logoUrl")}
                 </label>
                 <input
                   id="logoUrl"
@@ -379,12 +377,12 @@ export default function RegisterTeamPage({
                   placeholder="https://..."
                 />
                 <p className={hintClass}>
-                  Có thể giữ link ảnh ngoài hoặc chọn tệp từ thiết bị bên dưới.
+                  {t("team.register.logoUrlHint")}
                 </p>
               </div>
 
               <ImageUploadPicker
-                label="Logo từ thiết bị"
+                label={t("team.register.deviceLogo")}
                 file={logoFile}
                 onFileChange={setLogoFile}
                 existingUrl={logoUrl}
@@ -396,7 +394,7 @@ export default function RegisterTeamPage({
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label htmlFor="contactName" className={labelClass}>
-                    Người đại diện <span className="text-rejected">*</span>
+                    {t("team.register.representative")} <span className="text-rejected">*</span>
                   </label>
                   <input
                     id="contactName"
@@ -410,7 +408,7 @@ export default function RegisterTeamPage({
                 </div>
                 <div>
                   <label htmlFor="contactEmail" className={labelClass}>
-                    Email đại diện <span className="text-rejected">*</span>
+                    {t("team.register.representativeEmail")} <span className="text-rejected">*</span>
                   </label>
                   <input
                     id="contactEmail"
@@ -425,7 +423,7 @@ export default function RegisterTeamPage({
 
               <div>
                 <label htmlFor="contactPhone" className={labelClass}>
-                  Số điện thoại đại diện{" "}
+                  {t("team.register.representativePhone")}{" "}
                   <span className="text-rejected">*</span>
                 </label>
                 <input
@@ -444,15 +442,14 @@ export default function RegisterTeamPage({
           <section className="rounded-xl border border-line bg-surface-card p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="font-semibold text-ink">Danh sách thành viên</h2>
+                <h2 className="font-semibold text-ink">{t("team.register.memberList")}</h2>
                 <p className="mt-1 text-sm text-ink-muted">
-                  Đội hình yêu cầu: {rules.minTeamSize}–{rules.maxTeamSize}{" "}
-                  thành viên
+                  {t("team.register.rosterRequirement")}: {rules.minTeamSize}–{rules.maxTeamSize}{" "}
+                  {t("team.register.rosterRangeSuffix")}
                 </p>
                 <p className="mt-1 text-sm text-ink-muted">
-                  {rules.minTeamSize} thi đấu chính • tối đa{" "}
-                  {rules.maxSubstitutes} dự bị. Thành viên đầu tiên là đội
-                  trưởng.
+                  {rules.minTeamSize} {t("team.register.starters")} • {t("team.register.maxSubstitutes")}{" "}
+                  {rules.maxSubstitutes} {t("team.register.substitutes")}
                 </p>
               </div>
               {members.length < rules.maxTeamSize && (
@@ -464,12 +461,12 @@ export default function RegisterTeamPage({
                   className={`${secondaryButtonClass} shrink-0 px-3 py-2 text-xs`}
                 >
                   <PlusIcon size={14} weight="bold" />
-                  Thêm thành viên
+                  {t("team.register.addMember")}
                 </button>
               )}
               {members.length === rules.maxTeamSize && (
                 <span className="shrink-0 text-xs font-medium text-ink-faint">
-                  Đã đủ {rules.maxTeamSize} thành viên
+                  {t("team.register.full")} {rules.maxTeamSize} {t("team.register.rosterRangeSuffix")}
                 </span>
               )}
             </div>
@@ -482,7 +479,7 @@ export default function RegisterTeamPage({
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-ink">
-                      {index === 0 ? "Đội trưởng" : `Thành viên ${index + 1}`}
+                      {index === 0 ? t("team.register.captain") : `${t("team.register.member")} ${index + 1}`}
                     </p>
                     {index > 0 && members.length > rules.minTeamSize && (
                       <button
@@ -492,7 +489,7 @@ export default function RegisterTeamPage({
                             current.filter((_, memberIndex) => memberIndex !== index),
                           )
                         }
-                        aria-label={`Xóa thành viên ${index + 1}`}
+                        aria-label={`${t("team.register.removeMember")} ${index + 1}`}
                         className="rounded-lg p-2 text-ink-faint transition hover:bg-rejected/10 hover:text-rejected"
                       >
                         <TrashIcon size={16} />
@@ -509,9 +506,9 @@ export default function RegisterTeamPage({
                       onChange={(event) =>
                         updateMember(index, "realName", event.target.value)
                       }
-                      aria-label={`Tên thật của thành viên ${index + 1}`}
+                      aria-label={`${t("team.register.realNameAria")} ${index + 1}`}
                       className={`${inputClass} bg-surface`}
-                      placeholder="Tên thật"
+                      placeholder={t("team.register.realName")}
                     />
                     <input
                       type="text"
@@ -521,9 +518,9 @@ export default function RegisterTeamPage({
                       onChange={(event) =>
                         updateMember(index, "ign", event.target.value)
                       }
-                      aria-label={`IGN của thành viên ${index + 1}`}
+                      aria-label={`${t("team.register.ignAria")} ${index + 1}`}
                       className={`${inputClass} bg-surface`}
-                      placeholder="Tên thi đấu (IGN)"
+                      placeholder={t("team.register.ign")}
                     />
                     <input
                       type="email"
@@ -531,9 +528,9 @@ export default function RegisterTeamPage({
                       onChange={(event) =>
                         updateMember(index, "email", event.target.value)
                       }
-                      aria-label={`Email của thành viên ${index + 1}`}
+                      aria-label={`${t("team.register.memberEmailAria")} ${index + 1}`}
                       className={`${inputClass} bg-surface`}
-                      placeholder="Email liên hệ"
+                      placeholder={t("team.register.contactEmail")}
                     />
                     <input
                       type="tel"
@@ -542,9 +539,9 @@ export default function RegisterTeamPage({
                       onChange={(event) =>
                         updateMember(index, "phoneNumber", event.target.value)
                       }
-                      aria-label={`Số điện thoại của thành viên ${index + 1}`}
+                      aria-label={`${t("team.register.memberPhoneAria")} ${index + 1}`}
                       className={`${inputClass} bg-surface`}
-                      placeholder="Số điện thoại liên hệ"
+                      placeholder={t("team.register.contactPhone")}
                     />
 
                     {requiresBirthDate && (
@@ -555,7 +552,7 @@ export default function RegisterTeamPage({
                         onChange={(event) =>
                           updateMember(index, "birthDate", event.target.value)
                         }
-                        aria-label={`Ngày sinh của thành viên ${index + 1}`}
+                        aria-label={`${t("team.register.birthDateAria")} ${index + 1}`}
                         className={`${inputClass} bg-surface`}
                       />
                     )}
@@ -567,13 +564,13 @@ export default function RegisterTeamPage({
                         onChange={(event) =>
                           updateMember(index, "gender", event.target.value)
                         }
-                        aria-label={`Giới tính của thành viên ${index + 1}`}
+                        aria-label={`${t("team.register.genderAria")} ${index + 1}`}
                         className={`${inputClass} bg-surface`}
                       >
-                        <option value="">Chọn giới tính</option>
+                        <option value="">{t("team.register.selectGender")}</option>
                         {genderOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
+                          <option key={option} value={option}>
+                            {t(`auth.register.gender.${option.toLowerCase()}` as TranslationKey)}
                           </option>
                         ))}
                       </select>
@@ -586,17 +583,17 @@ export default function RegisterTeamPage({
                         onChange={(event) =>
                           updateMember(index, "position", event.target.value)
                         }
-                        aria-label={`Vị trí của thành viên ${index + 1}`}
+                        aria-label={`${t("team.register.positionAria")} ${index + 1}`}
                         className={`${inputClass} bg-surface`}
                       >
                         <option value="">
                           {requiresPosition
-                            ? "Chọn vị trí thi đấu"
-                            : "Không chọn"}
+                            ? t("team.register.selectPosition")
+                            : t("team.register.noPosition")}
                         </option>
                         {config.game.positions.map((position) => (
                           <option key={position} value={position}>
-                            {gamePositionLabel(position)}
+                            {gamePositionLabel(position, locale)}
                           </option>
                         ))}
                       </select>
@@ -604,7 +601,7 @@ export default function RegisterTeamPage({
                   </div>
 
                   <p className={`${hintClass} mt-3`}>
-                    Email và số điện thoại thành viên đều không bắt buộc.
+                    {t("team.register.optionalContacts")}
                   </p>
                 </div>
               ))}
@@ -619,14 +616,14 @@ export default function RegisterTeamPage({
 
           <div className="flex justify-end gap-3">
             <Link href={`/tournaments/${slug}`} className={secondaryButtonClass}>
-              Hủy
+              {t("common.cancel")}
             </Link>
             <button
               type="submit"
               disabled={submitting}
               className="inline-flex items-center justify-center rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent transition hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting ? "Đang gửi..." : "Gửi đăng ký"}
+              {submitting ? t("team.register.submitting") : t("team.register.submit")}
             </button>
           </div>
         </form>

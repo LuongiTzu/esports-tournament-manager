@@ -21,7 +21,7 @@ function queryKey(query: AdminTournamentsQuery) {
 }
 
 export default function AdminTournamentsPage() {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const [query, setQuery] = useState<AdminTournamentsQuery>({});
   const [reloadKey, setReloadKey] = useState(0);
   const [result, setResult] = useState<{
@@ -54,13 +54,13 @@ export default function AdminTournamentsPage() {
         setError(
           reason instanceof Error
             ? reason.message
-            : "Không tải được danh sách giải đấu.",
+            : t("admin.tournaments.loadError"),
         );
       });
     return () => {
       cancelled = true;
     };
-  }, [currentKey, query, reloadKey]);
+  }, [currentKey, query, reloadKey, t]);
 
   const loading = result?.key !== currentKey && !error;
   const tournaments = result?.key === currentKey ? result.tournaments : null;
@@ -83,8 +83,8 @@ export default function AdminTournamentsPage() {
     if (!selectedTournament || workingAction) return;
     const confirmed = window.confirm(
       isVerified
-        ? `Gắn nhãn xác minh cho “${selectedTournament.name}”?`
-        : `Gỡ nhãn xác minh khỏi “${selectedTournament.name}”?`,
+        ? `${t("admin.tournaments.verifyConfirm")} “${selectedTournament.name}”?`
+        : `${t("admin.tournaments.unverifyConfirm")} “${selectedTournament.name}”?`,
     );
     if (!confirmed) return;
     setWorkingAction("VERIFY");
@@ -93,9 +93,9 @@ export default function AdminTournamentsPage() {
     try {
       await adminApi.setTournamentVerification(selectedTournament.id, isVerified);
       await refetch();
-      setNotice(isVerified ? "Đã xác minh giải đấu." : "Đã gỡ nhãn xác minh.");
+      setNotice(isVerified ? t("admin.tournaments.verifiedNotice") : t("admin.tournaments.unverifiedNotice"));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không thể cập nhật xác minh.");
+      setError(reason instanceof Error ? reason.message : t("admin.tournaments.verificationError"));
     } finally {
       setWorkingAction("");
     }
@@ -114,12 +114,12 @@ export default function AdminTournamentsPage() {
       );
       await refetch();
       setHideDialogOpen(false);
-      setNotice("Đã ẩn giải khỏi nền tảng và gửi cảnh báo tới Organizer.");
+      setNotice(t("admin.tournaments.hiddenNotice"));
     } catch (reasonValue) {
       setError(
         reasonValue instanceof Error
           ? reasonValue.message
-          : "Không thể ẩn giải đấu.",
+          : t("admin.tournaments.hideError"),
       );
     } finally {
       setWorkingAction("");
@@ -128,16 +128,16 @@ export default function AdminTournamentsPage() {
 
   const unhideTournament = async () => {
     if (!selectedTournament || workingAction) return;
-    if (!window.confirm(`Bỏ ẩn “${selectedTournament.name}” trên nền tảng?`)) return;
+    if (!window.confirm(`${t("admin.tournaments.unhideConfirm")} “${selectedTournament.name}”?`)) return;
     setWorkingAction("MODERATE");
     setError("");
     setNotice("");
     try {
       await adminApi.setTournamentModeration(selectedTournament.id, "ACTIVE");
       await refetch();
-      setNotice("Đã bỏ ẩn giải trên nền tảng.");
+      setNotice(t("admin.tournaments.unhiddenNotice"));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không thể bỏ ẩn giải đấu.");
+      setError(reason instanceof Error ? reason.message : t("admin.tournaments.unhideError"));
     } finally {
       setWorkingAction("");
     }
@@ -147,13 +147,13 @@ export default function AdminTournamentsPage() {
     <div>
       <header>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-          Platform tournament administration
+          {t("admin.tournaments.title")}
         </p>
         <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">
-          Quản trị giải đấu
+          {t("admin.tournaments.title")}
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-ink-muted">
-          Kiểm tra giải trên toàn nền tảng, quản lý nhãn xác minh và trạng thái ẩn kiểm duyệt. Các thao tác vận hành thi đấu vẫn thuộc khu vực Organizer.
+          {t("admin.tournaments.description")}
         </p>
       </header>
 
@@ -185,7 +185,7 @@ export default function AdminTournamentsPage() {
               }}
               className={`${secondaryButtonClass} mt-3`}
             >
-              Thử lại
+              {t("common.retry")}
             </button>
           )}
         </div>
@@ -200,15 +200,15 @@ export default function AdminTournamentsPage() {
         tournaments.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
             <TrophyIcon size={36} className="mx-auto text-ink-faint" />
-            <p className="mt-3 font-semibold text-ink">Không có giải đấu phù hợp</p>
+            <p className="mt-3 font-semibold text-ink">{t("admin.tournaments.empty")}</p>
             <p className="mt-1 text-sm text-ink-muted">
-              Hãy thay đổi bộ lọc kiểm duyệt hiện tại.
+              {t("admin.tournaments.emptyHint")}
             </p>
           </div>
         ) : (
           <>
             <p className="mt-4 text-sm text-ink-faint">
-              Backend trả về {formatAdminNumber(tournaments.length, locale)} giải đấu, ưu tiên số báo cáo rồi ngày tạo.
+              {t("admin.tournaments.backendReturned")} {formatAdminNumber(tournaments.length, locale)} {t("admin.tournaments.orderHint")}
             </p>
             <div className="mt-3 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
               <AdminTournamentList

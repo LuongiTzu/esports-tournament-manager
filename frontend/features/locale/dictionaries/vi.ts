@@ -1,4 +1,7 @@
+import extendedVi from "@/features/locale/dictionaries/extended-vi";
+
 const vi = {
+  ...extendedVi,
   "notifications.title": "Thông báo",
   "notifications.unread": "chưa đọc",
   "notifications.markAll": "Đọc tất cả",

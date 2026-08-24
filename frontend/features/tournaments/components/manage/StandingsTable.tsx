@@ -1,5 +1,8 @@
+"use client";
+
 import { CheckCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import type { BasicStanding } from "@/features/tournaments/types";
+import { useLocale } from "@/features/locale/store";
 
 export default function StandingsTable({
   rows,
@@ -8,10 +11,11 @@ export default function StandingsTable({
   rows: BasicStanding[];
   qualifiedTeamIds?: string[];
 }) {
+  const { t } = useLocale();
   if (!rows.length) {
     return (
       <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-muted">
-        Chưa có dữ liệu xếp hạng.
+        {t("standings.empty")}
       </p>
     );
   }
@@ -21,14 +25,14 @@ export default function StandingsTable({
       <table className="w-full min-w-[680px] text-sm">
         <thead className="bg-surface-sub text-xs uppercase tracking-wide text-ink-faint">
           <tr>
-            <th className="px-3 py-3 text-center">Hạng</th>
-            <th className="px-3 py-3 text-left">Đội</th>
-            <th className="px-3 py-3 text-center">Đã đấu</th>
-            <th className="px-3 py-3 text-center">Thắng</th>
-            <th className="px-3 py-3 text-center">Hòa</th>
-            <th className="px-3 py-3 text-center">Thua</th>
-            <th className="px-3 py-3 text-center">Hiệu số</th>
-            <th className="px-3 py-3 text-center">Điểm</th>
+            <th className="px-3 py-3 text-center">{t("standings.rank")}</th>
+            <th className="px-3 py-3 text-left">{t("standings.team")}</th>
+            <th className="px-3 py-3 text-center">{t("standings.played")}</th>
+            <th className="px-3 py-3 text-center">{t("standings.wins")}</th>
+            <th className="px-3 py-3 text-center">{t("standings.draws")}</th>
+            <th className="px-3 py-3 text-center">{t("standings.losses")}</th>
+            <th className="px-3 py-3 text-center">{t("standings.difference")}</th>
+            <th className="px-3 py-3 text-center">{t("standings.points")}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
@@ -44,7 +48,7 @@ export default function StandingsTable({
                     {row.name}
                     {qualified && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-approved/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-approved">
-                        <CheckCircleIcon weight="fill" /> Đi tiếp
+                        <CheckCircleIcon weight="fill" /> {t("standings.qualified")}
                       </span>
                     )}
                   </span>

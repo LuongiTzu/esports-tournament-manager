@@ -1,6 +1,9 @@
+"use client";
+
 import { FunnelIcon, XIcon } from "@phosphor-icons/react";
 import { inputClass, secondaryButtonClass } from "@/components/ui";
 import type { AdminTournamentModerationStatus } from "@/features/admin/types";
+import { useLocale } from "@/features/locale/store";
 
 export default function TournamentAdminFilters({
   moderationStatus,
@@ -9,11 +12,12 @@ export default function TournamentAdminFilters({
   moderationStatus?: AdminTournamentModerationStatus;
   onChange: (value?: AdminTournamentModerationStatus) => void;
 }) {
+  const { t } = useLocale();
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-surface-card p-4 shadow-sm">
       <FunnelIcon className="text-brand" size={20} weight="duotone" />
       <label className="min-w-56 flex-1 sm:max-w-xs">
-        <span className="sr-only">Trạng thái kiểm duyệt</span>
+        <span className="sr-only">{t("admin.tournaments.filterAria")}</span>
         <select
           value={moderationStatus ?? "ALL"}
           onChange={(event) =>
@@ -25,9 +29,9 @@ export default function TournamentAdminFilters({
           }
           className={inputClass}
         >
-          <option value="ALL">Mọi trạng thái kiểm duyệt</option>
-          <option value="ACTIVE">Đang hiển thị trên nền tảng</option>
-          <option value="HIDDEN_BY_ADMIN">Đã bị Admin ẩn</option>
+          <option value="ALL">{t("admin.tournaments.allModeration")}</option>
+          <option value="ACTIVE">{t("admin.tournaments.active")}</option>
+          <option value="HIDDEN_BY_ADMIN">{t("admin.tournaments.hidden")}</option>
         </select>
       </label>
       {moderationStatus && (
@@ -36,11 +40,11 @@ export default function TournamentAdminFilters({
           onClick={() => onChange(undefined)}
           className={`${secondaryButtonClass} px-4`}
         >
-          <XIcon /> Xóa bộ lọc
+          <XIcon /> {t("admin.users.clearFilters")}
         </button>
       )}
       <p className="basis-full text-xs text-ink-faint">
-        Backend hiện chỉ hỗ trợ lọc theo trạng thái kiểm duyệt; chưa có tìm kiếm hoặc phân trang cho danh sách này.
+        {t("admin.tournaments.filterLimitation")}
       </p>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { EyeSlashIcon, XIcon } from "@phosphor-icons/react";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/ui";
+import { useLocale } from "@/features/locale/store";
 
 export default function TournamentModerationDialog({
   tournamentName,
@@ -17,6 +18,7 @@ export default function TournamentModerationDialog({
   onClose: () => void;
   onConfirm: (reason: string) => void;
 }) {
+  const { t } = useLocale();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [reason, setReason] = useState("");
   const trimmedReason = reason.trim();
@@ -59,11 +61,11 @@ export default function TournamentModerationDialog({
             <span className="grid size-11 place-items-center rounded-xl bg-rejected/12 text-rejected">
               <EyeSlashIcon size={22} weight="duotone" />
             </span>
-            <h2 className="mt-4 text-xl font-black">Ẩn giải khỏi nền tảng?</h2>
+            <h2 className="mt-4 text-xl font-black">{t("admin.tournaments.hideTitle")}</h2>
           </div>
           <button
             type="button"
-            aria-label="Đóng"
+            aria-label={t("common.close")}
             disabled={working}
             onClick={closeDialog}
             className="grid size-10 place-items-center rounded-lg text-ink-muted hover:bg-surface-hover hover:text-ink"
@@ -72,10 +74,10 @@ export default function TournamentModerationDialog({
           </button>
         </div>
         <p className="mt-3 text-sm leading-6 text-ink-muted">
-          “{tournamentName}” sẽ bị ẩn bởi cơ chế kiểm duyệt nền tảng. Thao tác này không thay đổi PUBLIC/PRIVATE hay vòng đời giải.
+          “{tournamentName}” {t("admin.tournaments.hideDescriptionPrefix")}
         </p>
         <label className="mt-5 block">
-          <span className="text-sm font-semibold text-ink">Lý do kiểm duyệt</span>
+          <span className="text-sm font-semibold text-ink">{t("admin.tournaments.moderationReason")}</span>
           <textarea
             autoFocus
             required
@@ -85,11 +87,11 @@ export default function TournamentModerationDialog({
             value={reason}
             disabled={working}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="Nhập lý do từ 3–500 ký tự"
+            placeholder={t("admin.tournaments.reasonPlaceholder")}
             className="mt-2 w-full resize-y rounded-xl border border-line bg-input px-4 py-3 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-brand focus:shadow-[var(--shadow-focus)]"
           />
           <span className="mt-1 flex justify-between gap-3 text-xs text-ink-faint">
-            <span>Lý do được backend gửi tới Organizer trong cảnh báo.</span>
+            <span>{t("admin.tournaments.reasonHint")}</span>
             <span>{reason.length}/500</span>
           </span>
         </label>
@@ -100,14 +102,14 @@ export default function TournamentModerationDialog({
             onClick={closeDialog}
             className={secondaryButtonClass}
           >
-            Hủy
+            {t("common.cancel")}
           </button>
           <button
             type="submit"
             disabled={working || trimmedReason.length < 3 || trimmedReason.length > 500}
             className={`${primaryButtonClass} bg-rejected bg-none shadow-none`}
           >
-            <EyeSlashIcon /> {working ? "Đang ẩn..." : "Xác nhận ẩn"}
+            <EyeSlashIcon /> {working ? t("admin.tournaments.hiding") : t("admin.tournaments.confirmHide")}
           </button>
         </div>
       </form>

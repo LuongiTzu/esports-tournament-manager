@@ -1,3 +1,5 @@
+"use client";
+
 import { CheckCircleIcon, TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import type {
   RoundStandings,
@@ -6,6 +8,7 @@ import type {
   TournamentStandingsResponse,
 } from "@/features/tournaments/types";
 import StandingsTable from "./StandingsTable";
+import { useLocale } from "@/features/locale/store";
 
 function SwissTable({
   rows,
@@ -14,9 +17,10 @@ function SwissTable({
   rows: SwissStanding[];
   qualifiedTeamIds: string[];
 }) {
+  const { t } = useLocale();
   if (!rows.length) {
     return (
-      <p className="text-sm text-ink-muted">Chưa có dữ liệu xếp hạng Swiss.</p>
+      <p className="text-sm text-ink-muted">{t("standings.swissEmpty")}</p>
     );
   }
   return (
@@ -24,15 +28,15 @@ function SwissTable({
       <table className="w-full min-w-[820px] text-sm">
         <thead className="bg-surface-sub text-xs uppercase tracking-wide text-ink-faint">
           <tr>
-            <th className="px-3 py-3 text-center">Hạng</th>
-            <th className="px-3 py-3 text-left">Đội</th>
-            <th className="px-3 py-3 text-center">Đã đấu</th>
-            <th className="px-3 py-3 text-center">W-L</th>
-            <th className="px-3 py-3 text-center">Điểm</th>
+            <th className="px-3 py-3 text-center">{t("standings.rank")}</th>
+            <th className="px-3 py-3 text-left">{t("standings.team")}</th>
+            <th className="px-3 py-3 text-center">{t("standings.played")}</th>
+            <th className="px-3 py-3 text-center">{t("standings.winLoss")}</th>
+            <th className="px-3 py-3 text-center">{t("standings.points")}</th>
             <th className="px-3 py-3 text-center">BYE</th>
             <th className="px-3 py-3 text-center">Buchholz</th>
-            <th className="px-3 py-3 text-center">Cut-1</th>
-            <th className="px-3 py-3 text-center">Hiệu số</th>
+            <th className="px-3 py-3 text-center">{t("standings.buchholzCut1")}</th>
+            <th className="px-3 py-3 text-center">{t("standings.difference")}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
@@ -45,10 +49,10 @@ function SwissTable({
                 </td>
                 <td className="px-3 py-3 font-medium text-ink">
                   <span className="flex items-center gap-2">
-                    {row.team?.name ?? `Đội ${row.teamId.slice(0, 8)}`}
+                    {row.team?.name ?? `${t("standings.team")} ${row.teamId.slice(0, 8)}`}
                     {qualified && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-approved/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-approved">
-                        <CheckCircleIcon weight="fill" /> Đi tiếp
+                        <CheckCircleIcon weight="fill" /> {t("standings.qualified")}
                       </span>
                     )}
                   </span>
@@ -93,6 +97,7 @@ export default function RoundStandingsView({
   round: TournamentRound;
   tournament: TournamentStandingsResponse["tournament"];
 }) {
+  const { t } = useLocale();
   const qualifiedTeamIds = data.advancement.qualifiedTeams.map(
     ({ team }) => team.id,
   );
@@ -100,16 +105,15 @@ export default function RoundStandingsView({
   if (data.format === "PLAYOFF" || data.format === "DOUBLE_ELIM") {
     return (
       <div className="rounded-xl border border-line bg-surface-sub p-4">
-        <p className="text-sm font-semibold text-ink">Kết quả loại trực tiếp</p>
+        <p className="text-sm font-semibold text-ink">{t("standings.eliminationResult")}</p>
         {tournament.champion ? (
           <p className="mt-3 flex items-center gap-2 text-sm text-approved">
-            <TrophyIcon weight="fill" /> Nhà vô địch:{" "}
+            <TrophyIcon weight="fill" /> {t("standings.champion")}:{" "}
             <strong>{tournament.champion.name}</strong>
           </p>
         ) : (
           <p className="mt-2 text-sm text-ink-muted">
-            Thể thức loại trực tiếp không sử dụng bảng xếp hạng. Nhà vô địch sẽ
-            xuất hiện khi hệ thống hoàn tất giải đấu.
+            {t("standings.eliminationNoTable")}
           </p>
         )}
       </div>
@@ -121,7 +125,7 @@ export default function RoundStandingsView({
       <div className="space-y-5">
         <p className="text-sm text-ink-muted">
           {round.format === "GROUP_STAGE" &&
-            `${round.settings.advancingTeamsPerGroup} đội đi tiếp mỗi bảng. Dấu “Đi tiếp” chỉ phản ánh dữ liệu chuyển vòng đã được hệ thống lưu.`}
+            `${round.settings.advancingTeamsPerGroup} ${t("standings.advanceEachGroup")} ${t("standings.qualifiedPersistedHint")}`}
         </p>
         {data.standings.map((group) => (
           <section
@@ -148,8 +152,7 @@ export default function RoundStandingsView({
     return (
       <div className="space-y-3">
         <p className="text-sm text-ink-muted">
-          Hệ thống xếp hạng theo thành tích và các chỉ số tiebreak cố định.
-          Swiss không chấp nhận kết quả hòa.
+          {t("standings.swissHint")}
         </p>
         <SwissTable rows={data.standings} qualifiedTeamIds={qualifiedTeamIds} />
       </div>
@@ -159,11 +162,10 @@ export default function RoundStandingsView({
   return (
     <div className="space-y-3">
       <p className="text-sm text-ink-muted">
-        Điểm W/D/L:{" "}
+        {t("round.settings.pointsWdl")}:{" "}
         {round.format === "ROUND_ROBIN" &&
           `${round.settings.winPoints}/${round.settings.drawPoints}/${round.settings.lossPoints}`}
-        . Vòng tròn hiện không có quy tắc chuyển vòng được cấu hình, nên không
-        hiển thị đội đi tiếp.
+        . {t("standings.roundRobinNoAdvancement")}
       </p>
       <StandingsTable rows={data.standings} />
     </div>

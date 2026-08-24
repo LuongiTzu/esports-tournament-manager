@@ -19,16 +19,8 @@ import type { TournamentDetail } from "@/features/tournaments/types";
 import PublicCompetitionView from "@/features/tournaments/components/competition/PublicCompetitionView";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import ResolvedImage from "@/components/ResolvedImage";
-
-function formatDate(d?: string | null) {
-  return d ? new Date(d).toLocaleDateString("vi-VN") : "Chưa xác định";
-}
-
-const tournamentModeLabels = {
-  ONLINE: "Trực tuyến",
-  OFFLINE: "Trực tiếp",
-  HYBRID: "Kết hợp",
-} as const;
+import { formatLocalizedDate } from "@/features/locale/format";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 export default function TournamentDetailPage({
   params,
@@ -37,6 +29,7 @@ export default function TournamentDetailPage({
 }) {
   const { slug } = use(params);
   const { user } = useAuth();
+  const { locale, t } = useLocale();
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
   const [myTeam, setMyTeam] = useState<TeamWithMembers | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,7 +45,7 @@ export default function TournamentDetailPage({
       .catch((err) => {
         if (!cancelled)
           setError(
-            err instanceof Error ? err.message : "Không tải được giải đấu",
+            err instanceof Error ? err.message : t("tournament.detail.loadError"),
           );
       })
       .finally(() => {
@@ -61,7 +54,7 @@ export default function TournamentDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, t]);
 
   useEffect(() => {
     if (!tournament || !user) return;
@@ -96,12 +89,12 @@ export default function TournamentDetailPage({
   if (error || !tournament) {
     return (
       <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-16 text-center">
-        <p className={alertErrorClass}>{error || "Không tìm thấy giải đấu"}</p>
+        <p className={alertErrorClass}>{error || t("tournament.detail.notFound")}</p>
         <Link
           href="/"
           className="mt-4 inline-block text-sm text-brand hover:underline"
         >
-          Về danh sách giải
+          {t("tournament.detail.backToList")}
         </Link>
       </div>
     );
@@ -121,7 +114,7 @@ export default function TournamentDetailPage({
         className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-ink"
       >
         <ArrowLeftIcon size={16} />
-        Danh sách giải
+        {t("tournament.detail.backToList")}
       </Link>
 
       <header className="mt-4 overflow-hidden rounded-xl border border-line border-t-2 border-t-accent bg-surface-card">
@@ -132,7 +125,7 @@ export default function TournamentDetailPage({
               tournament.game?.name,
             )}
             fallbackSrc={getTournamentBannerUrl(null, tournament.game?.name)}
-            alt={`Banner giải đấu ${tournament.name}`}
+            alt={`${t("tournament.detail.bannerAlt")} ${tournament.name}`}
             className="absolute inset-0 size-full object-cover object-center"
           />
         </div>
@@ -148,7 +141,7 @@ export default function TournamentDetailPage({
               {tournament.isVerified && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-approved/12 px-2.5 py-1 text-xs font-medium text-approved">
                   <SealCheckIcon size={13} weight="fill" />
-                  Đã xác minh
+                  {t("tournament.detail.verified")}
                 </span>
               )}
             </div>
@@ -169,7 +162,7 @@ export default function TournamentDetailPage({
                 />
               </span>
               <span>
-                Tổ chức bởi{" "}
+                {t("tournament.detail.organizedBy")}{" "}
                 <span className="font-medium text-ink">
                   {tournament.organizer?.displayName}
                 </span>
@@ -184,7 +177,7 @@ export default function TournamentDetailPage({
                 className={secondaryButtonClass}
               >
                 <GearSixIcon size={16} />
-                Quản lý đội
+                {t("tournament.detail.manage")}
               </Link>
             )}
             {canRegister && (
@@ -192,7 +185,7 @@ export default function TournamentDetailPage({
                 href={`/tournaments/${slug}/register-team`}
                 className="inline-flex items-center justify-center rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-on-accent transition hover:opacity-90 active:translate-y-px"
               >
-                Đăng ký đội
+                {t("tournament.detail.registerTeam")}
               </Link>
             )}
           </div>
@@ -206,28 +199,30 @@ export default function TournamentDetailPage({
 
         <dl className="mx-6 mt-6 grid grid-cols-2 gap-x-4 gap-y-5 border-t border-line pb-6 pt-5 text-sm sm:grid-cols-4">
           <div>
-            <dt className="text-xs text-ink-faint">Đăng ký</dt>
+            <dt className="text-xs text-ink-faint">{t("tournament.detail.registration")}</dt>
             <dd className="mt-1 font-medium text-ink">
-              {tournament.registrationOpen ? "Đang mở" : "Đã đóng"}
+              {tournament.registrationOpen ? t("tournament.detail.registrationOpen") : t("tournament.detail.registrationClosed")}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-ink-faint">Số đội</dt>
+            <dt className="text-xs text-ink-faint">{t("tournament.detail.teamCount")}</dt>
             <dd className="mt-1 font-medium text-ink">
               {tournament._count?.teams ?? 0}
               {tournament.maxTeams ? ` / ${tournament.maxTeams}` : ""}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-ink-faint">Bắt đầu</dt>
+            <dt className="text-xs text-ink-faint">{t("tournament.detail.starts")}</dt>
             <dd className="mt-1 font-medium text-ink">
-              {formatDate(tournament.startDate)}
+              {tournament.startDate
+                ? formatLocalizedDate(tournament.startDate, locale)
+                : t("common.notSet")}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-ink-faint">Hình thức</dt>
+            <dt className="text-xs text-ink-faint">{t("tournament.detail.mode")}</dt>
             <dd className="mt-1 font-medium text-ink">
-              {tournamentModeLabels[tournament.mode]}
+              {t(`tournament.mode.${tournament.mode}` as TranslationKey)}
             </dd>
           </div>
         </dl>
@@ -237,22 +232,21 @@ export default function TournamentDetailPage({
         <section className="mt-6 rounded-xl border border-line bg-surface-card p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="font-semibold text-ink">Đội của bạn</h2>
+              <h2 className="font-semibold text-ink">{t("tournament.detail.yourTeam")}</h2>
               <p className="mt-1 text-sm text-ink-muted">
-                {ownTeam.name} • {ownTeam._count?.members ?? 0} thành viên
+                {ownTeam.name} • {ownTeam._count?.members ?? 0} {t("tournament.detail.members")}
               </p>
             </div>
             <StatusBadge status={ownTeam.status} />
           </div>
           {ownTeam.status === "PENDING" && (
             <p className="mt-4 text-sm text-ink-muted">
-              Ban tổ chức đang xem xét đăng ký của bạn.
+              {t("tournament.detail.pendingReview")}
             </p>
           )}
           {ownTeam.status === "REJECTED" && (
             <p className="mt-4 text-sm text-ink-muted">
-              Đăng ký của bạn không được chấp nhận. Liên hệ ban tổ chức nếu cần
-              biết thêm chi tiết.
+              {t("tournament.detail.rejectedHelp")}
             </p>
           )}
         </section>
@@ -260,7 +254,7 @@ export default function TournamentDetailPage({
 
       {tournament.rules && (
         <section className="mt-6 rounded-xl border border-line bg-surface-card p-6">
-          <h2 className="font-semibold text-ink">Thể lệ</h2>
+          <h2 className="font-semibold text-ink">{t("tournament.detail.rules")}</h2>
           <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink-muted">
             {tournament.rules}
           </p>
@@ -270,7 +264,7 @@ export default function TournamentDetailPage({
       <PublicCompetitionView slug={slug} tournamentId={tournament.id} />
 
       <section className="mt-6 rounded-xl border border-line bg-surface-card p-6">
-        <h2 className="font-semibold text-ink">Đội đã được duyệt</h2>
+        <h2 className="font-semibold text-ink">{t("tournament.detail.approvedTeams")}</h2>
 
         {tournament.teams.length === 0 ? (
           <div className="mt-4 rounded-lg border border-dashed border-line px-4 py-10 text-center">
@@ -280,39 +274,39 @@ export default function TournamentDetailPage({
               weight="duotone"
             />
             <p className="mt-3 text-sm text-ink-muted">
-              Chưa có đội nào được duyệt.
+              {t("tournament.detail.noApprovedTeams")}
             </p>
             {!user && (
               <p className="mt-1 text-sm text-ink-faint">
                 <Link href="/login" className="text-brand hover:underline">
-                  Đăng nhập
+                  {t("auth.login.submit")}
                 </Link>{" "}
-                để đăng ký đội tham gia.
+                {t("tournament.detail.loginToRegister")}
               </p>
             )}
           </div>
         ) : (
           <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-            {tournament.teams.map((t) => (
+            {tournament.teams.map((team) => (
               <li
-                key={t.id}
+                key={team.id}
                 className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-sub px-4 py-3"
               >
                 <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-brand/10 font-bold text-brand">
                   <ResolvedImage
-                    src={t.logoUrl}
-                    alt={`Logo ${t.name}`}
+                    src={team.logoUrl}
+                    alt={`${t("tournament.detail.teamLogoAlt")} ${team.name}`}
                     className="size-full object-cover object-center"
-                    fallback={t.name.charAt(0).toUpperCase()}
+                    fallback={team.name.charAt(0).toUpperCase()}
                   />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-ink">
-                    {t.name}
+                    {team.name}
                   </span>
                   <span className="block text-xs text-ink-faint">
-                    {t.captain?.displayName} • {t._count?.members ?? 0} thành
-                    viên
+                    {team.captain?.displayName} • {team._count?.members ?? 0}{" "}
+                    {t("tournament.detail.members")}
                   </span>
                 </span>
               </li>

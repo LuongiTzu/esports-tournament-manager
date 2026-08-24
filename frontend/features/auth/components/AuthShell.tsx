@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { TrophyIcon } from "@phosphor-icons/react/dist/ssr";
+import { useLocale } from "@/features/locale/store";
 
 /** Khung 2 cột cho trang đăng nhập / đăng ký — tránh bố cục card căn giữa mặc định */
 export default function AuthShell({
@@ -9,7 +12,7 @@ export default function AuthShell({
   children,
   footer,
   visual,
-  eyebrow = "Chào mừng trở lại",
+  eyebrow,
 }: {
   title: string;
   subtitle: string;
@@ -18,6 +21,8 @@ export default function AuthShell({
   visual?: ReactNode;
   eyebrow?: string;
 }) {
+  const { t } = useLocale();
+  const resolvedEyebrow = eyebrow ?? t("auth.login.eyebrow");
   if (visual) {
     return (
       <div className="relative isolate flex w-full flex-1 items-center overflow-hidden px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-14">
@@ -34,7 +39,7 @@ export default function AuthShell({
           {visual}
           <section className="flex min-h-[34rem] flex-col justify-center p-6 sm:p-9 md:p-8 lg:p-10">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-hover">
-              {eyebrow}
+              {resolvedEyebrow}
             </p>
             <h1 className="mt-3 text-[1.625rem] font-bold leading-9 text-ink">
               {title}
@@ -63,13 +68,12 @@ export default function AuthShell({
           Esports Hub
         </Link>
         <h2 className="mt-6 text-4xl font-bold tracking-tight text-ink">
-          Tổ chức giải đấu,
+          {t("auth.brand.titleLine1")}
           <br />
-          không cần bảng tính.
+          {t("auth.brand.titleLine2")}
         </h2>
         <p className="mt-4 max-w-md text-ink-muted">
-          Tạo giải nhiều vòng với thể thức riêng cho từng vòng, nhận đăng ký từ
-          các đội và duyệt danh sách tham dự ở một nơi.
+          {t("auth.brand.description")}
         </p>
       </div>
 

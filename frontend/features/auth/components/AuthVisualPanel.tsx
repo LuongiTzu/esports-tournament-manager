@@ -1,5 +1,8 @@
+"use client";
+
 import { LightningIcon } from "@phosphor-icons/react/dist/ssr";
 import RotatingImage from "@/components/RotatingImage";
+import { useLocale } from "@/features/locale/store";
 
 const tournamentPosters = [
   {
@@ -28,25 +31,15 @@ const tournamentPosters = [
   },
 ];
 
-const content = {
-  login: {
-    title: "Sẵn sàng cho trận đấu tiếp theo?",
-    description:
-      "Đăng nhập để tạo giải, tiếp nhận đội và quản lý toàn bộ hành trình thi đấu trong một không gian duy nhất.",
-  },
-  register: {
-    title: "Gia nhập cộng đồng thi đấu.",
-    description:
-      "Tạo hồ sơ để tổ chức giải đấu, đăng ký đội và kết nối với cộng đồng Esports trên cùng một nền tảng.",
-  },
-} as const;
-
 export default function AuthVisualPanel({
   mode,
 }: {
-  mode: keyof typeof content;
+  mode: "login" | "register";
 }) {
-  const copy = content[mode];
+  const { t } = useLocale();
+  const copy = mode === "login"
+    ? { title: t("auth.login.visualTitle"), description: t("auth.login.visualDescription") }
+    : { title: t("auth.register.visualTitle"), description: t("auth.register.visualDescription") };
 
   return (
     <section className="relative isolate flex h-full min-h-[19rem] overflow-hidden bg-surface-sub md:min-h-[38rem]">
@@ -78,7 +71,7 @@ export default function AuthVisualPanel({
         <div className="mt-auto max-w-lg pt-14 md:pt-20">
           <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-visual-accent">
             <LightningIcon size={17} weight="fill" />
-            Nền tảng tổ chức Esports
+            {t("auth.brand.eyebrow")}
           </p>
           <h2 className="mt-4 text-3xl font-bold leading-tight tracking-tight text-white md:text-4xl">
             {copy.title}

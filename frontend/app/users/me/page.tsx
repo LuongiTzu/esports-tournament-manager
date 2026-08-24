@@ -11,14 +11,11 @@ import { tournamentsApi } from "@/features/tournaments/api";
 import TournamentCard from "@/features/tournaments/components/TournamentCard";
 import type { Tournament } from "@/features/tournaments/types";
 import { primaryButtonClass } from "@/components/ui";
-
-const TABS = [
-  { value: "organized", label: "Giải đã tổ chức" },
-  { value: "joined", label: "Giải đã tham gia" },
-] as const;
+import { useLocale } from "@/features/locale/store";
 
 export default function MyProfilePage() {
   const router = useRouter();
+  const { t } = useLocale();
   const { user, ready } = useAuth();
   const [tab, setTab] = useState<"organized" | "joined">("organized");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -63,12 +60,12 @@ export default function MyProfilePage() {
       const uploaded = await authApi.uploadAvatar(avatarFile);
       updateCurrentUser({ ...user, avatarUrl: uploaded.url });
       setAvatarFile(null);
-      setAvatarSuccess("Ảnh đại diện đã được cập nhật.");
+      setAvatarSuccess(t("profile.avatarUpdated"));
     } catch (uploadError) {
       setAvatarError(
         uploadError instanceof Error
           ? uploadError.message
-          : "Không thể cập nhật ảnh đại diện.",
+          : t("profile.avatarUpdateError"),
       );
     } finally {
       setAvatarUploading(false);
@@ -82,7 +79,7 @@ export default function MyProfilePage() {
           <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xl font-bold text-on-brand">
             <ResolvedImage
               src={user?.avatarUrl}
-              alt={user ? `Ảnh đại diện của ${user.displayName}` : "Ảnh đại diện"}
+              alt={user ? `${t("profile.avatarAlt")} ${user.displayName}` : t("profile.avatarAlt")}
               className="size-full object-cover object-center"
               fallback={user?.displayName?.charAt(0).toUpperCase() || "?"}
             />
@@ -97,7 +94,7 @@ export default function MyProfilePage() {
 
         <div className="mt-5 border-t border-line pt-5">
           <ImageUploadPicker
-            label="Đổi ảnh đại diện"
+            label={t("profile.changeAvatar")}
             file={avatarFile}
             onFileChange={(file) => {
               setAvatarFile(file);
@@ -117,26 +114,26 @@ export default function MyProfilePage() {
               onClick={uploadAvatar}
               className={`${primaryButtonClass} mt-4`}
             >
-              {avatarUploading ? "Đang tải lên…" : "Lưu ảnh đại diện"}
+              {avatarUploading ? t("profile.uploading") : t("profile.saveAvatar")}
             </button>
           )}
         </div>
       </div>
 
       <div className="mt-8 flex flex-wrap gap-2">
-        {TABS.map((t) => {
-          const active = tab === t.value;
+        {(["organized", "joined"] as const).map((tabValue) => {
+          const active = tab === tabValue;
           return (
             <button
-              key={t.value}
-              onClick={() => setTab(t.value)}
+              key={tabValue}
+              onClick={() => setTab(tabValue)}
               className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
                 active
                   ? "border-brand bg-brand/12 text-brand"
                   : "border-line text-ink-muted hover:border-line-strong hover:text-ink"
               }`}
             >
-              {t.label}
+              {t(tabValue === "organized" ? "profile.organized" : "profile.joined")}
             </button>
           );
         })}
@@ -157,19 +154,19 @@ export default function MyProfilePage() {
           <div className="rounded-xl border border-dashed border-line px-6 py-16 text-center">
             <p className="font-medium text-ink">
               {tab === "organized"
-                ? "Bạn chưa tổ chức giải nào"
-                : "Bạn chưa tham gia giải nào"}
+                ? t("profile.emptyOrganized")
+                : t("profile.emptyJoined")}
             </p>
             <p className="mx-auto mt-2 max-w-sm text-sm text-ink-muted">
               {tab === "organized"
-                ? "Tạo giải đấu để bắt đầu nhận đăng ký từ các đội."
-                : "Tìm một giải đang mở đăng ký và nộp đội của bạn."}
+                ? t("profile.emptyOrganizedHelp")
+                : t("profile.emptyJoinedHelp")}
             </p>
             <Link
               href={tab === "organized" ? "/tournaments/new" : "/"}
               className={`${primaryButtonClass} mt-5`}
             >
-              {tab === "organized" ? "Tạo giải đấu" : "Xem giải đang mở"}
+              {tab === "organized" ? t("profile.createTournament") : t("profile.viewOpen")}
             </Link>
           </div>
         ) : (

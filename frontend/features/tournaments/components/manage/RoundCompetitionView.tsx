@@ -1,9 +1,12 @@
+"use client";
+
 import type {
   BracketGroup,
   BracketMatch,
   RoundBracket,
 } from "@/features/tournaments/types";
 import BracketMatchCard from "./BracketMatchCard";
+import { useLocale } from "@/features/locale/store";
 
 function matchesByRound(matches: BracketMatch[]) {
   const grouped = new Map<number, BracketMatch[]>();
@@ -14,14 +17,13 @@ function matchesByRound(matches: BracketMatch[]) {
   return [...grouped.entries()].sort(([a], [b]) => a - b);
 }
 
-function EmptyMatches({
-  message = "Chưa có trận đấu được tạo.",
-}: {
+function EmptyMatches({ message }: {
   message?: string;
 }) {
+  const { t } = useLocale();
   return (
     <div className="rounded-xl border border-dashed border-line px-5 py-10 text-center text-sm text-ink-muted">
-      {message}
+      {message ?? t("competition.noMatches")}
     </div>
   );
 }
@@ -71,10 +73,11 @@ function RoundRobinView({
   matches: BracketMatch[];
   onSelectMatch?: (match: BracketMatch) => void;
 }) {
+  const { t } = useLocale();
   return (
     <MatchRounds
       matches={matches}
-      label={(round) => `Lượt ${round}`}
+      label={(round) => `${t("competition.iteration")} ${round}`}
       onSelectMatch={onSelectMatch}
     />
   );
@@ -105,8 +108,9 @@ function GroupStageView({
   bracket: RoundBracket;
   onSelectMatch?: (match: BracketMatch) => void;
 }) {
+  const { t } = useLocale();
   if (!bracket.groups.length)
-    return <EmptyMatches message="Chưa có bảng đấu được tạo." />;
+    return <EmptyMatches message={t("competition.noGroups")} />;
 
   return (
     <div className="space-y-5">
@@ -123,7 +127,8 @@ function GroupStageView({
               <div>
                 <h3 className="text-lg font-bold text-ink">{group.name}</h3>
                 <p className="mt-1 text-xs text-ink-faint">
-                  {group.teams.length} đội · {groupMatches.length} trận
+                  {group.teams.length} {t("competition.groupSummaryTeams")} ·{" "}
+                  {groupMatches.length} {t("competition.groupSummaryMatches")}
                 </p>
               </div>
               <GroupTeamList group={group} />
@@ -131,11 +136,11 @@ function GroupStageView({
             {groupMatches.length ? (
               <MatchRounds
                 matches={groupMatches}
-                label={(round) => `Lượt ${round}`}
+                label={(round) => `${t("competition.iteration")} ${round}`}
                 onSelectMatch={onSelectMatch}
               />
             ) : (
-              <EmptyMatches message="Bảng này chưa có trận đấu." />
+              <EmptyMatches message={t("competition.groupNoMatches")} />
             )}
           </section>
         );
@@ -151,6 +156,7 @@ function SwissView({
   matches: BracketMatch[];
   onSelectMatch?: (match: BracketMatch) => void;
 }) {
+  const { t } = useLocale();
   if (!matches.length) return <EmptyMatches />;
   return (
     <div className="space-y-5">
@@ -165,14 +171,14 @@ function SwissView({
           >
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
-                <h3 className="font-bold text-ink">Lượt Swiss {round}</h3>
+                <h3 className="font-bold text-ink">{t("competition.swissIteration")} {round}</h3>
                 <p className="mt-1 text-xs text-ink-faint">
-                  {completed}/{iterationMatches.length} trận hoàn tất
+                  {completed}/{iterationMatches.length} {t("competition.matchesCompleted")}
                 </p>
               </div>
               {iterationMatches.some((match) => match.isBye) && (
                 <span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">
-                  Có BYE
+                  {t("competition.hasBye")}
                 </span>
               )}
             </div>
@@ -199,6 +205,7 @@ function PlayoffView({
   bracket: RoundBracket;
   onSelectMatch?: (match: BracketMatch) => void;
 }) {
+  const { t } = useLocale();
   const maxRound = Math.max(
     0,
     ...bracket.matches.map((match) => match.bracketRound ?? 0),
@@ -214,7 +221,7 @@ function PlayoffView({
         {matchesByRound(bracket.matches).map(([round, roundMatches]) => (
           <section key={round} className="w-64 shrink-0">
             <h4 className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-brand">
-              {round === maxRound ? "Chung kết" : `Vòng loại ${round}`}
+              {round === maxRound ? t("competition.final") : `${t("competition.eliminationRound")} ${round}`}
             </h4>
             <div className="space-y-3">
               {roundMatches.map((match) => (
@@ -225,7 +232,7 @@ function PlayoffView({
                     thirdPlaceEnabled &&
                     round === maxRound &&
                     match.matchNumber === 2
-                      ? "Tranh hạng ba"
+                      ? t("competition.thirdPlace")
                       : undefined
                   }
                   onSelect={onSelectMatch}
@@ -246,6 +253,7 @@ function DoubleEliminationView({
   matches: BracketMatch[];
   onSelectMatch?: (match: BracketMatch) => void;
 }) {
+  const { t } = useLocale();
   const winners = matches.filter((match) => match.bracketType === "WINNER");
   const losers = matches.filter((match) => match.bracketType === "LOSER");
   const finals = matches.filter((match) => match.bracketType === null);
@@ -255,8 +263,8 @@ function DoubleEliminationView({
       match.activationCondition
         ? "Grand Final Reset"
         : match.bracketType === null
-          ? "Grand Final"
-          : `${match.bracketType === "WINNER" ? "Nhánh thắng" : "Nhánh thua"} V${match.bracketRound ?? "–"} T${match.matchNumber ?? "–"}`,
+          ? t("competition.grandFinal")
+          : `${match.bracketType === "WINNER" ? t("competition.winnersBracket") : t("competition.losersBracket")} ${t("competition.round")} ${match.bracketRound ?? "–"} · ${t("match.label")} ${match.matchNumber ?? "–"}`,
     ]),
   );
   const linkLabels = (match: BracketMatch) => ({
@@ -272,32 +280,32 @@ function DoubleEliminationView({
   return (
     <div className="space-y-8">
       <section>
-        <h3 className="mb-4 text-base font-bold text-approved">Nhánh thắng</h3>
+        <h3 className="mb-4 text-base font-bold text-approved">{t("competition.winnersBracket")}</h3>
         <MatchRounds
           matches={winners}
-          label={(round) => `Vòng ${round}`}
+          label={(round) => `${t("competition.round")} ${round}`}
           linkLabels={linkLabels}
           onSelectMatch={onSelectMatch}
         />
       </section>
       <section>
-        <h3 className="mb-4 text-base font-bold text-rejected">Nhánh thua</h3>
+        <h3 className="mb-4 text-base font-bold text-rejected">{t("competition.losersBracket")}</h3>
         <MatchRounds
           matches={losers}
-          label={(round) => `Vòng ${round}`}
+          label={(round) => `${t("competition.round")} ${round}`}
           linkLabels={linkLabels}
           onSelectMatch={onSelectMatch}
         />
       </section>
       <section>
-        <h3 className="mb-4 text-base font-bold text-brand">Chung kết tổng</h3>
+        <h3 className="mb-4 text-base font-bold text-brand">{t("competition.grandFinal")}</h3>
         <div className="flex flex-wrap gap-3">
           {finals.map((match) => (
             <BracketMatchCard
               key={match.id}
               match={match}
               label={
-                match.activationCondition ? "Grand Final Reset" : "Grand Final"
+                match.activationCondition ? "Grand Final Reset" : t("competition.grandFinal")
               }
               linkLabels={linkLabels(match)}
               onSelect={onSelectMatch}

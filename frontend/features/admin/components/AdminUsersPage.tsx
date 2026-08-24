@@ -24,7 +24,7 @@ function queryKey(query: AdminUsersQuery) {
 
 export default function AdminUsersPage() {
   const { user: currentAdmin } = useAuth();
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const [query, setQuery] = useState<AdminUsersQuery>(DEFAULT_QUERY);
   const [searchDraft, setSearchDraft] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -63,14 +63,14 @@ export default function AdminUsersPage() {
           setError(
             reason instanceof Error
               ? reason.message
-              : "Không tải được danh sách người dùng.",
+              : t("admin.users.loadError"),
           );
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [currentQueryKey, query, reloadKey]);
+  }, [currentQueryKey, query, reloadKey, t]);
 
   const loading = result?.key !== currentQueryKey && !error;
   const response = result?.key === currentQueryKey ? result.response : null;
@@ -99,8 +99,8 @@ export default function AdminUsersPage() {
     const nextLocked = !selectedUser.isLocked;
     const confirmed = window.confirm(
       nextLocked
-        ? `Khóa tài khoản “${selectedUser.displayName}”? Các token hiện tại sẽ bị vô hiệu hóa.`
-        : `Mở khóa tài khoản “${selectedUser.displayName}”?`,
+        ? `${t("admin.users.lockConfirmPrefix")} “${selectedUser.displayName}”? ${t("admin.users.lockConfirmSuffix")}`
+        : `${t("admin.users.unlockConfirmPrefix")} “${selectedUser.displayName}”?`,
     );
     if (!confirmed) return;
 
@@ -123,14 +123,14 @@ export default function AdminUsersPage() {
       }
       setNotice(
         nextLocked
-          ? `Đã khóa tài khoản ${selectedUser.displayName}.`
-          : `Đã mở khóa tài khoản ${selectedUser.displayName}.`,
+          ? `${t("admin.users.lockedPrefix")} ${selectedUser.displayName}.`
+          : `${t("admin.users.unlockedPrefix")} ${selectedUser.displayName}.`,
       );
     } catch (reason) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Không thể cập nhật trạng thái tài khoản.",
+          : t("admin.users.updateError"),
       );
     } finally {
       setWorkingUserId("");
@@ -141,14 +141,13 @@ export default function AdminUsersPage() {
     <div>
       <header>
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-          Account administration
+          {t("admin.users.eyebrow")}
         </p>
         <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">
-          Quản lý người dùng
+          {t("admin.users.title")}
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
-          Tra cứu tài khoản, xem vai trò thực tế và quản lý trạng thái khóa theo
-          quyền ADMIN hiện có.
+          {t("admin.users.description")}
         </p>
       </header>
 
@@ -186,7 +185,7 @@ export default function AdminUsersPage() {
               }}
               className={`${secondaryButtonClass} mt-3`}
             >
-              Thử lại
+              {t("common.retry")}
             </button>
           )}
         </div>
@@ -201,9 +200,9 @@ export default function AdminUsersPage() {
         response.data.length === 0 ? (
           <div className="mt-5 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
             <UsersThreeIcon size={34} className="mx-auto text-ink-faint" />
-            <p className="mt-3 font-semibold text-ink">Không tìm thấy người dùng</p>
+            <p className="mt-3 font-semibold text-ink">{t("admin.users.empty")}</p>
             <p className="mt-1 text-sm text-ink-muted">
-              Hãy thay đổi từ khóa hoặc bộ lọc hiện tại.
+              {t("admin.users.emptyHint")}
             </p>
           </div>
         ) : (
@@ -225,12 +224,12 @@ export default function AdminUsersPage() {
             </div>
 
             <nav
-              aria-label="Phân trang người dùng"
+              aria-label={t("admin.users.pagination")}
               className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-card px-4 py-3"
             >
               <p className="text-sm text-ink-muted">
-                {formatAdminNumber(response.pagination.total, locale)} tài khoản ·
-                Trang {response.pagination.page} / {Math.max(response.pagination.totalPages, 1)}
+                {formatAdminNumber(response.pagination.total, locale)} {t("admin.users.accountsUnit")} ·{" "}
+                {t("common.page")} {response.pagination.page} / {Math.max(response.pagination.totalPages, 1)}
               </p>
               <div className="flex gap-2">
                 <button
@@ -239,7 +238,7 @@ export default function AdminUsersPage() {
                   onClick={() => setQuery((current) => ({ ...current, page: current.page - 1 }))}
                   className={`${secondaryButtonClass} min-h-10 px-3 py-2`}
                 >
-                  <CaretLeftIcon /> Trước
+                  <CaretLeftIcon /> {t("common.previous")}
                 </button>
                 <button
                   type="button"
@@ -247,7 +246,7 @@ export default function AdminUsersPage() {
                   onClick={() => setQuery((current) => ({ ...current, page: current.page + 1 }))}
                   className={`${secondaryButtonClass} min-h-10 px-3 py-2`}
                 >
-                  Sau <CaretRightIcon />
+                  {t("common.next")} <CaretRightIcon />
                 </button>
               </div>
             </nav>

@@ -26,6 +26,7 @@ import {
   inputClass,
   labelClass,
 } from "@/components/ui";
+import { useLocale } from "@/features/locale/store";
 
 interface RegisterForm {
   displayName: string;
@@ -40,6 +41,7 @@ interface RegisterForm {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { t } = useLocale();
   const [form, setForm] = useState<RegisterForm>({
     displayName: "",
     email: "",
@@ -65,7 +67,7 @@ export default function RegisterPage() {
     setError("");
 
     if (form.password !== form.confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp");
+      setError(t("auth.register.passwordMismatch"));
       return;
     }
 
@@ -82,7 +84,7 @@ export default function RegisterPage() {
       });
       router.push("/login");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đăng ký thất bại");
+      setError(err instanceof Error ? err.message : t("auth.register.fallbackError"));
     } finally {
       setLoading(false);
     }
@@ -90,15 +92,15 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="Tạo tài khoản"
-      subtitle="Một tài khoản dùng được cho cả vai trò ban tổ chức và người tham gia."
-      eyebrow="Gia nhập đấu trường"
+      title={t("auth.register.title")}
+      subtitle={t("auth.register.subtitle")}
+      eyebrow={t("auth.register.eyebrow")}
       visual={<AuthVisualPanel mode="register" />}
       footer={
         <>
-          Đã có tài khoản?{" "}
+          {t("auth.register.hasAccount")} {" "}
           <Link href="/login" className="font-medium text-brand hover:underline">
-            Đăng nhập
+            {t("auth.login.submit")}
           </Link>
         </>
       }
@@ -106,7 +108,7 @@ export default function RegisterPage() {
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
           <label htmlFor="displayName" className={labelClass}>
-            Tên hiển thị <span className="text-brand-secondary">*</span>
+            {t("auth.register.displayName")} <span className="text-brand-secondary">*</span>
           </label>
           <div className="relative">
             <UserCircleIcon
@@ -125,15 +127,15 @@ export default function RegisterPage() {
               value={form.displayName}
               onChange={handleChange}
               className={`${inputClass} pl-11`}
-              placeholder="Tên bạn muốn hiển thị"
+              placeholder={t("auth.register.displayNamePlaceholder")}
             />
           </div>
-          <p className={hintClass}>Từ 2 đến 50 ký tự.</p>
+          <p className={hintClass}>{t("auth.register.displayNameHint")}</p>
         </div>
 
         <div>
           <label htmlFor="email" className={labelClass}>
-            Email <span className="text-brand-secondary">*</span>
+            {t("common.email")} <span className="text-brand-secondary">*</span>
           </label>
           <div className="relative">
             <EnvelopeSimpleIcon
@@ -158,7 +160,7 @@ export default function RegisterPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="phoneNumber" className={labelClass}>
-              Số điện thoại
+              {t("auth.register.phone")}
             </label>
             <div className="relative">
               <PhoneIcon
@@ -184,7 +186,7 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="birthDate" className={labelClass}>
-              Ngày sinh
+              {t("auth.register.birthDate")}
             </label>
             <div className="relative">
               <CalendarBlankIcon
@@ -208,7 +210,7 @@ export default function RegisterPage() {
         <div className="grid gap-4 sm:grid-cols-[0.72fr_1.28fr]">
           <div>
             <label htmlFor="gender" className={labelClass}>
-              Giới tính
+              {t("auth.register.gender")}
             </label>
             <div className="relative">
               <GenderIntersexIcon
@@ -223,17 +225,17 @@ export default function RegisterPage() {
                 onChange={handleChange}
                 className={`${inputClass} pl-11`}
               >
-                <option value="">Không chọn</option>
-                <option value="MALE">Nam</option>
-                <option value="FEMALE">Nữ</option>
-                <option value="OTHER">Khác</option>
+                <option value="">{t("auth.register.gender.none")}</option>
+                <option value="MALE">{t("auth.register.gender.male")}</option>
+                <option value="FEMALE">{t("auth.register.gender.female")}</option>
+                <option value="OTHER">{t("auth.register.gender.other")}</option>
               </select>
             </div>
           </div>
 
           <div>
             <label htmlFor="currentAddress" className={labelClass}>
-              Nơi ở hiện tại
+              {t("auth.register.address")}
             </label>
             <div className="relative">
               <MapPinIcon
@@ -250,7 +252,7 @@ export default function RegisterPage() {
                 value={form.currentAddress}
                 onChange={handleChange}
                 className={`${inputClass} pl-11`}
-                placeholder="Tỉnh/thành phố"
+                placeholder={t("auth.register.addressPlaceholder")}
               />
             </div>
           </div>
@@ -259,7 +261,7 @@ export default function RegisterPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="password" className={labelClass}>
-              Mật khẩu <span className="text-brand-secondary">*</span>
+              {t("auth.register.password")} <span className="text-brand-secondary">*</span>
             </label>
             <div className="relative">
               <LockKeyIcon
@@ -278,14 +280,14 @@ export default function RegisterPage() {
                 value={form.password}
                 onChange={handleChange}
                 className={`${inputClass} px-11`}
-                placeholder="Ít nhất 6 ký tự"
+                placeholder={t("auth.register.passwordPlaceholder")}
               />
             </div>
           </div>
 
           <div>
             <label htmlFor="confirmPassword" className={labelClass}>
-              Xác nhận <span className="text-brand-secondary">*</span>
+              {t("auth.register.confirmPassword")} <span className="text-brand-secondary">*</span>
             </label>
             <div className="relative">
               <LockKeyIcon
@@ -302,12 +304,12 @@ export default function RegisterPage() {
                 value={form.confirmPassword}
                 onChange={handleChange}
                 className={`${inputClass} px-11`}
-                placeholder="Nhập lại mật khẩu"
+                placeholder={t("auth.register.confirmPasswordPlaceholder")}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((visible) => !visible)}
-                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                aria-label={showPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
                 aria-pressed={showPassword}
                 className="absolute right-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-ink-faint transition hover:bg-surface-hover hover:text-brand-hover focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
               >
@@ -318,7 +320,7 @@ export default function RegisterPage() {
         </div>
 
         <p className={hintClass}>
-          Các trường không có dấu * là tùy chọn và có thể cập nhật sau.
+          {t("auth.register.optionalHint")}
         </p>
 
         {error && (
@@ -332,7 +334,7 @@ export default function RegisterPage() {
           disabled={loading}
           className={authSubmitButtonClass}
         >
-          {loading ? "Đang tạo tài khoản..." : "Đăng ký"}
+          {loading ? t("auth.register.submitting") : t("auth.register.submit")}
           {!loading && <UserPlusIcon size={18} weight="bold" />}
         </button>
       </form>

@@ -1,4 +1,5 @@
 import type { TournamentRound } from "@/features/tournaments/types";
+import { useLocale } from "@/features/locale/store";
 
 function SettingPill({
   label,
@@ -19,7 +20,8 @@ export default function RoundSettingsSummary({
 }: {
   round: TournamentRound;
 }) {
-  const common = <SettingPill label="Best of" value={`BO${round.bestOf}`} />;
+  const { t } = useLocale();
+  const common = <SettingPill label={t("round.settings.bestOf")} value={`BO${round.bestOf}`} />;
 
   switch (round.format) {
     case "ROUND_ROBIN":
@@ -27,16 +29,16 @@ export default function RoundSettingsSummary({
         <div className="flex flex-wrap gap-2">
           {common}
           <SettingPill
-            label="Số lượt gặp"
+            label={t("round.settings.meetings")}
             value={round.settings.meetingsPerPair}
           />
           <SettingPill
-            label="Điểm W/D/L"
+            label={t("round.settings.pointsWdl")}
             value={`${round.settings.winPoints}/${round.settings.drawPoints}/${round.settings.lossPoints}`}
           />
           <SettingPill
-            label="Kết quả hòa"
-            value={round.settings.allowDraws ? "Cho phép" : "Không"}
+            label={t("round.settings.draws")}
+            value={round.settings.allowDraws ? t("round.settings.allowed") : t("common.no")}
           />
         </div>
       );
@@ -44,22 +46,22 @@ export default function RoundSettingsSummary({
       return (
         <div className="flex flex-wrap gap-2">
           {common}
-          <SettingPill label="Số bảng" value={round.settings.numberOfGroups} />
+          <SettingPill label={t("round.settings.groups")} value={round.settings.numberOfGroups} />
           <SettingPill
-            label="Đi tiếp / bảng"
+            label={t("round.settings.advancePerGroup")}
             value={round.settings.advancingTeamsPerGroup}
           />
           <SettingPill
-            label="Số lượt gặp"
+            label={t("round.settings.meetings")}
             value={round.settings.meetingsPerPair}
           />
           <SettingPill
-            label="Điểm W/D/L"
+            label={t("round.settings.pointsWdl")}
             value={`${round.settings.winPoints}/${round.settings.drawPoints}/${round.settings.lossPoints}`}
           />
           <SettingPill
-            label="Kết quả hòa"
-            value={round.settings.allowDraws ? "Cho phép" : "Không"}
+            label={t("round.settings.draws")}
+            value={round.settings.allowDraws ? t("round.settings.allowed") : t("common.no")}
           />
         </div>
       );
@@ -68,11 +70,11 @@ export default function RoundSettingsSummary({
         <div className="flex flex-wrap gap-2">
           {common}
           <SettingPill
-            label="Số lượt Swiss"
-            value={round.settings.numberOfRounds ?? "Tự động"}
+            label={t("round.settings.swissRounds")}
+            value={round.settings.numberOfRounds ?? t("round.settings.automatic")}
           />
           <SettingPill
-            label="Số đội đi tiếp"
+            label={t("round.settings.advancingTeams")}
             value={round.settings.advancingTeamCount}
           />
         </div>
@@ -82,8 +84,8 @@ export default function RoundSettingsSummary({
         <div className="flex flex-wrap gap-2">
           {common}
           <SettingPill
-            label="Tranh hạng ba"
-            value={round.settings.thirdPlaceMatch ? "Có" : "Không"}
+            label={t("round.settings.thirdPlace")}
+            value={round.settings.thirdPlaceMatch ? t("common.yes") : t("common.no")}
           />
         </div>
       );
@@ -92,8 +94,8 @@ export default function RoundSettingsSummary({
         <div className="flex flex-wrap gap-2">
           {common}
           <SettingPill
-            label="Grand Final Reset"
-            value={round.settings.grandFinalReset ? "Có" : "Không"}
+            label={t("round.settings.grandFinalReset")}
+            value={round.settings.grandFinalReset ? t("common.yes") : t("common.no")}
           />
         </div>
       );

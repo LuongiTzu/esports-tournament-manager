@@ -4,17 +4,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowClockwiseIcon, ImageIcon, TrashIcon } from "@phosphor-icons/react";
 import ResolvedImage from "@/components/ResolvedImage";
 import { secondaryButtonClass } from "@/components/ui";
+import { useLocale } from "@/features/locale/store";
 
 export const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 export const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(IMAGE_ACCEPT.split(","));
 
-export function validateImageFile(file: File): string | null {
+export function validateImageFile(file: File): "INVALID_TYPE" | "TOO_LARGE" | null {
   if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
-    return "Chỉ hỗ trợ ảnh JPEG, PNG, WebP hoặc GIF.";
+    return "INVALID_TYPE";
   }
   if (file.size > MAX_IMAGE_SIZE) {
-    return "Ảnh không được vượt quá 5 MiB.";
+    return "TOO_LARGE";
   }
   return null;
 }
@@ -42,6 +43,7 @@ export default function ImageUploadPicker({
   uploadError,
   successMessage,
 }: ImageUploadPickerProps) {
+  const { t } = useLocale();
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectionError, setSelectionError] = useState("");
   const previewUrl = useMemo(
@@ -80,13 +82,13 @@ export default function ImageUploadPicker({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={previewUrl}
-              alt="Bản xem trước ảnh đã chọn"
+              alt={t("image.selectedPreview")}
               className="size-full object-cover object-center"
             />
           ) : (
             <ResolvedImage
               src={existingUrl}
-              alt="Ảnh hiện tại"
+              alt={t("image.current")}
               className="size-full object-cover object-center"
               fallback={<ImageIcon size={30} weight="duotone" />}
             />
@@ -103,9 +105,11 @@ export default function ImageUploadPicker({
             onChange={(event) => {
               const nextFile = event.target.files?.[0];
               if (!nextFile) return;
-              const error = validateImageFile(nextFile);
-              if (error) {
-                setSelectionError(error);
+              const validationError = validateImageFile(nextFile);
+              if (validationError) {
+                setSelectionError(
+                  t(validationError === "INVALID_TYPE" ? "image.invalidType" : "image.tooLarge"),
+                );
                 event.target.value = "";
                 return;
               }
@@ -120,7 +124,7 @@ export default function ImageUploadPicker({
             className={secondaryButtonClass}
           >
             <ArrowClockwiseIcon size={16} />
-            {file ? "Chọn ảnh khác" : "Chọn ảnh từ thiết bị"}
+            {file ? t("image.chooseAnother") : t("image.chooseDevice")}
           </button>
           {file && (
             <button
@@ -130,11 +134,11 @@ export default function ImageUploadPicker({
               className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-rejected transition hover:bg-rejected/10 disabled:opacity-50"
             >
               <TrashIcon size={16} />
-              Bỏ ảnh đã chọn
+              {t("image.removeSelected")}
             </button>
           )}
           <p className="w-full text-xs text-ink-faint">
-            JPEG, PNG, WebP hoặc GIF. Tối đa 5 MiB.
+            {t("image.requirements")}
           </p>
           {(selectionError || uploadError) && (
             <p role="alert" className="w-full text-xs text-rejected">
@@ -142,7 +146,7 @@ export default function ImageUploadPicker({
             </p>
           )}
           {uploading && (
-            <p className="w-full text-xs text-brand">Đang tải ảnh lên…</p>
+            <p className="w-full text-xs text-brand">{t("image.uploading")}</p>
           )}
           {successMessage && (
             <p role="status" className="w-full text-xs text-approved">

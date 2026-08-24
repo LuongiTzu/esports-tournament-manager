@@ -11,22 +11,8 @@ import {
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { tournamentsApi } from "@/features/tournaments/api";
 import type { TournamentDetail } from "@/features/tournaments/types";
-
-const STATUS_LABELS: Record<TournamentDetail["status"], string> = {
-  DRAFT: "Bản nháp",
-  REGISTRATION: "Đang đăng ký",
-  ONGOING: "Đang thi đấu",
-  COMPLETED: "Đã hoàn tất",
-  CANCELLED: "Đã hủy",
-};
-
-function formatDateTime(value?: string | null) {
-  if (!value) return "Không giới hạn";
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
+import { formatLocalizedDate } from "@/features/locale/format";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 export default function TournamentLifecycleControls({
   tournament,
@@ -35,6 +21,7 @@ export default function TournamentLifecycleControls({
   tournament: TournamentDetail;
   onRefresh: () => Promise<void>;
 }) {
+  const { locale, t } = useLocale();
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -51,12 +38,12 @@ export default function TournamentLifecycleControls({
         registrationOpen: nextOpen,
       });
       await onRefresh();
-      setNotice(nextOpen ? "Đã mở nhận đăng ký." : "Đã đóng nhận đăng ký.");
+      setNotice(nextOpen ? t("lifecycle.opened") : t("lifecycle.closed"));
     } catch (reason) {
       setError(
         reason instanceof Error
           ? reason.message
-          : "Không thể cập nhật trạng thái đăng ký.",
+          : t("lifecycle.updateError"),
       );
     } finally {
       setWorking(false);
@@ -71,17 +58,17 @@ export default function TournamentLifecycleControls({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-            Lifecycle
+            {t("lifecycle.eyebrow")}
           </p>
           <h2
             id="lifecycle-heading"
             className="mt-1 text-xl font-bold text-ink"
           >
-            Vòng đời giải đấu
+            {t("lifecycle.title")}
           </h2>
         </div>
         <span className="rounded-full border border-line bg-surface-sub px-3 py-1.5 text-xs font-semibold text-ink-muted">
-          {STATUS_LABELS[tournament.status]}
+          {t(`tournament.status.${tournament.status}` as TranslationKey)}
         </span>
       </div>
 
@@ -89,12 +76,10 @@ export default function TournamentLifecycleControls({
         <div className="rounded-xl border border-line bg-surface-sub/45 p-4">
           <div className="flex items-center gap-2">
             <LockKeyIcon className="text-brand" />
-            <h3 className="font-semibold text-ink">Chuyển trạng thái giải</h3>
+            <h3 className="font-semibold text-ink">{t("lifecycle.transitionTitle")}</h3>
           </div>
           <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-            Hệ thống hiện chưa cung cấp contract chuyển trạng thái có kiểm tra
-            điều kiện và chiều chuyển hợp lệ. Vì vậy trang quản lý không hiển
-            thị thao tác bắt đầu, hoàn tất, hủy hoặc khôi phục giải.
+            {t("lifecycle.transitionUnavailable")}
           </p>
         </div>
 
@@ -103,10 +88,10 @@ export default function TournamentLifecycleControls({
             <div>
               <div className="flex items-center gap-2">
                 <CalendarBlankIcon className="text-brand" />
-                <h3 className="font-semibold text-ink">Nhận đăng ký</h3>
+                <h3 className="font-semibold text-ink">{t("lifecycle.registration")}</h3>
               </div>
               <p className="mt-2 text-sm font-medium text-ink">
-                {tournament.registrationOpen ? "Đang bật" : "Đang tắt"}
+                {tournament.registrationOpen ? t("lifecycle.enabled") : t("lifecycle.disabled")}
               </p>
             </div>
             {registrationCanBeToggled && (
@@ -117,33 +102,30 @@ export default function TournamentLifecycleControls({
                 className={secondaryButtonClass}
               >
                 {working && <CircleNotchIcon className="animate-spin" />}
-                {tournament.registrationOpen ? "Đóng đăng ký" : "Mở đăng ký"}
+                {tournament.registrationOpen ? t("lifecycle.closeRegistration") : t("lifecycle.openRegistration")}
               </button>
             )}
           </div>
           <dl className="mt-4 grid gap-2 text-xs text-ink-muted sm:grid-cols-2">
             <div>
-              <dt className="text-ink-faint">Bắt đầu nhận</dt>
+              <dt className="text-ink-faint">{t("lifecycle.registrationStart")}</dt>
               <dd className="mt-0.5">
-                {formatDateTime(tournament.registrationStartDate)}
+                {tournament.registrationStartDate ? formatLocalizedDate(tournament.registrationStartDate, locale, { dateStyle: "medium", timeStyle: "short" }) : t("common.unlimited")}
               </dd>
             </div>
             <div>
-              <dt className="text-ink-faint">Hạn đăng ký</dt>
+              <dt className="text-ink-faint">{t("lifecycle.registrationDeadline")}</dt>
               <dd className="mt-0.5">
-                {formatDateTime(tournament.registrationDeadline)}
+                {tournament.registrationDeadline ? formatLocalizedDate(tournament.registrationDeadline, locale, { dateStyle: "medium", timeStyle: "short" }) : t("common.unlimited")}
               </dd>
             </div>
           </dl>
           <p className="mt-3 text-xs leading-relaxed text-ink-faint">
-            Đăng ký chỉ có hiệu lực khi giải ở trạng thái “Đang đăng ký”, công
-            tắc được bật và thời gian hiện tại nằm trong cửa sổ đăng ký của
-            backend.
+            {t("lifecycle.registrationRule")}
           </p>
           {!registrationCanBeToggled && (
             <p className="mt-3 flex items-start gap-2 text-xs text-pending">
-              <WarningCircleIcon className="mt-0.5 shrink-0" /> Trạng thái hiện
-              tại không nhận đăng ký đội.
+              <WarningCircleIcon className="mt-0.5 shrink-0" /> {t("lifecycle.currentStatusClosed")}
             </p>
           )}
         </div>

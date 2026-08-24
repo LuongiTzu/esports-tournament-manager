@@ -8,7 +8,7 @@ import {
 } from "@phosphor-icons/react";
 import { alertErrorClass } from "@/components/ui";
 import { tournamentsApi } from "@/features/tournaments/api";
-import { ROUND_FORMAT_LABELS } from "@/features/tournaments/round-formats";
+import { roundFormatLabel } from "@/features/tournaments/round-formats";
 import type {
   RoundBracket,
   RoundStandings,
@@ -20,6 +20,7 @@ import RoundStandingsView from "../manage/RoundStandingsView";
 import RoundSettingsSummary from "./RoundSettingsSummary";
 import { useTournamentRealtime } from "@/features/realtime/provider";
 import type { TournamentRealtimeEvent } from "@/features/realtime/types";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 const COMPETITION_REFRESH_EVENTS = new Set<TournamentRealtimeEvent>([
   "matchUpdated",
@@ -29,23 +30,6 @@ const COMPETITION_REFRESH_EVENTS = new Set<TournamentRealtimeEvent>([
   "standingsUpdated",
 ]);
 
-const ROUND_STATUS_LABELS = {
-  UPCOMING: "Sắp diễn ra",
-  ONGOING: "Đang diễn ra",
-  COMPLETED: "Hoàn tất",
-} as const;
-
-const TOURNAMENT_STATUS_LABELS: Record<
-  TournamentStandingsResponse["tournament"]["status"],
-  string
-> = {
-  DRAFT: "Bản nháp",
-  REGISTRATION: "Đang đăng ký",
-  ONGOING: "Đang diễn ra",
-  COMPLETED: "Đã hoàn tất",
-  CANCELLED: "Đã hủy",
-};
-
 export default function PublicCompetitionView({
   slug,
   tournamentId,
@@ -53,6 +37,7 @@ export default function PublicCompetitionView({
   slug: string;
   tournamentId: string;
 }) {
+  const { t } = useLocale();
   const [rounds, setRounds] = useState<RoundBracket[]>([]);
   const [standings, setStandings] =
     useState<TournamentStandingsResponse | null>(null);
@@ -86,7 +71,7 @@ export default function PublicCompetitionView({
         setError(
           reason instanceof Error
             ? reason.message
-            : "Không tải được dữ liệu thi đấu.",
+            : t("competition.loadError"),
         );
       })
       .finally(() => {
@@ -96,7 +81,7 @@ export default function PublicCompetitionView({
     return () => {
       cancelled = true;
     };
-  }, [refreshVersion, slug]);
+  }, [refreshVersion, slug, t]);
 
   useEffect(
     () => () => {
@@ -131,16 +116,16 @@ export default function PublicCompetitionView({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-            Competition
+            {t("competition.eyebrow")}
           </p>
           <h2
             id="public-competition-heading"
             className="mt-1 text-xl font-bold text-ink sm:text-2xl"
           >
-            Diễn biến giải đấu
+            {t("competition.title")}
           </h2>
           <p className="mt-2 text-sm text-ink-muted">
-            Lịch đấu, kết quả, xếp hạng và tiến trình chính thức từ hệ thống.
+            {t("competition.description")}
           </p>
         </div>
         {standings && (
@@ -154,7 +139,7 @@ export default function PublicCompetitionView({
                     : "border-line bg-surface-sub text-ink-muted"
               }`}
             >
-              {TOURNAMENT_STATUS_LABELS[standings.tournament.status]}
+              {t(`tournament.status.${standings.tournament.status}` as TranslationKey)}
             </span>
             {standings.tournament.champion && (
               <span className="inline-flex items-center gap-2 rounded-full border border-approved/30 bg-approved/10 px-3 py-1.5 text-sm font-semibold text-approved">
@@ -169,7 +154,7 @@ export default function PublicCompetitionView({
       {loading ? (
         <div
           className="grid min-h-52 place-items-center"
-          aria-label="Đang tải dữ liệu thi đấu"
+          aria-label={t("competition.loading")}
         >
           <CircleNotchIcon className="animate-spin text-brand" size={28} />
         </div>
@@ -182,12 +167,12 @@ export default function PublicCompetitionView({
         </p>
       ) : !selectedBracket ? (
         <div className="mt-5 rounded-xl border border-dashed border-line px-5 py-12 text-center text-sm text-ink-muted">
-          Giải đấu chưa có giai đoạn thi đấu.
+          {t("competition.noRounds")}
         </div>
       ) : (
         <>
           <nav
-            aria-label="Các giai đoạn thi đấu"
+            aria-label={t("competition.roundNavigation")}
             className="mt-5 flex max-w-full gap-2 overflow-x-auto pb-2"
           >
             {rounds.map(({ round }, index) => {
@@ -205,13 +190,13 @@ export default function PublicCompetitionView({
                   }`}
                 >
                   <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
-                    Giai đoạn {index + 1}
+                    {t("competition.stage")} {index + 1}
                   </span>
                   <span className="mt-1 block truncate text-sm font-semibold text-ink">
                     {round.name}
                   </span>
                   <span className="mt-1 block text-xs text-ink-muted">
-                    {ROUND_FORMAT_LABELS[round.format]}
+                    {roundFormatLabel(round.format, t)}
                   </span>
                 </button>
               );
@@ -225,11 +210,11 @@ export default function PublicCompetitionView({
                   {selectedBracket.round.name}
                 </h3>
                 <p className="mt-1 text-sm text-ink-muted">
-                  {ROUND_FORMAT_LABELS[selectedBracket.round.format]}
+                  {roundFormatLabel(selectedBracket.round.format, t)}
                 </p>
               </div>
               <span className="rounded-full bg-surface-card px-3 py-1 text-xs font-medium text-ink-muted">
-                {ROUND_STATUS_LABELS[selectedBracket.round.status]}
+                {t(`round.status.${selectedBracket.round.status}` as TranslationKey)}
               </span>
             </div>
 
@@ -245,7 +230,7 @@ export default function PublicCompetitionView({
 
             <div className="mt-6 min-w-0">
               <h3 className="mb-4 font-semibold text-ink">
-                Trận đấu và lịch thi đấu
+                {t("competition.matchesAndSchedule")}
               </h3>
               <RoundCompetitionView bracket={selectedBracket} />
             </div>
@@ -254,8 +239,8 @@ export default function PublicCompetitionView({
               <h3 className="mb-4 font-semibold text-ink">
                 {selectedBracket.round.format === "PLAYOFF" ||
                 selectedBracket.round.format === "DOUBLE_ELIM"
-                  ? "Kết quả giai đoạn"
-                  : "Bảng xếp hạng"}
+                  ? t("competition.stageResults")
+                  : t("competition.standings")}
               </h3>
               {selectedStandings && standings ? (
                 <RoundStandingsView
@@ -265,7 +250,7 @@ export default function PublicCompetitionView({
                 />
               ) : (
                 <p className="text-sm text-ink-muted">
-                  Chưa có dữ liệu xếp hạng hoặc tiến trình.
+                  {t("competition.noStandings")}
                 </p>
               )}
             </div>

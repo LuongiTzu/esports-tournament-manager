@@ -1,20 +1,7 @@
 import { FlagIcon, UserCircleIcon } from "@phosphor-icons/react";
 import type { AdminReport } from "@/features/admin/types";
 import { formatAdminDate } from "@/features/admin/format";
-import { useLocale } from "@/features/locale/store";
-
-const REASON_LABELS: Record<AdminReport["reason"], string> = {
-  GAMBLING: "Cá cược",
-  SCAM: "Lừa đảo",
-  INAPPROPRIATE_CONTENT: "Nội dung không phù hợp",
-  OTHER: "Khác",
-};
-
-const STATUS_LABELS: Record<AdminReport["status"], string> = {
-  PENDING: "Chờ xử lý",
-  REVIEWED: "Đã xem xét",
-  DISMISSED: "Đã bỏ qua",
-};
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 export default function AdminReportList({
   reports,
@@ -25,13 +12,13 @@ export default function AdminReportList({
   selectedId: string;
   onSelect: (id: string) => void;
 }) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   return (
     <div className="overflow-hidden rounded-2xl border border-line bg-surface-card">
       <div className="hidden grid-cols-[minmax(13rem,1fr)_minmax(11rem,1fr)_9rem] gap-3 border-b border-line bg-surface-sub/60 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-faint md:grid">
-        <span>Báo cáo</span>
-        <span>Giải đấu</span>
-        <span>Trạng thái</span>
+        <span>{t("admin.reports.listHeading")}</span>
+        <span>{t("admin.tournaments.listHeading")}</span>
+        <span>{t("admin.reports.status")}</span>
       </div>
       <div className="divide-y divide-line">
         {reports.map((report) => {
@@ -49,12 +36,12 @@ export default function AdminReportList({
               <span className="min-w-0">
                 <span className="flex items-center gap-2 font-semibold text-ink">
                   <FlagIcon className="shrink-0 text-brand" weight="fill" />
-                  {REASON_LABELS[report.reason]}
+                  {t(`admin.report.reason.${report.reason}` as TranslationKey)}
                 </span>
                 <span className="mt-1 flex min-w-0 items-center gap-1 text-xs text-ink-faint">
                   <UserCircleIcon className="shrink-0" />
                   <span className="truncate">
-                    {report.reporter?.displayName ?? "Khách vãng lai"}
+                    {report.reporter?.displayName ?? t("admin.reports.guest")}
                   </span>
                 </span>
               </span>
@@ -75,7 +62,7 @@ export default function AdminReportList({
                       : "bg-surface-sub text-ink-muted"
                 }`}
               >
-                {STATUS_LABELS[report.status]}
+                {t(`admin.report.status.${report.status}` as TranslationKey)}
               </span>
             </button>
           );

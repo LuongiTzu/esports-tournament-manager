@@ -1,5 +1,8 @@
+"use client";
+
 import { EyeSlashIcon, UserCircleIcon } from "@phosphor-icons/react";
 import type { AdminComment } from "@/features/admin/types";
+import { useLocale } from "@/features/locale/store";
 
 export default function AdminCommentList({
   comments,
@@ -10,6 +13,7 @@ export default function AdminCommentList({
   selectedId: string;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useLocale();
   return (
     <div className="divide-y divide-line overflow-hidden rounded-xl border border-line">
       {comments.map((comment) => (
@@ -34,7 +38,7 @@ export default function AdminCommentList({
             </span>
             {comment.isHidden && (
               <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rejected/12 px-2 py-1 text-[11px] font-semibold text-rejected">
-                <EyeSlashIcon weight="fill" /> Đã ẩn
+                <EyeSlashIcon weight="fill" /> {t("admin.comments.hidden")}
               </span>
             )}
           </span>

@@ -1,6 +1,8 @@
 import type vi from "@/features/locale/dictionaries/vi";
+import extendedEn from "@/features/locale/dictionaries/extended-en";
 
 const en = {
+  ...extendedEn,
   "notifications.title": "Notifications",
   "notifications.unread": "unread",
   "notifications.markAll": "Mark all read",

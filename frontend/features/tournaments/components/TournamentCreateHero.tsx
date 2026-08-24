@@ -1,11 +1,15 @@
+"use client";
+
 import Image from "next/image";
 import {
   DeviceMobileIcon,
   GameControllerIcon,
   KeyboardIcon,
 } from "@phosphor-icons/react";
+import { useLocale } from "@/features/locale/store";
 
 export default function TournamentCreateHero() {
+  const { t } = useLocale();
   return (
     <section className="relative isolate min-h-64 overflow-hidden rounded-3xl border border-line bg-surface-card/75 shadow-[var(--shadow-elevated)] sm:min-h-72">
       <div
@@ -30,14 +34,13 @@ export default function TournamentCreateHero() {
           <GameControllerIcon size={32} weight="duotone" />
         </span>
         <p className="mt-5 text-xs font-bold uppercase tracking-[0.28em] text-brand-hover">
-          Không gian tổ chức của bạn
+          {t("tournament.createHero.eyebrow")}
         </p>
         <h1 className="mt-3 text-balance text-3xl font-black tracking-tight text-ink sm:text-4xl">
-          Tạo một giải đấu mới
+          {t("tournament.createHero.title")}
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-6 text-ink-muted sm:text-base">
-          Thiết lập thông tin, điều kiện tham gia và cấu trúc thi đấu trong
-          một luồng thống nhất.
+          {t("tournament.createHero.description")}
         </p>
       </div>
 

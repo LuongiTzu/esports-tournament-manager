@@ -12,14 +12,7 @@ import CompetitionManager from "@/features/tournaments/components/manage/Competi
 import TournamentLifecycleControls from "@/features/tournaments/components/manage/TournamentLifecycleControls";
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { alertErrorClass } from "@/components/ui";
-
-const TOURNAMENT_STATUS_LABELS: Record<TournamentDetail["status"], string> = {
-  DRAFT: "Bản nháp",
-  REGISTRATION: "Đang đăng ký",
-  ONGOING: "Đang thi đấu",
-  COMPLETED: "Đã hoàn tất",
-  CANCELLED: "Đã hủy",
-};
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 export default function ManagePage({
   params,
@@ -29,6 +22,7 @@ export default function ManagePage({
   const { slug } = use(params);
   const router = useRouter();
   const { user, ready } = useAuth();
+  const { t } = useLocale();
 
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,19 +36,19 @@ export default function ManagePage({
     }
     tournamentsApi
       .findBySlug(slug)
-      .then((t) => {
-        setTournament(t);
-        if (t.organizer?.id !== user.id) {
-          setLoadError("Bạn không phải ban tổ chức của giải đấu này");
+      .then((loadedTournament) => {
+        setTournament(loadedTournament);
+        if (loadedTournament.organizer?.id !== user.id) {
+          setLoadError(t("manage.notOrganizer"));
         }
       })
       .catch((err) =>
         setLoadError(
-          err instanceof Error ? err.message : "Không tải được dữ liệu",
+          err instanceof Error ? err.message : t("manage.loadError"),
         ),
       )
       .finally(() => setLoading(false));
-  }, [slug, router, ready, user]);
+  }, [slug, router, ready, user, t]);
 
   const refreshTournament = async () => {
     setTournament(await tournamentsApi.findBySlug(slug));
@@ -76,13 +70,13 @@ export default function ManagePage({
     return (
       <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-16 text-center">
         <p className={alertErrorClass}>
-          {loadError || "Không tìm thấy giải đấu"}
+          {loadError || t("tournament.detail.notFound")}
         </p>
         <Link
           href="/"
           className="mt-4 inline-block text-sm text-brand hover:underline"
         >
-          Về danh sách giải
+          {t("tournament.detail.backToList")}
         </Link>
       </div>
     );
@@ -104,14 +98,14 @@ export default function ManagePage({
       <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-            Organizer workspace
+            {t("manage.eyebrow")}
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-            Quản lý {tournament.name}
+            {t("manage.title")} {tournament.name}
           </h1>
         </div>
         <span className="rounded-full border border-line bg-surface-card px-3 py-1.5 text-xs font-medium text-ink-muted">
-          {TOURNAMENT_STATUS_LABELS[tournament.status]}
+          {t(`tournament.status.${tournament.status}` as TranslationKey)}
         </span>
       </div>
 

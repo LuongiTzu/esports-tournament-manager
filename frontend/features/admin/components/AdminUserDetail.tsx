@@ -4,7 +4,7 @@ import ResolvedImage from "@/components/ResolvedImage";
 import type { AdminUser } from "@/features/admin/types";
 import { secondaryButtonClass } from "@/components/ui";
 import { formatAdminDate } from "@/features/admin/format";
-import { useLocale } from "@/features/locale/store";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 export default function AdminUserDetail({
   user,
@@ -17,7 +17,7 @@ export default function AdminUserDetail({
   working: boolean;
   onToggleLock: () => void;
 }) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const isSelf = user.id === currentAdminId;
 
   return (
@@ -26,7 +26,7 @@ export default function AdminUserDetail({
         <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-brand/15 text-xl font-bold text-brand">
           <ResolvedImage
             src={user.avatarUrl}
-            alt={`Ảnh đại diện của ${user.displayName}`}
+            alt={`${t("admin.users.avatarAlt")} ${user.displayName}`}
             className="size-full object-cover object-center"
             fallback={user.displayName.charAt(0).toUpperCase()}
           />
@@ -42,33 +42,33 @@ export default function AdminUserDetail({
             }`}
           >
             {user.isLocked ? <LockKeyIcon weight="fill" /> : <UserCircleIcon weight="fill" />}
-            {user.isLocked ? "Tài khoản đã khóa" : "Tài khoản hoạt động"}
+            {user.isLocked ? t("admin.users.accountLocked") : t("admin.users.accountActive")}
           </span>
         </div>
       </div>
 
       <dl className="mt-5 divide-y divide-line rounded-xl border border-line px-4 text-sm">
         <DetailRow
-          label="Vai trò"
+          label={t("admin.users.role")}
           value={
             <span className="inline-flex items-center gap-1.5 font-semibold">
               {user.role === "ADMIN" && <ShieldCheckIcon className="text-brand" weight="fill" />}
-              {user.role === "ADMIN" ? "ADMIN" : "SIGNED_UP_USER"}
+              {t(`admin.role.${user.role}` as TranslationKey)}
             </span>
           }
         />
-        <DetailRow label="Ngày tạo" value={formatAdminDate(user.createdAt, locale, true)} />
-        <DetailRow label="Cập nhật gần nhất" value={formatAdminDate(user.updatedAt, locale, true)} />
+        <DetailRow label={t("admin.users.createdAt")} value={formatAdminDate(user.createdAt, locale, true)} />
+        <DetailRow label={t("admin.users.updatedAt")} value={formatAdminDate(user.updatedAt, locale, true)} />
       </dl>
 
       <section className="mt-5 border-t border-line pt-5">
-        <h3 className="text-sm font-bold text-ink">Trạng thái bảo mật</h3>
+        <h3 className="text-sm font-bold text-ink">{t("admin.users.security")}</h3>
         <p className="mt-1 text-xs leading-5 text-ink-faint">
-          Khóa tài khoản sẽ vô hiệu hóa token hiện tại theo hành vi backend.
+          {t("admin.users.lockHint")}
         </p>
         {isSelf ? (
           <p className="mt-4 rounded-xl border border-line bg-surface-sub px-3 py-2.5 text-xs leading-5 text-ink-muted">
-            Backend không cho phép quản trị viên khóa chính tài khoản đang đăng nhập.
+            {t("admin.users.selfLockHint")}
           </p>
         ) : (
           <button
@@ -83,10 +83,10 @@ export default function AdminUserDetail({
           >
             <LockKeyIcon />
             {working
-              ? "Đang cập nhật..."
+              ? t("admin.users.updating")
               : user.isLocked
-                ? "Mở khóa tài khoản"
-                : "Khóa tài khoản"}
+                ? t("admin.users.unlock")
+                : t("admin.users.lock")}
           </button>
         )}
       </section>

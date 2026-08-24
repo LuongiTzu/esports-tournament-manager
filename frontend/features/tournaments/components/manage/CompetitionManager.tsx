@@ -15,13 +15,12 @@ import {
   secondaryButtonClass,
 } from "@/components/ui";
 import { tournamentsApi } from "@/features/tournaments/api";
-import { ROUND_FORMAT_LABELS } from "@/features/tournaments/round-formats";
+import { roundFormatLabel } from "@/features/tournaments/round-formats";
 import type {
   BracketMatch,
   RoundBracket,
   RoundStandings,
   TournamentDetail,
-  TournamentRound,
   TournamentStandingsResponse,
 } from "@/features/tournaments/types";
 import RoundCompetitionView from "./RoundCompetitionView";
@@ -31,6 +30,7 @@ import RoundStandingsView from "./RoundStandingsView";
 import RoundSettingsSummary from "../competition/RoundSettingsSummary";
 import { useTournamentRealtime } from "@/features/realtime/provider";
 import type { TournamentRealtimeEvent } from "@/features/realtime/types";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 const COMPETITION_REFRESH_EVENTS = new Set<TournamentRealtimeEvent>([
   "matchUpdated",
@@ -40,12 +40,6 @@ const COMPETITION_REFRESH_EVENTS = new Set<TournamentRealtimeEvent>([
   "standingsUpdated",
 ]);
 
-const ROUND_STATUS_LABELS: Record<TournamentRound["status"], string> = {
-  UPCOMING: "Sắp diễn ra",
-  ONGOING: "Đang diễn ra",
-  COMPLETED: "Hoàn tất",
-};
-
 export default function CompetitionManager({
   tournament,
   onTournamentRefresh,
@@ -53,6 +47,7 @@ export default function CompetitionManager({
   tournament: TournamentDetail;
   onTournamentRefresh: () => Promise<void>;
 }) {
+  const { t } = useLocale();
   const rounds = useMemo(
     () =>
       [...(tournament.rounds ?? [])].sort(
@@ -92,7 +87,7 @@ export default function CompetitionManager({
         const selected = bracketResponse.rounds.find(
           (item) => item.round.id === roundId,
         );
-        if (!selected) throw new Error("Không tìm thấy cấu trúc của giai đoạn");
+        if (!selected) throw new Error(t("competition.manage.structureNotFound"));
         setBracket(selected);
         setStandings(standingsResponse);
       } catch (err) {
@@ -101,13 +96,13 @@ export default function CompetitionManager({
         setError(
           err instanceof Error
             ? err.message
-            : "Không tải được cấu trúc thi đấu",
+            : t("competition.manage.loadError"),
         );
       } finally {
         setLoading(false);
       }
     },
-    [tournament.slug],
+    [tournament.slug, t],
   );
 
   useEffect(() => {
@@ -122,7 +117,7 @@ export default function CompetitionManager({
         const selected = bracketResponse.rounds.find(
           (item) => item.round.id === selectedRound.id,
         );
-        if (!selected) throw new Error("Không tìm thấy cấu trúc của giai đoạn");
+        if (!selected) throw new Error(t("competition.manage.structureNotFound"));
         setBracket(selected);
         setStandings(standingsResponse);
       })
@@ -133,7 +128,7 @@ export default function CompetitionManager({
         setError(
           err instanceof Error
             ? err.message
-            : "Không tải được cấu trúc thi đấu",
+            : t("competition.manage.loadError"),
         );
       })
       .finally(() => {
@@ -142,7 +137,7 @@ export default function CompetitionManager({
     return () => {
       cancelled = true;
     };
-  }, [selectedRound?.id, tournament.slug]);
+  }, [selectedRound?.id, tournament.slug, t]);
 
   useEffect(
     () => () => {
@@ -170,7 +165,7 @@ export default function CompetitionManager({
     if (
       force &&
       !window.confirm(
-        "Tạo lại sẽ thay thế cấu trúc hiện tại nếu backend xác nhận chưa có kết quả hoặc tiến độ. Bạn muốn tiếp tục?",
+        t("competition.manage.regenerateConfirm"),
       )
     ) {
       return;
@@ -185,12 +180,12 @@ export default function CompetitionManager({
         force,
       );
       setNotice(
-        `Đã tạo ${result.matchCount} trận từ ${result.approvedTeamCount} đội được duyệt.`,
+        `${t("competition.manage.generatedPrefix")} ${result.matchCount} ${t("competition.manage.fromApproved")} ${result.approvedTeamCount} ${t("competition.manage.approvedTeams")}`,
       );
       await loadCompetition(selectedRound.id);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Không thể tạo cấu trúc thi đấu",
+        err instanceof Error ? err.message : t("competition.manage.generateError"),
       );
     } finally {
       setWorking(null);
@@ -210,14 +205,14 @@ export default function CompetitionManager({
         ? ` ${result.warnings.join(" ")}`
         : "";
       setNotice(
-        `Đã tạo lượt Swiss ${result.bracketRound}/${result.numberOfRounds}.${warning}`,
+        `${t("competition.manage.swissGenerated")} ${result.bracketRound}/${result.numberOfRounds}.${warning}`,
       );
       await loadCompetition(selectedRound.id);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Không thể tạo lượt Swiss tiếp theo",
+          : t("competition.manage.swissGenerateError"),
       );
     } finally {
       setWorking(null);
@@ -232,7 +227,7 @@ export default function CompetitionManager({
     try {
       const result = await tournamentsApi.advanceRound(selectedRound.id);
       setNotice(
-        `Đã đưa ${result.advanceCount} đội vào ${result.nextRound?.name ?? "vòng tiếp theo"}.`,
+        `${t("competition.manage.advancedPrefix")} ${result.advanceCount} ${t("competition.manage.advancedInto")} ${result.nextRound?.name ?? t("competition.manage.nextRoundFallback")}.`,
       );
       await Promise.all([
         loadCompetition(selectedRound.id),
@@ -242,7 +237,7 @@ export default function CompetitionManager({
       setError(
         err instanceof Error
           ? err.message
-          : "Không thể chuyển đội vào vòng tiếp theo",
+          : t("competition.manage.advanceError"),
       );
     } finally {
       setWorking(null);
@@ -252,9 +247,9 @@ export default function CompetitionManager({
   if (!rounds.length) {
     return (
       <section className="rounded-2xl border border-dashed border-line px-6 py-14 text-center">
-        <h2 className="font-semibold text-ink">Chưa có giai đoạn thi đấu</h2>
+        <h2 className="font-semibold text-ink">{t("competition.manage.noStages")}</h2>
         <p className="mt-2 text-sm text-ink-muted">
-          Tournament này chưa cấu hình round nào để tạo cấu trúc.
+          {t("competition.manage.noStagesHint")}
         </p>
       </section>
     );
@@ -303,29 +298,29 @@ export default function CompetitionManager({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-            Competition control
+            {t("competition.manage.eyebrow")}
           </p>
           <h2
             id="competition-heading"
             className="mt-1 text-xl font-bold text-ink sm:text-2xl"
           >
-            Cấu trúc thi đấu
+            {t("competition.manage.structure")}
           </h2>
           <p className="mt-2 text-sm text-ink-muted">
-            {tournament.teams.length} đội được duyệt
+            {tournament.teams.length} {t("competition.manage.approvedTeams")}
             {tournament.maxTeams
-              ? ` / tối đa ${tournament.maxTeams}`
-              : ""} · {tournament._count?.teams ?? tournament.teams.length} lượt
-            đăng ký
+              ? ` / ${t("competition.manage.maximum")} ${tournament.maxTeams}`
+              : ""} · {tournament._count?.teams ?? tournament.teams.length}{" "}
+            {t("competition.manage.registrations")}
           </p>
         </div>
         <span className="rounded-full border border-line bg-surface-sub px-3 py-1.5 text-xs text-ink-muted">
-          {rounds.length} giai đoạn
+          {rounds.length} {t("competition.manage.stages")}
         </span>
       </div>
 
       <nav
-        aria-label="Các giai đoạn thi đấu"
+        aria-label={t("competition.roundNavigation")}
         className="mt-5 flex gap-2 overflow-x-auto pb-2"
       >
         {rounds.map((round, index) => {
@@ -350,13 +345,13 @@ export default function CompetitionManager({
               }`}
             >
               <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
-                Giai đoạn {index + 1}
+                {t("competition.stage")} {index + 1}
               </span>
               <span className="mt-1 block truncate text-sm font-semibold text-ink">
                 {round.name}
               </span>
               <span className="mt-1 block text-xs text-ink-muted">
-                {ROUND_FORMAT_LABELS[round.format]}
+                {roundFormatLabel(round.format, t)}
               </span>
             </button>
           );
@@ -372,16 +367,16 @@ export default function CompetitionManager({
                   {selectedRound.name}
                 </h3>
                 <span className="rounded-full bg-surface-sub px-2.5 py-1 text-[11px] text-ink-muted">
-                  {ROUND_STATUS_LABELS[selectedRound.status]}
+                  {t(`round.status.${selectedRound.status}` as TranslationKey)}
                 </span>
                 <span
                   className={`rounded-full px-2.5 py-1 text-[11px] ${hasStructure ? "bg-approved/10 text-approved" : "bg-pending/10 text-pending"}`}
                 >
-                  {hasStructure ? "Đã tạo cấu trúc" : "Chưa tạo"}
+                  {hasStructure ? t("competition.manage.generated") : t("competition.manage.notGenerated")}
                 </span>
               </div>
               <p className="mt-1 text-sm text-ink-muted">
-                {ROUND_FORMAT_LABELS[selectedRound.format]}
+                {roundFormatLabel(selectedRound.format, t)}
               </p>
             </div>
 
@@ -403,7 +398,7 @@ export default function CompetitionManager({
                       ) : (
                         <PlayIcon weight="fill" />
                       )}
-                      Tạo lượt Swiss tiếp
+                      {t("competition.manage.nextSwiss")}
                     </button>
                   )}
                 {actionsAllowed &&
@@ -423,7 +418,7 @@ export default function CompetitionManager({
                       ) : (
                         <PlayIcon weight="fill" />
                       )}
-                      {hasStructure ? "Tạo lại cấu trúc" : "Tạo cấu trúc"}
+                      {hasStructure ? t("competition.manage.regenerate") : t("competition.manage.generate")}
                     </button>
                   )}
                 {canAdvance && (
@@ -438,7 +433,7 @@ export default function CompetitionManager({
                     ) : (
                       <ArrowRightIcon weight="bold" />
                     )}
-                    Đưa đội vào vòng tiếp theo
+                    {t("competition.manage.advance")}
                   </button>
                 )}
               </div>
@@ -471,7 +466,7 @@ export default function CompetitionManager({
           <div className="mt-6">
             {loading ? (
               <div
-                aria-label="Đang tải cấu trúc"
+                aria-label={t("competition.manage.loadingStructure")}
                 className="grid min-h-48 place-items-center rounded-xl border border-line"
               >
                 <CircleNotchIcon
@@ -488,7 +483,7 @@ export default function CompetitionManager({
               />
             ) : (
               <div className="rounded-xl border border-dashed border-line px-5 py-10 text-center text-sm text-ink-muted">
-                Không có dữ liệu cấu trúc để hiển thị.
+                {t("competition.manage.noStructure")}
               </div>
             )}
           </div>
@@ -496,10 +491,10 @@ export default function CompetitionManager({
           <div className="mt-8 border-t border-line pt-6">
             <div className="mb-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">
-                Standings &amp; progression
+                {t("competition.manage.standingsEyebrow")}
               </p>
               <h3 className="mt-1 text-lg font-bold text-ink">
-                Xếp hạng và chuyển vòng
+                {t("competition.manage.standingsTitle")}
               </h3>
             </div>
             {activeStandings && activeRound && standings ? (
@@ -513,7 +508,7 @@ export default function CompetitionManager({
               </div>
             ) : !loading ? (
               <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-muted">
-                Không có dữ liệu xếp hạng hoặc tiến độ để hiển thị.
+                {t("competition.manage.noProgressData")}
               </p>
             ) : null}
           </div>

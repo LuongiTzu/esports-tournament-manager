@@ -17,13 +17,9 @@ import type {
 import type { TournamentDetail } from "@/features/tournaments/types";
 import TeamRegistrationCard from "./TeamRegistrationCard";
 import TeamRegistrationDetail from "./TeamRegistrationDetail";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
 
-const FILTERS: Array<{ value: "ALL" | TeamStatus; label: string }> = [
-  { value: "ALL", label: "Tất cả" },
-  { value: "PENDING", label: "Chờ duyệt" },
-  { value: "APPROVED", label: "Đã duyệt" },
-  { value: "REJECTED", label: "Từ chối" },
-];
+const FILTERS: Array<"ALL" | TeamStatus> = ["ALL", "PENDING", "APPROVED", "REJECTED"];
 
 export default function RegistrationManagement({
   tournament,
@@ -32,6 +28,7 @@ export default function RegistrationManagement({
   tournament: TournamentDetail;
   onTournamentRefresh: () => Promise<void>;
 }) {
+  const { t } = useLocale();
   const [teams, setTeams] = useState<TeamWithMembers[]>([]);
   const [filter, setFilter] = useState<"ALL" | TeamStatus>("ALL");
   const [selectedTeamId, setSelectedTeamId] = useState("");
@@ -75,7 +72,7 @@ export default function RegistrationManagement({
           setError(
             reason instanceof Error
               ? reason.message
-              : "Không tải được danh sách đăng ký.",
+              : t("registration.listLoadError"),
           );
         }
       })
@@ -85,7 +82,7 @@ export default function RegistrationManagement({
     return () => {
       cancelled = true;
     };
-  }, [tournament.slug]);
+  }, [tournament.slug, t]);
 
   useEffect(() => {
     if (!selectedTeamId) {
@@ -105,7 +102,7 @@ export default function RegistrationManagement({
           setDetailError(
             reason instanceof Error
               ? reason.message
-              : "Không tải được chi tiết đăng ký.",
+              : t("registration.detailLoadError"),
           );
         }
       } finally {
@@ -116,7 +113,7 @@ export default function RegistrationManagement({
     return () => {
       cancelled = true;
     };
-  }, [selectedTeamId]);
+  }, [selectedTeamId, t]);
 
   const counts = useMemo(
     () => ({
@@ -147,13 +144,13 @@ export default function RegistrationManagement({
     if (!detail || detail.status !== "PENDING" || working) return;
     const trimmedReason = rejectionReason.trim();
     if (status === "REJECTED" && trimmedReason.length < 5) {
-      setDetailError("Lý do từ chối phải có ít nhất 5 ký tự.");
+      setDetailError(t("registration.rejectReasonMin"));
       return;
     }
     const confirmed = window.confirm(
       status === "APPROVED"
-        ? `Duyệt đội “${detail.name}” tham gia giải?`
-        : `Từ chối đăng ký của đội “${detail.name}”?`,
+        ? `${t("registration.approveConfirm")} “${detail.name}”`
+        : `${t("registration.rejectConfirm")} “${detail.name}”`,
     );
     if (!confirmed) return;
 
@@ -177,14 +174,14 @@ export default function RegistrationManagement({
       setRejectionReason("");
       setNotice(
         status === "APPROVED"
-          ? `Đã duyệt đội ${detail.name}.`
-          : `Đã từ chối đội ${detail.name}.`,
+          ? `${t("registration.approvedPrefix")} ${detail.name}.`
+          : `${t("registration.rejectedPrefix")} ${detail.name}.`,
       );
     } catch (reason) {
       setDetailError(
         reason instanceof Error
           ? reason.message
-          : "Không thể cập nhật đăng ký đội.",
+          : t("registration.updateError"),
       );
     } finally {
       setWorking(null);
@@ -196,41 +193,41 @@ export default function RegistrationManagement({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-            Registration review
+            {t("registration.eyebrow")}
           </p>
           <h2
             id="registration-management-heading"
             className="mt-1 text-xl font-bold text-ink sm:text-2xl"
           >
-            Quản lý đăng ký đội
+            {t("registration.title")}
           </h2>
           <p className="mt-2 text-sm text-ink-muted">
-            Đã duyệt: {counts.APPROVED}
-            {tournament.maxTeams ? ` / ${tournament.maxTeams} đội` : " đội"}
+            {t("registration.approved")}: {counts.APPROVED}
+            {tournament.maxTeams ? ` / ${tournament.maxTeams}` : ""} {t("registration.teamsUnit")}
           </p>
         </div>
         <span className="rounded-full border border-line bg-surface-card px-3 py-1.5 text-xs text-ink-muted">
-          {counts.PENDING} đăng ký chờ xử lý
+          {counts.PENDING} {t("registration.pendingCount")}
         </span>
       </div>
 
       <div className="mt-5 flex max-w-full gap-2 overflow-x-auto pb-2">
         {FILTERS.map((item) => {
-          const active = filter === item.value;
+          const active = filter === item;
           return (
             <button
-              key={item.value}
+              key={item}
               type="button"
-              onClick={() => changeFilter(item.value)}
+              onClick={() => changeFilter(item)}
               className={`shrink-0 rounded-full border px-3.5 py-2 text-sm font-medium transition ${
                 active
                   ? "border-brand bg-brand/12 text-brand"
                   : "border-line bg-surface-card text-ink-muted hover:border-line-strong"
               }`}
             >
-              {item.label}{" "}
+              {item === "ALL" ? t("registration.filter.all") : t(`team.status.${item}` as TranslationKey)}{" "}
               <span className="ml-1 font-mono text-xs">
-                {counts[item.value]}
+                {counts[item]}
               </span>
             </button>
           );
@@ -261,9 +258,9 @@ export default function RegistrationManagement({
       ) : teams.length === 0 ? (
         <div className="mt-5 rounded-xl border border-dashed border-line px-6 py-14 text-center">
           <UsersThreeIcon size={30} className="mx-auto text-ink-faint" />
-          <p className="mt-3 font-medium text-ink">Chưa có đội đăng ký</p>
+          <p className="mt-3 font-medium text-ink">{t("registration.empty")}</p>
           <p className="mt-1 text-sm text-ink-muted">
-            Các đăng ký mới sẽ xuất hiện tại đây.
+            {t("registration.emptyHint")}
           </p>
         </div>
       ) : (
@@ -280,7 +277,7 @@ export default function RegistrationManagement({
               ))
             ) : (
               <div className="rounded-xl border border-dashed border-line px-5 py-12 text-center text-sm text-ink-muted">
-                Không có đội ở trạng thái này.
+                {t("registration.filterEmpty")}
               </div>
             )}
           </div>
@@ -318,7 +315,7 @@ export default function RegistrationManagement({
               </>
             ) : (
               <div className="rounded-2xl border border-dashed border-line px-5 py-14 text-center text-sm text-ink-muted">
-                Chọn một đội để xem chi tiết đăng ký.
+                {t("registration.selectTeam")}
               </div>
             )}
           </div>

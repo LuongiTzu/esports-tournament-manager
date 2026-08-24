@@ -19,9 +19,11 @@ import {
   inputClass,
   labelClass,
 } from "@/components/ui";
+import { useLocale } from "@/features/locale/store";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { t } = useLocale();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -36,7 +38,7 @@ export default function LoginPage() {
       await login(email, password);
       router.push("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Đăng nhập thất bại");
+      setError(err instanceof Error ? err.message : t("auth.login.fallbackError"));
     } finally {
       setLoading(false);
     }
@@ -44,14 +46,15 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Đăng nhập"
-      subtitle="Đăng nhập để tạo giải và quản lý đội đăng ký."
+      title={t("auth.login.title")}
+      subtitle={t("auth.login.subtitle")}
+      eyebrow={t("auth.login.eyebrow")}
       visual={<AuthVisualPanel mode="login" />}
       footer={
         <>
-          Chưa có tài khoản?{" "}
+          {t("auth.login.noAccount")} {" "}
           <Link href="/register" className="font-medium text-brand hover:underline">
-            Đăng ký ngay
+            {t("auth.login.registerNow")}
           </Link>
         </>
       }
@@ -59,7 +62,7 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
           <label htmlFor="email" className={labelClass}>
-            Email
+            {t("common.email")}
           </label>
           <div className="relative">
             <EnvelopeSimpleIcon
@@ -82,7 +85,7 @@ export default function LoginPage() {
 
         <div>
           <label htmlFor="password" className={labelClass}>
-            Mật khẩu
+            {t("auth.login.password")}
           </label>
           <div className="relative">
             <LockKeyIcon
@@ -98,12 +101,12 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className={`${inputClass} px-11`}
-              placeholder="Nhập mật khẩu"
+              placeholder={t("auth.login.passwordPlaceholder")}
             />
             <button
               type="button"
               onClick={() => setShowPassword((visible) => !visible)}
-              aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              aria-label={showPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
               aria-pressed={showPassword}
               className="absolute right-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-ink-faint transition hover:bg-surface-hover hover:text-brand-hover focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
             >
@@ -123,7 +126,7 @@ export default function LoginPage() {
           disabled={loading}
           className={authSubmitButtonClass}
         >
-          {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+          {loading ? t("auth.login.submitting") : t("auth.login.submit")}
           {!loading && <SignInIcon size={18} weight="bold" />}
         </button>
       </form>

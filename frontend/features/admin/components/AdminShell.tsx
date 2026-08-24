@@ -60,7 +60,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             </span>
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">
-                Administration
+                {t("admin.shell.eyebrow")}
               </p>
               <p className="truncate text-sm font-bold text-ink">{t("admin.shell.console")}</p>
             </div>

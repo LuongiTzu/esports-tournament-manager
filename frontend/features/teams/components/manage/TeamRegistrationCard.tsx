@@ -1,15 +1,13 @@
+"use client";
+
 import ResolvedImage from "@/components/ResolvedImage";
 import StatusBadge from "@/features/teams/components/StatusBadge";
 import type { TeamWithMembers } from "@/features/teams/types";
 
 const PLAYER_ROLES = new Set(["CAPTAIN", "PLAYER", "SUBSTITUTE"]);
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-}
+import { formatLocalizedDate } from "@/features/locale/format";
+import { useLocale } from "@/features/locale/store";
 
 export default function TeamRegistrationCard({
   team,
@@ -20,6 +18,7 @@ export default function TeamRegistrationCard({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const { locale, t } = useLocale();
   const playerCount =
     team.members?.filter((member) => PLAYER_ROLES.has(member.memberRole))
       .length ??
@@ -40,7 +39,7 @@ export default function TeamRegistrationCard({
         <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-brand/10 font-bold text-brand">
           <ResolvedImage
             src={team.logoUrl}
-            alt={`Logo ${team.name}`}
+            alt={`${t("tournament.detail.teamLogoAlt")} ${team.name}`}
             className="size-full object-cover object-center"
             fallback={team.name.charAt(0).toUpperCase()}
           />
@@ -52,18 +51,18 @@ export default function TeamRegistrationCard({
                 {team.name}
               </span>
               <span className="mt-0.5 block truncate text-xs text-ink-muted">
-                Đại diện: {team.contactName}
+                {t("registration.representativePrefix")}: {team.contactName}
               </span>
             </span>
             <StatusBadge status={team.status} />
           </span>
           <span className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-faint">
-            <span>{playerCount} vị trí cầu thủ</span>
-            <span>Đăng ký {formatDate(team.registeredAt)}</span>
+            <span>{playerCount} {t("registration.playerSlots")}</span>
+            <span>{t("registration.registeredAt")} {formatLocalizedDate(team.registeredAt, locale, { dateStyle: "medium", timeStyle: "short" })}</span>
           </span>
           {team.reviewedAt && (
             <span className="mt-1 block text-xs text-ink-faint">
-              Đã xét duyệt {formatDate(team.reviewedAt)}
+              {t("registration.reviewedAt")} {formatLocalizedDate(team.reviewedAt, locale, { dateStyle: "medium", timeStyle: "short" })}
             </span>
           )}
         </span>
