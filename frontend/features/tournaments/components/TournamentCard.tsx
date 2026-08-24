@@ -10,6 +10,7 @@ import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 import type { TournamentView } from "@/features/tournaments/components/TournamentGrid";
 import { accentVars } from "@/features/games/game-accent";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
+import { formatLocalizedDate } from "@/features/locale/format";
 import ResolvedImage from "@/components/ResolvedImage";
 
 const statusLabels: Record<Tournament["status"], TranslationKey> = {
@@ -37,7 +38,7 @@ export default function TournamentCard({
 }) {
   const { locale, t: translate } = useLocale();
   const formattedDate = t.startDate
-    ? new Date(t.startDate).toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US")
+    ? formatLocalizedDate(t.startDate, locale)
     : translate("tournament.card.dateUnknown");
   const teamCount = t._count?.teams ?? 0;
   const registrationProgress = t.maxTeams

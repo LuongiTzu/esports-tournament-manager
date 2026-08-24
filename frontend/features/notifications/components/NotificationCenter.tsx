@@ -16,6 +16,7 @@ import {
 } from "@phosphor-icons/react";
 import { useAuth } from "@/features/auth/store";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
+import { formatLocalizedDate } from "@/features/locale/format";
 import { notificationsApi } from "@/features/notifications/api";
 import type {
   NotificationPagination,
@@ -77,6 +78,7 @@ function AuthenticatedNotificationCenter() {
   const router = useRouter();
   const { locale, t } = useLocale();
   const rootRef = useRef<HTMLDivElement>(null);
+  const refreshRequestId = useRef(0);
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [pagination, setPagination] = useState<NotificationPagination | null>(
@@ -91,6 +93,7 @@ function AuthenticatedNotificationCenter() {
 
   const refresh = useCallback(
     async (silent = false) => {
+      const requestId = ++refreshRequestId.current;
       if (!silent) setLoading(true);
       setError("");
       try {
@@ -98,17 +101,19 @@ function AuthenticatedNotificationCenter() {
           notificationsApi.findMine({ page: 1, limit: PAGE_SIZE }),
           notificationsApi.unreadCount(),
         ]);
+        if (requestId !== refreshRequestId.current) return;
         setNotifications(list.data);
         setPagination(list.pagination);
         setUnreadCount(unread.count);
       } catch (reason) {
+        if (requestId !== refreshRequestId.current) return;
         setError(
           reason instanceof Error
             ? reason.message
             : t("notifications.loadError"),
         );
       } finally {
-        setLoading(false);
+        if (requestId === refreshRequestId.current) setLoading(false);
       }
     },
     [t],
@@ -116,7 +121,10 @@ function AuthenticatedNotificationCenter() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      refreshRequestId.current += 1;
+    };
   }, [refresh]);
 
   useNotificationRealtime(() => void refresh(true));
@@ -142,11 +150,13 @@ function AuthenticatedNotificationCenter() {
       return;
     setLoadingMore(true);
     setError("");
+    const refreshIdAtStart = refreshRequestId.current;
     try {
       const next = await notificationsApi.findMine({
         page: pagination.page + 1,
         limit: pagination.limit,
       });
+      if (refreshIdAtStart !== refreshRequestId.current) return;
       setNotifications((current) => mergeNotifications(current, next.data));
       setPagination(next.pagination);
     } catch (reason) {
@@ -336,10 +346,10 @@ function AuthenticatedNotificationCenter() {
                               {notification.content}
                             </span>
                             <span className="mt-1.5 block text-xs text-ink-faint">
-                              {new Intl.DateTimeFormat(
-                                locale === "vi" ? "vi-VN" : "en-US",
-                                { dateStyle: "medium", timeStyle: "short" },
-                              ).format(new Date(notification.createdAt))}
+                              {formatLocalizedDate(notification.createdAt, locale, {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              })}
                               {notification.tournament
                                 ? ` · ${notification.tournament.name}`
                                 : ""}

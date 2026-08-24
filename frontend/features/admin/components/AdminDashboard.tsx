@@ -13,7 +13,8 @@ import {
 import { adminApi } from "@/features/admin/api";
 import type { AdminDashboardStats } from "@/features/admin/types";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
-import { adminLocaleTag, formatAdminNumber } from "@/features/admin/format";
+import { formatAdminNumber } from "@/features/admin/format";
+import { localeTag } from "@/features/locale/format";
 import { useLocale } from "@/features/locale/store";
 import type { Locale } from "@/features/locale/types";
 
@@ -137,7 +138,7 @@ export default function AdminDashboard() {
             {refreshing ? t("admin.dashboard.refreshing") : t("admin.dashboard.refresh")}
           </button>
           <p className="mt-2 text-xs text-ink-faint">
-            {t("admin.dashboard.updated")} {loadedAt.toLocaleTimeString(adminLocaleTag(locale), { hour: "2-digit", minute: "2-digit" })}
+            {t("admin.dashboard.updated")} {loadedAt.toLocaleTimeString(localeTag(locale), { hour: "2-digit", minute: "2-digit" })}
           </p>
         </div>
       </header>

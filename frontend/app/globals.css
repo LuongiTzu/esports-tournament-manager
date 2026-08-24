@@ -39,8 +39,8 @@
   --font-mono: var(--font-geist-mono);
 }
 
-/* `inline` khiến utility biên dịch thành var(--accent, …) thay vì chốt giá trị ở :root,
-   nhờ đó <GameAccent> đặt --accent lúc runtime là bg-accent/text-accent nhận được ngay */
+/* `inline` keeps game accent utilities connected to the runtime CSS variables
+   applied by `accentVars`, instead of resolving them once from :root. */
 @theme inline {
   --color-accent: var(--accent, oklch(0.78 0.02 275));
   --color-accent-alt: var(--accent-alt, oklch(0.78 0.02 275));

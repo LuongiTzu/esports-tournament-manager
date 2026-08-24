@@ -34,20 +34,28 @@ export default function ManagePage({
       router.push("/login");
       return;
     }
+    let cancelled = false;
     tournamentsApi
       .findBySlug(slug)
       .then((loadedTournament) => {
+        if (cancelled) return;
         setTournament(loadedTournament);
         if (loadedTournament.organizer?.id !== user.id) {
           setLoadError(t("manage.notOrganizer"));
         }
       })
-      .catch((err) =>
+      .catch((err) => {
+        if (cancelled) return;
         setLoadError(
           err instanceof Error ? err.message : t("manage.loadError"),
-        ),
-      )
-      .finally(() => setLoading(false));
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [slug, router, ready, user, t]);
 
   const refreshTournament = async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CaretLeftIcon, CaretRightIcon, UsersThreeIcon } from "@phosphor-icons/react";
 import { adminApi } from "@/features/admin/api";
 import type {
@@ -15,6 +15,7 @@ import AdminUserList from "@/features/admin/components/AdminUserList";
 import AdminUserDetail from "@/features/admin/components/AdminUserDetail";
 import { formatAdminNumber } from "@/features/admin/format";
 import { useLocale } from "@/features/locale/store";
+import { selectAvailableItemId } from "@/features/admin/selection";
 
 const DEFAULT_QUERY: AdminUsersQuery = { page: 1, limit: 10 };
 
@@ -38,6 +39,10 @@ export default function AdminUsersPage() {
   const [workingUserId, setWorkingUserId] = useState("");
 
   const currentQueryKey = queryKey(query);
+  const currentQueryKeyRef = useRef(currentQueryKey);
+  useEffect(() => {
+    currentQueryKeyRef.current = currentQueryKey;
+  }, [currentQueryKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,9 +57,7 @@ export default function AdminUsersPage() {
         }
         setResult({ key: currentQueryKey, response });
         setSelectedUserId((current) =>
-          response.data.some((item) => item.id === current)
-            ? current
-            : (response.data[0]?.id ?? ""),
+          selectAvailableItemId(response.data, current),
         );
         setError("");
       })
@@ -110,15 +113,14 @@ export default function AdminUsersPage() {
     try {
       await adminApi.setUserLock(selectedUser.id, nextLocked);
       const refreshed = await adminApi.listUsers(query);
+      if (currentQueryKeyRef.current !== currentQueryKey) return;
       const lastPage = Math.max(refreshed.pagination.totalPages, 1);
       if (query.page > lastPage) {
         setQuery((current) => ({ ...current, page: lastPage }));
       } else {
         setResult({ key: currentQueryKey, response: refreshed });
         setSelectedUserId((current) =>
-          refreshed.data.some((item) => item.id === current)
-            ? current
-            : (refreshed.data[0]?.id ?? ""),
+          selectAvailableItemId(refreshed.data, current),
         );
       }
       setNotice(

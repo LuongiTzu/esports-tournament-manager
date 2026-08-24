@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FlagIcon, XIcon } from "@phosphor-icons/react";
 import { adminApi } from "@/features/admin/api";
 import type { AdminReport, AdminReportsQuery, AdminReportStatus } from "@/features/admin/types";
@@ -9,6 +9,7 @@ import AdminReportList from "@/features/admin/components/AdminReportList";
 import AdminReportDetail from "@/features/admin/components/AdminReportDetail";
 import { formatAdminNumber } from "@/features/admin/format";
 import { useLocale } from "@/features/locale/store";
+import { selectAvailableItemId } from "@/features/admin/selection";
 
 function queryKey(query: AdminReportsQuery) {
   return query.status ?? "ALL";
@@ -24,13 +25,17 @@ export default function AdminReportsPage() {
   const [notice, setNotice] = useState("");
   const [working, setWorking] = useState(false);
   const currentKey = queryKey(query);
+  const currentKeyRef = useRef(currentKey);
+  useEffect(() => {
+    currentKeyRef.current = currentKey;
+  }, [currentKey]);
 
   useEffect(() => {
     let cancelled = false;
     adminApi.listReports(query).then((reports) => {
       if (cancelled) return;
       setResult({ key: currentKey, reports });
-      setSelectedId((current) => reports.some((item) => item.id === current) ? current : (reports[0]?.id ?? ""));
+      setSelectedId((current) => selectAvailableItemId(reports, current));
       setError("");
     }).catch((reason: unknown) => {
       if (!cancelled) setError(reason instanceof Error ? reason.message : t("admin.reports.loadError"));
@@ -43,9 +48,11 @@ export default function AdminReportsPage() {
   const selected = useMemo(() => reports?.find((item) => item.id === selectedId) ?? null, [reports, selectedId]);
 
   const refetch = async () => {
+    const requestedKey = currentKey;
     const refreshed = await adminApi.listReports(query);
+    if (currentKeyRef.current !== requestedKey) return;
     setResult({ key: currentKey, reports: refreshed });
-    setSelectedId((current) => refreshed.some((item) => item.id === current) ? current : (refreshed[0]?.id ?? ""));
+    setSelectedId((current) => selectAvailableItemId(refreshed, current));
   };
 
   const review = async (status: "REVIEWED" | "DISMISSED") => {

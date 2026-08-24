@@ -1,3 +1,7 @@
+import type { Gender } from "@/shared/types/gender";
+
+export type { Gender } from "@/shared/types/gender";
+
 export interface User {
   id: string;
   email: string;
@@ -25,8 +29,6 @@ export interface RegisterAccountRequest {
   phoneNumber?: string;
   gender?: Gender;
 }
-
-export type Gender = "MALE" | "FEMALE" | "OTHER";
 
 export interface LoginResponse {
   message: string;

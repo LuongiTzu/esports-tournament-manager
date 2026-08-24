@@ -1,3 +1,12 @@
+import type { User } from "@/features/auth/types";
+import type {
+  TournamentMode,
+  TournamentVisibility,
+} from "@/features/tournaments/types";
+import type { Gender } from "@/shared/types/gender";
+import type { Paginated } from "@/shared/types/pagination";
+import type { TournamentStatus } from "@/shared/types/tournament-status";
+
 export interface AdminDashboardStats {
   totalTournaments: number;
   totalUsers: number;
@@ -28,15 +37,7 @@ export interface AdminUsersQuery {
   isLocked?: boolean;
 }
 
-export interface AdminUsersResponse {
-  data: AdminUser[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
+export type AdminUsersResponse = Paginated<AdminUser>;
 
 export type AdminUserLockResult = Pick<
   AdminUser,
@@ -44,8 +45,8 @@ export type AdminUserLockResult = Pick<
 >;
 
 export type AdminTournamentStatus = TournamentStatus;
-export type AdminTournamentVisibility = "PUBLIC" | "PRIVATE";
-export type AdminTournamentMode = "ONLINE" | "OFFLINE" | "HYBRID";
+export type AdminTournamentVisibility = TournamentVisibility;
+export type AdminTournamentMode = TournamentMode;
 export type AdminTournamentModerationStatus = "ACTIVE" | "HIDDEN_BY_ADMIN";
 
 export interface AdminTournament {
@@ -69,7 +70,7 @@ export interface AdminTournament {
   maxTeamSize: number;
   minAge: number | null;
   maxAge: number | null;
-  allowedGenders: string[] | null;
+  allowedGenders: Gender[] | null;
   registrationStartDate: string | null;
   registrationDeadline: string | null;
   autoApproveTeams: boolean;
@@ -180,5 +181,3 @@ export interface AdminDeleteKeywordResult {
   message: string;
   id: string;
 }
-import type { User } from "@/features/auth/types";
-import type { TournamentStatus } from "@/shared/types/tournament-status";

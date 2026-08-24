@@ -28,17 +28,8 @@ import MatchManagementPanel from "./MatchManagementPanel";
 import RoundProgressionSummary from "./RoundProgressionSummary";
 import RoundStandingsView from "./RoundStandingsView";
 import RoundSettingsSummary from "../competition/RoundSettingsSummary";
-import { useTournamentRealtime } from "@/features/realtime/provider";
-import type { TournamentRealtimeEvent } from "@/features/realtime/types";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
-
-const COMPETITION_REFRESH_EVENTS = new Set<TournamentRealtimeEvent>([
-  "matchUpdated",
-  "scheduleUpdated",
-  "bracketGenerated",
-  "teamApproved",
-  "standingsUpdated",
-]);
+import { useCompetitionInvalidation } from "@/features/tournaments/realtime";
 
 export default function CompetitionManager({
   tournament,
@@ -66,7 +57,7 @@ export default function CompetitionManager({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadRequestId = useRef(0);
 
   const selectedRound =
     rounds.find((round) => round.id === selectedRoundId) ?? rounds[0];
@@ -77,6 +68,7 @@ export default function CompetitionManager({
 
   const loadCompetition = useCallback(
     async (roundId: string) => {
+      const requestId = ++loadRequestId.current;
       setLoading(true);
       setError("");
       try {
@@ -88,9 +80,11 @@ export default function CompetitionManager({
           (item) => item.round.id === roundId,
         );
         if (!selected) throw new Error(t("competition.manage.structureNotFound"));
+        if (requestId !== loadRequestId.current) return;
         setBracket(selected);
         setStandings(standingsResponse);
       } catch (err) {
+        if (requestId !== loadRequestId.current) return;
         setBracket(null);
         setStandings(null);
         setError(
@@ -99,7 +93,7 @@ export default function CompetitionManager({
             : t("competition.manage.loadError"),
         );
       } finally {
-        setLoading(false);
+        if (requestId === loadRequestId.current) setLoading(false);
       }
     },
     [tournament.slug, t],
@@ -107,54 +101,23 @@ export default function CompetitionManager({
 
   useEffect(() => {
     if (!selectedRound?.id) return;
-    let cancelled = false;
-    Promise.all([
-      tournamentsApi.getTournamentBracket(tournament.slug),
-      tournamentsApi.getStandings(tournament.slug),
-    ])
-      .then(([bracketResponse, standingsResponse]) => {
-        if (cancelled) return;
-        const selected = bracketResponse.rounds.find(
-          (item) => item.round.id === selectedRound.id,
-        );
-        if (!selected) throw new Error(t("competition.manage.structureNotFound"));
-        setBracket(selected);
-        setStandings(standingsResponse);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setBracket(null);
-        setStandings(null);
-        setError(
-          err instanceof Error
-            ? err.message
-            : t("competition.manage.loadError"),
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const timer = window.setTimeout(
+      () => void loadCompetition(selectedRound.id),
+      0,
+    );
     return () => {
-      cancelled = true;
+      window.clearTimeout(timer);
+      loadRequestId.current += 1;
     };
-  }, [selectedRound?.id, tournament.slug, t]);
+  }, [loadCompetition, selectedRound?.id]);
 
-  useEffect(
-    () => () => {
-      if (refreshTimer.current) clearTimeout(refreshTimer.current);
-    },
-    [],
-  );
-
-  useTournamentRealtime(tournament.id, (event) => {
-    if (!COMPETITION_REFRESH_EVENTS.has(event) || !selectedRound?.id) return;
-    if (refreshTimer.current) clearTimeout(refreshTimer.current);
-    refreshTimer.current = setTimeout(() => {
+  useCompetitionInvalidation(tournament.id, () => {
+    if (selectedRound?.id) {
       void Promise.all([
         loadCompetition(selectedRound.id),
         onTournamentRefresh(),
       ]);
-    }, 150);
+    }
   });
 
   const generate = async () => {

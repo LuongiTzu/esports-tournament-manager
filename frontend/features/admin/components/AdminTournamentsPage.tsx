@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TrophyIcon } from "@phosphor-icons/react";
 import { adminApi } from "@/features/admin/api";
 import type {
@@ -15,6 +15,7 @@ import AdminTournamentDetail from "@/features/admin/components/AdminTournamentDe
 import TournamentModerationDialog from "@/features/admin/components/TournamentModerationDialog";
 import { formatAdminNumber } from "@/features/admin/format";
 import { useLocale } from "@/features/locale/store";
+import { selectAvailableItemId } from "@/features/admin/selection";
 
 function queryKey(query: AdminTournamentsQuery) {
   return query.moderationStatus ?? "ALL";
@@ -34,6 +35,10 @@ export default function AdminTournamentsPage() {
   const [workingAction, setWorkingAction] = useState<"VERIFY" | "MODERATE" | "">("");
   const [hideDialogOpen, setHideDialogOpen] = useState(false);
   const currentKey = queryKey(query);
+  const currentKeyRef = useRef(currentKey);
+  useEffect(() => {
+    currentKeyRef.current = currentKey;
+  }, [currentKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,9 +48,7 @@ export default function AdminTournamentsPage() {
         if (cancelled) return;
         setResult({ key: currentKey, tournaments });
         setSelectedId((current) =>
-          tournaments.some((item) => item.id === current)
-            ? current
-            : (tournaments[0]?.id ?? ""),
+          selectAvailableItemId(tournaments, current),
         );
         setError("");
       })
@@ -70,13 +73,11 @@ export default function AdminTournamentsPage() {
   );
 
   const refetch = async () => {
+    const requestedKey = currentKey;
     const refreshed = await adminApi.listTournaments(query);
+    if (currentKeyRef.current !== requestedKey) return;
     setResult({ key: currentKey, tournaments: refreshed });
-    setSelectedId((current) =>
-      refreshed.some((item) => item.id === current)
-        ? current
-        : (refreshed[0]?.id ?? ""),
-    );
+    setSelectedId((current) => selectAvailableItemId(refreshed, current));
   };
 
   const changeVerification = async (isVerified: boolean) => {

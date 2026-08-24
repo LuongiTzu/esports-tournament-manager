@@ -1,3 +1,5 @@
+import type { Pagination } from "@/shared/types/pagination";
+
 export const NOTIFICATION_TYPES = [
   "SCHEDULE_CHANGE",
   "SCORE_UPDATE",
@@ -30,12 +32,7 @@ export interface UserNotification extends NotificationRecord {
   tournament: NotificationTournament | null;
 }
 
-export interface NotificationPagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
+export type NotificationPagination = Pagination;
 
 export interface NotificationListResponse {
   data: UserNotification[];

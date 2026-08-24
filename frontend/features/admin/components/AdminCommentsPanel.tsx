@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChatCircleTextIcon, MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { adminApi } from "@/features/admin/api";
 import type { AdminComment, AdminCommentsQuery } from "@/features/admin/types";
@@ -8,6 +8,7 @@ import { alertErrorClass, inputClass, secondaryButtonClass } from "@/components/
 import AdminCommentList from "@/features/admin/components/AdminCommentList";
 import AdminCommentDetail from "@/features/admin/components/AdminCommentDetail";
 import { useLocale } from "@/features/locale/store";
+import { selectAvailableItemId } from "@/features/admin/selection";
 
 function queryKey(query: AdminCommentsQuery) {
   return JSON.stringify(query);
@@ -24,13 +25,17 @@ export default function AdminCommentsPanel() {
   const [notice, setNotice] = useState("");
   const [workingAction, setWorkingAction] = useState<"VISIBILITY" | "DELETE" | "">("");
   const currentKey = queryKey(query);
+  const currentKeyRef = useRef(currentKey);
+  useEffect(() => {
+    currentKeyRef.current = currentKey;
+  }, [currentKey]);
 
   useEffect(() => {
     let cancelled = false;
     adminApi.listComments(query).then((comments) => {
       if (cancelled) return;
       setResult({ key: currentKey, comments });
-      setSelectedId((current) => comments.some((item) => item.id === current) ? current : (comments[0]?.id ?? ""));
+      setSelectedId((current) => selectAvailableItemId(comments, current));
       setError("");
     }).catch((reason: unknown) => {
       if (!cancelled) setError(reason instanceof Error ? reason.message : t("admin.comments.loadError"));
@@ -43,9 +48,11 @@ export default function AdminCommentsPanel() {
   const selected = useMemo(() => comments?.find((item) => item.id === selectedId) ?? null, [comments, selectedId]);
 
   const refetch = async () => {
+    const requestedKey = currentKey;
     const refreshed = await adminApi.listComments(query);
+    if (currentKeyRef.current !== requestedKey) return;
     setResult({ key: currentKey, comments: refreshed });
-    setSelectedId((current) => refreshed.some((item) => item.id === current) ? current : (refreshed[0]?.id ?? ""));
+    setSelectedId((current) => selectAvailableItemId(refreshed, current));
   };
 
   const toggleHidden = async () => {

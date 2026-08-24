@@ -1,8 +1,10 @@
 import type { GameGenre, GamePositionMode } from "@/features/games/types";
+import type { Gender } from "@/shared/types/gender";
 import type { TournamentStatus } from "@/shared/types/tournament-status";
 
+export type { Gender } from "@/shared/types/gender";
+
 export type TeamStatus = "PENDING" | "APPROVED" | "REJECTED";
-export type Gender = "MALE" | "FEMALE" | "OTHER";
 export type MemberRole =
   "CAPTAIN" | "PLAYER" | "SUBSTITUTE" | "COACH" | "MANAGER";
 

@@ -1,6 +1,12 @@
 import type { Game, GameRef } from "@/features/games/types";
 import type { ApprovedTeam } from "@/features/teams/types";
+import type { Gender } from "@/shared/types/gender";
 import type { TournamentStatus } from "@/shared/types/tournament-status";
+
+export type { Paginated } from "@/shared/types/pagination";
+
+export type TournamentVisibility = "PUBLIC" | "PRIVATE";
+export type TournamentMode = "ONLINE" | "OFFLINE" | "HYBRID";
 
 export interface RoundRobinSettings {
   winPoints: number;
@@ -108,8 +114,8 @@ export interface Tournament {
   description?: string | null;
   rules?: string | null;
   bannerUrl?: string | null;
-  visibility: "PUBLIC" | "PRIVATE";
-  mode: "ONLINE" | "OFFLINE" | "HYBRID";
+  visibility: TournamentVisibility;
+  mode: TournamentMode;
   status: TournamentStatus;
   moderationStatus?: "ACTIVE" | "HIDDEN_BY_ADMIN";
   isVerified?: boolean;
@@ -134,16 +140,6 @@ export interface FindAllTournamentsParams {
   status?: Tournament["status"];
   page?: number;
   limit?: number;
-}
-
-export interface Paginated<T> {
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
 }
 
 export interface TournamentDetail extends Omit<Tournament, "game"> {
@@ -372,16 +368,16 @@ export interface CreateTournamentRequest {
   description?: string;
   rules?: string;
   bannerUrl?: string;
-  visibility: "PUBLIC" | "PRIVATE";
+  visibility: TournamentVisibility;
   status: "DRAFT" | "REGISTRATION";
-  mode: "ONLINE" | "OFFLINE" | "HYBRID";
+  mode: TournamentMode;
   location?: string;
   registrationOpen: boolean;
   maxTeams?: number;
   maxTeamSize: number;
   minAge?: number;
   maxAge?: number;
-  allowedGenders?: Array<"MALE" | "FEMALE" | "OTHER">;
+  allowedGenders?: Gender[];
   registrationStartDate?: string;
   registrationDeadline?: string;
   startDate?: string;

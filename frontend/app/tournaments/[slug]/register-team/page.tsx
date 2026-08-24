@@ -100,9 +100,11 @@ export default function RegisterTeamPage({
       return;
     }
 
+    let cancelled = false;
     teamsApi
       .getRegistrationForm(slug)
       .then((data) => {
+        if (cancelled) return;
         setConfig(data);
         if (initializedSlug.current !== slug) {
           setContactName(data.prefill.contactName);
@@ -112,12 +114,18 @@ export default function RegisterTeamPage({
           initializedSlug.current = slug;
         }
       })
-      .catch((err) =>
+      .catch((err) => {
+        if (cancelled) return;
         setLoadError(
           err instanceof Error ? err.message : t("team.register.loadError"),
-        ),
-      )
-      .finally(() => setLoading(false));
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [slug, ready, user, router, t]);
 
   const updateMember = (
