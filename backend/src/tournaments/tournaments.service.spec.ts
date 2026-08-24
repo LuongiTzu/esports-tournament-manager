@@ -11,8 +11,31 @@ import { RoundSettingsService } from '../brackets/round-settings.service';
 import { StandingsService } from '../brackets/standings.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ContentFilterService } from '../common/services/content-filter.service';
+import { TournamentCommandService } from './tournament-command.service';
+import { TournamentQueryService } from './tournament-query.service';
+import { TournamentLifecyclePolicy } from './domain/tournament-lifecycle.policy';
 import { TournamentsService } from './tournaments.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
+
+function createTournamentsService(
+  prisma: PrismaService,
+  roundSettingsService: RoundSettingsService,
+  standingsService: StandingsService,
+  contentFilterService: ContentFilterService,
+) {
+  const queries = new TournamentQueryService(
+    prisma,
+    roundSettingsService,
+    standingsService,
+  );
+  const commands = new TournamentCommandService(
+    prisma,
+    roundSettingsService,
+    contentFilterService,
+    new TournamentLifecyclePolicy(),
+  );
+  return new TournamentsService(commands, queries);
+}
 
 function harness(total = 45) {
   const findMany = jest.fn().mockResolvedValue([]);
@@ -23,7 +46,7 @@ function harness(total = 45) {
     },
   } as unknown as PrismaService;
   return {
-    service: new TournamentsService(
+    service: createTournamentsService(
       prisma,
       {} as RoundSettingsService,
       {} as StandingsService,
@@ -125,7 +148,7 @@ describe('TournamentsService round settings', () => {
         callback(tx),
       ),
     } as unknown as PrismaService;
-    const service = new TournamentsService(
+    const service = createTournamentsService(
       prisma,
       new RoundSettingsService(),
       {} as StandingsService,
@@ -184,7 +207,7 @@ describe('TournamentsService round settings', () => {
         ),
     };
     const prisma = { round } as unknown as PrismaService;
-    const service = new TournamentsService(
+    const service = createTournamentsService(
       prisma,
       new RoundSettingsService(),
       {} as StandingsService,
@@ -227,7 +250,7 @@ describe('TournamentsService round settings', () => {
           Promise.resolve({ id: 'group-round', ...data }),
         ),
     };
-    const service = new TournamentsService(
+    const service = createTournamentsService(
       { round } as unknown as PrismaService,
       new RoundSettingsService(),
       {} as StandingsService,
@@ -279,7 +302,7 @@ describe('TournamentsService round settings', () => {
             Promise.resolve({ id: 'elimination-round', ...data }),
           ),
       };
-      const service = new TournamentsService(
+      const service = createTournamentsService(
         { round } as unknown as PrismaService,
         new RoundSettingsService(),
         {} as StandingsService,
@@ -325,7 +348,7 @@ describe('TournamentsService round settings', () => {
         callback(tx),
       ),
     } as unknown as PrismaService;
-    const service = new TournamentsService(
+    const service = createTournamentsService(
       prisma,
       new RoundSettingsService(),
       {} as StandingsService,
@@ -364,7 +387,7 @@ describe('TournamentsService round settings', () => {
           Promise.resolve({ id: 'swiss-round', ...data }),
         ),
     };
-    const service = new TournamentsService(
+    const service = createTournamentsService(
       { round } as unknown as PrismaService,
       new RoundSettingsService(),
       {} as StandingsService,
@@ -476,7 +499,7 @@ describe('TournamentsService standings read model', () => {
         ],
       }),
     } as unknown as StandingsService;
-    const service = new TournamentsService(
+    const service = createTournamentsService(
       prisma,
       {} as RoundSettingsService,
       standingsService,
@@ -557,7 +580,7 @@ describe('TournamentsService standings read model', () => {
         ],
       }),
     } as unknown as StandingsService;
-    const service = new TournamentsService(
+    const service = createTournamentsService(
       prisma,
       new RoundSettingsService(),
       standingsService,
@@ -608,7 +631,7 @@ describe('TournamentsService roster snapshots', () => {
       validate: jest.fn(),
     } as unknown as ContentFilterService;
     return {
-      service: new TournamentsService(
+      service: createTournamentsService(
         prisma,
         {} as RoundSettingsService,
         {} as StandingsService,
@@ -733,7 +756,7 @@ describe('TournamentsService roster snapshots', () => {
         }),
       },
     } as unknown as PrismaService;
-    const service = new TournamentsService(
+    const service = createTournamentsService(
       prisma,
       new RoundSettingsService(),
       {} as StandingsService,
@@ -765,6 +788,81 @@ describe('TournamentsService roster snapshots', () => {
   });
 });
 
+describe('TournamentsService lifecycle updates', () => {
+  function updateHarness(status: TournamentStatus) {
+    const current = {
+      id: 'tournament-1',
+      status,
+      gameId: 'game-1',
+      minTeamSize: 5,
+      maxTeamSize: 7,
+      mode: TournamentMode.ONLINE,
+      location: null,
+      minAge: null,
+      maxAge: null,
+      registrationStartDate: null,
+      registrationDeadline: null,
+      startDate: null,
+      endDate: null,
+      game: { id: 'game-1', defaultTeamSize: 5, maxTeamSize: 7 },
+    };
+    const update = jest
+      .fn()
+      .mockImplementation(({ data }) =>
+        Promise.resolve({ ...current, ...data, rounds: [] }),
+      );
+    const prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue(current),
+        update,
+      },
+    } as unknown as PrismaService;
+    return {
+      service: createTournamentsService(
+        prisma,
+        new RoundSettingsService(),
+        {} as StandingsService,
+        {} as ContentFilterService,
+      ),
+      update,
+    };
+  }
+
+  it('allows a verified forward lifecycle transition', async () => {
+    const { service, update } = updateHarness(TournamentStatus.REGISTRATION);
+    await expect(
+      service.update('tournament-1', {
+        status: TournamentStatus.ONGOING,
+      }),
+    ).resolves.toMatchObject({ status: TournamentStatus.ONGOING });
+    expect(update).toHaveBeenCalled();
+  });
+
+  it('rejects a transition out of a terminal state with a stable code', async () => {
+    const { service, update } = updateHarness(TournamentStatus.COMPLETED);
+    await expect(
+      service.update('tournament-1', {
+        status: TournamentStatus.ONGOING,
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'INVALID_TOURNAMENT_STATUS_TRANSITION',
+      }),
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('does not apply lifecycle validation when status is absent', async () => {
+    const { service, update } = updateHarness(TournamentStatus.COMPLETED);
+    await expect(
+      service.update('tournament-1', {
+        registrationOpen: false,
+      }),
+    ).resolves.toMatchObject({ registrationOpen: false });
+    expect(update).toHaveBeenCalled();
+  });
+});
+
 describe('TournamentsService deletion lifecycle', () => {
   function deletionHarness(
     tournament: {
@@ -793,7 +891,7 @@ describe('TournamentsService deletion lifecycle', () => {
       ),
     } as unknown as PrismaService;
     return {
-      service: new TournamentsService(
+      service: createTournamentsService(
         prisma,
         {} as RoundSettingsService,
         {} as StandingsService,
