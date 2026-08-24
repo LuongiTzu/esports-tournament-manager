@@ -2,11 +2,26 @@ import { Module } from '@nestjs/common';
 import { CommonModule } from '../common/common.module';
 import { MatchesController } from './matches.controller';
 import { MatchesService } from './matches.service';
+import { MatchResultPolicy } from './domain/match-result.policy';
+import { MatchQueryService } from './match-query.service';
+import { MatchResultService } from './match-result.service';
+import { MatchSchedulingService } from './match-scheduling.service';
 
 @Module({
   imports: [CommonModule],
   controllers: [MatchesController],
-  providers: [MatchesService],
-  exports: [MatchesService],
+  providers: [
+    MatchesService,
+    MatchQueryService,
+    MatchSchedulingService,
+    MatchResultService,
+    MatchResultPolicy,
+  ],
+  exports: [
+    MatchesService,
+    MatchQueryService,
+    MatchSchedulingService,
+    MatchResultService,
+  ],
 })
 export class MatchesModule {}

@@ -11,6 +11,9 @@ import {
 import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TournamentEventsService } from '../tournaments/tournament-events.service';
+import { MatchQueryService } from './match-query.service';
+import { MatchResultService } from './match-result.service';
+import { MatchSchedulingService } from './match-scheduling.service';
 import { MatchesService } from './matches.service';
 
 function match(overrides: Record<string, unknown> = {}) {
@@ -58,6 +61,7 @@ function harness(
     ...downstream,
   };
   const tx = {
+    $queryRaw: jest.fn().mockResolvedValue([{ id: initial.id }]),
     match: {
       findUnique: jest.fn(({ where }: { where: { id: string } }) =>
         Promise.resolve(rows[where.id] ?? null),
@@ -152,7 +156,11 @@ function harness(
     }),
   } as unknown as NotificationService;
   return {
-    service: new MatchesService(prisma, events, notifications),
+    service: new MatchesService(
+      new MatchQueryService(prisma),
+      new MatchSchedulingService(prisma, events, notifications),
+      new MatchResultService(prisma, events, notifications),
+    ),
     tx,
     rows,
     events,
