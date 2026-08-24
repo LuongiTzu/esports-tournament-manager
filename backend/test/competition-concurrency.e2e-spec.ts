@@ -214,6 +214,48 @@ describeDatabase('competition workflows and concurrency (database E2E)', () => {
         expect(reset.isActive).toBe(true);
         expect(reset.teamAId).toBe(current.teamBId);
         expect(reset.teamBId).toBe(current.teamAId);
+
+        await matches.update(current.id, {
+          scoreA: 1,
+          scoreB: 0,
+          status: MatchStatus.COMPLETED,
+        });
+        const rolledBackReset = await prisma.match.findUniqueOrThrow({
+          where: { id: reset.id },
+        });
+        expect(rolledBackReset).toMatchObject({
+          isActive: false,
+          teamAId: null,
+          teamBId: null,
+          status: MatchStatus.PENDING,
+        });
+        await expect(
+          prisma.tournament.findUniqueOrThrow({
+            where: { id: tournament.id },
+            select: { status: true },
+          }),
+        ).resolves.toEqual({ status: TournamentStatus.COMPLETED });
+
+        await matches.update(current.id, {
+          scoreA: 0,
+          scoreB: 1,
+          status: MatchStatus.COMPLETED,
+        });
+        const reactivatedReset = await prisma.match.findUniqueOrThrow({
+          where: { id: reset.id },
+        });
+        expect(reactivatedReset).toMatchObject({
+          isActive: true,
+          teamAId: current.teamBId,
+          teamBId: current.teamAId,
+          status: MatchStatus.PENDING,
+        });
+        await expect(
+          prisma.tournament.findUniqueOrThrow({
+            where: { id: tournament.id },
+            select: { status: true },
+          }),
+        ).resolves.toEqual({ status: TournamentStatus.ONGOING });
         resetActivated = true;
       }
     }

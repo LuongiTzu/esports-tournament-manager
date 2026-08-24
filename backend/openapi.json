@@ -175,16 +175,7 @@
     "/api/admin/tournaments": {
       "get": {
         "operationId": "AdminController_listTournaments",
-        "parameters": [
-          {
-            "name": "moderationStatus",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": ""
@@ -231,16 +222,7 @@
     "/api/admin/reports": {
       "get": {
         "operationId": "AdminController_listReports",
-        "parameters": [
-          {
-            "name": "status",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": ""
@@ -287,11 +269,25 @@
     "/api/admin/comments": {
       "get": {
         "operationId": "AdminController_listComments",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/comments/{id}/hide": {
+      "patch": {
+        "operationId": "AdminController_hideComment",
         "parameters": [
           {
-            "name": "isHidden",
+            "name": "id",
             "required": true,
-            "in": "query",
+            "in": "path",
             "schema": {
               "type": "string"
             }
@@ -307,9 +303,32 @@
         ]
       }
     },
-    "/api/admin/comments/{id}/hide": {
+    "/api/admin/comments/{id}/unhide": {
       "patch": {
-        "operationId": "AdminController_hideComment",
+        "operationId": "AdminController_unhideComment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/comments/{id}": {
+      "delete": {
+        "operationId": "AdminController_deleteComment",
         "parameters": [
           {
             "name": "id",
@@ -414,6 +433,37 @@
       }
     },
     "/api/admin/banned-keywords/{id}": {
+      "patch": {
+        "operationId": "AdminController_updateBannedKeyword",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBannedKeywordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      },
       "delete": {
         "operationId": "AdminController_deleteBannedKeyword",
         "parameters": [
@@ -439,24 +489,7 @@
     "/api/admin/users": {
       "get": {
         "operationId": "AdminController_listUsers",
-        "parameters": [
-          {
-            "name": "page",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "number"
-            }
-          },
-          {
-            "name": "limit",
-            "required": true,
-            "in": "query",
-            "schema": {
-              "type": "number"
-            }
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": ""
@@ -505,104 +538,6 @@
         },
         "tags": [
           "Admin"
-        ]
-      }
-    },
-    "/api/tournaments/{slug}/notifications": {
-      "post": {
-        "operationId": "NotificationController_createForTournament",
-        "parameters": [
-          {
-            "name": "slug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTournamentNotificationDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Notification"
-        ]
-      }
-    },
-    "/api/users/me/notifications": {
-      "get": {
-        "operationId": "NotificationController_findMine",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Notification"
-        ]
-      }
-    },
-    "/api/users/me/notifications/unread-count": {
-      "get": {
-        "operationId": "NotificationController_unreadCount",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Notification"
-        ]
-      }
-    },
-    "/api/notifications/read-all": {
-      "patch": {
-        "operationId": "NotificationController_markAllRead",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Notification"
-        ]
-      }
-    },
-    "/api/notifications/{id}/read": {
-      "patch": {
-        "operationId": "NotificationController_markRead",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "Notification"
         ]
       }
     },
@@ -922,7 +857,7 @@
           }
         },
         "tags": [
-          "Brackets"
+          "brackets"
         ]
       }
     },
@@ -955,7 +890,7 @@
           }
         },
         "tags": [
-          "Brackets"
+          "brackets"
         ]
       }
     },
@@ -978,7 +913,67 @@
           }
         },
         "tags": [
-          "Brackets"
+          "brackets"
+        ]
+      }
+    },
+    "/api/rounds/{id}/swiss/generate-next": {
+      "post": {
+        "operationId": "BracketsController_generateNextSwissRound",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The next Swiss round was generated exactly once",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "roundId": "round-id",
+                    "bracketRound": 2,
+                    "numberOfRounds": 5,
+                    "matchCount": 4,
+                    "matchIds": [
+                      "match-id-1",
+                      "match-id-2"
+                    ],
+                    "matches": [],
+                    "bye": null,
+                    "warnings": []
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Wrong format, incomplete current round, round limit reached, or insufficient teams"
+          },
+          "401": {
+            "description": "Authentication is required"
+          },
+          "403": {
+            "description": "Tournament organizer access required"
+          },
+          "404": {
+            "description": "Round or tournament was not found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generate the next Swiss pairing round",
+        "tags": [
+          "brackets"
         ]
       }
     },
@@ -1001,7 +996,7 @@
           }
         },
         "tags": [
-          "Brackets"
+          "brackets"
         ]
       }
     },
@@ -1024,7 +1019,238 @@
           }
         },
         "tags": [
-          "Brackets"
+          "brackets"
+        ]
+      }
+    },
+    "/api/tournaments/{slug}/notifications": {
+      "post": {
+        "operationId": "NotificationController_createForTournament",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTournamentNotificationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/users/me/notifications": {
+      "get": {
+        "operationId": "NotificationController_findMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/users/me/notifications/unread-count": {
+      "get": {
+        "operationId": "NotificationController_unreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationController_markAllRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationController_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/tournaments/{slug}/reports": {
+      "post": {
+        "operationId": "ReportController_create",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReportDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/api/tournaments/{slug}/comments": {
+      "post": {
+        "operationId": "CommentController_create",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "comments"
+        ]
+      },
+      "get": {
+        "operationId": "CommentController_findByTournament",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "comments"
+        ]
+      }
+    },
+    "/api/comments/{id}/hide": {
+      "patch": {
+        "operationId": "CommentController_hide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "comments"
+        ]
+      }
+    },
+    "/api/comments/{id}": {
+      "delete": {
+        "operationId": "CommentController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "comments"
         ]
       }
     },
@@ -1575,139 +1801,6 @@
         ]
       }
     },
-    "/api/tournaments/{slug}/comments": {
-      "post": {
-        "operationId": "CommentController_create",
-        "parameters": [
-          {
-            "name": "slug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateCommentDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "comments"
-        ]
-      },
-      "get": {
-        "operationId": "CommentController_findByTournament",
-        "parameters": [
-          {
-            "name": "slug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "comments"
-        ]
-      }
-    },
-    "/api/comments/{id}/hide": {
-      "patch": {
-        "operationId": "CommentController_hide",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "comments"
-        ]
-      }
-    },
-    "/api/comments/{id}": {
-      "delete": {
-        "operationId": "CommentController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "comments"
-        ]
-      }
-    },
-    "/api/tournaments/{slug}/reports": {
-      "post": {
-        "operationId": "ReportController_create",
-        "parameters": [
-          {
-            "name": "slug",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateReportDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "reports"
-        ]
-      }
-    },
     "/api/users/me/avatar": {
       "post": {
         "operationId": "UploadController_avatar",
@@ -1949,11 +2042,11 @@
         "type": "object",
         "properties": {}
       },
-      "LockUserDto": {
+      "UpdateBannedKeywordDto": {
         "type": "object",
         "properties": {}
       },
-      "CreateTournamentNotificationDto": {
+      "LockUserDto": {
         "type": "object",
         "properties": {}
       },
@@ -1974,6 +2067,18 @@
         "properties": {}
       },
       "UpdateSeedsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateTournamentNotificationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateReportDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateCommentDto": {
         "type": "object",
         "properties": {}
       },
@@ -2010,14 +2115,6 @@
         "properties": {}
       },
       "CreateManualMatchDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateCommentDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "CreateReportDto": {
         "type": "object",
         "properties": {}
       }
