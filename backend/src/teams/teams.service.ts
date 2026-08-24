@@ -3,12 +3,9 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  Optional,
 } from '@nestjs/common';
 import {
   MemberRole,
-  MatchOutcome,
-  MatchStatus,
   NotificationType,
   Prisma,
   RegistrationStatus,
@@ -27,17 +24,9 @@ import { TournamentEventsService } from '../tournaments/tournament-events.servic
 import { NotificationService } from '../notifications/notification.service';
 import { ContentFilterService } from '../common/services/content-filter.service';
 import { RegistrationMemberInput } from './types/registration-member-input';
-
-/** Field roster mà người ngoài (không phải BTC/thành viên đội) được xem */
-const PUBLIC_MEMBER_SELECT = {
-  id: true,
-  realName: true,
-  ign: true,
-  position: true,
-  memberRole: true,
-  avatarUrl: true,
-  orderIndex: true,
-} as const;
+import { TeamQueryService } from './team-query.service';
+import { TeamReviewService } from './team-review.service';
+import { TeamReviewPolicy } from './domain/team-review.policy';
 
 const CAPTAIN_SELECT = {
   id: true,
@@ -52,7 +41,16 @@ export class TeamsService {
     private validator: RegistrationValidatorService,
     private readonly notifications: NotificationService,
     private readonly contentFilter: ContentFilterService,
-    @Optional() private readonly events?: TournamentEventsService,
+    private readonly events: TournamentEventsService,
+    private readonly reviewPolicy: TeamReviewPolicy = new TeamReviewPolicy(),
+    private readonly queries: TeamQueryService = new TeamQueryService(prisma),
+    private readonly reviews: TeamReviewService = new TeamReviewService(
+      prisma,
+      validator,
+      notifications,
+      reviewPolicy,
+      events,
+    ),
   ) {}
 
   /**
@@ -63,17 +61,15 @@ export class TeamsService {
    */
   async register(userId: string, slug: string, dto: RegisterTeamDto) {
     const tournament = await this.loadTournamentForRegistration(slug);
-
     const reason = await this.resolveBlockingReason(tournament, userId);
-    if (reason) {
-      throw new BadRequestException(reason);
-    }
+    if (reason) throw new BadRequestException(reason);
 
     return this.createTeam(tournament, userId, dto, {
       status: tournament.autoApproveTeams
         ? RegistrationStatus.APPROVED
         : RegistrationStatus.PENDING,
       notifyOrganizer: true,
+      validateRegistrant: true,
     });
   }
 
@@ -83,7 +79,6 @@ export class TeamsService {
    */
   async addManual(organizerId: string, slug: string, dto: RegisterTeamDto) {
     const tournament = await this.loadTournamentForRegistration(slug);
-
     if (tournament.maxTeams) {
       const occupied = await this.countOccupiedSlots(tournament.id);
       if (occupied >= tournament.maxTeams) {
@@ -94,6 +89,7 @@ export class TeamsService {
     return this.createTeam(tournament, organizerId, dto, {
       status: RegistrationStatus.APPROVED,
       notifyOrganizer: false,
+      validateRegistrant: false,
     });
   }
 
@@ -102,166 +98,22 @@ export class TeamsService {
    * - Khách/người thường chỉ thấy đội APPROVED
    * - BTC thấy cả PENDING/REJECTED và lọc được theo `status`
    */
-  async findByTournament(
+  findByTournament(
     slug: string,
     viewerId: string | undefined,
     status?: string,
   ) {
-    const tournament = await this.prisma.tournament.findUnique({
-      where: { slug },
-      select: { id: true, organizerId: true },
-    });
-
-    if (!tournament) {
-      throw new NotFoundException('Không tìm thấy giải đấu');
-    }
-
-    const isOrganizer = tournament.organizerId === viewerId;
-    const where: Prisma.TeamWhereInput = { tournamentId: tournament.id };
-
-    if (!isOrganizer) {
-      where.status = RegistrationStatus.APPROVED;
-    } else if (status && status !== 'ALL') {
-      const parsed = status.toUpperCase();
-      if (!(parsed in RegistrationStatus)) {
-        throw new BadRequestException('Trạng thái lọc không hợp lệ');
-      }
-      where.status = parsed as RegistrationStatus;
-    }
-
-    return this.prisma.team.findMany({
-      where,
-      orderBy: { registeredAt: 'asc' },
-      include: {
-        captain: { select: CAPTAIN_SELECT },
-        members: {
-          orderBy: { orderIndex: 'asc' },
-          select: PUBLIC_MEMBER_SELECT,
-        },
-        _count: { select: { members: true } },
-      },
-    });
+    return this.queries.findByTournament(slug, viewerId, status);
   }
 
-  /**
-   * Chi tiết đội kèm roster (UC-G06).
-   * Email / SĐT / ngày sinh của thành viên chỉ hiện với BTC, đội trưởng và
-   * chính thành viên trong đội — người ngoài chỉ thấy hồ sơ thi đấu.
-   */
-  async findOne(teamId: string, viewerId?: string) {
-    const team = await this.prisma.team.findUnique({
-      where: { id: teamId },
-      include: {
-        captain: { select: CAPTAIN_SELECT },
-        tournament: {
-          select: {
-            id: true,
-            slug: true,
-            name: true,
-            status: true,
-            organizerId: true,
-          },
-        },
-        members: { orderBy: { orderIndex: 'asc' } },
-      },
-    });
-
-    if (!team) {
-      throw new NotFoundException('Không tìm thấy đội');
-    }
-
-    const completedMatches = await this.prisma.match.findMany({
-      where: {
-        status: MatchStatus.COMPLETED,
-        OR: [{ teamAId: team.id }, { teamBId: team.id }],
-      },
-      orderBy: [{ playedAt: 'desc' }, { updatedAt: 'desc' }, { id: 'asc' }],
-      select: {
-        id: true,
-        scoreA: true,
-        scoreB: true,
-        winnerTeamId: true,
-        outcome: true,
-        scheduledAt: true,
-        playedAt: true,
-        teamA: { select: { id: true, name: true, shortName: true } },
-        teamB: { select: { id: true, name: true, shortName: true } },
-        round: { select: { id: true, name: true, format: true } },
-      },
-    });
-    const history = {
-      completedMatches: completedMatches.length,
-      wins: completedMatches.filter((match) => match.winnerTeamId === team.id)
-        .length,
-      draws: completedMatches.filter(
-        (match) => match.outcome === MatchOutcome.DRAW,
-      ).length,
-      losses: completedMatches.filter(
-        (match) =>
-          match.winnerTeamId !== null && match.winnerTeamId !== team.id,
-      ).length,
-      finalRank: team.finalRank,
-      recentMatches: completedMatches.slice(0, 10),
-    };
-
-    const isPrivileged =
-      !!viewerId &&
-      (team.tournament.organizerId === viewerId ||
-        team.captainId === viewerId ||
-        team.members.some((m) => m.userId === viewerId));
-
-    if (isPrivileged) {
-      return { ...team, history, canViewSensitiveInfo: true };
-    }
-
-    return {
-      ...team,
-      history,
-      contactEmail: null,
-      contactPhone: null,
-      rejectReason: null,
-      members: team.members.map((m) => ({
-        id: m.id,
-        realName: m.realName,
-        ign: m.ign,
-        position: m.position,
-        memberRole: m.memberRole,
-        avatarUrl: m.avatarUrl,
-        orderIndex: m.orderIndex,
-      })),
-      canViewSensitiveInfo: false,
-    };
+  findOne(teamId: string, viewerId?: string) {
+    return this.queries.findOne(teamId, viewerId);
   }
 
-  /** Danh sách đội của tôi kèm trạng thái từng giải (UC-U12) */
-  async findMyTeams(userId: string) {
-    return this.prisma.team.findMany({
-      where: {
-        OR: [{ captainId: userId }, { members: { some: { userId } } }],
-      },
-      orderBy: { registeredAt: 'desc' },
-      include: {
-        tournament: {
-          select: {
-            id: true,
-            slug: true,
-            name: true,
-            status: true,
-            bannerUrl: true,
-            startDate: true,
-            game: { select: { id: true, name: true, iconUrl: true } },
-          },
-        },
-        captain: { select: CAPTAIN_SELECT },
-        _count: { select: { members: true } },
-      },
-    });
+  findMyTeams(userId: string) {
+    return this.queries.findMyTeams(userId);
   }
 
-  /**
-   * Sửa hồ sơ đội (UC-U12) — đội trưởng hoặc BTC.
-   * Roster không sửa ở đây, dùng nhóm endpoint `/teams/:id/members`.
-   */
   async update(teamId: string, dto: UpdateTeamDto) {
     const team = await this.loadEditableTeam(teamId);
 
@@ -380,103 +232,10 @@ export class TeamsService {
    * - REJECTED bắt buộc kèm lý do để hiển thị lại cho đội trưởng
    * - APPROVED phải kiểm tra lại `maxTeams` vì slot có thể đã đầy sau khi đội đăng ký
    */
-  async updateStatus(teamId: string, dto: UpdateTeamStatusDto) {
-    if (dto.status === RegistrationStatus.PENDING) {
-      throw new BadRequestException(
-        'Chỉ được chuyển đội sang trạng thái APPROVED hoặc REJECTED',
-      );
-    }
-
-    if (
-      dto.status === RegistrationStatus.REJECTED &&
-      !dto.rejectReason?.trim()
-    ) {
-      throw new BadRequestException('Phải nhập lý do khi từ chối đội');
-    }
-
-    const team = await this.prisma.team.findUnique({
-      where: { id: teamId },
-      select: {
-        id: true,
-        name: true,
-        captainId: true,
-        tournamentId: true,
-        tournament: { select: { maxTeams: true } },
-      },
-    });
-
-    if (!team) {
-      throw new NotFoundException('Không tìm thấy đội');
-    }
-
-    if (
-      dto.status === RegistrationStatus.APPROVED &&
-      team.tournament.maxTeams
-    ) {
-      const approved = await this.prisma.team.count({
-        where: {
-          tournamentId: team.tournamentId,
-          status: RegistrationStatus.APPROVED,
-        },
-      });
-      if (approved >= team.tournament.maxTeams) {
-        throw new BadRequestException(
-          'Giải đấu đã đủ số đội được duyệt, không thể duyệt thêm',
-        );
-      }
-    }
-
-    const result = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.team.update({
-        where: { id: teamId },
-        data: {
-          status: dto.status,
-          rejectReason:
-            dto.status === RegistrationStatus.REJECTED
-              ? dto.rejectReason!.trim()
-              : null,
-          reviewedAt: new Date(),
-        },
-        include: {
-          captain: { select: CAPTAIN_SELECT },
-          members: { orderBy: { orderIndex: 'asc' } },
-        },
-      });
-      const notification = await this.notifications.createNotification(
-        {
-          userId: team.captainId,
-          type:
-            dto.status === RegistrationStatus.APPROVED
-              ? NotificationType.TEAM_APPROVED
-              : NotificationType.TEAM_REJECTED,
-          content:
-            dto.status === RegistrationStatus.APPROVED
-              ? `Đội "${team.name}" đã được duyệt tham gia giải`
-              : `Đội "${team.name}" đã bị từ chối. Lý do: ${dto.rejectReason!.trim()}`,
-          tournamentId: team.tournamentId,
-        },
-        tx,
-        false,
-      );
-      return { updated, notification };
-    });
-    this.notifications.emitCreated(result.notification);
-
-    if (dto.status === RegistrationStatus.APPROVED) {
-      this.events?.publish({
-        tournamentId: team.tournamentId,
-        event: 'teamApproved',
-        payload: result.updated,
-      });
-    }
-
-    return result.updated;
+  updateStatus(teamId: string, dto: UpdateTeamStatusDto) {
+    return this.reviews.updateStatus(teamId, dto);
   }
 
-  /**
-   * Rút đăng ký / xóa đội.
-   * Đội trưởng chỉ được tự rút khi còn PENDING; BTC xóa được cả đội đã duyệt.
-   */
   async remove(teamId: string, userId: string) {
     const team = await this.prisma.team.findUnique({
       where: { id: teamId },
@@ -566,21 +325,48 @@ export class TeamsService {
     tournament: TournamentForRegistration,
     captainUserId: string,
     dto: RegisterTeamDto,
-    options: { status: RegistrationStatus; notifyOrganizer: boolean },
+    options: {
+      status: RegistrationStatus;
+      notifyOrganizer: boolean;
+      validateRegistrant: boolean;
+    },
   ) {
-    await this.assertTeamNameAvailable(tournament.id, dto.name);
     this.assertContentAllowed(dto.name, dto.description);
 
-    const rules = this.validator.buildRules(tournament);
-    const { captainIndex } = await this.validator.validate(
-      rules,
-      dto.members.map(toRegistrationValidationInput),
-    );
-
-    let organizerNotification:
-      | Awaited<ReturnType<NotificationService['createNotification']>>
-      | undefined;
     const result = await this.prisma.$transaction(async (tx) => {
+      await this.lockTournament(tx, tournament.id);
+      const lockedTournament = await this.loadTournamentForRegistration(
+        tournament.slug,
+        tx,
+      );
+
+      if (options.validateRegistrant) {
+        const reason = await this.resolveBlockingReason(
+          lockedTournament,
+          captainUserId,
+          tx,
+        );
+        if (reason) throw new BadRequestException(reason);
+      } else if (lockedTournament.maxTeams) {
+        const occupied = await this.countOccupiedSlots(lockedTournament.id, tx);
+        if (occupied >= lockedTournament.maxTeams) {
+          throw new BadRequestException('Giải đấu đã đủ số đội tham gia');
+        }
+      }
+
+      await this.assertTeamNameAvailable(
+        lockedTournament.id,
+        dto.name,
+        undefined,
+        tx,
+      );
+      const rules = this.validator.buildRules(lockedTournament);
+      const { captainIndex } = await this.validator.validate(
+        rules,
+        dto.members.map(toRegistrationValidationInput),
+        { client: tx },
+      );
+
       const team = await tx.team.create({
         data: {
           name: dto.name,
@@ -590,50 +376,47 @@ export class TeamsService {
           contactName: dto.contactName,
           contactEmail: dto.contactEmail,
           contactPhone: dto.contactPhone,
-          tournamentId: tournament.id,
+          tournamentId: lockedTournament.id,
           captainId: captainUserId,
           status: options.status,
           reviewedAt:
             options.status === RegistrationStatus.APPROVED ? new Date() : null,
         },
       });
-
       await tx.teamMember.createMany({
-        data: dto.members.map((m, index) => ({
+        data: dto.members.map((member, index) => ({
           teamId: team.id,
-          // Chỉ đội trưởng được gắn tài khoản; các thành viên khác là hồ sơ nhập tay
           userId: index === captainIndex ? captainUserId : null,
-          realName: m.realName,
-          ign: m.ign,
-          inGameId: m.inGameId,
-          birthDate: m.birthDate ? new Date(m.birthDate) : null,
-          gender: m.gender,
-          email: m.email,
-          phoneNumber: m.phoneNumber,
-          position: m.position,
+          realName: member.realName,
+          ign: member.ign,
+          inGameId: member.inGameId,
+          birthDate: member.birthDate ? new Date(member.birthDate) : null,
+          gender: member.gender,
+          email: member.email,
+          phoneNumber: member.phoneNumber,
+          position: member.position,
           memberRole:
             index === captainIndex
               ? MemberRole.CAPTAIN
-              : (m.memberRole ?? MemberRole.PLAYER),
-          avatarUrl: m.avatarUrl,
-          orderIndex: m.orderIndex ?? index,
+              : (member.memberRole ?? MemberRole.PLAYER),
+          avatarUrl: member.avatarUrl,
+          orderIndex: member.orderIndex ?? index,
         })),
       });
 
-      if (options.notifyOrganizer) {
-        organizerNotification = await this.notifications.createNotification(
-          {
-            userId: tournament.organizerId,
-            type: NotificationType.SYSTEM,
-            content: `Đội "${team.name}" vừa đăng ký tham gia giải "${tournament.name}"`,
-            tournamentId: tournament.id,
-          },
-          tx,
-          false,
-        );
-      }
-
-      return tx.team.findUnique({
+      const notification = options.notifyOrganizer
+        ? await this.notifications.createNotification(
+            {
+              userId: lockedTournament.organizerId,
+              type: NotificationType.SYSTEM,
+              content: `Đội "${team.name}" vừa đăng ký tham gia giải "${lockedTournament.name}"`,
+              tournamentId: lockedTournament.id,
+            },
+            tx,
+            false,
+          )
+        : undefined;
+      const created = await tx.team.findUnique({
         where: { id: team.id },
         include: {
           captain: { select: CAPTAIN_SELECT },
@@ -641,15 +424,19 @@ export class TeamsService {
           _count: { select: { members: true } },
         },
       });
+      return { created, notification };
     });
-    if (organizerNotification) {
-      this.notifications.emitCreated(organizerNotification);
-    }
-    return result;
+
+    if (result.notification)
+      this.notifications.emitCreated(result.notification);
+    return result.created;
   }
 
-  private async loadTournamentForRegistration(slug: string) {
-    const tournament = await this.prisma.tournament.findUnique({
+  private async loadTournamentForRegistration(
+    slug: string,
+    client: Pick<Prisma.TransactionClient, 'tournament'> = this.prisma,
+  ) {
+    const tournament = await client.tournament.findUnique({
       where: { slug },
       include: {
         game: {
@@ -687,7 +474,7 @@ export class TeamsService {
     });
 
     const rules = this.validator.buildRules(tournament);
-    await this.validator.validate(rules, members, teamId);
+    await this.validator.validate(rules, members, { excludeTeamId: teamId });
   }
 
   /** Roster trong DB → dạng input của validator (giữ `id` để lọc/merge) */
@@ -775,8 +562,9 @@ export class TeamsService {
     tournamentId: string,
     name: string,
     excludeTeamId?: string,
+    client: Pick<Prisma.TransactionClient, 'team'> = this.prisma,
   ) {
-    const duplicated = await this.prisma.team.findFirst({
+    const duplicated = await client.team.findFirst({
       where: {
         tournamentId,
         name,
@@ -801,8 +589,11 @@ export class TeamsService {
     }
   }
 
-  private countOccupiedSlots(tournamentId: string) {
-    return this.prisma.team.count({
+  private countOccupiedSlots(
+    tournamentId: string,
+    client: Pick<Prisma.TransactionClient, 'team'> = this.prisma,
+  ) {
+    return client.team.count({
       where: {
         tournamentId,
         status: {
@@ -828,6 +619,7 @@ export class TeamsService {
       organizerId: string;
     },
     userId: string,
+    client: Pick<Prisma.TransactionClient, 'team'> = this.prisma,
   ): Promise<string | null> {
     if (tournament.organizerId === userId) {
       return 'Bạn là ban tổ chức của giải này nên không thể tự đăng ký tham gia';
@@ -858,13 +650,13 @@ export class TeamsService {
 
     // Slot đã dùng tính cả đội đang chờ duyệt, tránh nhận vượt quá maxTeams
     if (tournament.maxTeams) {
-      const occupied = await this.countOccupiedSlots(tournament.id);
+      const occupied = await this.countOccupiedSlots(tournament.id, client);
       if (occupied >= tournament.maxTeams) {
         return 'Giải đấu đã đủ số đội tham gia';
       }
     }
 
-    const existingTeam = await this.prisma.team.findFirst({
+    const existingTeam = await client.team.findFirst({
       where: {
         tournamentId: tournament.id,
         status: {
@@ -880,6 +672,14 @@ export class TeamsService {
     }
 
     return null;
+  }
+  private async lockTournament(
+    tx: Prisma.TransactionClient,
+    tournamentId: string,
+  ): Promise<void> {
+    await tx.$queryRaw(
+      Prisma.sql`SELECT "id" FROM "tournaments" WHERE "id" = ${tournamentId} FOR UPDATE`,
+    );
   }
 }
 

@@ -10,6 +10,7 @@ import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegistrationValidatorService } from './registration-validator.service';
 import { TeamsService } from './teams.service';
+import { TournamentEventsService } from '../tournaments/tournament-events.service';
 
 function lifecycleTournament(overrides: Record<string, unknown> = {}) {
   return {
@@ -33,6 +34,7 @@ function team(
     status,
     captainId: 'captain-1',
     tournamentId: 'tournament-1',
+    members: [],
     tournament,
   };
 }
@@ -54,8 +56,12 @@ function harness(teamValue = team()) {
     teamMember: teamMemberClient,
     tournament: { findUniqueOrThrow: jest.fn() },
     $transaction: jest.fn(
-      (callback: (client: { team: typeof teamClient }) => unknown) =>
-        callback({ team: teamClient }),
+      (
+        callback: (client: {
+          team: typeof teamClient;
+          $queryRaw: jest.Mock;
+        }) => unknown,
+      ) => callback({ team: teamClient, $queryRaw: jest.fn() }),
     ),
   } as unknown as PrismaService;
   const validator = {
@@ -69,11 +75,20 @@ function harness(teamValue = team()) {
     createNotification: jest.fn().mockResolvedValue({ id: 'notification-1' }),
     emitCreated: jest.fn(),
   } as unknown as NotificationService;
+  const events = { publish: jest.fn() } as unknown as TournamentEventsService;
   return {
-    service: new TeamsService(prisma, validator, notifications, contentFilter),
+    service: new TeamsService(
+      prisma,
+      validator,
+      notifications,
+      contentFilter,
+      events,
+    ),
     teamClient,
     teamMemberClient,
     notifications,
+    validator,
+    events,
   };
 }
 
@@ -93,6 +108,59 @@ describe('TeamsService roster lifecycle', () => {
       expect(teamClient.update).toHaveBeenCalled();
     },
   );
+
+  it('revalidates the persisted roster with self-exclusion before approval', async () => {
+    const { service, validator } = harness();
+
+    await service.updateStatus('team-1', {
+      status: RegistrationStatus.APPROVED,
+    });
+
+    expect(jest.mocked(validator.validate)).toHaveBeenCalledWith(
+      undefined,
+      [],
+      expect.objectContaining({ excludeTeamId: 'team-1' }),
+    );
+  });
+
+  it('rejects a second review without notifications or realtime', async () => {
+    const { service, notifications, events } = harness(
+      team(RegistrationStatus.APPROVED),
+    );
+
+    await expect(
+      service.updateStatus('team-1', {
+        status: RegistrationStatus.REJECTED,
+        rejectReason: 'Changed mind',
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'INVALID_REGISTRATION_STATUS_TRANSITION',
+      }),
+    });
+    expect(
+      jest.mocked(notifications.createNotification),
+    ).not.toHaveBeenCalled();
+    expect(jest.mocked(events.publish)).not.toHaveBeenCalled();
+  });
+
+  it('does not persist review side effects when roster revalidation fails', async () => {
+    const { service, validator, teamClient, notifications, events } = harness();
+    jest
+      .mocked(validator.validate)
+      .mockRejectedValueOnce(new BadRequestException('invalid roster'));
+
+    await expect(
+      service.updateStatus('team-1', {
+        status: RegistrationStatus.APPROVED,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(teamClient.update).not.toHaveBeenCalled();
+    expect(
+      jest.mocked(notifications.createNotification),
+    ).not.toHaveBeenCalled();
+    expect(jest.mocked(events.publish)).not.toHaveBeenCalled();
+  });
 
   it.each([
     ['registration toggle is closed', { registrationOpen: false }],
@@ -228,6 +296,7 @@ describe('TeamsService public history', () => {
       {} as RegistrationValidatorService,
       {} as NotificationService,
       {} as ContentFilterService,
+      { publish: jest.fn() } as unknown as TournamentEventsService,
     );
 
     const result = await service.findOne('team-1');
