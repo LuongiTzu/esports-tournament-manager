@@ -1,14 +1,25 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { CommonModule } from '../common/common.module';
 import { NotificationController } from './notification.controller';
 import { NotificationEventsService } from './notification-events.service';
 import { NotificationService } from './notification.service';
+import { NOTIFICATION_PUBLISHER } from '../common/ports/notification-publisher';
+import { NotificationQueryService } from './notification-query.service';
 
-@Global()
 @Module({
   imports: [CommonModule],
   controllers: [NotificationController],
-  providers: [NotificationService, NotificationEventsService],
-  exports: [NotificationService, NotificationEventsService],
+  providers: [
+    NotificationService,
+    NotificationEventsService,
+    NotificationQueryService,
+    { provide: NOTIFICATION_PUBLISHER, useExisting: NotificationService },
+  ],
+  exports: [
+    NotificationService,
+    NotificationEventsService,
+    NotificationQueryService,
+    NOTIFICATION_PUBLISHER,
+  ],
 })
 export class NotificationModule {}

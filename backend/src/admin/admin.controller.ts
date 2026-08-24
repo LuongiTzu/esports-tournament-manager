@@ -153,11 +153,6 @@ export class AdminController {
     @Body() dto: LockUserDto,
     @Query('isLocked') isLockedRaw?: string,
   ) {
-    // Admin không thể khóa chính mình
-    if (userId === adminId) {
-      throw new BadRequestException('Không thể khóa tài khoản của chính mình');
-    }
-
     // Không dùng ParseBoolPipe: global ValidationPipe (transform) đã ép chuỗi lạ
     // thành false trước khi pipe chạy, khiến ?isLocked=1 âm thầm mở khóa
     if (isLockedRaw !== undefined && !['true', 'false'].includes(isLockedRaw)) {
@@ -167,6 +162,7 @@ export class AdminController {
     }
 
     return this.adminService.setUserLockStatus(
+      adminId,
       userId,
       dto.isLocked ?? isLockedRaw !== 'false',
     );

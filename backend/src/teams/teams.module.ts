@@ -9,12 +9,13 @@ import { RegistrationRosterPolicy } from './domain/registration-roster.policy';
 import { TeamQueryService } from './team-query.service';
 import { TeamReviewService } from './team-review.service';
 import { TournamentRealtimeModule } from '../tournaments/tournament-realtime.module';
+import { NotificationModule } from '../notifications/notification.module';
 
 /**
  * Module Team — đăng ký & quản lý hồ sơ đội (UC-U06, U07, U08, U11, U12, G06)
  */
 @Module({
-  imports: [CommonModule, TournamentRealtimeModule],
+  imports: [CommonModule, TournamentRealtimeModule, NotificationModule],
   controllers: [TeamsController],
   providers: [
     TeamsService,

@@ -1,15 +1,23 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
-  Optional,
 } from '@nestjs/common';
 import { NotificationType, Prisma } from '@prisma/client';
 import { createHash } from 'crypto';
-import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { TournamentEventsService } from '../tournaments/tournament-events.service';
+import {
+  NOTIFICATION_PUBLISHER,
+  NOOP_NOTIFICATION_PUBLISHER,
+  NotificationPublisher,
+} from '../common/ports/notification-publisher';
+import {
+  NOOP_TOURNAMENT_EVENT_PUBLISHER,
+  TOURNAMENT_EVENT_PUBLISHER,
+  TournamentEventPublisher,
+} from '../common/ports/tournament-event-publisher';
 import { BulkScheduleDto, CreateManualMatchDto } from './dto/match.dto';
 import {
   MatchResultPolicy,
@@ -21,8 +29,10 @@ export class MatchSchedulingService {
   private readonly logger = new Logger(MatchSchedulingService.name);
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() private readonly events?: TournamentEventsService,
-    @Optional() private readonly notifications?: NotificationService,
+    @Inject(TOURNAMENT_EVENT_PUBLISHER)
+    private readonly events: TournamentEventPublisher = NOOP_TOURNAMENT_EVENT_PUBLISHER,
+    @Inject(NOTIFICATION_PUBLISHER)
+    private readonly notifications: NotificationPublisher = NOOP_NOTIFICATION_PUBLISHER,
     private readonly resultPolicy: MatchResultPolicy = new MatchResultPolicy(),
   ) {}
 
@@ -80,7 +90,7 @@ export class MatchSchedulingService {
     });
     const { tournamentId, changedCount, sourceKey, ...payload } = result;
     if (changedCount > 0) {
-      this.events?.publish({
+      this.events.publish({
         tournamentId,
         event: 'scheduleUpdated',
         payload,
@@ -162,7 +172,6 @@ export class MatchSchedulingService {
       sourceKey: string;
     }>,
   ) {
-    if (!this.notifications) return;
     try {
       for (const notification of notifications) {
         await this.notifications.createForTournamentEvent({

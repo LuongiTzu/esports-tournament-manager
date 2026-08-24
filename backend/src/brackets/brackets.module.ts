@@ -17,6 +17,7 @@ import { BracketsController } from './brackets.controller';
 import { BracketQueryService } from './bracket-query.service';
 import { RoundAdvancementService } from './round-advancement.service';
 import { SwissStandingsQueryService } from './swiss-standings-query.service';
+import { TournamentRealtimeModule } from '../tournaments/tournament-realtime.module';
 
 /**
  * Module Bracket — chứa toàn bộ logic sinh bracket & chuẩn hóa settings.
@@ -29,6 +30,7 @@ import { SwissStandingsQueryService } from './swiss-standings-query.service';
  * dùng được RoundSettingsService.
  */
 @Module({
+  imports: [TournamentRealtimeModule],
   controllers: [BracketsController],
   providers: [
     RoundSettingsService,

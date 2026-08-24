@@ -6,6 +6,8 @@ import type { SignOptions } from 'jsonwebtoken';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { PasswordHasher } from './password-hasher.service';
+import { AuthTokenService } from './auth-token.service';
 
 @Module({
   imports: [
@@ -25,7 +27,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, PasswordHasher, AuthTokenService],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

@@ -1,360 +1,84 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  ModerationStatus,
-  NotificationType,
-  Prisma,
-  ReportStatus,
-  Role,
-} from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { ContentFilterService } from '../common/services/content-filter.service';
+import { Injectable } from '@nestjs/common';
+import { ModerationStatus, ReportStatus, Role } from '@prisma/client';
 import {
   CreateBannedKeywordDto,
   UpdateBannedKeywordDto,
 } from './dto/banned-keyword.dto';
-import { NotificationService } from '../notifications/notification.service';
+import {
+  AdminDashboardQueryService,
+  BannedKeywordService,
+} from './admin-operations.services';
+import { UserAdministrationService } from '../users/user-administration.service';
+import { TournamentModerationService } from '../tournaments/tournament-moderation.service';
+import { ReportReviewService } from '../reports/report-review.service';
+import { CommentModerationService } from '../comments/comment-moderation.service';
 
+/** ADMIN-protected compatibility facade; business behavior is domain-focused. */
 @Injectable()
 export class AdminService {
   constructor(
-    private prisma: PrismaService,
-    private readonly contentFilter: ContentFilterService,
-    private readonly notifications: NotificationService,
+    private readonly dashboard: AdminDashboardQueryService,
+    private readonly users: UserAdministrationService,
+    private readonly tournaments: TournamentModerationService,
+    private readonly reports: ReportReviewService,
+    private readonly comments: CommentModerationService,
+    private readonly keywords: BannedKeywordService,
   ) {}
 
   listBannedKeywords() {
-    return this.prisma.bannedKeyword.findMany({
-      orderBy: [{ category: 'asc' }, { keyword: 'asc' }],
-    });
+    return this.keywords.list();
+  }
+  createBannedKeyword(dto: CreateBannedKeywordDto) {
+    return this.keywords.create(dto);
+  }
+  updateBannedKeyword(id: string, dto: UpdateBannedKeywordDto) {
+    return this.keywords.update(id, dto);
+  }
+  deleteBannedKeyword(id: string) {
+    return this.keywords.remove(id);
   }
 
-  async listTournaments(moderationStatus?: ModerationStatus) {
-    return this.prisma.tournament.findMany({
-      where: { moderationStatus },
-      orderBy: [{ reports: { _count: 'desc' } }, { createdAt: 'desc' }],
-      include: {
-        organizer: { select: { id: true, displayName: true, email: true } },
-        game: { select: { id: true, name: true } },
-        _count: { select: { reports: true } },
-      },
-    });
+  listTournaments(moderationStatus?: ModerationStatus) {
+    return this.tournaments.list(moderationStatus);
   }
-
-  async moderateTournament(
-    id: string,
-    moderationStatus: ModerationStatus,
-    reason?: string,
-  ) {
-    if (
-      moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN &&
-      !reason?.trim()
-    ) {
-      throw new BadRequestException(
-        'Reason is required when hiding tournament',
-      );
-    }
-    const tournament = await this.prisma.tournament.findUnique({
-      where: { id },
-      select: { id: true, name: true, organizerId: true },
-    });
-    if (!tournament) throw new NotFoundException('Tournament not found');
-    const updated = await this.prisma.tournament.update({
-      where: { id },
-      data: { moderationStatus },
-    });
-    if (moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN) {
-      await this.notifications.createNotification({
-        userId: tournament.organizerId,
-        type: NotificationType.ADMIN_WARNING,
-        content: `Tournament "${tournament.name}" was hidden by an administrator. Reason: ${reason!.trim()}`,
-        tournamentId: tournament.id,
-      });
-    }
-    return updated;
+  moderateTournament(id: string, status: ModerationStatus, reason?: string) {
+    return this.tournaments.moderate(id, status, reason);
+  }
+  verifyTournament(id: string, explicit?: boolean) {
+    return this.tournaments.verify(id, explicit);
   }
 
   listReports(status?: ReportStatus) {
-    return this.prisma.report.findMany({
-      where: { status },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        tournament: { select: { id: true, name: true, slug: true } },
-        reporter: { select: { id: true, displayName: true } },
-        reviewer: { select: { id: true, displayName: true } },
-      },
-    });
+    return this.reports.list(status);
   }
-
-  async reviewReport(id: string, status: ReportStatus, adminId: string) {
-    if (status === ReportStatus.PENDING) {
-      throw new BadRequestException('Report can only be REVIEWED or DISMISSED');
-    }
-    const report = await this.prisma.report.findUnique({
-      where: { id },
-      select: { id: true, status: true },
-    });
-    if (!report) throw new NotFoundException('Report not found');
-    if (report.status !== ReportStatus.PENDING) {
-      throw new BadRequestException('Only PENDING reports may be reviewed');
-    }
-    return this.prisma.report.update({
-      where: { id },
-      data: { status, reviewedAt: new Date(), reviewedBy: adminId },
-    });
+  reviewReport(id: string, status: ReportStatus, adminId: string) {
+    return this.reports.review(id, status, adminId);
   }
 
   listComments(query: { isHidden?: boolean; search?: string } = {}) {
-    const search = query.search?.trim();
-    return this.prisma.comment.findMany({
-      where: {
-        isHidden: query.isHidden,
-        ...(search
-          ? {
-              content: { contains: search, mode: Prisma.QueryMode.insensitive },
-            }
-          : {}),
-      },
-      orderBy: [{ isHidden: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
-      include: {
-        author: { select: { id: true, displayName: true } },
-        tournament: { select: { id: true, name: true, slug: true } },
-      },
-    });
+    return this.comments.list(query);
+  }
+  hideComment(id: string) {
+    return this.comments.hide(id);
+  }
+  unhideComment(id: string) {
+    return this.comments.unhide(id);
+  }
+  deleteComment(id: string) {
+    return this.comments.remove(id);
   }
 
-  async hideComment(id: string) {
-    return this.setCommentHidden(id, true);
+  stats() {
+    return this.dashboard.stats();
   }
-
-  async unhideComment(id: string) {
-    return this.setCommentHidden(id, false);
-  }
-
-  async deleteComment(id: string) {
-    const comment = await this.prisma.comment.findUnique({
-      where: { id },
-      select: { id: true },
-    });
-    if (!comment) throw new NotFoundException('Comment not found');
-    await this.prisma.comment.delete({ where: { id } });
-    return { message: 'Comment deleted', id };
-  }
-
-  private async setCommentHidden(id: string, isHidden: boolean) {
-    const comment = await this.prisma.comment.findUnique({
-      where: { id },
-      select: { id: true },
-    });
-    if (!comment) throw new NotFoundException('Comment not found');
-    return this.prisma.comment.update({
-      where: { id },
-      data: { isHidden },
-    });
-  }
-
-  async stats() {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const [
-      totalTournaments,
-      totalUsers,
-      reportedTournamentRows,
-      lockedTournaments,
-      lockedAccounts,
-      tournamentsLast7Days,
-    ] = await Promise.all([
-      this.prisma.tournament.count(),
-      this.prisma.user.count(),
-      this.prisma.report.groupBy({
-        by: ['tournamentId'],
-        where: { status: ReportStatus.PENDING },
-      }),
-      this.prisma.tournament.count({
-        where: { moderationStatus: ModerationStatus.HIDDEN_BY_ADMIN },
-      }),
-      this.prisma.user.count({ where: { isLocked: true } }),
-      this.prisma.tournament.count({
-        where: { createdAt: { gte: sevenDaysAgo } },
-      }),
-    ]);
-    return {
-      totalTournaments,
-      totalUsers,
-      tournamentsBeingReported: reportedTournamentRows.length,
-      lockedTournaments,
-      lockedAccounts,
-      tournamentsCreatedLast7Days: tournamentsLast7Days,
-    };
-  }
-
-  async verifyTournament(id: string, explicit?: boolean) {
-    const tournament = await this.prisma.tournament.findUnique({
-      where: { id },
-      select: { id: true, isVerified: true, moderationStatus: true },
-    });
-    if (!tournament) throw new NotFoundException('Tournament not found');
-    const nextValue = explicit ?? !tournament.isVerified;
-    if (
-      nextValue &&
-      tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN
-    ) {
-      throw new BadRequestException(
-        'A hidden tournament cannot receive the verified trust label',
-      );
-    }
-    return this.prisma.tournament.update({
-      where: { id },
-      data: { isVerified: nextValue },
-    });
-  }
-
-  async createBannedKeyword(dto: CreateBannedKeywordDto) {
-    const result = await this.prisma.bannedKeyword.create({
-      data: { keyword: dto.keyword.trim(), category: dto.category },
-    });
-    await this.contentFilter.refresh();
-    return result;
-  }
-
-  async updateBannedKeyword(id: string, dto: UpdateBannedKeywordDto) {
-    if (dto.keyword === undefined && dto.category === undefined) {
-      throw new BadRequestException('At least one field must be provided');
-    }
-    const current = await this.prisma.bannedKeyword.findUnique({
-      where: { id },
-    });
-    if (!current) throw new NotFoundException('Banned keyword not found');
-
-    const keyword = dto.keyword?.trim();
-    if (dto.keyword !== undefined && !keyword) {
-      throw new BadRequestException('Keyword must not be blank');
-    }
-    if (keyword) {
-      const duplicate = await this.prisma.bannedKeyword.findFirst({
-        where: {
-          id: { not: id },
-          keyword: { equals: keyword, mode: Prisma.QueryMode.insensitive },
-        },
-        select: { id: true },
-      });
-      if (duplicate) {
-        throw new BadRequestException('Banned keyword already exists');
-      }
-    }
-
-    const result = await this.prisma.bannedKeyword.update({
-      where: { id },
-      data: {
-        ...(keyword !== undefined ? { keyword } : {}),
-        ...(dto.category !== undefined ? { category: dto.category } : {}),
-      },
-    });
-    await this.contentFilter.refresh();
-    return result;
-  }
-
-  async deleteBannedKeyword(id: string) {
-    const keyword = await this.prisma.bannedKeyword.findUnique({
-      where: { id },
-      select: { id: true },
-    });
-    if (!keyword) throw new NotFoundException('Banned keyword not found');
-    await this.prisma.bannedKeyword.delete({ where: { id } });
-    await this.contentFilter.refresh();
-    return { message: 'Banned keyword deleted', id };
-  }
-
-  /** Lấy danh sách tất cả người dùng (phân trang) */
-  async listUsers(
+  listUsers(
     page = 1,
     limit = 20,
     filters: { search?: string; isLocked?: boolean; role?: Role } = {},
   ) {
-    const skip = (page - 1) * limit;
-    const search = filters.search?.trim();
-    const where: Prisma.UserWhereInput = {
-      isLocked: filters.isLocked,
-      role: filters.role,
-      ...(search
-        ? {
-            OR: [
-              {
-                email: { contains: search, mode: Prisma.QueryMode.insensitive },
-              },
-              {
-                displayName: {
-                  contains: search,
-                  mode: Prisma.QueryMode.insensitive,
-                },
-              },
-            ],
-          }
-        : {}),
-    };
-
-    const [users, total] = await Promise.all([
-      this.prisma.user.findMany({
-        skip,
-        take: limit,
-        where,
-        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-        select: {
-          id: true,
-          email: true,
-          displayName: true,
-          avatarUrl: true,
-          role: true,
-          isLocked: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      }),
-      this.prisma.user.count({ where }),
-    ]);
-
-    return {
-      data: users,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
+    return this.users.listUsers(page, limit, filters);
   }
-
-  /** Khóa / mở khóa tài khoản người dùng */
-  async setUserLockStatus(userId: string, isLocked: boolean) {
-    // Không cho phép tự khóa chính mình
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException('Không tìm thấy người dùng');
-    }
-
-    const updated = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        isLocked,
-        // Khi khóa tài khoản, vô hiệu toàn bộ token của user đó
-        ...(isLocked && { tokenVersion: { increment: 1 } }),
-      },
-      select: {
-        id: true,
-        email: true,
-        displayName: true,
-        role: true,
-        isLocked: true,
-        updatedAt: true,
-      },
-    });
-
-    return updated;
+  setUserLockStatus(actorAdminId: string, userId: string, isLocked: boolean) {
+    return this.users.setUserLockStatus(actorAdminId, userId, isLocked);
   }
 }

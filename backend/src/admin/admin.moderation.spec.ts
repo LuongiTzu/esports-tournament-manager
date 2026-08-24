@@ -8,6 +8,15 @@ import { ContentFilterService } from '../common/services/content-filter.service'
 import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminService } from './admin.service';
+import {
+  AdminDashboardQueryService,
+  BannedKeywordService,
+} from './admin-operations.services';
+import { CommentModerationService } from '../comments/comment-moderation.service';
+import { ReportReviewService } from '../reports/report-review.service';
+import { TournamentModerationService } from '../tournaments/tournament-moderation.service';
+import { UserAdministrationService } from '../users/user-administration.service';
+import { NotificationPublisher } from '../common/ports/notification-publisher';
 
 function setup() {
   const prisma = {
@@ -39,9 +48,18 @@ function setup() {
   const notifications = { createNotification: jest.fn() };
   return {
     service: new AdminService(
-      prisma as unknown as PrismaService,
-      {} as ContentFilterService,
-      notifications as unknown as NotificationService,
+      new AdminDashboardQueryService(prisma as unknown as PrismaService),
+      new UserAdministrationService(prisma as unknown as PrismaService),
+      new TournamentModerationService(
+        prisma as unknown as PrismaService,
+        notifications as unknown as NotificationPublisher,
+      ),
+      new ReportReviewService(prisma as unknown as PrismaService),
+      new CommentModerationService(prisma as unknown as PrismaService),
+      new BannedKeywordService(
+        prisma as unknown as PrismaService,
+        {} as ContentFilterService,
+      ),
     ),
     prisma,
     notifications,
@@ -105,16 +123,25 @@ describe('AdminService moderation', () => {
     const { service, prisma } = setup();
     prisma.user.findUnique.mockResolvedValue({ id: 'u-1' });
     prisma.user.update.mockResolvedValue({ id: 'u-1', isLocked: true });
-    await service.setUserLockStatus('u-1', true);
+    await service.setUserLockStatus('admin-1', 'u-1', true);
     expect(prisma.user.update).toHaveBeenLastCalledWith(
       expect.objectContaining({
         data: { isLocked: true, tokenVersion: { increment: 1 } },
       }),
     );
-    await service.setUserLockStatus('u-1', false);
+    await service.setUserLockStatus('admin-1', 'u-1', false);
     expect(prisma.user.update).toHaveBeenLastCalledWith(
       expect.objectContaining({ data: { isLocked: false } }),
     );
+  });
+
+  it('owns and rejects the self-lock rule before persistence access', async () => {
+    const { service, prisma } = setup();
+    await expect(
+      service.setUserLockStatus('admin-1', 'admin-1', true),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 
   it('calculates moderation statistics', async () => {

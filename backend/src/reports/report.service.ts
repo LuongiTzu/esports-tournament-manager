@@ -1,11 +1,15 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NotificationType, Prisma, ReportStatus, Role } from '@prisma/client';
-import { NotificationService } from '../notifications/notification.service';
+import {
+  NOTIFICATION_PUBLISHER,
+  NotificationPublisher,
+} from '../common/ports/notification-publisher';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateReportDto } from './dto/create-report.dto';
 
@@ -14,7 +18,8 @@ export class ReportService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-    private readonly notifications: NotificationService,
+    @Inject(NOTIFICATION_PUBLISHER)
+    private readonly notifications: NotificationPublisher,
   ) {}
 
   async create(slug: string, dto: CreateReportDto, reporterUserId?: string) {

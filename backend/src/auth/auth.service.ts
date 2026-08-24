@@ -5,9 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { SignOptions } from 'jsonwebtoken';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -15,6 +13,8 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import type { JwtPayload } from './strategies/jwt.strategy';
+import { PasswordHasher } from './password-hasher.service';
+import { AuthTokenService } from './auth-token.service';
 
 const FORGOT_PASSWORD_MESSAGE =
   'Nếu email tồn tại, bạn sẽ nhận được liên kết đặt lại mật khẩu';
@@ -25,6 +25,11 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private readonly passwordHasher: PasswordHasher = new PasswordHasher(),
+    private readonly tokens: AuthTokenService = new AuthTokenService(
+      jwtService,
+      configService,
+    ),
   ) {}
 
   // ─── Đăng ký ────────────────────────────────────────────────────
@@ -39,7 +44,7 @@ export class AuthService {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const hashedPassword = await this.passwordHasher.hash(dto.password);
 
     // Tạo user mới (birthDate: string → Date)
     const user = await this.prisma.user.create({
@@ -91,7 +96,7 @@ export class AuthService {
       );
     }
 
-    const isPasswordValid = await bcrypt.compare(
+    const isPasswordValid = await this.passwordHasher.verify(
       dto.password,
       user.passwordHash,
     );
@@ -100,7 +105,7 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
-    const tokens = await this.generateTokens(
+    const tokens = await this.tokens.issuePair(
       user.id,
       user.email,
       user.role,
@@ -108,7 +113,9 @@ export class AuthService {
     );
 
     // Lưu hash refresh token vào DB
-    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
+    const hashedRefreshToken = await this.passwordHasher.hash(
+      tokens.refreshToken,
+    );
     await this.prisma.user.update({
       where: { id: user.id },
       data: { refreshToken: hashedRefreshToken },
@@ -136,9 +143,7 @@ export class AuthService {
   async refreshTokens(refreshToken: string) {
     let payload: JwtPayload;
     try {
-      payload = await this.jwtService.verifyAsync<JwtPayload>(refreshToken, {
-        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      });
+      payload = await this.tokens.verifyRefresh(refreshToken);
     } catch {
       throw new UnauthorizedException(
         'Refresh token không hợp lệ hoặc đã hết hạn',
@@ -167,7 +172,7 @@ export class AuthService {
       throw new UnauthorizedException('Phiên đăng nhập không hợp lệ');
     }
 
-    const isRefreshTokenValid = await bcrypt.compare(
+    const isRefreshTokenValid = await this.passwordHasher.verify(
       refreshToken,
       user.refreshToken,
     );
@@ -176,7 +181,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token không hợp lệ');
     }
 
-    const tokens = await this.generateTokens(
+    const tokens = await this.tokens.issuePair(
       user.id,
       user.email,
       user.role,
@@ -184,7 +189,9 @@ export class AuthService {
     );
 
     // Cập nhật refresh token mới
-    const hashedRefreshToken = await bcrypt.hash(tokens.refreshToken, 10);
+    const hashedRefreshToken = await this.passwordHasher.hash(
+      tokens.refreshToken,
+    );
     await this.prisma.user.update({
       where: { id: user.id },
       data: { refreshToken: hashedRefreshToken },
@@ -217,7 +224,7 @@ export class AuthService {
     }
 
     // Kiểm tra mật khẩu hiện tại
-    const isCurrentPasswordValid = await bcrypt.compare(
+    const isCurrentPasswordValid = await this.passwordHasher.verify(
       dto.currentPassword,
       user.passwordHash,
     );
@@ -226,7 +233,7 @@ export class AuthService {
     }
 
     // Tránh đặt trùng mật khẩu cũ
-    const isSamePassword = await bcrypt.compare(
+    const isSamePassword = await this.passwordHasher.verify(
       dto.newPassword,
       user.passwordHash,
     );
@@ -237,7 +244,7 @@ export class AuthService {
     }
 
     // Hash mật khẩu mới + tăng tokenVersion để vô hiệu token cũ
-    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+    const hashedPassword = await this.passwordHasher.hash(dto.newPassword);
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -262,16 +269,10 @@ export class AuthService {
     }
 
     // Tạo reset token JWT (hạn 15 phút)
-    const resetToken = await this.jwtService.signAsync(
-      { sub: user.id, email: user.email },
-      {
-        secret: this.configService.getOrThrow<string>('JWT_RESET_SECRET'),
-        expiresIn: '15m',
-      },
-    );
+    const resetToken = await this.tokens.issueReset(user.id, user.email);
 
     // Lưu hash token + hạn sử dụng vào DB
-    const hashedResetToken = await bcrypt.hash(resetToken, 10);
+    const hashedResetToken = await this.passwordHasher.hash(resetToken);
     const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 phút
     await this.prisma.user.update({
       where: { id: user.id },
@@ -292,9 +293,7 @@ export class AuthService {
     let payload: { sub: string };
 
     try {
-      payload = await this.jwtService.verifyAsync<{ sub: string }>(dto.token, {
-        secret: this.configService.getOrThrow<string>('JWT_RESET_SECRET'),
-      });
+      payload = await this.tokens.verifyReset(dto.token);
     } catch {
       throw new BadRequestException(
         'Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn',
@@ -316,7 +315,7 @@ export class AuthService {
       );
     }
 
-    const isTokenValid = await bcrypt.compare(
+    const isTokenValid = await this.passwordHasher.verify(
       dto.token,
       user.resetPasswordToken,
     );
@@ -329,7 +328,7 @@ export class AuthService {
     }
 
     // Hash mật khẩu mới + xóa token + tăng tokenVersion (vô hiệu token cũ)
-    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+    const hashedPassword = await this.passwordHasher.hash(dto.newPassword);
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
@@ -345,34 +344,4 @@ export class AuthService {
   }
 
   // ─── Helper: sinh access + refresh token ────────────────────────
-  private async generateTokens(
-    userId: string,
-    email: string,
-    role: string,
-    tokenVersion: number,
-  ) {
-    const payload = { sub: userId, email, role, tokenVersion };
-
-    const accessTokenExpiresIn = (this.configService.get<string>(
-      'JWT_EXPIRES_IN',
-      '15m',
-    ) ?? '15m') as SignOptions['expiresIn'];
-    const refreshTokenExpiresIn = (this.configService.get<string>(
-      'JWT_REFRESH_EXPIRES_IN',
-      '7d',
-    ) ?? '7d') as SignOptions['expiresIn'];
-
-    const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
-        secret: this.configService.getOrThrow<string>('JWT_SECRET'),
-        expiresIn: accessTokenExpiresIn,
-      }),
-      this.jwtService.signAsync(payload, {
-        secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-        expiresIn: refreshTokenExpiresIn,
-      }),
-    ]);
-
-    return { accessToken, refreshToken };
-  }
 }

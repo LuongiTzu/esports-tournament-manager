@@ -1,9 +1,9 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
-  Optional,
 } from '@nestjs/common';
 import {
   MatchStatus,
@@ -16,7 +16,11 @@ import { BracketsService } from './brackets.service';
 import { UpdateSeedsDto } from './dto/bracket-operations.dto';
 import { MatchDraft } from './types/bracket-generator';
 import { StandingsService } from './standings.service';
-import { TournamentEventsService } from '../tournaments/tournament-events.service';
+import {
+  NOOP_TOURNAMENT_EVENT_PUBLISHER,
+  TOURNAMENT_EVENT_PUBLISHER,
+  TournamentEventPublisher,
+} from '../common/ports/tournament-event-publisher';
 import { RoundSettingsService } from './round-settings.service';
 import { BracketQueryService } from './bracket-query.service';
 import { RoundAdvancementService } from './round-advancement.service';
@@ -26,7 +30,8 @@ export class BracketGenerationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly brackets: BracketsService,
-    @Optional() private readonly events?: TournamentEventsService,
+    @Inject(TOURNAMENT_EVENT_PUBLISHER)
+    private readonly events: TournamentEventPublisher = NOOP_TOURNAMENT_EVENT_PUBLISHER,
   ) {}
 
   async generate(roundId: string, force = false) {
@@ -97,7 +102,7 @@ export class BracketGenerationService {
       };
     });
     const { tournamentId, ...payload } = result;
-    this.events?.publish({ tournamentId, event: 'bracketGenerated', payload });
+    this.events.publish({ tournamentId, event: 'bracketGenerated', payload });
     return payload;
   }
 }
@@ -109,7 +114,8 @@ export class BracketOperationsService {
     private readonly brackets: BracketsService,
     private readonly standings: StandingsService,
     private readonly settingsService: RoundSettingsService,
-    @Optional() private readonly events?: TournamentEventsService,
+    @Inject(TOURNAMENT_EVENT_PUBLISHER)
+    private readonly events: TournamentEventPublisher = NOOP_TOURNAMENT_EVENT_PUBLISHER,
     private readonly query: BracketQueryService = new BracketQueryService(
       prisma,
       settingsService,

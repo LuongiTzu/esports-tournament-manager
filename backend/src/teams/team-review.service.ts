@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,9 +11,15 @@ import {
   RegistrationStatus,
 } from '@prisma/client';
 import { ApplicationErrorCode } from '../common/errors/application-error-code';
-import { NotificationService } from '../notifications/notification.service';
+import {
+  NOTIFICATION_PUBLISHER,
+  NotificationPublisher,
+} from '../common/ports/notification-publisher';
 import { PrismaService } from '../prisma/prisma.service';
-import { TournamentEventsService } from '../tournaments/tournament-events.service';
+import {
+  TOURNAMENT_EVENT_PUBLISHER,
+  TournamentEventPublisher,
+} from '../common/ports/tournament-event-publisher';
 import { RegistrationValidatorService } from './registration-validator.service';
 import {
   InvalidRegistrationStatusTransitionError,
@@ -32,9 +39,11 @@ export class TeamReviewService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly validator: RegistrationValidatorService,
-    private readonly notifications: NotificationService,
+    @Inject(NOTIFICATION_PUBLISHER)
+    private readonly notifications: NotificationPublisher,
     private readonly reviewPolicy: TeamReviewPolicy,
-    private readonly events: TournamentEventsService,
+    @Inject(TOURNAMENT_EVENT_PUBLISHER)
+    private readonly events: TournamentEventPublisher,
   ) {}
 
   async updateStatus(teamId: string, dto: UpdateTeamStatusDto) {

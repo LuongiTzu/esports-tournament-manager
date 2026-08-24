@@ -15,12 +15,25 @@ import { AdminController } from './admin.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
+import {
+  AdminDashboardQueryService,
+  BannedKeywordService,
+} from './admin-operations.services';
+import { CommentModerationService } from '../comments/comment-moderation.service';
+import { ReportReviewService } from '../reports/report-review.service';
+import { TournamentModerationService } from '../tournaments/tournament-moderation.service';
+import { UserAdministrationService } from '../users/user-administration.service';
+import { NotificationPublisher } from '../common/ports/notification-publisher';
 
 function serviceWith(prisma: object, filter: object = { refresh: jest.fn() }) {
+  const client = prisma as PrismaService;
   return new AdminService(
-    prisma as PrismaService,
-    filter as ContentFilterService,
-    {} as NotificationService,
+    new AdminDashboardQueryService(client),
+    new UserAdministrationService(client),
+    new TournamentModerationService(client, {} as NotificationPublisher),
+    new ReportReviewService(client),
+    new CommentModerationService(client),
+    new BannedKeywordService(client, filter as ContentFilterService),
   );
 }
 

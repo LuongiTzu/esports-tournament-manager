@@ -1,11 +1,15 @@
 import {
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { TournamentEventsService } from '../tournaments/tournament-events.service';
+import {
+  TOURNAMENT_EVENT_PUBLISHER,
+  TournamentEventPublisher,
+} from '../common/ports/tournament-event-publisher';
 import { ContentFilterService } from '../common/services/content-filter.service';
 
 const AUTHOR_SELECT = {
@@ -19,7 +23,8 @@ export class CommentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly filter: ContentFilterService,
-    private readonly events: TournamentEventsService,
+    @Inject(TOURNAMENT_EVENT_PUBLISHER)
+    private readonly events: TournamentEventPublisher,
   ) {}
 
   async create(slug: string, authorId: string, rawContent: string) {

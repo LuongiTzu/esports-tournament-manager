@@ -8,6 +8,15 @@ import { AdminService } from './admin.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ContentFilterService } from '../common/services/content-filter.service';
 import { NotificationService } from '../notifications/notification.service';
+import {
+  AdminDashboardQueryService,
+  BannedKeywordService,
+} from './admin-operations.services';
+import { CommentModerationService } from '../comments/comment-moderation.service';
+import { ReportReviewService } from '../reports/report-review.service';
+import { TournamentModerationService } from '../tournaments/tournament-moderation.service';
+import { UserAdministrationService } from '../users/user-administration.service';
+import { NotificationPublisher } from '../common/ports/notification-publisher';
 
 describe('Admin banned keyword authorization', () => {
   it('protects banned keyword APIs with the existing admin guards', () => {
@@ -28,9 +37,15 @@ describe('Admin banned keyword authorization', () => {
     } as unknown as PrismaService;
     const filter = { refresh: jest.fn().mockResolvedValue(undefined) };
     const service = new AdminService(
-      prisma,
-      filter as unknown as ContentFilterService,
-      {} as NotificationService,
+      new AdminDashboardQueryService(prisma),
+      new UserAdministrationService(prisma),
+      new TournamentModerationService(prisma, {} as NotificationPublisher),
+      new ReportReviewService(prisma),
+      new CommentModerationService(prisma),
+      new BannedKeywordService(
+        prisma,
+        filter as unknown as ContentFilterService,
+      ),
     );
 
     await service.createBannedKeyword({

@@ -1,25 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { Subject } from 'rxjs';
+import {
+  TournamentEventPublisher,
+  TournamentRealtimeEvent,
+} from '../common/ports/tournament-event-publisher';
 
-export const TOURNAMENT_EVENT_NAMES = [
-  'matchUpdated',
-  'scheduleUpdated',
-  'bracketGenerated',
-  'teamApproved',
-  'newComment',
-  'standingsUpdated',
-] as const;
-
-export type TournamentEventName = (typeof TOURNAMENT_EVENT_NAMES)[number];
-
-export interface TournamentRealtimeEvent {
-  tournamentId: string;
-  event: TournamentEventName;
-  payload: unknown;
-}
+export {
+  TOURNAMENT_EVENT_NAMES,
+  TournamentEventName,
+  TournamentRealtimeEvent,
+} from '../common/ports/tournament-event-publisher';
 
 @Injectable()
-export class TournamentEventsService {
+export class TournamentEventsService implements TournamentEventPublisher {
   private readonly subject = new Subject<TournamentRealtimeEvent>();
   readonly events$ = this.subject.asObservable();
 

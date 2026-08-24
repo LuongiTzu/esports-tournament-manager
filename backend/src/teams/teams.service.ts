@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,8 +21,14 @@ import {
   UpdateTeamStatusDto,
 } from './dto/update-team.dto';
 import { RegistrationValidatorService } from './registration-validator.service';
-import { TournamentEventsService } from '../tournaments/tournament-events.service';
-import { NotificationService } from '../notifications/notification.service';
+import {
+  TOURNAMENT_EVENT_PUBLISHER,
+  TournamentEventPublisher,
+} from '../common/ports/tournament-event-publisher';
+import {
+  NOTIFICATION_PUBLISHER,
+  NotificationPublisher,
+} from '../common/ports/notification-publisher';
 import { ContentFilterService } from '../common/services/content-filter.service';
 import { RegistrationMemberInput } from './types/registration-member-input';
 import { TeamQueryService } from './team-query.service';
@@ -39,9 +46,11 @@ export class TeamsService {
   constructor(
     private prisma: PrismaService,
     private validator: RegistrationValidatorService,
-    private readonly notifications: NotificationService,
+    @Inject(NOTIFICATION_PUBLISHER)
+    private readonly notifications: NotificationPublisher,
     private readonly contentFilter: ContentFilterService,
-    private readonly events: TournamentEventsService,
+    @Inject(TOURNAMENT_EVENT_PUBLISHER)
+    private readonly events: TournamentEventPublisher,
     private readonly reviewPolicy: TeamReviewPolicy = new TeamReviewPolicy(),
     private readonly queries: TeamQueryService = new TeamQueryService(prisma),
     private readonly reviews: TeamReviewService = new TeamReviewService(
