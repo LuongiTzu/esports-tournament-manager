@@ -134,7 +134,7 @@ export async function validateSeed(
   assert(tournaments.length === 20, 'Expected exactly 20 seeded tournaments');
   assert(
     new Set(tournaments.map((tournament) => tournament.game.name)).size === 8,
-    'Every approved game must have a seeded tournament',
+    'Expected the eight established games to have seeded tournaments',
   );
 
   for (const tournament of tournaments) {

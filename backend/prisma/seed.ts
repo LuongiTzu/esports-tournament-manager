@@ -51,7 +51,7 @@ async function main(): Promise<void> {
     await seedBannedKeywords(prisma);
 
     const games = new Map(
-      (await prisma.game.findMany()).map((game) => [game.name, game]),
+      (await prisma.game.findMany()).map((game) => [game.code, game]),
     );
     const roundsByTournament = new Map<
       string,
@@ -64,7 +64,10 @@ async function main(): Promise<void> {
     >();
 
     for (const [index, tournament] of SEED_TOURNAMENTS.entries()) {
-      const game = games.get(tournament.game);
+      const catalogGame = GAME_CATALOG.find(
+        (entry) => entry.name === tournament.game,
+      );
+      const game = catalogGame ? games.get(catalogGame.code) : undefined;
       if (!game)
         throw new Error(`Approved game is missing: ${tournament.game}`);
       roundsByTournament.set(
@@ -131,14 +134,19 @@ async function cleanOwnedSeedData(prisma: PrismaService): Promise<void> {
 async function seedGames(prisma: PrismaService): Promise<void> {
   for (const game of GAME_CATALOG) {
     await prisma.game.upsert({
-      where: { name: game.name },
+      where: { code: game.code },
       update: {
+        name: game.name,
         genre: game.genre,
         positions: game.positions,
         positionMode: game.positionMode,
+        teamSizeMode: game.teamSizeMode,
         defaultTeamSize: game.defaultTeamSize,
         minTeamSize: game.minTeamSize,
         maxTeamSize: game.maxTeamSize,
+        allowedTeamSizes: game.allowedTeamSizes,
+        minSelectableTeamSize: game.minSelectableTeamSize,
+        maxSelectableTeamSize: game.maxSelectableTeamSize,
       },
       create: game,
     });

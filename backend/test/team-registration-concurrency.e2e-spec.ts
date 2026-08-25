@@ -23,6 +23,7 @@ describeDatabase('team registration concurrency (database E2E)', () => {
 
     const game = await prisma.game.create({
       data: {
+        code: `BE5_TEST_${stamp}`,
         name: `BE5 Test Game ${stamp}`,
         defaultTeamSize: 1,
         minTeamSize: 1,

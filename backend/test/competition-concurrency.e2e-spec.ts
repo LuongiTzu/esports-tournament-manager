@@ -47,6 +47,7 @@ describeDatabase('competition workflows and concurrency (database E2E)', () => {
     userIds.push(organizer.id);
     const game = await prisma.game.create({
       data: {
+        code: `BE7_TEST_${stamp}`,
         name: `BE7 Test Game ${stamp}`,
         defaultTeamSize: 1,
         minTeamSize: 1,

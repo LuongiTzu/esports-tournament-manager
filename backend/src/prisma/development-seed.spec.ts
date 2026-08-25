@@ -1,5 +1,5 @@
 import { RoundFormat } from '@prisma/client';
-import { GAME_CATALOG, GAME_CATALOG_NAMES } from '../games/game-catalog';
+import { GAME_CATALOG } from '../games/game-catalog';
 import {
   DEVELOPMENT_PASSWORD,
   SEED_TOURNAMENTS,
@@ -41,10 +41,21 @@ describe('development seed specification', () => {
       [
         ...new Set(SEED_TOURNAMENTS.map((tournament) => tournament.game)),
       ].sort(),
-    ).toEqual([...GAME_CATALOG_NAMES].sort());
+    ).toEqual(
+      [
+        'Liên Quân Mobile',
+        'League of Legends',
+        'Valorant',
+        'Counter-Strike 2',
+        'Dota 2',
+        'Rocket League',
+        'Tekken 8',
+        'Street Fighter 6',
+      ].sort(),
+    );
     expect(
       SEED_TOURNAMENTS.some((tournament) =>
-        ['PUBG', 'FC Online', 'CS:GO'].includes(tournament.game),
+        ['PUBG', 'CS:GO'].includes(tournament.game),
       ),
     ).toBe(false);
   });

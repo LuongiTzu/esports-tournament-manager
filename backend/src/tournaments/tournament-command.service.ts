@@ -15,7 +15,7 @@ import {
 import { RoundSettingsService } from '../brackets/round-settings.service';
 import { ApplicationErrorCode } from '../common/errors/application-error-code';
 import { ContentFilterService } from '../common/services/content-filter.service';
-import { GAME_CATALOG_NAMES } from '../games/game-catalog';
+import { GAME_CATALOG_CODES } from '../games/game-catalog';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateRoundDto,
@@ -46,7 +46,7 @@ export class TournamentCommandService {
   async create(userId: string, dto: CreateTournamentDto) {
     // 1. Kiểm tra game tồn tại
     const game = await this.prisma.game.findFirst({
-      where: { id: dto.gameId, name: { in: GAME_CATALOG_NAMES } },
+      where: { id: dto.gameId, code: { in: GAME_CATALOG_CODES } },
     });
     if (!game) {
       throw new BadRequestException('Game không tồn tại');
@@ -160,7 +160,7 @@ export class TournamentCommandService {
     let game = current.game;
     if (dto.gameId && dto.gameId !== current.gameId) {
       const newGame = await this.prisma.game.findFirst({
-        where: { id: dto.gameId, name: { in: GAME_CATALOG_NAMES } },
+        where: { id: dto.gameId, code: { in: GAME_CATALOG_CODES } },
         select: TOURNAMENT_GAME_SELECT,
       });
       if (!newGame) {

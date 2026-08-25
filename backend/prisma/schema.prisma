@@ -46,6 +46,13 @@ enum GamePositionMode {
   NONE
 }
 
+/// Cách game xác định số người thi đấu chính mỗi bên
+enum TeamSizeMode {
+  FIXED
+  PRESET
+  FLEXIBLE
+}
+
 /// Chế độ hiển thị giải đấu
 enum Visibility {
   PUBLIC
@@ -210,15 +217,20 @@ model User {
 /// Danh mục tựa game hỗ trợ
 model Game {
   id           String           @id @default(cuid())
+  code         String           @unique /// Machine identity ổn định, không phụ thuộc tên hiển thị
   name         String           @unique /// VD: "League of Legends", "Valorant", "Tekken 8"
   iconUrl      String?          @map("icon_url")
   genre        GameGenre        @default(OTHER) /// Thể loại — quyết định danh sách vị trí thi đấu
   positions    Json? /// Mã vị trí ổn định, VD: ["TOP","JUNGLE","MID","BOT","SUPPORT"]
   positionMode GamePositionMode @default(NONE) @map("position_mode")
 
-  defaultTeamSize Int @map("default_team_size") /// Số người thi đấu mỗi bên (LOL=5, Tekken=1)
-  minTeamSize     Int @map("min_team_size") /// Số người tối thiểu để đội hợp lệ
-  maxTeamSize     Int @map("max_team_size") /// Số người tối đa kể cả dự bị
+  teamSizeMode          TeamSizeMode @default(FIXED) @map("team_size_mode")
+  defaultTeamSize       Int          @map("default_team_size") /// Số người thi đấu chính mặc định mỗi bên
+  minTeamSize           Int          @map("min_team_size") /// Giới hạn đội hình tối thiểu hiện có của game
+  maxTeamSize           Int          @map("max_team_size") /// Tổng số người tối đa kể cả dự bị
+  allowedTeamSizes      Int[]        @default([]) @map("allowed_team_sizes") /// Các cỡ đội hình chính được chọn khi PRESET
+  minSelectableTeamSize Int?         @map("min_selectable_team_size") /// Cỡ đội hình chính nhỏ nhất khi FLEXIBLE
+  maxSelectableTeamSize Int?         @map("max_selectable_team_size") /// Cỡ đội hình chính lớn nhất khi FLEXIBLE
 
   createdAt DateTime @default(now()) @map("created_at")
 

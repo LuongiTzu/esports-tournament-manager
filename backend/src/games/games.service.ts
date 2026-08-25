@@ -1,18 +1,23 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { GAME_CATALOG_NAMES } from './game-catalog';
+import { GAME_CATALOG_CODES } from './game-catalog';
 
 /** Field công khai của Game — dùng chung cho mọi query */
 const GAME_SELECT = {
   id: true,
+  code: true,
   name: true,
   iconUrl: true,
   genre: true,
   positions: true,
   positionMode: true,
+  teamSizeMode: true,
   defaultTeamSize: true,
   minTeamSize: true,
   maxTeamSize: true,
+  allowedTeamSizes: true,
+  minSelectableTeamSize: true,
+  maxSelectableTeamSize: true,
 } as const;
 
 @Injectable()
@@ -22,7 +27,7 @@ export class GamesService {
   /** Lấy danh sách game hỗ trợ (sắp theo tên) */
   async findAll() {
     return this.prisma.game.findMany({
-      where: { name: { in: GAME_CATALOG_NAMES } },
+      where: { code: { in: GAME_CATALOG_CODES } },
       orderBy: { name: 'asc' },
       select: GAME_SELECT,
     });
@@ -31,7 +36,7 @@ export class GamesService {
   /** Lấy chi tiết 1 game */
   async findOne(id: string) {
     const game = await this.prisma.game.findFirst({
-      where: { id, name: { in: GAME_CATALOG_NAMES } },
+      where: { id, code: { in: GAME_CATALOG_CODES } },
       select: GAME_SELECT,
     });
 
