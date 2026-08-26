@@ -10,6 +10,7 @@ import {
   RegistrationStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { withTournamentGameDisplayName } from '../tournaments/domain/tournament-game-display';
 
 const PUBLIC_MEMBER_SELECT = {
   id: true,
@@ -155,7 +156,7 @@ export class TeamQueryService {
     };
   }
   async findMyTeams(userId: string) {
-    return this.prisma.team.findMany({
+    const teams = await this.prisma.team.findMany({
       where: {
         OR: [{ captainId: userId }, { members: { some: { userId } } }],
       },
@@ -169,12 +170,19 @@ export class TeamQueryService {
             status: true,
             bannerUrl: true,
             startDate: true,
-            game: { select: { id: true, name: true, iconUrl: true } },
+            customGameName: true,
+            game: {
+              select: { id: true, code: true, name: true, iconUrl: true },
+            },
           },
         },
         captain: { select: CAPTAIN_SELECT },
         _count: { select: { members: true } },
       },
     });
+    return teams.map((team) => ({
+      ...team,
+      tournament: withTournamentGameDisplayName(team.tournament),
+    }));
   }
 }

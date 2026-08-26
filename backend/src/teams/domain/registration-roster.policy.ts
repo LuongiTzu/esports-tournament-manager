@@ -5,7 +5,17 @@ import {
   RegistrationRules,
 } from '../types/registration-rules';
 
-const NON_PLAYING_ROLES: MemberRole[] = [MemberRole.COACH, MemberRole.MANAGER];
+export function isActivePlayerRole(role: MemberRole): boolean {
+  return role === MemberRole.CAPTAIN || role === MemberRole.PLAYER;
+}
+
+export function isPlayerRosterRole(role: MemberRole): boolean {
+  return isActivePlayerRole(role) || role === MemberRole.SUBSTITUTE;
+}
+
+function memberRole(member: RegistrationMemberInput): MemberRole {
+  return member.memberRole ?? MemberRole.PLAYER;
+}
 
 export class RegistrationRosterPolicy {
   validate(
@@ -14,69 +24,71 @@ export class RegistrationRosterPolicy {
   ): { captainIndex: number; errors: RegistrationError[] } {
     const errors: RegistrationError[] = [];
     const captainIndex = resolveCaptainIndex(members);
-    this.checkTeamSize(rules, members, errors);
-    this.checkSubstitutes(rules, members, errors);
+    this.checkRosterSize(rules, members, errors);
     this.checkCaptain(members, errors);
-    this.checkMembers(rules, members, captainIndex, errors);
+    this.checkMembers(rules, members, errors);
+    this.checkPositions(rules, members, errors);
     this.checkDuplicatesWithinTeam(members, errors);
     return { captainIndex, errors };
   }
 
-  private checkTeamSize(
+  private checkRosterSize(
     rules: RegistrationRules,
     members: RegistrationMemberInput[],
     errors: RegistrationError[],
   ) {
-    const playing = members.filter(
-      (m) => !NON_PLAYING_ROLES.includes(m.memberRole ?? MemberRole.PLAYER),
+    const activePlayers = members.filter((member) =>
+      isActivePlayerRole(memberRole(member)),
     ).length;
-
-    if (playing < rules.minTeamSize) {
-      errors.push({
-        field: 'members',
-        memberIndex: null,
-        message: `Đội phải có tối thiểu ${rules.minTeamSize} thành viên thi đấu (hiện có ${playing})`,
-      });
-    }
-
-    if (playing > rules.maxTeamSize) {
-      errors.push({
-        field: 'members',
-        memberIndex: null,
-        message: `Đội chỉ được có tối đa ${rules.maxTeamSize} thành viên thi đấu (hiện có ${playing})`,
-      });
-    }
-  }
-
-  private checkSubstitutes(
-    rules: RegistrationRules,
-    members: RegistrationMemberInput[],
-    errors: RegistrationError[],
-  ) {
+    const playerRoster = members.filter((member) =>
+      isPlayerRosterRole(memberRole(member)),
+    ).length;
     const substitutes = members.filter(
-      (m) => m.memberRole === MemberRole.SUBSTITUTE,
+      (member) => memberRole(member) === MemberRole.SUBSTITUTE,
     ).length;
+    const maxSubstitutes = rules.maxTeamSize - rules.minTeamSize;
 
-    if (substitutes > rules.maxSubstitutes) {
+    if (activePlayers !== rules.minTeamSize) {
       errors.push({
         field: 'members',
         memberIndex: null,
-        message: `Giải chỉ cho phép tối đa ${rules.maxSubstitutes} thành viên dự bị (hiện có ${substitutes})`,
+        message: `Đội phải có đúng ${rules.minTeamSize} thành viên thi đấu chính (hiện có ${activePlayers})`,
+      });
+    }
+
+    if (playerRoster > rules.maxTeamSize) {
+      errors.push({
+        field: 'members',
+        memberIndex: null,
+        message: `Đội chỉ được có tối đa ${rules.maxTeamSize} thành viên trong roster (hiện có ${playerRoster})`,
+      });
+    }
+
+    if (substitutes > maxSubstitutes) {
+      errors.push({
+        field: 'members',
+        memberIndex: null,
+        message: `Giải chỉ cho phép tối đa ${maxSubstitutes} thành viên dự bị (hiện có ${substitutes})`,
       });
     }
   }
 
-  /**
-   * Thiếu đội trưởng không phải lỗi — thành viên đầu tiên sẽ được gán tự động.
-   * Nhưng gửi lên nhiều hơn 1 đội trưởng là mâu thuẫn dữ liệu, phải báo lỗi.
-   */
   private checkCaptain(
     members: RegistrationMemberInput[],
     errors: RegistrationError[],
   ) {
     const captains = members
-      .map((m, index) => ({ role: m.memberRole, index }))
-      .filter((m) => m.role === MemberRole.CAPTAIN);
+      .map((member, index) => ({ role: member.memberRole, index }))
+      .filter((member) => member.role === MemberRole.CAPTAIN);
+
+    if (captains.length === 0) {
+      errors.push({
+        field: 'memberRole',
+        memberIndex: null,
+        message: 'Đội phải có đúng 1 đội trưởng',
+      });
+      return;
+    }
 
     for (const extra of captains.slice(1)) {
       errors.push({
@@ -87,38 +99,21 @@ export class RegistrationRosterPolicy {
     }
   }
 
-  // ─── Rule từng thành viên ───────────────────────────────────
-
   private checkMembers(
     rules: RegistrationRules,
     members: RegistrationMemberInput[],
-    captainIndex: number,
     errors: RegistrationError[],
   ) {
     const hasAgeLimit = rules.minAge !== null || rules.maxAge !== null;
-    // Tuổi tính tại ngày khai mạc để đội không bị lệch điều kiện giữa lúc đăng ký và lúc đá
     const ageReference = rules.startDate ?? new Date();
 
     members.forEach((member, index) => {
-      const effectiveRole =
-        index === captainIndex
-          ? MemberRole.CAPTAIN
-          : (member.memberRole ?? MemberRole.PLAYER);
-      const isPlaying = !NON_PLAYING_ROLES.includes(effectiveRole);
-
       if (rules.requireMemberFullInfo) {
         const missing: [string, unknown][] = [
           ['realName', member.realName?.trim()],
           ['birthDate', member.birthDate],
           ['gender', member.gender],
         ];
-        if (
-          isPlaying &&
-          rules.positionMode === GamePositionMode.FIXED &&
-          rules.positions.length
-        ) {
-          missing.push(['position', member.position?.trim()]);
-        }
 
         for (const [field, value] of missing) {
           if (!value) {
@@ -172,32 +167,97 @@ export class RegistrationRosterPolicy {
           });
         }
       }
+    });
+  }
 
+  private checkPositions(
+    rules: RegistrationRules,
+    members: RegistrationMemberInput[],
+    errors: RegistrationError[],
+  ) {
+    const allowedPositions = new Set(rules.positions);
+
+    if (rules.positionMode === GamePositionMode.NONE) {
+      members.forEach((member, index) => {
+        if (member.position?.trim()) {
+          errors.push({
+            field: 'position',
+            memberIndex: index,
+            message: 'Game này không sử dụng vị trí thi đấu',
+          });
+        }
+      });
+      return;
+    }
+
+    const activePositions = new Set<string>();
+    members.forEach((member, index) => {
+      const role = memberRole(member);
       const position = member.position?.trim();
-      if (position && rules.positionMode === GamePositionMode.NONE) {
+      const isActive = isActivePlayerRole(role);
+
+      if (
+        rules.positionMode === GamePositionMode.FIXED &&
+        isActive &&
+        !position
+      ) {
         errors.push({
           field: 'position',
           memberIndex: index,
-          message: 'Game này không sử dụng vị trí thi đấu',
+          message: 'Thành viên thi đấu chính phải có vị trí',
         });
-      } else if (position && !rules.positions.includes(position)) {
+        return;
+      }
+
+      if (!position) return;
+
+      if (!allowedPositions.has(position)) {
         errors.push({
           field: 'position',
           memberIndex: index,
           message: `Vị trí không hợp lệ. Các vị trí của game này: ${rules.positions.join(', ')}`,
         });
+        return;
+      }
+
+      if (
+        rules.positionMode === GamePositionMode.FIXED &&
+        isActive &&
+        activePositions.has(position)
+      ) {
+        errors.push({
+          field: 'position',
+          memberIndex: index,
+          message: 'Vị trí thi đấu chính bị trùng với thành viên khác',
+        });
+        return;
+      }
+
+      if (rules.positionMode === GamePositionMode.FIXED && isActive) {
+        activePositions.add(position);
       }
     });
-  }
 
-  // ─── Rule trùng lặp ─────────────────────────────────────────
+    if (rules.positionMode === GamePositionMode.FIXED) {
+      const missingPositions = rules.positions.filter(
+        (position) => !activePositions.has(position),
+      );
+      if (missingPositions.length) {
+        errors.push({
+          field: 'position',
+          memberIndex: null,
+          message: `Đội hình chính còn thiếu vị trí: ${missingPositions.join(', ')}`,
+        });
+      }
+    }
+  }
 
   private checkDuplicatesWithinTeam(
     members: RegistrationMemberInput[],
     errors: RegistrationError[],
   ) {
     collectDuplicateIndexes(
-      members.map((m) => m.ign?.trim().toLowerCase()),
+      members.map((member) => member.ign?.trim().toLowerCase()),
     ).forEach((index) =>
       errors.push({
         field: 'ign',
@@ -207,7 +267,7 @@ export class RegistrationRosterPolicy {
     );
 
     collectDuplicateIndexes(
-      members.map((m) => m.inGameId?.trim().toLowerCase()),
+      members.map((member) => member.inGameId?.trim().toLowerCase()),
     ).forEach((index) =>
       errors.push({
         field: 'inGameId',
@@ -216,27 +276,20 @@ export class RegistrationRosterPolicy {
       }),
     );
   }
-
-  /**
-   * Chống đăng ký chéo: 1 người (theo IGN hoặc ID game) không được xuất hiện
-   * ở 2 đội khác nhau trong cùng 1 giải. Đội đã bị từ chối không tính.
-   */
 }
 
 export function resolveCaptainIndex(
   members: RegistrationMemberInput[],
 ): number {
-  const index = members.findIndex(
+  return members.findIndex(
     (member) => member.memberRole === MemberRole.CAPTAIN,
   );
-  return index === -1 ? 0 : index;
 }
 
 const FIELD_LABELS: Record<string, string> = {
   realName: 'tên thật',
   birthDate: 'ngày sinh',
   gender: 'giới tính',
-  position: 'vị trí thi đấu',
 };
 
 function ageAt(birthDate: Date, reference: Date): number {

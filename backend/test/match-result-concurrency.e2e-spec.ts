@@ -19,6 +19,8 @@ describeDatabase('match result concurrency (database E2E)', () => {
   const tournamentIds: string[] = [];
   const userIds: string[] = [];
   let gameId: string;
+  let fcOnlineGameId: string;
+  let customGameId: string;
   let organizerId: string;
 
   beforeAll(async () => {
@@ -47,6 +49,16 @@ describeDatabase('match result concurrency (database E2E)', () => {
       },
     });
     gameId = game.id;
+
+    const canonicalGames = await prisma.game.findMany({
+      where: { code: { in: ['FC_ONLINE', 'CUSTOM'] } },
+      select: { id: true, code: true },
+    });
+    const idsByCode = new Map(
+      canonicalGames.map((catalogGame) => [catalogGame.code, catalogGame.id]),
+    );
+    fcOnlineGameId = requireGameId(idsByCode, 'FC_ONLINE');
+    customGameId = requireGameId(idsByCode, 'CUSTOM');
   });
 
   afterAll(async () => {
@@ -63,15 +75,27 @@ describeDatabase('match result concurrency (database E2E)', () => {
     }
   });
 
-  async function fixture(label: string) {
+  async function fixture(
+    label: string,
+    options: {
+      gameId?: string;
+      minTeamSize?: number;
+      maxTeamSize?: number;
+      bestOf?: number;
+      customGameName?: string;
+    } = {},
+  ) {
+    const minTeamSize = options.minTeamSize ?? 1;
+    const bestOf = options.bestOf ?? 1;
     const tournament = await prisma.tournament.create({
       data: {
         name: `BE6 ${label} ${stamp}`,
         slug: `be6-${label.toLowerCase()}-${stamp}`,
-        gameId,
+        gameId: options.gameId ?? gameId,
         organizerId,
-        minTeamSize: 1,
-        maxTeamSize: 1,
+        minTeamSize,
+        maxTeamSize: options.maxTeamSize ?? minTeamSize,
+        customGameName: options.customGameName,
         status: 'ONGOING',
       },
     });
@@ -81,7 +105,7 @@ describeDatabase('match result concurrency (database E2E)', () => {
         name: 'Playoff',
         orderIndex: 1,
         format: RoundFormat.PLAYOFF,
-        bestOf: 1,
+        bestOf,
         status: 'ONGOING',
         tournamentId: tournament.id,
       },
@@ -109,6 +133,15 @@ describeDatabase('match result concurrency (database E2E)', () => {
             captainId: captain.id,
             tournamentId: tournament.id,
             status: 'APPROVED',
+            members: {
+              create: Array.from({ length: minTeamSize }, (_, memberIndex) => ({
+                realName: `BE6 ${label} ${index} Member ${memberIndex}`,
+                ign: `be6-${label}-${index}-${memberIndex}-${stamp}`,
+                memberRole: memberIndex === 0 ? 'CAPTAIN' : 'PLAYER',
+                userId: memberIndex === 0 ? captain.id : undefined,
+                orderIndex: memberIndex,
+              })),
+            },
           },
         }),
       ),
@@ -117,7 +150,7 @@ describeDatabase('match result concurrency (database E2E)', () => {
       data: {
         roundId: round.id,
         teamBId: teams[2].id,
-        bestOf: 1,
+        bestOf,
         bracketRound: 2,
         matchNumber: 1,
       },
@@ -127,7 +160,7 @@ describeDatabase('match result concurrency (database E2E)', () => {
         roundId: round.id,
         teamAId: teams[0].id,
         teamBId: teams[1].id,
-        bestOf: 1,
+        bestOf,
         bracketRound: 1,
         matchNumber: 1,
         nextMatchId: final.id,
@@ -198,4 +231,70 @@ describeDatabase('match result concurrency (database E2E)', () => {
     expect(results.every((result) => result.status === 'fulfilled')).toBe(true);
     await assertCanonicalProgression(source.id, final.id);
   });
+
+  it('records an FC Online individual match as ordinary Team-vs-Team BO1', async () => {
+    const { source, final, teams } = await fixture('FCIndividual', {
+      gameId: fcOnlineGameId,
+      minTeamSize: 1,
+      maxTeamSize: 1,
+    });
+
+    await matches.update(source.id, {
+      scoreA: 1,
+      scoreB: 0,
+      status: MatchStatus.COMPLETED,
+    });
+
+    await assertCanonicalProgression(source.id, final.id);
+    expect(
+      await prisma.teamMember.count({
+        where: { teamId: { in: teams.map((team) => team.id) } },
+      }),
+    ).toBe(3);
+  });
+
+  it('records a Custom 5v5 BO3 and advances the winning Team unchanged', async () => {
+    const { source, final, teams } = await fixture('Custom5v5', {
+      gameId: customGameId,
+      minTeamSize: 5,
+      maxTeamSize: 7,
+      bestOf: 3,
+      customGameName: 'GF-4 Custom Fixture',
+    });
+
+    const updated = await matches.putScores(source.id, {
+      scores: [
+        { setNumber: 1, teamAScore: 10, teamBScore: 5 },
+        { setNumber: 2, teamAScore: 5, teamBScore: 10 },
+        { setNumber: 3, teamAScore: 10, teamBScore: 5 },
+      ],
+    });
+    const downstream = await prisma.match.findUniqueOrThrow({
+      where: { id: final.id },
+    });
+
+    expect(updated).toMatchObject({
+      status: MatchStatus.COMPLETED,
+      scoreA: 2,
+      scoreB: 1,
+      winnerTeamId: teams[0].id,
+      outcome: MatchOutcome.TEAM_A,
+    });
+    expect(downstream.teamAId).toBe(teams[0].id);
+    expect(
+      await prisma.teamMember.count({
+        where: { teamId: { in: teams.map((team) => team.id) } },
+      }),
+    ).toBe(15);
+  });
 });
+
+function requireGameId(idsByCode: Map<string, string>, code: string): string {
+  const id = idsByCode.get(code);
+  if (!id) {
+    throw new Error(
+      `Missing canonical game ${code}; run the safe catalog synchronization first`,
+    );
+  }
+  return id;
+}

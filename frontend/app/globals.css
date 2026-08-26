@@ -35,8 +35,8 @@
   --color-approved: oklch(0.78 0.13 158);
   --color-rejected: oklch(0.72 0.095 18);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Cascadia Mono", "Segoe UI Mono", Consolas, "Liberation Mono", monospace;
 }
 
 /* `inline` keeps game accent utilities connected to the runtime CSS variables

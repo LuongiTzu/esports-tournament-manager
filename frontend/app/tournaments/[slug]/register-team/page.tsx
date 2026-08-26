@@ -10,6 +10,7 @@ import { accentVars } from "@/features/games/game-accent";
 import { gamePositionLabel } from "@/features/games/position-labels";
 import { teamsApi } from "@/features/teams/api";
 import type { Gender, TeamRegistrationForm } from "@/features/teams/types";
+import type { MemberRole } from "@/features/teams/types";
 import {
   alertErrorClass,
   hintClass,
@@ -18,6 +19,7 @@ import {
   secondaryButtonClass,
 } from "@/components/ui";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
+import { ApiError } from "@/lib/api/client";
 
 interface MemberForm {
   realName: string;
@@ -27,11 +29,14 @@ interface MemberForm {
   birthDate: string;
   gender: "" | Gender;
   position: string;
+  memberRole: Extract<MemberRole, "CAPTAIN" | "PLAYER" | "SUBSTITUTE">;
 }
 
 const GENDER_OPTIONS: Gender[] = ["MALE", "FEMALE", "OTHER"];
 
-function emptyMember(): MemberForm {
+function emptyMember(
+  memberRole: MemberForm["memberRole"] = "SUBSTITUTE",
+): MemberForm {
   return {
     realName: "",
     ign: "",
@@ -40,6 +45,7 @@ function emptyMember(): MemberForm {
     birthDate: "",
     gender: "",
     position: "",
+    memberRole,
   };
 }
 
@@ -50,7 +56,7 @@ function toDateInput(value: string | null): string {
 function initialMembers(config: TeamRegistrationForm): MemberForm[] {
   const captain = config.prefill.captainMember;
   const firstMember: MemberForm = {
-    ...emptyMember(),
+    ...emptyMember("CAPTAIN"),
     realName: captain.realName,
     email: captain.email,
     phoneNumber: captain.phoneNumber ?? "",
@@ -59,7 +65,7 @@ function initialMembers(config: TeamRegistrationForm): MemberForm[] {
   };
 
   return Array.from({ length: config.tournament.minTeamSize }, (_, index) =>
-    index === 0 ? firstMember : emptyMember(),
+    index === 0 ? firstMember : emptyMember("PLAYER"),
   );
 }
 
@@ -161,22 +167,40 @@ export default function RegisterTeamPage({
       setError(t("team.register.contactPhoneRequired"));
       return;
     }
-    if (
-      members.length < config.tournament.minTeamSize ||
-      members.length > config.tournament.maxTeamSize
-    ) {
+    const activeMembers = members.filter(
+      (member) =>
+        member.memberRole === "CAPTAIN" || member.memberRole === "PLAYER",
+    );
+    const captains = members.filter(
+      (member) => member.memberRole === "CAPTAIN",
+    );
+    if (activeMembers.length !== config.tournament.minTeamSize) {
       setError(
-        `${t("team.register.rosterRangePrefix")} ${config.tournament.minTeamSize} ${t("team.register.rangeConnector")} ${config.tournament.maxTeamSize} ${t("team.register.rosterRangeSuffix")}`,
+        `${t("team.register.activeCountRequired")} ${config.tournament.minTeamSize}.`,
       );
+      return;
+    }
+    if (members.length > config.tournament.maxTeamSize) {
+      setError(t("team.register.rosterTooLarge"));
+      return;
+    }
+    if (captains.length !== 1) {
+      setError(t("team.register.captainCountRequired"));
       return;
     }
     if (
       config.game.positionMode === "FIXED" &&
-      config.tournament.requireMemberFullInfo &&
-      members.some((member) => !member.position)
+      activeMembers.some((member) => !member.position)
     ) {
       setError(t("team.register.positionRequired"));
       return;
+    }
+    if (config.game.positionMode === "FIXED") {
+      const activePositions = activeMembers.map((member) => member.position);
+      if (new Set(activePositions).size !== activePositions.length) {
+        setError(t("team.register.activePositionsUnique"));
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -194,13 +218,11 @@ export default function RegisterTeamPage({
           phoneNumber: member.phoneNumber.trim() || undefined,
           birthDate: member.birthDate || undefined,
           gender: member.gender || undefined,
-          position: member.position || undefined,
-          memberRole:
-            index === 0
-              ? "CAPTAIN"
-              : index >= config.tournament.minTeamSize
-                ? "SUBSTITUTE"
-                : "PLAYER",
+          position:
+            config.game.positionMode === "NONE"
+              ? undefined
+              : member.position || undefined,
+          memberRole: member.memberRole,
           orderIndex: index,
         })),
       });
@@ -221,7 +243,13 @@ export default function RegisterTeamPage({
       }
       router.push(`/tournaments/${slug}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("team.register.submitError"));
+      setError(
+        err instanceof ApiError && err.errors?.length
+          ? err.errors.map((item) => item.message).join(" · ")
+          : err instanceof Error
+            ? err.message
+            : t("team.register.submitError"),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -256,10 +284,6 @@ export default function RegisterTeamPage({
     rules.requireMemberFullInfo || rules.minAge !== null || rules.maxAge !== null;
   const requiresGender =
     rules.requireMemberFullInfo || Boolean(rules.allowedGenders?.length);
-  const requiresPosition =
-    rules.requireMemberFullInfo &&
-    config.game.positionMode === "FIXED" &&
-    config.game.positions.length > 0;
   const showsPosition =
     config.game.positionMode !== "NONE" && config.game.positions.length > 0;
   const genderOptions = rules.allowedGenders?.length
@@ -336,6 +360,9 @@ export default function RegisterTeamPage({
       </h1>
       <p className="mt-2 text-sm text-ink-muted">
         {t("team.register.subtitle")}
+      </p>
+      <p className="mt-2 text-sm font-medium text-brand">
+        {rules.displayGameName} · {rules.minTeamSize}v{rules.minTeamSize}
       </p>
 
       {!config.canRegister ? (
@@ -464,7 +491,10 @@ export default function RegisterTeamPage({
                 <button
                   type="button"
                   onClick={() =>
-                    setMembers((current) => [...current, emptyMember()])
+                    setMembers((current) => [
+                      ...current,
+                      emptyMember("SUBSTITUTE"),
+                    ])
                   }
                   className={`${secondaryButtonClass} shrink-0 px-3 py-2 text-xs`}
                 >
@@ -489,6 +519,11 @@ export default function RegisterTeamPage({
                     <p className="text-sm font-medium text-ink">
                       {index === 0 ? t("team.register.captain") : `${t("team.register.member")} ${index + 1}`}
                     </p>
+                    <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-[10px] font-semibold uppercase text-ink-muted">
+                      {t(
+                        `registration.role.${member.memberRole}` as TranslationKey,
+                      )}
+                    </span>
                     {index > 0 && members.length > rules.minTeamSize && (
                       <button
                         type="button"
@@ -586,7 +621,10 @@ export default function RegisterTeamPage({
 
                     {showsPosition && (
                       <select
-                        required={requiresPosition}
+                        required={
+                          config.game.positionMode === "FIXED" &&
+                          member.memberRole !== "SUBSTITUTE"
+                        }
                         value={member.position}
                         onChange={(event) =>
                           updateMember(index, "position", event.target.value)
@@ -595,15 +633,32 @@ export default function RegisterTeamPage({
                         className={`${inputClass} bg-surface`}
                       >
                         <option value="">
-                          {requiresPosition
+                          {config.game.positionMode === "FIXED" &&
+                          member.memberRole !== "SUBSTITUTE"
                             ? t("team.register.selectPosition")
                             : t("team.register.noPosition")}
                         </option>
-                        {config.game.positions.map((position) => (
-                          <option key={position} value={position}>
-                            {gamePositionLabel(position, locale)}
-                          </option>
-                        ))}
+                        {config.game.positions.map((position) => {
+                          const usedByOtherActive = members.some(
+                            (other, otherIndex) =>
+                              otherIndex !== index &&
+                              other.memberRole !== "SUBSTITUTE" &&
+                              other.position === position,
+                          );
+                          return (
+                            <option
+                              key={position}
+                              value={position}
+                              disabled={
+                                config.game.positionMode === "FIXED" &&
+                                member.memberRole !== "SUBSTITUTE" &&
+                                usedByOtherActive
+                              }
+                            >
+                              {gamePositionLabel(position, locale)}
+                            </option>
+                          );
+                        })}
                       </select>
                     )}
                   </div>

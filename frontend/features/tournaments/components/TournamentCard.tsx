@@ -56,8 +56,8 @@ export default function TournamentCard({
     >
       <div className={`relative overflow-hidden ${listView ? "h-44 sm:h-full sm:min-h-52" : "h-44"}`}>
         <ResolvedImage
-          src={getTournamentBannerUrl(t.bannerUrl, t.game?.name)}
-          fallbackSrc={getTournamentBannerUrl(null, t.game?.name)}
+          src={getTournamentBannerUrl(t.bannerUrl, t.game?.name, t.game?.code)}
+          fallbackSrc={getTournamentBannerUrl(null, t.game?.name, t.game?.code)}
           alt=""
           className="absolute inset-0 size-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
         />
@@ -89,7 +89,7 @@ export default function TournamentCard({
           </h3>
           {t.game && (
             <span className="shrink-0 rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent">
-              {t.game.name}
+              {t.displayGameName ?? t.game.name}
             </span>
           )}
         </div>

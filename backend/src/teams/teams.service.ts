@@ -33,6 +33,7 @@ import { ContentFilterService } from '../common/services/content-filter.service'
 import { RegistrationMemberInput } from './types/registration-member-input';
 import { TeamQueryService } from './team-query.service';
 import { TeamReviewService } from './team-review.service';
+import { resolveTournamentGameDisplayName } from '../tournaments/domain/tournament-game-display';
 import { TeamReviewPolicy } from './domain/team-review.policy';
 
 const CAPTAIN_SELECT = {
@@ -290,6 +291,8 @@ export class TeamsService {
         id: tournament.id,
         slug: tournament.slug,
         name: tournament.name,
+        customGameName: tournament.customGameName,
+        displayGameName: resolveTournamentGameDisplayName(tournament),
         status: tournament.status,
         minTeamSize: tournament.minTeamSize,
         maxTeamSize: tournament.maxTeamSize,
@@ -303,6 +306,7 @@ export class TeamsService {
       },
       game: {
         id: game.id,
+        code: game.code,
         name: game.name,
         genre: game.genre,
         positions: game.positions ?? [],
@@ -451,6 +455,7 @@ export class TeamsService {
         game: {
           select: {
             id: true,
+            code: true,
             name: true,
             genre: true,
             positions: true,
@@ -714,6 +719,7 @@ type TournamentForRegistration = Prisma.TournamentGetPayload<{
     game: {
       select: {
         id: true;
+        code: true;
         name: true;
         genre: true;
         positions: true;

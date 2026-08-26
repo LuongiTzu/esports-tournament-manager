@@ -27,6 +27,9 @@ import { clearSession, useAuth } from "@/features/auth/store";
 import { gamesApi } from "@/features/games/api";
 import { accentVars } from "@/features/games/game-accent";
 import type { Game } from "@/features/games/types";
+import GameStructureFields, {
+  type GameStructureValue,
+} from "@/features/games/components/GameStructureFields";
 import { tournamentsApi } from "@/features/tournaments/api";
 import {
   ROUND_FORMATS,
@@ -116,6 +119,8 @@ function createRoundForm(name: string, format: RoundFormatValue): RoundForm {
 interface TournamentFormState {
   name: string;
   gameId: string;
+  teamSize: string;
+  customGameName: string;
   description: string;
   rules: string;
   bannerUrl: string;
@@ -144,6 +149,8 @@ interface TournamentFormState {
 const INITIAL_FORM: TournamentFormState = {
   name: "",
   gameId: "",
+  teamSize: "",
+  customGameName: "",
   description: "",
   rules: "",
   bannerUrl: "",
@@ -282,12 +289,8 @@ export default function TournamentCreateForm() {
   }, [router, ready, user]);
 
   const selectedGame = games.find((game) => game.id === form.gameId);
-  const minimumMembers = selectedGame?.defaultTeamSize;
+  const minimumMembers = optionalNumber(form.teamSize);
   const maximumMembers = optionalNumber(form.maxTeamSize);
-  const maximumSubstitutes =
-    minimumMembers !== undefined && maximumMembers !== undefined
-      ? Math.max(0, maximumMembers - minimumMembers)
-      : undefined;
 
   const handleChange = (
     event: React.ChangeEvent<
@@ -310,13 +313,10 @@ export default function TournamentCreateForm() {
     }));
   };
 
-  const handleGameChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const gameId = event.target.value;
-    const game = games.find((item) => item.id === gameId);
+  const handleGameStructureChange = (structure: GameStructureValue) => {
     setForm((current) => ({
       ...current,
-      gameId,
-      maxTeamSize: game ? String(game.maxTeamSize) : "",
+      ...structure,
     }));
   };
 
@@ -441,12 +441,24 @@ export default function TournamentCreateForm() {
     }
 
     if (
+      minimumMembers === undefined ||
+      !Number.isInteger(minimumMembers) ||
+      minimumMembers < 1
+    ) {
+      return t("game.structure.teamSizeInvalid");
+    }
+
+    if (selectedGame.code === "CUSTOM" && !form.customGameName.trim()) {
+      return t("game.structure.customNameRequired");
+    }
+
+    if (
       maximumMembers === undefined ||
       !Number.isInteger(maximumMembers) ||
-      maximumMembers < selectedGame.defaultTeamSize ||
+      maximumMembers < minimumMembers ||
       maximumMembers > selectedGame.maxTeamSize
     ) {
-      return `${t("tournament.create.maxMembersRange")} (${selectedGame.defaultTeamSize}–${selectedGame.maxTeamSize})`;
+      return `${t("tournament.create.maxMembersRange")} (${minimumMembers}–${selectedGame.maxTeamSize})`;
     }
 
     const minAge = optionalNumber(form.minAge);
@@ -592,12 +604,24 @@ export default function TournamentCreateForm() {
       setError(validationError);
       return;
     }
+    if (
+      !selectedGame ||
+      minimumMembers === undefined ||
+      maximumMembers === undefined
+    ) {
+      return;
+    }
 
     setLoading(true);
     try {
       const tournament = await tournamentsApi.create({
         name: form.name.trim(),
         gameId: form.gameId,
+        teamSize: minimumMembers,
+        customGameName:
+          selectedGame.code === "CUSTOM"
+            ? form.customGameName.trim()
+            : undefined,
         description: form.description.trim() || undefined,
         rules: form.rules.trim() || undefined,
         bannerUrl: form.bannerUrl.trim() || undefined,
@@ -607,7 +631,7 @@ export default function TournamentCreateForm() {
         location: form.mode === "ONLINE" ? undefined : form.location.trim(),
         registrationOpen: form.registrationOpen,
         maxTeams: optionalNumber(form.maxTeams),
-        maxTeamSize: maximumMembers!,
+        maxTeamSize: maximumMembers,
         minAge: optionalNumber(form.minAge),
         maxAge: optionalNumber(form.maxAge),
         allowedGenders:
@@ -806,25 +830,17 @@ export default function TournamentCreateForm() {
                 />
               </div>
 
-              <div>
-                <label htmlFor="gameId" className={labelClass}>
-                  {t("tournament.create.game")} <span className="text-rejected">*</span>
-                </label>
-                <select
-                  id="gameId"
-                  name="gameId"
-                  required
-                  value={form.gameId}
-                  onChange={handleGameChange}
-                  className={inputClass}
-                >
-                  <option value="">{t("tournament.create.selectGame")}</option>
-                  {games.map((game) => (
-                    <option key={game.id} value={game.id}>
-                      {game.name} ({game.defaultTeamSize} {t("tournament.create.peoplePerTeam")})
-                    </option>
-                  ))}
-                </select>
+              <div className="sm:col-span-2">
+                <GameStructureFields
+                  games={games}
+                  value={{
+                    gameId: form.gameId,
+                    teamSize: form.teamSize,
+                    maxTeamSize: form.maxTeamSize,
+                    customGameName: form.customGameName,
+                  }}
+                  onChange={handleGameStructureChange}
+                />
                 {gamesError && (
                   <p className="mt-1.5 text-xs text-rejected">
                     {t("tournament.create.gamesLoadError")}
@@ -975,7 +991,7 @@ export default function TournamentCreateForm() {
             title={t("tournament.create.section.capacity")}
             description={t("tournament.create.section.capacityDescription")}
           >
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-5 sm:grid-cols-2">
               <div>
                 <label htmlFor="maxTeams" className={labelClass}>
                   {t("tournament.create.maxTeams")}
@@ -991,64 +1007,6 @@ export default function TournamentCreateForm() {
                   className={inputClass}
                   placeholder={t("common.unlimited")}
                 />
-              </div>
-              <div>
-                <label htmlFor="minTeamSize" className={labelClass}>
-                  {t("tournament.create.minMembers")}
-                </label>
-                <input
-                  id="minTeamSize"
-                  type="number"
-                  readOnly
-                  value={minimumMembers ?? ""}
-                  className={inputClass}
-                  placeholder={t("tournament.create.selectGamePlaceholder")}
-                />
-                <p className={hintClass}>
-                  {selectedGame
-                    ? `${t("tournament.create.defaultRosterPrefix")} ${selectedGame.name}`
-                    : t("tournament.create.defaultRosterAutomatic")}
-                </p>
-              </div>
-              <div>
-                <label htmlFor="maxTeamSize" className={labelClass}>
-                  {t("tournament.create.maxMembers")}
-                </label>
-                <input
-                  id="maxTeamSize"
-                  type="number"
-                  name="maxTeamSize"
-                  min={minimumMembers}
-                  max={selectedGame?.maxTeamSize}
-                  required
-                  disabled={!selectedGame}
-                  value={form.maxTeamSize}
-                  onChange={handleChange}
-                  className={inputClass}
-                  placeholder={t("tournament.create.selectGamePlaceholder")}
-                />
-                {selectedGame && (
-                  <p className={hintClass}>
-                    {t("tournament.create.allowFrom")} {selectedGame.defaultTeamSize}–{selectedGame.maxTeamSize}{" "}
-                    {t("tournament.create.players")}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label htmlFor="maxSubstitutes" className={labelClass}>
-                  {t("tournament.create.maxSubstitutes")}
-                </label>
-                <input
-                  id="maxSubstitutes"
-                  type="number"
-                  readOnly
-                  value={maximumSubstitutes ?? ""}
-                  className={inputClass}
-                  placeholder="0"
-                />
-                <p className={hintClass}>
-                  {t("tournament.create.maxSubstitutesHint")}
-                </p>
               </div>
             </div>
 

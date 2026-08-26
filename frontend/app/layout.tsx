@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
@@ -27,16 +26,6 @@ const themeBootstrapScript = `
   }
 })();`;
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "Esports Hub — Quản lý giải đấu thể thao điện tử",
   description:
@@ -59,7 +48,7 @@ export default function RootLayout({
       data-theme="dark"
       data-theme-preference="dark"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />

@@ -1,5 +1,6 @@
 import { RoundFormat } from '@prisma/client';
 import { GAME_CATALOG } from '../games/game-catalog';
+import { TournamentTeamSizePolicy } from '../tournaments/domain/tournament-team-size.policy';
 import {
   DEVELOPMENT_PASSWORD,
   SEED_TOURNAMENTS,
@@ -39,34 +40,33 @@ describe('development seed specification', () => {
     expect(SEED_TOURNAMENTS).toHaveLength(20);
     expect(
       [
-        ...new Set(SEED_TOURNAMENTS.map((tournament) => tournament.game)),
+        ...new Set(SEED_TOURNAMENTS.map((tournament) => tournament.gameCode)),
       ].sort(),
-    ).toEqual(
-      [
-        'Liên Quân Mobile',
-        'League of Legends',
-        'Valorant',
-        'Counter-Strike 2',
-        'Dota 2',
-        'Rocket League',
-        'Tekken 8',
-        'Street Fighter 6',
-      ].sort(),
-    );
+    ).toEqual(GAME_CATALOG.map((game) => game.code).sort());
     expect(
       SEED_TOURNAMENTS.some((tournament) =>
-        ['PUBG', 'CS:GO'].includes(tournament.game),
+        ['PUBG', 'CS_GO'].includes(tournament.gameCode),
       ),
     ).toBe(false);
   });
 
   it('uses roster snapshots within game bounds', () => {
-    const games = new Map(GAME_CATALOG.map((game) => [game.name, game]));
+    const games = new Map(GAME_CATALOG.map((game) => [game.code, game]));
+    const policy = new TournamentTeamSizePolicy();
     for (const tournament of SEED_TOURNAMENTS) {
-      const game = games.get(tournament.game)!;
-      expect(tournament.maxTeamSize).toBeGreaterThanOrEqual(
-        game.defaultTeamSize,
-      );
+      const game = games.get(tournament.gameCode);
+      expect(game).toBeDefined();
+      if (!game) throw new Error(`Unknown game ${tournament.gameCode}`);
+      const teamSize = policy.resolveTeamSize(game, tournament.teamSize);
+      expect(
+        policy.validateMaxTeamSize(game, teamSize, tournament.maxTeamSize),
+      ).toBe(tournament.maxTeamSize);
+      expect(
+        tournament.gameCode === 'CUSTOM'
+          ? Boolean(tournament.customGameName?.trim())
+          : tournament.customGameName === undefined,
+      ).toBe(true);
+      expect(tournament.maxTeamSize).toBeGreaterThanOrEqual(teamSize);
       expect(tournament.maxTeamSize).toBeLessThanOrEqual(game.maxTeamSize);
       expect(
         tournament.approvedTeams +
@@ -74,6 +74,33 @@ describe('development seed specification', () => {
           tournament.rejectedTeams,
       ).toBeLessThanOrEqual(tournament.maxTeams);
     }
+  });
+
+  it('includes representative PRESET and FLEXIBLE snapshots', () => {
+    expect(
+      SEED_TOURNAMENTS.filter(
+        (tournament) => tournament.gameCode === 'FC_ONLINE',
+      ).map((tournament) => [tournament.teamSize, tournament.maxTeamSize]),
+    ).toEqual(
+      expect.arrayContaining([
+        [1, 1],
+        [3, 4],
+      ]),
+    );
+    expect(
+      SEED_TOURNAMENTS.filter(
+        (tournament) => tournament.gameCode === 'CUSTOM',
+      ).map((tournament) => [
+        tournament.customGameName,
+        tournament.teamSize,
+        tournament.maxTeamSize,
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
+        ['Chess', 1, 1],
+        ['Custom Arena', 5, 7],
+      ]),
+    );
   });
 
   it('uses canonical settings and valid equal-group configurations', () => {

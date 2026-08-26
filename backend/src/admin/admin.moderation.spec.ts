@@ -67,6 +67,31 @@ function setup() {
 }
 
 describe('AdminService moderation', () => {
+  it('exposes the custom display name and stable game code in moderation lists', async () => {
+    const { service, prisma } = setup();
+    prisma.tournament.findMany.mockResolvedValue([
+      {
+        id: 'custom-tournament',
+        customGameName: 'Chess',
+        game: { id: 'custom-game', code: 'CUSTOM', name: 'Custom Game' },
+      },
+    ]);
+
+    await expect(service.listTournaments()).resolves.toEqual([
+      expect.objectContaining({
+        displayGameName: 'Chess',
+        game: expect.objectContaining({ code: 'CUSTOM' }),
+      }),
+    ]);
+    expect(prisma.tournament.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          game: { select: { id: true, code: true, name: true } },
+        }),
+      }),
+    );
+  });
+
   it('requires a reason and warns the organizer when hiding', async () => {
     const { service, prisma, notifications } = setup();
     await expect(

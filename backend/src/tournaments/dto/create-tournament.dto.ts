@@ -15,8 +15,10 @@ import {
   IsEmail,
   Matches,
   IsUrl,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   Visibility,
   RoundFormat,
@@ -41,11 +43,12 @@ export class CreateRoundDto {
   })
   format!: RoundFormat;
 
-  /** Số trận tối đa (BO1/BO3/BO5) — mặc định 1 */
+  /** Số trận tối đa (BO1/BO3/BO5/BO7/BO9) — mặc định 1 */
   @IsOptional()
   @IsInt({ message: 'bestOf phải là số nguyên' })
   @Min(1, { message: 'bestOf tối thiểu là 1' })
   @Max(9, { message: 'bestOf tối đa là 9' })
+  @IsIn([1, 3, 5, 7, 9], { message: 'bestOf phải là số lẻ' })
   bestOf?: number;
 
   /**
@@ -66,6 +69,29 @@ export class CreateTournamentDto {
 
   @IsString({ message: 'gameId không hợp lệ' })
   gameId!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Số người thi đấu chính mỗi bên; backend kiểm tra theo metadata của Game',
+    minimum: 1,
+    maximum: 50,
+    type: Number,
+  })
+  @IsOptional()
+  @IsInt({ message: 'teamSize phải là số nguyên' })
+  @Min(1, { message: 'teamSize tối thiểu là 1' })
+  @Max(50, { message: 'teamSize tối đa là 50' })
+  teamSize?: number;
+
+  @ApiPropertyOptional({
+    description: 'Tên game do organizer đặt khi chọn canonical game CUSTOM',
+    maxLength: 100,
+    type: String,
+  })
+  @IsOptional()
+  @IsString({ message: 'customGameName phải là chuỗi' })
+  @MaxLength(100, { message: 'customGameName không được quá 100 ký tự' })
+  customGameName?: string;
 
   @IsOptional()
   @IsString({ message: 'Mô tả phải là chuỗi' })

@@ -10,7 +10,6 @@ export interface RegistrationRules {
   tournamentId: string;
   minTeamSize: number;
   maxTeamSize: number;
-  maxSubstitutes: number;
   minAge: number | null;
   maxAge: number | null;
   allowedGenders: Gender[] | null;

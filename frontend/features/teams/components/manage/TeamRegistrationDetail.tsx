@@ -53,7 +53,8 @@ function MemberCard({
                 <dd className="mt-0.5">
                   {member.position
                     ? gamePositionLabel(member.position, locale)
-                    : positionMode === "OPTIONAL"
+                    : positionMode === "OPTIONAL" ||
+                        member.memberRole === "SUBSTITUTE"
                       ? t("registration.notSelected")
                       : t("registration.noData")}
                 </dd>
@@ -114,6 +115,13 @@ export default function TeamRegistrationDetail({
   const { t } = useLocale();
   const players = team.members.filter((member) =>
     PLAYER_ROLES.has(member.memberRole),
+  );
+  const activePlayers = players.filter(
+    (member) =>
+      member.memberRole === "CAPTAIN" || member.memberRole === "PLAYER",
+  );
+  const substitutes = players.filter(
+    (member) => member.memberRole === "SUBSTITUTE",
   );
   const staff = team.members.filter(
     (member) => !PLAYER_ROLES.has(member.memberRole),
@@ -180,7 +188,8 @@ export default function TeamRegistrationDetail({
           <div>
             <h4 className="text-sm font-semibold text-ink">{t("registration.playerRoster")}</h4>
             <p className="mt-1 text-xs text-ink-muted">
-              {players.length} {t("registration.registeredPlayerSlots")}
+              {activePlayers.length} {t("registration.starters")} ·{" "}
+              {substitutes.length} {t("registration.substitutes")}
             </p>
           </div>
           <p className="text-xs text-ink-faint">

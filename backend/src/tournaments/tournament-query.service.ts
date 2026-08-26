@@ -25,6 +25,7 @@ import {
   PUBLIC_TOURNAMENT_TEAM_SELECT,
   TOURNAMENT_GAME_SELECT,
 } from './tournament-prisma.select';
+import { withTournamentGameDisplayName } from './domain/tournament-game-display';
 
 @Injectable()
 export class TournamentQueryService {
@@ -72,6 +73,12 @@ export class TournamentQueryService {
       where.OR = [
         { name: { contains: query.search, mode: 'insensitive' } },
         { game: { name: { contains: query.search, mode: 'insensitive' } } },
+        {
+          customGameName: {
+            contains: query.search,
+            mode: 'insensitive',
+          },
+        },
       ];
     }
 
@@ -94,7 +101,7 @@ export class TournamentQueryService {
     ]);
 
     return {
-      data,
+      data: data.map(withTournamentGameDisplayName),
       pagination: {
         page,
         limit,
@@ -142,7 +149,7 @@ export class TournamentQueryService {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
 
-    return {
+    return withTournamentGameDisplayName({
       ...tournament,
       rounds: tournament.rounds.map((round) => ({
         ...round,
@@ -151,7 +158,7 @@ export class TournamentQueryService {
           round.settings,
         ),
       })),
-    };
+    });
   }
 
   async findMyTournaments(
@@ -163,14 +170,15 @@ export class TournamentQueryService {
       throw new BadRequestException('Tab must be organized or joined');
     }
     if (tab === 'organized') {
-      return this.prisma.tournament.findMany({
+      const tournaments = await this.prisma.tournament.findMany({
         where: { organizerId: userId },
         orderBy: { createdAt: 'desc' },
         include: {
-          game: { select: { id: true, name: true, iconUrl: true } },
+          game: { select: { id: true, code: true, name: true, iconUrl: true } },
           _count: { select: { teams: true } },
         },
       });
+      return tournaments.map(withTournamentGameDisplayName);
     }
 
     // joined: giải có đội mà user là captain hoặc thành viên
@@ -183,7 +191,7 @@ export class TournamentQueryService {
 
     const tournamentIds = [...new Set(teams.map((t) => t.tournamentId))];
 
-    return this.prisma.tournament.findMany({
+    const tournaments = await this.prisma.tournament.findMany({
       where: {
         id: { in: tournamentIds },
         moderationStatus:
@@ -191,10 +199,11 @@ export class TournamentQueryService {
       },
       orderBy: { createdAt: 'desc' },
       include: {
-        game: { select: { id: true, name: true, iconUrl: true } },
+        game: { select: { id: true, code: true, name: true, iconUrl: true } },
         _count: { select: { teams: true } },
       },
     });
+    return tournaments.map(withTournamentGameDisplayName);
   }
 
   async getStandings(slug: string, userId?: string, userRole?: string) {

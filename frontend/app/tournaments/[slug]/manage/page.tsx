@@ -10,6 +10,7 @@ import RegistrationManagement from "@/features/teams/components/manage/Registrat
 import { tournamentsApi } from "@/features/tournaments/api";
 import CompetitionManager from "@/features/tournaments/components/manage/CompetitionManager";
 import TournamentLifecycleControls from "@/features/tournaments/components/manage/TournamentLifecycleControls";
+import TournamentGameEditor from "@/features/tournaments/components/manage/TournamentGameEditor";
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { alertErrorClass } from "@/components/ui";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
@@ -118,6 +119,13 @@ export default function ManagePage({
       </div>
 
       <div className="mt-8">
+        <TournamentGameEditor
+          tournament={tournament}
+          onUpdated={setTournament}
+        />
+      </div>
+
+      <div className="mt-6">
         <TournamentLifecycleControls
           tournament={tournament}
           onRefresh={refreshTournament}

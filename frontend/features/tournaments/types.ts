@@ -122,6 +122,8 @@ export interface Tournament {
   registrationOpen: boolean;
   minTeamSize: number;
   maxTeamSize: number;
+  customGameName?: string | null;
+  displayGameName?: string;
   registrationStartDate?: string | null;
   registrationDeadline?: string | null;
   maxTeams?: number | null;
@@ -145,6 +147,10 @@ export interface FindAllTournamentsParams {
 export interface TournamentDetail extends Omit<Tournament, "game"> {
   game: Game;
   teams: ApprovedTeam[];
+}
+
+export interface TournamentMutationResult extends Omit<Tournament, "game"> {
+  game: Game;
 }
 
 export interface BracketTeam {
@@ -365,6 +371,8 @@ export interface UpdateTournamentLifecycleRequest {
 export interface CreateTournamentRequest {
   name: string;
   gameId: string;
+  teamSize?: number;
+  customGameName?: string;
   description?: string;
   rules?: string;
   bannerUrl?: string;
@@ -390,3 +398,7 @@ export interface CreateTournamentRequest {
   contactLink?: string;
   rounds: CreateRoundRequest[];
 }
+
+export type UpdateTournamentRequest = Partial<
+  Omit<CreateTournamentRequest, "rounds">
+>;

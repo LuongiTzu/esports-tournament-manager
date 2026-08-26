@@ -34,10 +34,25 @@ function isApiSuccessEnvelope(
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
+  errors?: Array<{
+    field: string;
+    memberIndex: number | null;
+    message: string;
+  }>;
 
-  constructor(message: string, status: number) {
+  constructor(
+    message: string,
+    status: number,
+    details?: {
+      code?: string;
+      errors?: ApiError["errors"];
+    },
+  ) {
     super(message);
     this.status = status;
+    this.code = details?.code;
+    this.errors = details?.errors;
   }
 }
 
@@ -140,12 +155,41 @@ export async function request<T>(
   const body = await readResponseBody(res);
 
   if (!res.ok) {
+    const errorBody =
+      typeof body === "object" && body !== null
+        ? (body as Record<string, unknown>)
+        : undefined;
     const message =
       (body as { message?: string | string[] })?.message ||
       (typeof body === "string" ? body : "Có lỗi xảy ra");
+    const validationErrors = Array.isArray(errorBody?.errors)
+      ? errorBody.errors.filter(
+          (
+            error,
+          ): error is {
+            field: string;
+            memberIndex: number | null;
+            message: string;
+          } => {
+            if (typeof error !== "object" || error === null) return false;
+            const candidate = error as Record<string, unknown>;
+            return (
+              typeof candidate.field === "string" &&
+              typeof candidate.message === "string" &&
+              (typeof candidate.memberIndex === "number" ||
+                candidate.memberIndex === null)
+            );
+          },
+        )
+      : undefined;
     throw new ApiError(
       Array.isArray(message) ? message.join(", ") : message,
       res.status,
+      {
+        code:
+          typeof errorBody?.code === "string" ? errorBody.code : undefined,
+        errors: validationErrors,
+      },
     );
   }
 

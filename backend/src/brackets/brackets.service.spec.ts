@@ -97,7 +97,7 @@ describe('BracketsService', () => {
       format: RoundFormat.GROUP_STAGE,
       teams,
       settings: { numGroups: 2 },
-      bestOf: 5,
+      bestOf: 7,
     });
 
     expect(settingsService.normalizeForFormat).toHaveBeenCalledWith(
@@ -108,7 +108,7 @@ describe('BracketsService', () => {
       format: RoundFormat.GROUP_STAGE,
       teams,
       settings: DEFAULT_ROUND_SETTINGS[RoundFormat.GROUP_STAGE],
-      bestOf: 5,
+      bestOf: 7,
     });
   });
 

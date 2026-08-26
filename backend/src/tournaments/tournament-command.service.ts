@@ -26,16 +26,25 @@ import {
   InvalidTournamentStatusTransitionError,
   TournamentLifecyclePolicy,
 } from './domain/tournament-lifecycle.policy';
+import {
+  TournamentGameSizeRules,
+  TournamentTeamSizePolicy,
+  TournamentTeamSizeRuleError,
+} from './domain/tournament-team-size.policy';
 import { TOURNAMENT_GAME_SELECT } from './tournament-prisma.select';
+import { withTournamentGameDisplayName } from './domain/tournament-game-display';
 
 const DELETABLE_TOURNAMENT_STATUSES: TournamentStatus[] = [
   TournamentStatus.DRAFT,
   TournamentStatus.REGISTRATION,
   TournamentStatus.CANCELLED,
 ];
+const CUSTOM_GAME_CODE = 'CUSTOM';
 
 @Injectable()
 export class TournamentCommandService {
+  private readonly teamSizePolicy = new TournamentTeamSizePolicy();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly roundSettingsService: RoundSettingsService,
@@ -52,13 +61,19 @@ export class TournamentCommandService {
       throw new BadRequestException('Game không tồn tại');
     }
 
+    const minTeamSize = this.resolveTeamSize(game, dto.teamSize);
+    const maxTeamSize = this.resolveMaxTeamSize(
+      game,
+      minTeamSize,
+      dto.maxTeamSize,
+    );
+    const customGameName = this.resolveCustomGameName(
+      game.code,
+      dto.customGameName,
+    );
+
     // 2. Lọc từ khóa cấm (UC-U19)
     this.validateContent(dto.name, dto.description, dto.rules);
-
-    // 3. Snapshot đội hình thi đấu chuẩn; BTC chỉ chọn tổng số vị trí cầu thủ.
-    const minTeamSize = game.defaultTeamSize;
-    const maxTeamSize = dto.maxTeamSize ?? game.maxTeamSize;
-    this.validateRosterSettings(minTeamSize, maxTeamSize, game.maxTeamSize);
 
     // 4. Ràng buộc liên-field — dùng chung 1 hàm với luồng update
     const mode = dto.mode ?? TournamentMode.ONLINE;
@@ -83,6 +98,7 @@ export class TournamentCommandService {
           name: dto.name,
           slug,
           description: dto.description,
+          customGameName,
           rules: dto.rules,
           bannerUrl: dto.bannerUrl,
           visibility: dto.visibility ?? Visibility.PUBLIC,
@@ -128,7 +144,7 @@ export class TournamentCommandService {
       });
     });
     return created && Array.isArray(created.rounds)
-      ? {
+      ? withTournamentGameDisplayName({
           ...created,
           rounds: created.rounds.map((round) => ({
             ...round,
@@ -137,7 +153,7 @@ export class TournamentCommandService {
               round.settings,
             ),
           })),
-        }
+        })
       : created;
   }
 
@@ -149,11 +165,6 @@ export class TournamentCommandService {
 
     if (!current) {
       throw new NotFoundException('Không tìm thấy giải đấu');
-    }
-
-    // Lọc từ khóa cấm nếu có thay đổi name/description
-    if (dto.name || dto.description || dto.rules) {
-      this.validateContent(dto.name, dto.description, dto.rules);
     }
 
     // Đổi game → giới hạn đội hình phải khớp game mới
@@ -170,15 +181,29 @@ export class TournamentCommandService {
     }
 
     const gameChanged = game.id !== current.gameId;
-    const minTeamSize = gameChanged
-      ? game.defaultTeamSize
-      : current.minTeamSize;
+    const teamSizeChanged = dto.teamSize !== undefined;
+    const minTeamSize =
+      gameChanged || teamSizeChanged
+        ? this.resolveTeamSize(game, dto.teamSize)
+        : current.minTeamSize;
     const maxTeamSize = gameChanged
-      ? (dto.maxTeamSize ?? game.maxTeamSize)
-      : (dto.maxTeamSize ?? current.maxTeamSize);
+      ? this.resolveMaxTeamSize(game, minTeamSize, dto.maxTeamSize)
+      : teamSizeChanged || dto.maxTeamSize !== undefined
+        ? this.validateMaxTeamSize(
+            game,
+            minTeamSize,
+            dto.maxTeamSize ?? current.maxTeamSize,
+          )
+        : current.maxTeamSize;
+    const customGameName = this.resolveCustomGameName(
+      game.code,
+      dto.customGameName,
+      gameChanged ? undefined : current.customGameName,
+    );
 
-    if (gameChanged || dto.maxTeamSize !== undefined) {
-      this.validateRosterSettings(minTeamSize, maxTeamSize, game.maxTeamSize);
+    // Lọc từ khóa cấm nếu có thay đổi name/description
+    if (dto.name || dto.description || dto.rules) {
+      this.validateContent(dto.name, dto.description, dto.rules);
     }
 
     if (dto.status !== undefined) {
@@ -203,6 +228,10 @@ export class TournamentCommandService {
       data: {
         name: dto.name,
         description: dto.description,
+        customGameName:
+          gameChanged || dto.customGameName !== undefined
+            ? customGameName
+            : undefined,
         rules: dto.rules,
         bannerUrl: dto.bannerUrl,
         visibility: dto.visibility,
@@ -211,9 +240,9 @@ export class TournamentCommandService {
         location: dto.location,
         registrationOpen: dto.registrationOpen,
         maxTeams: dto.maxTeams,
-        minTeamSize: gameChanged ? minTeamSize : undefined,
+        minTeamSize: gameChanged || teamSizeChanged ? minTeamSize : undefined,
         maxTeamSize:
-          gameChanged || dto.maxTeamSize !== undefined
+          gameChanged || teamSizeChanged || dto.maxTeamSize !== undefined
             ? maxTeamSize
             : undefined,
         minAge: dto.minAge,
@@ -237,7 +266,7 @@ export class TournamentCommandService {
       },
     });
 
-    return {
+    return withTournamentGameDisplayName({
       ...updated,
       rounds: updated.rounds.map((round) => ({
         ...round,
@@ -246,7 +275,7 @@ export class TournamentCommandService {
           round.settings,
         ),
       })),
-    };
+    });
   }
 
   async remove(tournamentId: string) {
@@ -398,22 +427,77 @@ export class TournamentCommandService {
     }
   }
 
-  private validateRosterSettings(
-    minTeamSize: number,
+  private resolveTeamSize(
+    game: TournamentGameSizeRules,
+    requestedTeamSize?: number,
+  ): number {
+    return this.mapTeamSizeRuleError(() =>
+      this.teamSizePolicy.resolveTeamSize(game, requestedTeamSize),
+    );
+  }
+
+  private resolveMaxTeamSize(
+    game: TournamentGameSizeRules,
+    teamSize: number,
+    requestedMaxTeamSize?: number,
+  ): number {
+    return this.mapTeamSizeRuleError(() =>
+      this.teamSizePolicy.resolveMaxTeamSize(
+        game,
+        teamSize,
+        requestedMaxTeamSize,
+      ),
+    );
+  }
+
+  private validateMaxTeamSize(
+    game: TournamentGameSizeRules,
+    teamSize: number,
     maxTeamSize: number,
-    gameMaxTeamSize: number,
-  ) {
-    if (maxTeamSize < minTeamSize) {
-      throw new BadRequestException(
-        `Số thành viên tối đa (${maxTeamSize}) không được nhỏ hơn đội hình thi đấu mặc định (${minTeamSize})`,
-      );
+  ): number {
+    return this.mapTeamSizeRuleError(() =>
+      this.teamSizePolicy.validateMaxTeamSize(game, teamSize, maxTeamSize),
+    );
+  }
+
+  private mapTeamSizeRuleError<T>(operation: () => T): T {
+    try {
+      return operation();
+    } catch (error) {
+      if (error instanceof TournamentTeamSizeRuleError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  private resolveCustomGameName(
+    gameCode: string,
+    requestedName: string | null | undefined,
+    currentName?: string | null,
+  ): string | null {
+    if (gameCode !== CUSTOM_GAME_CODE) {
+      if (requestedName !== undefined) {
+        throw new BadRequestException(
+          'customGameName chỉ được dùng với Custom Game',
+        );
+      }
+      return null;
     }
 
-    if (maxTeamSize > gameMaxTeamSize) {
+    const customGameName =
+      requestedName === undefined ? currentName : requestedName;
+    if (
+      typeof customGameName !== 'string' ||
+      customGameName.trim().length === 0
+    ) {
       throw new BadRequestException(
-        `Số thành viên tối đa (${maxTeamSize}) vượt quá giới hạn của game (${gameMaxTeamSize})`,
+        'customGameName là bắt buộc khi chọn Custom Game',
       );
     }
+    return requestedName === undefined
+      ? customGameName
+      : this.contentFilter.validate(customGameName);
   }
 
   private validateContent(...values: Array<string | undefined>) {

@@ -10,6 +10,8 @@ import {
 } from "@phosphor-icons/react";
 import { useAuth } from "@/features/auth/store";
 import { accentVars } from "@/features/games/game-accent";
+import RosterSummary from "@/features/games/components/RosterSummary";
+import { gamePositionLabel } from "@/features/games/position-labels";
 import { teamsApi } from "@/features/teams/api";
 import StatusBadge from "@/features/teams/components/StatusBadge";
 import type { TeamWithMembers } from "@/features/teams/types";
@@ -123,8 +125,13 @@ export default function TournamentDetailPage({
             src={getTournamentBannerUrl(
               tournament.bannerUrl,
               tournament.game?.name,
+              tournament.game?.code,
             )}
-            fallbackSrc={getTournamentBannerUrl(null, tournament.game?.name)}
+            fallbackSrc={getTournamentBannerUrl(
+              null,
+              tournament.game?.name,
+              tournament.game?.code,
+            )}
             alt={`${t("tournament.detail.bannerAlt")} ${tournament.name}`}
             className="absolute inset-0 size-full object-cover object-center"
           />
@@ -135,7 +142,7 @@ export default function TournamentDetailPage({
             <div className="flex flex-wrap items-center gap-2.5">
               {tournament.game && (
                 <span className="rounded-full bg-accent/12 px-2.5 py-1 text-xs font-medium text-accent">
-                  {tournament.game.name}
+                  {tournament.displayGameName ?? tournament.game.name}
                 </span>
               )}
               {tournament.isVerified && (
@@ -227,6 +234,38 @@ export default function TournamentDetailPage({
           </div>
         </dl>
       </header>
+
+      <section className="mt-6 rounded-xl border border-line bg-surface-card p-6">
+        <h2 className="font-semibold text-ink">
+          {t("game.structure.editorTitle")}
+        </h2>
+        <div className="mt-4">
+          <RosterSummary
+            activeSize={tournament.minTeamSize}
+            maxRosterSize={tournament.maxTeamSize}
+          />
+        </div>
+        {tournament.game.positionMode !== "NONE" &&
+          (tournament.game.positions?.length ?? 0) > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+                {tournament.game.positionMode === "FIXED"
+                  ? t("game.structure.requiredPositions")
+                  : t("game.structure.optionalPositions")}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {tournament.game.positions?.map((position) => (
+                  <span
+                    key={position}
+                    className="rounded-full border border-line bg-surface-sub px-3 py-1 text-xs text-ink-muted"
+                  >
+                    {gamePositionLabel(position, locale)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+      </section>
 
       {ownTeam && (
         <section className="mt-6 rounded-xl border border-line bg-surface-card p-6">

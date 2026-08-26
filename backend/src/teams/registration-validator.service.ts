@@ -42,7 +42,6 @@ export class RegistrationValidatorService {
       tournamentId: tournament.id,
       minTeamSize: tournament.minTeamSize,
       maxTeamSize: tournament.maxTeamSize,
-      maxSubstitutes: tournament.maxTeamSize - tournament.minTeamSize,
       minAge: tournament.minAge,
       maxAge: tournament.maxAge,
       allowedGenders: toGenderList(tournament.allowedGenders),

@@ -32,6 +32,17 @@ const POSITION_LABELS: Record<string, GamePositionLabels> = {
     vi: "Vị trí 5 / Hỗ trợ chính",
     en: "Position 5 / Hard Support",
   },
+  EXP_LANE: { vi: "Đường EXP", en: "EXP Lane" },
+  MID_LANE: { vi: "Đường giữa", en: "Mid Lane" },
+  GOLD_LANE: { vi: "Đường vàng", en: "Gold Lane" },
+  CLASH_LANE: { vi: "Đường đối đầu", en: "Clash Lane" },
+  FARM_LANE: { vi: "Đường phát triển", en: "Farm Lane" },
+  SOLO_LANE: { vi: "Đường đơn", en: "Solo Lane" },
+  DUO_LANE: { vi: "Đường đôi", en: "Duo Lane" },
+  ORDER: { vi: "Chỉ huy", en: "Order" },
+  ATTACKER: { vi: "Tấn công", en: "Attacker" },
+  SNIPER: { vi: "Bắn tỉa", en: "Sniper" },
+  TACTICAL_BACKUP: { vi: "Hỗ trợ chiến thuật", en: "Tactical Backup" },
 };
 
 export function gamePositionLabel(

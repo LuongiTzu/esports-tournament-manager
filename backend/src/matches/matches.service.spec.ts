@@ -181,6 +181,7 @@ describe('MatchesService results', () => {
     [1, ['A'], 1, 0],
     [3, ['A', 'B', 'A'], 2, 1],
     [5, ['B', 'A', 'B', 'B'], 1, 3],
+    [7, ['A', 'B', 'A', 'B', 'A', 'A'], 4, 2],
   ] as const)(
     'calculates a completed BO%i result',
     async (bestOf, winners, scoreA, scoreB) => {

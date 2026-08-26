@@ -1,15 +1,15 @@
 import {
-  GamePositionMode,
   MatchOutcome,
   MatchStatus,
-  MemberRole,
   Role,
   RoundFormat,
   TournamentStatus,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { GAME_CATALOG_NAMES } from '../../src/games/game-catalog';
+import { GAME_CATALOG_CODES } from '../../src/games/game-catalog';
 import { PrismaService } from '../../src/prisma/prisma.service';
+import { RegistrationRosterPolicy } from '../../src/teams/domain/registration-roster.policy';
+import { TournamentTeamSizePolicy } from '../../src/tournaments/domain/tournament-team-size.policy';
 import {
   DEVELOPMENT_PASSWORD,
   SEED_EMAIL_DOMAIN,
@@ -17,11 +17,8 @@ import {
   SEED_USERS,
 } from './data';
 
-const PLAYER_ROLES = new Set<MemberRole>([
-  MemberRole.CAPTAIN,
-  MemberRole.PLAYER,
-  MemberRole.SUBSTITUTE,
-]);
+const rosterPolicy = new RegistrationRosterPolicy();
+const teamSizePolicy = new TournamentTeamSizePolicy();
 
 const CANONICAL_SETTING_KEYS: Record<RoundFormat, Set<string>> = {
   [RoundFormat.ROUND_ROBIN]: new Set([
@@ -125,67 +122,81 @@ export async function validateSeed(
     );
   }
 
-  const gameNames = games.map((game) => game.name).sort();
+  const gameCodes = new Set(games.map((game) => game.code));
   assert(
-    JSON.stringify(gameNames) ===
-      JSON.stringify([...GAME_CATALOG_NAMES].sort()),
-    'Database game catalog does not exactly match the approved catalog',
+    GAME_CATALOG_CODES.every((code) => gameCodes.has(code)),
+    'Database is missing one or more canonical games',
   );
   assert(tournaments.length === 20, 'Expected exactly 20 seeded tournaments');
   assert(
-    new Set(tournaments.map((tournament) => tournament.game.name)).size === 8,
-    'Expected the eight established games to have seeded tournaments',
+    new Set(tournaments.map((tournament) => tournament.game.code)).size === 15,
+    'Expected all 15 canonical games to have seeded tournaments',
   );
 
   for (const tournament of tournaments) {
+    const gameSizeRules = {
+      teamSizeMode: tournament.game.teamSizeMode,
+      defaultTeamSize: tournament.game.defaultTeamSize,
+      maxTeamSize: tournament.game.maxTeamSize,
+      allowedTeamSizes: tournament.game.allowedTeamSizes,
+      minSelectableTeamSize: tournament.game.minSelectableTeamSize,
+      maxSelectableTeamSize: tournament.game.maxSelectableTeamSize,
+    };
     assert(
-      tournament.minTeamSize === tournament.game.defaultTeamSize,
-      `${tournament.slug} minTeamSize is not the game snapshot`,
+      teamSizePolicy.resolveTeamSize(gameSizeRules, tournament.minTeamSize) ===
+        tournament.minTeamSize,
+      `${tournament.slug} has an invalid active-team snapshot`,
     );
     assert(
-      tournament.maxTeamSize >= tournament.game.minTeamSize &&
-        tournament.maxTeamSize <= tournament.game.maxTeamSize,
-      `${tournament.slug} maxTeamSize is outside game bounds`,
+      teamSizePolicy.validateMaxTeamSize(
+        gameSizeRules,
+        tournament.minTeamSize,
+        tournament.maxTeamSize,
+      ) === tournament.maxTeamSize,
+      `${tournament.slug} has an invalid roster-cap snapshot`,
+    );
+    assert(
+      tournament.game.code === 'CUSTOM'
+        ? Boolean(tournament.customGameName?.trim())
+        : tournament.customGameName === null,
+      `${tournament.slug} has inconsistent custom-game metadata`,
     );
 
-    const validPositions = new Set(asStringArray(tournament.game.positions));
     for (const team of tournament.teams) {
       assert(Boolean(team.contactName), `${team.name} lacks contactName`);
       assert(Boolean(team.contactEmail), `${team.name} lacks contactEmail`);
       assert(Boolean(team.contactPhone), `${team.name} lacks contactPhone`);
-      const players = team.members.filter((member) =>
-        PLAYER_ROLES.has(member.memberRole),
+      const rosterResult = rosterPolicy.validate(
+        {
+          tournamentId: tournament.id,
+          minTeamSize: tournament.minTeamSize,
+          maxTeamSize: tournament.maxTeamSize,
+          minAge: null,
+          maxAge: null,
+          allowedGenders: null,
+          requireMemberFullInfo: false,
+          startDate: tournament.startDate,
+          positions: asStringArray(tournament.game.positions),
+          positionMode: tournament.game.positionMode,
+        },
+        team.members.map((member) => ({
+          realName: member.realName,
+          ign: member.ign,
+          inGameId: member.inGameId ?? undefined,
+          birthDate: member.birthDate?.toISOString(),
+          gender: member.gender ?? undefined,
+          email: member.email ?? undefined,
+          phoneNumber: member.phoneNumber ?? undefined,
+          position: member.position ?? undefined,
+          memberRole: member.memberRole,
+        })),
       );
       assert(
-        players.length >= tournament.minTeamSize &&
-          players.length <= tournament.maxTeamSize,
-        `${team.name} player count is outside tournament bounds`,
+        rosterResult.errors.length === 0,
+        `${team.name} has an invalid roster: ${rosterResult.errors
+          .map((error) => error.message)
+          .join('; ')}`,
       );
-      assert(
-        players.filter((member) => member.memberRole === MemberRole.CAPTAIN)
-          .length === 1,
-        `${team.name} must have exactly one captain`,
-      );
-      for (const member of team.members) {
-        if (tournament.game.positionMode === GamePositionMode.FIXED) {
-          if (PLAYER_ROLES.has(member.memberRole)) {
-            assert(
-              Boolean(member.position) && validPositions.has(member.position!),
-              `${member.ign} has an invalid required position`,
-            );
-          }
-        } else if (tournament.game.positionMode === GamePositionMode.OPTIONAL) {
-          assert(
-            member.position === null || validPositions.has(member.position),
-            `${member.ign} has an invalid optional position`,
-          );
-        } else {
-          assert(
-            member.position === null,
-            `${member.ign} must not have a position`,
-          );
-        }
-      }
     }
 
     for (const round of tournament.rounds) {

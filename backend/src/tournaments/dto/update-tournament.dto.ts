@@ -1,4 +1,4 @@
-import { PartialType, OmitType } from '@nestjs/mapped-types';
+import { OmitType, PartialType } from '@nestjs/swagger';
 import { CreateTournamentDto } from './create-tournament.dto';
 
 /**

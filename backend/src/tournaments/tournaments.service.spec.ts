@@ -4,6 +4,7 @@ import {
   MatchStatus,
   RoundFormat,
   RoundStatus,
+  TeamSizeMode,
   TournamentMode,
   TournamentStatus,
 } from '@prisma/client';
@@ -100,10 +101,39 @@ describe('TournamentsService public listing', () => {
                 name: { contains: 'valorant', mode: 'insensitive' },
               },
             },
+            {
+              customGameName: {
+                contains: 'valorant',
+                mode: 'insensitive',
+              },
+            },
           ],
         }),
       }),
     );
+  });
+
+  it('derives display names for normal and CUSTOM public results', async () => {
+    const { service, findMany } = harness(2);
+    findMany.mockResolvedValue([
+      {
+        id: 'normal',
+        customGameName: null,
+        game: { code: 'MLBB', name: 'Mobile Legends: Bang Bang' },
+      },
+      {
+        id: 'custom',
+        customGameName: 'Chess',
+        game: { code: 'CUSTOM', name: 'Custom Game' },
+      },
+    ]);
+
+    const result = await service.findAllPublic({});
+
+    expect(result.data).toEqual([
+      expect.objectContaining({ displayGameName: 'Mobile Legends: Bang Bang' }),
+      expect.objectContaining({ displayGameName: 'Chess' }),
+    ]);
   });
 
   it('applies bounded pagination and reports totals', async () => {
@@ -144,6 +174,8 @@ describe('TournamentsService round settings', () => {
         create: jest.fn().mockResolvedValue({ id: 'tournament-1' }),
         findUnique: jest.fn().mockResolvedValue({
           id: 'tournament-1',
+          customGameName: null,
+          game: { code: 'TEST_GAME', name: 'Test Game' },
           rounds: [],
         }),
       },
@@ -344,6 +376,8 @@ describe('TournamentsService round settings', () => {
         create: jest.fn().mockResolvedValue({ id: 'tournament-1' }),
         findUnique: jest.fn().mockResolvedValue({
           id: 'tournament-1',
+          customGameName: null,
+          game: { code: 'TEST_GAME', name: 'Test Game' },
           rounds: [],
         }),
       },
@@ -624,10 +658,15 @@ describe('TournamentsService roster snapshots', () => {
   function creationHarness(defaultTeamSize: number, maxTeamSize: number) {
     const game = {
       id: 'game-1',
+      code: 'TEST_GAME',
       name: 'Test Game',
+      teamSizeMode: TeamSizeMode.FIXED,
       defaultTeamSize,
       minTeamSize: defaultTeamSize,
       maxTeamSize,
+      allowedTeamSizes: [],
+      minSelectableTeamSize: null,
+      maxSelectableTeamSize: null,
     };
     const tx = {
       tournament: {
@@ -747,6 +786,8 @@ describe('TournamentsService roster snapshots', () => {
         findUnique: jest.fn().mockResolvedValue(current),
         update: jest.fn().mockResolvedValue({
           id: 'tournament-1',
+          customGameName: null,
+          game: { code: 'ROCKET_LEAGUE', name: 'Rocket League' },
           rounds: [
             {
               id: 'group-round',
@@ -766,8 +807,13 @@ describe('TournamentsService roster snapshots', () => {
       game: {
         findFirst: jest.fn().mockResolvedValue({
           id: 'rocket-league',
+          code: 'ROCKET_LEAGUE',
+          teamSizeMode: TeamSizeMode.FIXED,
           defaultTeamSize: 3,
           maxTeamSize: 4,
+          allowedTeamSizes: [],
+          minSelectableTeamSize: null,
+          maxSelectableTeamSize: null,
         }),
       },
     } as unknown as PrismaService;

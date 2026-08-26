@@ -17,6 +17,10 @@ describe('MatchResultPolicy', () => {
     );
   });
 
+  it.each([1, 3, 5, 7])('accepts generic BO%i', (bestOf) => {
+    expect(() => policy.assertBestOf(bestOf)).not.toThrow();
+  });
+
   it('determines TEAM_A and TEAM_B winners at the series threshold', () => {
     expect(
       policy.evaluateAggregate(context, 2, 1, MatchStatus.COMPLETED),
@@ -64,6 +68,27 @@ describe('MatchResultPolicy', () => {
         3,
       ),
     ).toEqual({ scoreA: 2, scoreB: 1, completed: true });
+  });
+
+  it('completes BO7 at four wins and rejects a game after the clinch', () => {
+    const clinched = [
+      { setNumber: 1, teamAScore: 1, teamBScore: 0 },
+      { setNumber: 2, teamAScore: 0, teamBScore: 1 },
+      { setNumber: 3, teamAScore: 1, teamBScore: 0 },
+      { setNumber: 4, teamAScore: 1, teamBScore: 0 },
+      { setNumber: 5, teamAScore: 1, teamBScore: 0 },
+    ];
+    expect(policy.evaluateSeries(clinched, 7)).toEqual({
+      scoreA: 4,
+      scoreB: 1,
+      completed: true,
+    });
+    expect(() =>
+      policy.evaluateSeries(
+        [...clinched, { setNumber: 6, teamAScore: 0, teamBScore: 1 }],
+        7,
+      ),
+    ).toThrow('after the series was already won');
   });
 
   it.each([

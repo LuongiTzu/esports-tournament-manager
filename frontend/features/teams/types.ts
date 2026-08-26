@@ -111,6 +111,8 @@ export interface TeamRegistrationForm {
     id: string;
     slug: string;
     name: string;
+    customGameName: string | null;
+    displayGameName: string;
     status: TournamentStatus;
     minTeamSize: number;
     maxTeamSize: number;
@@ -124,6 +126,7 @@ export interface TeamRegistrationForm {
   };
   game: {
     id: string;
+    code: string;
     name: string;
     genre: GameGenre;
     positions: string[];
@@ -152,7 +155,9 @@ export interface MyTeam extends TeamWithMembers {
     status: TournamentStatus;
     bannerUrl: string | null;
     startDate: string | null;
-    game: { id: string; name: string; iconUrl: string | null };
+    customGameName: string | null;
+    displayGameName: string;
+    game: { id: string; code: string; name: string; iconUrl: string | null };
   };
 }
 

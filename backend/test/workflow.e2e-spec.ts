@@ -127,7 +127,14 @@ describeDatabase('main tournament workflow (database E2E)', () => {
       contactName,
       contactEmail,
       contactPhone: '0900000000',
-      members: [{ realName: name, ign, email: contactEmail }],
+      members: [
+        {
+          realName: name,
+          ign,
+          email: contactEmail,
+          memberRole: 'CAPTAIN',
+        },
+      ],
     });
     await request(app.getHttpServer())
       .post(`/api/tournaments/${slug}/register`)

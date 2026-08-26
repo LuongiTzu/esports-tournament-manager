@@ -56,7 +56,7 @@ export default function AdminTournamentList({
                     )}
                   </span>
                   <span className="mt-0.5 block truncate text-xs text-ink-faint">
-                    {tournament.game.name} · {t("admin.tournaments.created")} {formatAdminDate(tournament.createdAt, locale)}
+                    {tournament.displayGameName ?? tournament.game.name} · {t("admin.tournaments.created")} {formatAdminDate(tournament.createdAt, locale)}
                   </span>
                 </span>
               </span>

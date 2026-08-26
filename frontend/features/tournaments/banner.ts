@@ -28,13 +28,16 @@ function normalizeGameName(gameName: string) {
 export function getTournamentBannerUrl(
   bannerUrl?: string | null,
   gameName?: string | null,
+  gameCode?: string | null,
 ) {
   const uploadedBanner = bannerUrl?.trim();
   if (uploadedBanner) return uploadedBanner;
 
-  const gamePoster = gameName
+  const posterByCode = gameCode ? gamePoster(gameCode) : undefined;
+  const posterByLegacyName = gameName
     ? GAME_POSTERS[normalizeGameName(gameName)]
     : undefined;
 
-  return gamePoster || DEFAULT_TOURNAMENT_BANNER_URL;
+  return posterByCode || posterByLegacyName || DEFAULT_TOURNAMENT_BANNER_URL;
 }
+import { gamePoster } from "@/features/games/game-posters";

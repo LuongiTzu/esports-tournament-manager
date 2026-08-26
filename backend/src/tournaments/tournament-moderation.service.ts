@@ -10,6 +10,7 @@ import {
   NotificationPublisher,
 } from '../common/ports/notification-publisher';
 import { PrismaService } from '../prisma/prisma.service';
+import { withTournamentGameDisplayName } from './domain/tournament-game-display';
 
 @Injectable()
 export class TournamentModerationService {
@@ -18,16 +19,17 @@ export class TournamentModerationService {
     @Inject(NOTIFICATION_PUBLISHER)
     private readonly notifications: NotificationPublisher,
   ) {}
-  list(moderationStatus?: ModerationStatus) {
-    return this.prisma.tournament.findMany({
+  async list(moderationStatus?: ModerationStatus) {
+    const tournaments = await this.prisma.tournament.findMany({
       where: { moderationStatus },
       orderBy: [{ reports: { _count: 'desc' } }, { createdAt: 'desc' }],
       include: {
         organizer: { select: { id: true, displayName: true, email: true } },
-        game: { select: { id: true, name: true } },
+        game: { select: { id: true, code: true, name: true } },
         _count: { select: { reports: true } },
       },
     });
+    return tournaments.map(withTournamentGameDisplayName);
   }
   async moderate(
     id: string,

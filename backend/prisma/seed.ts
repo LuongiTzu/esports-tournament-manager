@@ -16,7 +16,7 @@ import * as bcrypt from 'bcrypt';
 import { AppModule } from '../src/app.module';
 import { BracketOperationsService } from '../src/brackets/bracket-operations.service';
 import { SwissService } from '../src/brackets/swiss.service';
-import { GAME_CATALOG } from '../src/games/game-catalog';
+import { syncGameCatalog } from '../src/games/sync-game-catalog';
 import { MatchesService } from '../src/matches/matches.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { seedCompetition } from './seed/competition';
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
   try {
     const prisma = app.get(PrismaService);
     await cleanOwnedSeedData(prisma);
-    await seedGames(prisma);
+    await syncGameCatalog(prisma);
     await seedUsers(prisma);
     await seedBannedKeywords(prisma);
 
@@ -64,12 +64,9 @@ async function main(): Promise<void> {
     >();
 
     for (const [index, tournament] of SEED_TOURNAMENTS.entries()) {
-      const catalogGame = GAME_CATALOG.find(
-        (entry) => entry.name === tournament.game,
-      );
-      const game = catalogGame ? games.get(catalogGame.code) : undefined;
+      const game = games.get(tournament.gameCode);
       if (!game)
-        throw new Error(`Approved game is missing: ${tournament.game}`);
+        throw new Error(`Approved game is missing: ${tournament.gameCode}`);
       roundsByTournament.set(
         tournament.id,
         await seedTournament(prisma, tournament, game, index),
@@ -131,28 +128,6 @@ async function cleanOwnedSeedData(prisma: PrismaService): Promise<void> {
   });
 }
 
-async function seedGames(prisma: PrismaService): Promise<void> {
-  for (const game of GAME_CATALOG) {
-    await prisma.game.upsert({
-      where: { code: game.code },
-      update: {
-        name: game.name,
-        genre: game.genre,
-        positions: game.positions,
-        positionMode: game.positionMode,
-        teamSizeMode: game.teamSizeMode,
-        defaultTeamSize: game.defaultTeamSize,
-        minTeamSize: game.minTeamSize,
-        maxTeamSize: game.maxTeamSize,
-        allowedTeamSizes: game.allowedTeamSizes,
-        minSelectableTeamSize: game.minSelectableTeamSize,
-        maxSelectableTeamSize: game.maxSelectableTeamSize,
-      },
-      create: game,
-    });
-  }
-}
-
 async function seedUsers(prisma: PrismaService): Promise<void> {
   const passwordHash = await bcrypt.hash(DEVELOPMENT_PASSWORD, BCRYPT_ROUNDS);
   for (const user of SEED_USERS) {
@@ -207,12 +182,14 @@ async function seedTournament(
   tournamentIndex: number,
 ) {
   const organizer = ORGANIZERS[spec.organizerIndex];
+  const activeTeamSize = spec.teamSize ?? game.defaultTeamSize;
   const tournament = await prisma.tournament.create({
     data: {
       id: spec.id,
       name: spec.name,
       slug: spec.slug,
       description: spec.description,
+      customGameName: spec.customGameName,
       rules:
         'Respect scheduled match times, use registered rosters, and follow organizer rulings.',
       bannerUrl: null,
@@ -229,7 +206,7 @@ async function seedTournament(
       status: spec.status,
       mode: spec.mode,
       location: spec.location,
-      minTeamSize: game.defaultTeamSize,
+      minTeamSize: activeTeamSize,
       maxTeamSize: spec.maxTeamSize,
       minAge: 16,
       maxAge: 35,
@@ -261,6 +238,7 @@ async function seedTournament(
       game,
       tournamentIndex,
       teamIndex,
+      activeTeamSize,
     );
   }
 
@@ -322,6 +300,7 @@ async function seedTeam(
   game: Game,
   tournamentIndex: number,
   teamIndex: number,
+  activeTeamSize: number,
 ): Promise<void> {
   const status = teamRegistrationStatus(tournament, teamIndex);
   const captain =
@@ -332,9 +311,9 @@ async function seedTeam(
       (tournamentIndex + teamIndex * 2) % TEAM_NAME_SUFFIXES.length
     ];
   const teamName = `${prefix} ${suffix}`;
-  const capacity = tournament.maxTeamSize - game.defaultTeamSize;
+  const capacity = tournament.maxTeamSize - activeTeamSize;
   const playerCount =
-    game.defaultTeamSize + (capacity === 0 ? 0 : teamIndex % (capacity + 1));
+    activeTeamSize + (capacity === 0 ? 0 : teamIndex % (capacity + 1));
   const registeredAt = new Date(
     new Date(tournament.registrationStartDate).getTime() +
       (teamIndex + 1) * 12 * 60 * 60 * 1000,
@@ -369,6 +348,7 @@ async function seedTeam(
           teamIndex,
           teamName,
           playerCount,
+          activeTeamSize,
           game,
           captain,
           includeCoach:
@@ -386,6 +366,7 @@ function buildMembers(input: {
   teamIndex: number;
   teamName: string;
   playerCount: number;
+  activeTeamSize: number;
   game: Game;
   captain: (typeof PARTICIPANTS)[number];
   includeCoach: boolean;
@@ -428,7 +409,7 @@ function buildMembers(input: {
       memberRole:
         memberIndex === 0
           ? MemberRole.CAPTAIN
-          : memberIndex < input.game.defaultTeamSize
+          : memberIndex < input.activeTeamSize
             ? MemberRole.PLAYER
             : MemberRole.SUBSTITUTE,
       avatarUrl: null,

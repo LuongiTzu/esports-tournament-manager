@@ -63,7 +63,9 @@ export interface SeedTournamentSpec {
   id: string;
   name: string;
   slug: string;
-  game: string;
+  gameCode: string;
+  teamSize?: number;
+  customGameName?: string;
   organizerIndex: number;
   description: string;
   status: TournamentStatus;
@@ -171,7 +173,7 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
     id: 'seed-tournament-01',
     name: 'Celestial Vanguard Championship',
     slug: `${SEED_SLUG_PREFIX}celestial-vanguard`,
-    game: 'Liên Quân Mobile',
+    gameCode: 'LIEN_QUAN_MOBILE',
     organizerIndex: 0,
     description:
       'A completed mobile MOBA championship with balanced groups and a four-team playoff.',
@@ -210,7 +212,7 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
     id: 'seed-tournament-02',
     name: 'Neon Rift League',
     slug: `${SEED_SLUG_PREFIX}neon-rift-league`,
-    game: 'League of Legends',
+    gameCode: 'LEAGUE_OF_LEGENDS',
     organizerIndex: 1,
     description:
       'A two-leg league season with custom scoring and live standings.',
@@ -243,7 +245,7 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
     id: 'seed-tournament-03',
     name: 'Radiant Protocol Invitational',
     slug: `${SEED_SLUG_PREFIX}radiant-protocol`,
-    game: 'Valorant',
+    gameCode: 'VALORANT',
     organizerIndex: 2,
     description:
       'Three Swiss pairing rounds followed by a decisive four-team final bracket.',
@@ -282,7 +284,7 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
     id: 'seed-tournament-04',
     name: 'Iron Circuit Open',
     slug: `${SEED_SLUG_PREFIX}iron-circuit-open`,
-    game: 'Counter-Strike 2',
+    gameCode: 'COUNTER_STRIKE_2',
     organizerIndex: 3,
     description:
       'A live double-elimination open featuring seeded byes and loser-bracket routing.',
@@ -315,7 +317,7 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
     id: 'seed-tournament-05',
     name: 'Ancient Nexus Draft Cup',
     slug: `${SEED_SLUG_PREFIX}ancient-nexus-draft`,
-    game: 'Dota 2',
+    gameCode: 'DOTA_2',
     organizerIndex: 4,
     description:
       'A private organizer draft prepared for a future single-elimination cup.',
@@ -347,7 +349,7 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
     id: 'seed-tournament-06',
     name: 'Skyline Trios Championship',
     slug: `${SEED_SLUG_PREFIX}skyline-trios`,
-    game: 'Rocket League',
+    gameCode: 'ROCKET_LEAGUE',
     organizerIndex: 5,
     description:
       'A six-team single-elimination championship demonstrating deterministic first-round byes.',
@@ -379,7 +381,7 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
     id: 'seed-tournament-07',
     name: 'Crimson Fist Masters',
     slug: `${SEED_SLUG_PREFIX}crimson-fist-masters`,
-    game: 'Tekken 8',
+    gameCode: 'TEKKEN_8',
     organizerIndex: 6,
     description:
       'An eight-player double-elimination fighting game final without a bracket reset.',
@@ -411,7 +413,7 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
     id: 'seed-tournament-08',
     name: 'Metro Clash League',
     slug: `${SEED_SLUG_PREFIX}metro-clash-league`,
-    game: 'Street Fighter 6',
+    gameCode: 'STREET_FIGHTER_6',
     organizerIndex: 7,
     description:
       'A completed round-robin league where configured draws contribute to standings.',
@@ -441,9 +443,9 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
   },
   {
     id: 'seed-tournament-09',
-    name: 'Stormgate Swiss Series',
-    slug: `${SEED_SLUG_PREFIX}stormgate-swiss`,
-    game: 'Liên Quân Mobile',
+    name: 'Mobile Legends Swiss Series',
+    slug: `${SEED_SLUG_PREFIX}mobile-legends-swiss`,
+    gameCode: 'MLBB',
     organizerIndex: 0,
     description:
       'An active four-round Swiss series with record-influenced pairings and no draws.',
@@ -474,9 +476,9 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
   },
   {
     id: 'seed-tournament-10',
-    name: 'Arcane Groups Cup',
-    slug: `${SEED_SLUG_PREFIX}arcane-groups`,
-    game: 'League of Legends',
+    name: 'Honor of Kings Groups Cup',
+    slug: `${SEED_SLUG_PREFIX}honor-of-kings-groups`,
+    gameCode: 'HONOR_OF_KINGS',
     organizerIndex: 1,
     description:
       'An ongoing equal-sized group stage with partially reported match results.',
@@ -507,9 +509,9 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
   },
   {
     id: 'seed-tournament-11',
-    name: 'Prism Strike Rookie Cup',
-    slug: `${SEED_SLUG_PREFIX}prism-strike-rookie`,
-    game: 'Valorant',
+    name: 'Wild Rift Rookie Cup',
+    slug: `${SEED_SLUG_PREFIX}wild-rift-rookie`,
+    gameCode: 'WILD_RIFT',
     organizerIndex: 2,
     description:
       'An open registration cup with approved, pending, and rejected team applications.',
@@ -539,18 +541,19 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
   },
   {
     id: 'seed-tournament-12',
-    name: 'Midnight Tactical League',
-    slug: `${SEED_SLUG_PREFIX}midnight-tactical`,
-    game: 'Counter-Strike 2',
+    name: 'FC Online Solo League',
+    slug: `${SEED_SLUG_PREFIX}fc-online-solo`,
+    gameCode: 'FC_ONLINE',
+    teamSize: 1,
     organizerIndex: 3,
     description:
-      'A completed double round-robin tactical league with configurable draw scoring.',
+      'A completed FC Online individual league using ordinary one-player Team records.',
     status: TournamentStatus.COMPLETED,
     visibility: Visibility.PUBLIC,
     mode: TournamentMode.ONLINE,
     location: null,
     maxTeams: 4,
-    maxTeamSize: 7,
+    maxTeamSize: 1,
     approvedTeams: 4,
     pendingTeams: 0,
     rejectedTeams: 0,
@@ -571,18 +574,19 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
   },
   {
     id: 'seed-tournament-13',
-    name: 'Aegis Forge Double Crown',
-    slug: `${SEED_SLUG_PREFIX}aegis-forge`,
-    game: 'Dota 2',
+    name: 'FC Online Team Double Crown',
+    slug: `${SEED_SLUG_PREFIX}fc-online-team`,
+    gameCode: 'FC_ONLINE',
+    teamSize: 3,
     organizerIndex: 4,
     description:
-      'A completed four-team double-elimination event with an activated Grand Final Reset.',
+      'A completed FC Online three-player team event using generic series results.',
     status: TournamentStatus.COMPLETED,
     visibility: Visibility.PUBLIC,
     mode: TournamentMode.HYBRID,
     location: 'Vertex Production House, Ho Chi Minh City',
     maxTeams: 4,
-    maxTeamSize: 7,
+    maxTeamSize: 4,
     approvedTeams: 4,
     pendingTeams: 0,
     rejectedTeams: 0,
@@ -604,18 +608,18 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
   },
   {
     id: 'seed-tournament-14',
-    name: 'Aerial Pulse Championship',
-    slug: `${SEED_SLUG_PREFIX}aerial-pulse`,
-    game: 'Rocket League',
+    name: 'CrossFire Tactical Championship',
+    slug: `${SEED_SLUG_PREFIX}crossfire-tactical`,
+    gameCode: 'CROSSFIRE_PC',
     organizerIndex: 5,
     description:
-      'Equal-sized groups have concluded and the four-team playoff is underway.',
+      'A CrossFire event demonstrating optional and repeatable tactical positions.',
     status: TournamentStatus.ONGOING,
     visibility: Visibility.PUBLIC,
     mode: TournamentMode.OFFLINE,
     location: 'Ember Dome, Da Nang',
     maxTeams: 10,
-    maxTeamSize: 3,
+    maxTeamSize: 6,
     approvedTeams: 8,
     pendingTeams: 1,
     rejectedTeams: 0,
@@ -644,18 +648,18 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
   },
   {
     id: 'seed-tournament-15',
-    name: 'Electric Dojo Open',
-    slug: `${SEED_SLUG_PREFIX}electric-dojo`,
-    game: 'Tekken 8',
+    name: 'Pokémon UNITE Open',
+    slug: `${SEED_SLUG_PREFIX}pokemon-unite-open`,
+    gameCode: 'POKEMON_UNITE',
     organizerIndex: 6,
     description:
-      'A seven-player completed bracket with seeded byes and a third-place match.',
+      'A seven-team completed bracket with no persistent player-position requirement.',
     status: TournamentStatus.COMPLETED,
     visibility: Visibility.PUBLIC,
     mode: TournamentMode.OFFLINE,
     location: 'Harbor Arcade Hall, Hai Phong',
     maxTeams: 8,
-    maxTeamSize: 1,
+    maxTeamSize: 6,
     approvedTeams: 7,
     pendingTeams: 0,
     rejectedTeams: 0,
@@ -676,9 +680,11 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
   },
   {
     id: 'seed-tournament-16',
-    name: 'Street Pulse Swiss Lab',
-    slug: `${SEED_SLUG_PREFIX}street-pulse-swiss`,
-    game: 'Street Fighter 6',
+    name: 'Chess Swiss Lab',
+    slug: `${SEED_SLUG_PREFIX}chess-swiss`,
+    gameCode: 'CUSTOM',
+    teamSize: 1,
+    customGameName: 'Chess',
     organizerIndex: 7,
     description:
       'An odd-player Swiss event demonstrating deterministic bye allocation.',
@@ -711,7 +717,7 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
     id: 'seed-tournament-17',
     name: 'Lotus Mobile Academy',
     slug: `${SEED_SLUG_PREFIX}lotus-mobile-academy`,
-    game: 'Liên Quân Mobile',
+    gameCode: 'LIEN_QUAN_MOBILE',
     organizerIndex: 0,
     description:
       'A private draft configured for an equal-sized academy group stage.',
@@ -741,9 +747,11 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
   },
   {
     id: 'seed-tournament-18',
-    name: 'Shattered Nexus Showcase',
-    slug: `${SEED_SLUG_PREFIX}shattered-nexus`,
-    game: 'League of Legends',
+    name: 'Custom Arena Showcase',
+    slug: `${SEED_SLUG_PREFIX}custom-arena`,
+    gameCode: 'CUSTOM',
+    teamSize: 5,
+    customGameName: 'Custom Arena',
     organizerIndex: 1,
     description:
       'A cancelled showcase retained to exercise lifecycle and rejected registration views.',
@@ -775,7 +783,7 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
     id: 'seed-tournament-19',
     name: 'Valorant Campus Qualifier',
     slug: `${SEED_SLUG_PREFIX}valorant-campus`,
-    game: 'Valorant',
+    gameCode: 'VALORANT',
     organizerIndex: 2,
     description:
       'A private campus qualifier accepting registrations for a three-round Swiss stage.',
@@ -807,7 +815,7 @@ export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
     id: 'seed-tournament-20',
     name: 'Counter Core Invitational',
     slug: `${SEED_SLUG_PREFIX}counter-core`,
-    game: 'Counter-Strike 2',
+    gameCode: 'COUNTER_STRIKE_2',
     organizerIndex: 3,
     description:
       'A private hybrid invitational taking applications for two equal groups.',

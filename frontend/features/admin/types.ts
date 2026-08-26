@@ -82,9 +82,11 @@ export interface AdminTournament {
   createdAt: string;
   updatedAt: string;
   gameId: string;
+  customGameName: string | null;
+  displayGameName: string;
   organizerId: string;
   organizer: { id: string; displayName: string; email: string };
-  game: { id: string; name: string };
+  game: { id: string; code: string; name: string };
   _count: { reports: number };
 }
 

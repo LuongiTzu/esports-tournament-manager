@@ -246,6 +246,7 @@ model Tournament {
   name             String
   slug             String           @unique /// Dùng cho link chia sẻ
   description      String?
+  customGameName   String?          @map("custom_game_name")
   rules            String? /// Thể lệ giải đấu
   bannerUrl        String?          @map("banner_url")
   visibility       Visibility       @default(PUBLIC)

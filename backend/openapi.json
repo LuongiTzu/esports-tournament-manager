@@ -2056,11 +2056,35 @@
       },
       "CreateTournamentDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "teamSize": {
+            "type": "number",
+            "description": "Số người thi đấu chính mỗi bên; backend kiểm tra theo metadata của Game",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "customGameName": {
+            "type": "string",
+            "description": "Tên game do organizer đặt khi chọn canonical game CUSTOM",
+            "maxLength": 100
+          }
+        }
       },
       "UpdateTournamentDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "teamSize": {
+            "type": "number",
+            "description": "Số người thi đấu chính mỗi bên; backend kiểm tra theo metadata của Game",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "customGameName": {
+            "type": "string",
+            "description": "Tên game do organizer đặt khi chọn canonical game CUSTOM",
+            "maxLength": 100
+          }
+        }
       },
       "CreateRoundDto": {
         "type": "object",

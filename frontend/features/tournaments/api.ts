@@ -9,8 +9,10 @@ import type {
   Tournament,
   TournamentBracket,
   TournamentDetail,
+  TournamentMutationResult,
   TournamentStandingsResponse,
   UpdateTournamentLifecycleRequest,
+  UpdateTournamentRequest,
 } from "@/features/tournaments/types";
 import { request } from "@/lib/api/client";
 import { uploadImage } from "@/lib/api/upload";
@@ -33,6 +35,12 @@ export const tournamentsApi = {
   create: (data: CreateTournamentRequest) =>
     request<Tournament>("/tournaments", {
       method: "POST",
+      body: JSON.stringify(data),
+      auth: true,
+    }),
+  update: (tournamentId: string, data: UpdateTournamentRequest) =>
+    request<TournamentMutationResult>(`/tournaments/${tournamentId}`, {
+      method: "PATCH",
       body: JSON.stringify(data),
       auth: true,
     }),

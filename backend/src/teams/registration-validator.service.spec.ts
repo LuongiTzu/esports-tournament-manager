@@ -11,7 +11,6 @@ function rules(overrides: Partial<RegistrationRules> = {}): RegistrationRules {
     tournamentId: 't-1',
     minTeamSize: 1,
     maxTeamSize: 1,
-    maxSubstitutes: 0,
     minAge: null,
     maxAge: null,
     allowedGenders: null,
@@ -37,7 +36,7 @@ describe('RegistrationValidatorService', () => {
   } as unknown as PrismaService;
   const service = new RegistrationValidatorService(prisma);
 
-  it('builds rules from the tournament snapshot and derives substitutes', () => {
+  it('builds rules from tournament snapshots and normalized game positions', () => {
     expect(
       service.buildRules({
         id: 't-1',
@@ -57,7 +56,6 @@ describe('RegistrationValidatorService', () => {
       expect.objectContaining({
         minTeamSize: 1,
         maxTeamSize: 2,
-        maxSubstitutes: 1,
         allowedGenders: [Gender.MALE],
         positions: ['MID'],
         positionMode: GamePositionMode.FIXED,
@@ -72,7 +70,6 @@ describe('RegistrationValidatorService', () => {
           tournamentId: 't-1',
           minTeamSize: 1,
           maxTeamSize: 2,
-          maxSubstitutes: 1,
           minAge: null,
           maxAge: null,
           allowedGenders: null,
@@ -100,7 +97,6 @@ describe('RegistrationValidatorService', () => {
           tournamentId: 't-1',
           minTeamSize: 2,
           maxTeamSize: 5,
-          maxSubstitutes: 0,
           minAge: null,
           maxAge: null,
           allowedGenders: null,
@@ -121,23 +117,36 @@ describe('RegistrationValidatorService', () => {
     });
   });
 
-  it.each([5, 6, 7])('accepts %i players for a 5-7 roster', async (count) => {
+  it('accepts exactly five active players plus up to two substitutes', async () => {
+    const members = [
+      ...players(5),
+      {
+        realName: 'Substitute 1',
+        ign: 'substitute-1',
+        memberRole: MemberRole.SUBSTITUTE,
+      },
+      {
+        realName: 'Substitute 2',
+        ign: 'substitute-2',
+        memberRole: MemberRole.SUBSTITUTE,
+      },
+    ];
     await expect(
-      service.validate(
-        rules({ minTeamSize: 5, maxTeamSize: 7, maxSubstitutes: 2 }),
-        players(count),
-      ),
+      service.validate(rules({ minTeamSize: 5, maxTeamSize: 7 }), members),
     ).resolves.toEqual({ captainIndex: 0 });
   });
 
-  it.each([4, 8])('rejects %i players for a 5-7 roster', async (count) => {
-    await expect(
-      service.validate(
-        rules({ minTeamSize: 5, maxTeamSize: 7, maxSubstitutes: 2 }),
-        players(count),
-      ),
-    ).rejects.toMatchObject({ status: 422 });
-  });
+  it.each([4, 6, 8])(
+    'rejects %i active players for a 5-7 roster',
+    async (count) => {
+      await expect(
+        service.validate(
+          rules({ minTeamSize: 5, maxTeamSize: 7 }),
+          players(count),
+        ),
+      ).rejects.toMatchObject({ status: 422 });
+    },
+  );
 
   it('does not count coach or manager records as player roster slots', async () => {
     const members = [
@@ -168,24 +177,33 @@ describe('RegistrationValidatorService', () => {
 
   it('requires an allowed position for FIXED games with full info', async () => {
     const fixedRules = rules({
+      minTeamSize: 2,
+      maxTeamSize: 2,
       requireMemberFullInfo: true,
       positions: ['TOP', 'JUNGLE'],
       positionMode: GamePositionMode.FIXED,
     });
-    const fullMember = {
-      ...players(1)[0],
+    const fullMembers = players(2).map((player, index) => ({
+      ...player,
       birthDate: '2000-01-01',
       gender: Gender.OTHER,
-    };
+      position: index === 0 ? 'TOP' : 'JUNGLE',
+    }));
 
+    await expect(service.validate(fixedRules, fullMembers)).resolves.toEqual({
+      captainIndex: 0,
+    });
     await expect(
-      service.validate(fixedRules, [{ ...fullMember, position: 'JUNGLE' }]),
-    ).resolves.toEqual({ captainIndex: 0 });
-    await expect(
-      service.validate(fixedRules, [fullMember]),
+      service.validate(fixedRules, [
+        { ...fullMembers[0], position: undefined },
+        fullMembers[1],
+      ]),
     ).rejects.toMatchObject({ status: 422 });
     await expect(
-      service.validate(fixedRules, [{ ...fullMember, position: 'UNKNOWN' }]),
+      service.validate(fixedRules, [
+        { ...fullMembers[0], position: 'UNKNOWN' },
+        fullMembers[1],
+      ]),
     ).rejects.toMatchObject({ status: 422 });
   });
 

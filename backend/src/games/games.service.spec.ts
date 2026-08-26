@@ -228,6 +228,15 @@ describe('GamesService', () => {
     expect(prisma.game.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { code: { in: GAME_CATALOG_CODES } },
+        orderBy: { name: 'asc' },
+        select: expect.objectContaining({
+          code: true,
+          positionMode: true,
+          teamSizeMode: true,
+          allowedTeamSizes: true,
+          minSelectableTeamSize: true,
+          maxSelectableTeamSize: true,
+        }),
       }),
     );
   });
