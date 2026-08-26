@@ -20,6 +20,15 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface UpdateProfileRequest {
+  displayName?: string;
+  birthDate?: string;
+  currentAddress?: string;
+  phoneNumber?: string;
+  gender?: Gender;
+  bio?: string;
+}
+
 export interface RegisterAccountRequest {
   email: string;
   password: string;

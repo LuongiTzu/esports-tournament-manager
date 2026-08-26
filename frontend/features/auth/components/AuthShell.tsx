@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import { useLocale } from "@/features/locale/store";
 
 /** Khung 2 cột cho trang đăng nhập / đăng ký — tránh bố cục card căn giữa mặc định */
@@ -64,7 +64,13 @@ export default function AuthShell({
           href="/"
           className="inline-flex items-center gap-2 text-sm font-semibold text-brand"
         >
-          <TrophyIcon size={20} weight="duotone" />
+          <Image
+            src="/images/global/logo-web-cut-background.png"
+            alt=""
+            width={1280}
+            height={1280}
+            className="size-5 object-contain"
+          />
           Esports Hub
         </Link>
         <h2 className="mt-6 text-4xl font-bold tracking-tight text-ink">

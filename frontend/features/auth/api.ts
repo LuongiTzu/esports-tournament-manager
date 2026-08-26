@@ -2,6 +2,7 @@ import type {
   LoginRequest,
   LoginResponse,
   RegisterAccountRequest,
+  UpdateProfileRequest,
   User,
 } from "@/features/auth/types";
 import { request } from "@/lib/api/client";
@@ -24,5 +25,11 @@ export const authApi = {
       auth: true,
     }),
   getMe: () => request<User>("/users/me", { auth: true }),
+  updateProfile: (data: UpdateProfileRequest) =>
+    request<User>("/users/me", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+      auth: true,
+    }),
   uploadAvatar: (file: File) => uploadImage("/users/me/avatar", file),
 };

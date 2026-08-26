@@ -27,13 +27,13 @@ const themeBootstrapScript = `
 })();`;
 
 export const metadata: Metadata = {
-  title: "Esports Hub — Quản lý giải đấu thể thao điện tử",
+  title: "ArenaVerse — Quản lý giải đấu thể thao điện tử",
   description:
     "Nền tảng tổ chức và quản lý giải đấu thể thao điện tử: Tạo giải, đăng ký đội, theo dõi kết quả.",
   icons: {
-    icon: [{ url: "/images/global/arenaverse-logo.png", type: "image/png" }],
-    shortcut: "/images/global/arenaverse-logo.png",
-    apple: "/images/global/arenaverse-logo.png",
+    icon: [{ url: "/images/global/logo-web-cut-background.png", type: "image/png" }],
+    shortcut: "/images/global/logo-web-cut-background.png",
+    apple: "/images/global/logo-web-cut-background.png",
   },
 };
 

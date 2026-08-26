@@ -1,7 +1,7 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { TrophyIcon } from "@phosphor-icons/react";
 import { useLocale } from "@/features/locale/store";
 
 export default function Footer() {
@@ -11,6 +11,11 @@ export default function Footer() {
     { href: "/tournaments", label: t("footer.discover") },
     { href: "/#formats", label: t("footer.formats") },
   ];
+  const legalLinks = [
+    { href: "/terms", label: t("footer.terms") },
+    { href: "/privacy", label: t("footer.privacy") },
+    { href: "/personal-data-policy", label: t("footer.personalData") },
+  ];
 
   return (
     <footer className="relative border-t border-line bg-surface-card/75">
@@ -18,8 +23,14 @@ export default function Footer() {
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr] lg:px-8">
         <div className="max-w-md">
           <Link href="/" className="inline-flex items-center gap-2.5 font-bold text-ink">
-            <span className="grid size-9 place-items-center rounded-lg bg-gradient-brand text-on-brand shadow-md shadow-brand/20">
-              <TrophyIcon size={21} weight="duotone" />
+            <span className="relative grid size-9 place-items-center overflow-hidden rounded-lg shadow-md shadow-brand/20">
+              <Image
+                src="/images/global/logo-web-cut-background.png"
+                alt=""
+                width={1280}
+                height={1280}
+                className="size-full object-contain"
+              />
             </span>
             Esports Tournament Manager
           </Link>
@@ -46,9 +57,25 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-line">
-        <p className="mx-auto max-w-7xl px-4 py-5 text-xs text-ink-faint sm:px-6 lg:px-8">
-          © {new Date().getFullYear()} Esports Tournament Manager. {t("footer.copyright")}
-        </p>
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 text-xs text-ink-faint sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <p>
+            © {new Date().getFullYear()} Esports Tournament Manager. {t("footer.copyright")}
+          </p>
+          <nav
+            aria-label={t("footer.legal")}
+            className="flex flex-wrap items-center gap-x-4 gap-y-2"
+          >
+            {legalLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="transition hover:text-brand"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
       </div>
     </footer>
   );

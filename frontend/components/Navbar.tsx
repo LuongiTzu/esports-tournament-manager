@@ -116,12 +116,12 @@ export default function Navbar() {
         >
           <span className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg shadow-md shadow-brand/20 transition group-hover:shadow-glow-brand">
             <Image
-              src="/images/global/arenaverse-logo.png"
+              src="/images/global/logo-web-cut-background.png"
               alt=""
-              width={1254}
-              height={1254}
+              width={1280}
+              height={1280}
               priority
-              className="size-full object-cover"
+              className="size-full object-contain"
             />
           </span>
           <span aria-hidden className="text-sm tracking-wide sm:text-base">
@@ -166,7 +166,7 @@ export default function Navbar() {
             ) : user ? (
               <>
                 <Link
-                  href="/users/me"
+                  href="/profile"
                   className="ml-1 inline-flex max-w-40 items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-ink-muted transition hover:bg-surface-hover hover:text-ink"
                 >
                   <span className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xs font-bold text-on-brand">
@@ -268,7 +268,7 @@ export default function Navbar() {
             {ready && user ? (
               <>
                 <Link
-                  href="/users/me"
+                  href="/profile"
                   onClick={closeMenu}
                   className="inline-flex items-center gap-2 truncate px-3 py-2 text-sm text-ink-muted"
                 >
