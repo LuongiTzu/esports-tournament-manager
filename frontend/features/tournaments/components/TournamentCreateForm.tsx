@@ -1763,7 +1763,7 @@ export default function TournamentCreateForm() {
               <button
                 type="submit"
                 disabled={loading || !ready || !user}
-                className="inline-flex items-center justify-center rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-on-brand shadow-lg shadow-brand/15 transition hover:brightness-110 hover:shadow-glow-brand active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-on-brand shadow-lg shadow-brand/15 transition hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? t("tournament.create.submitting") : t("tournament.create.submit")}
               </button>

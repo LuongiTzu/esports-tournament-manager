@@ -61,6 +61,9 @@ const vi = {
   "home.hero.badge": "Vận hành giải đấu trong một không gian tập trung",
   "home.hero.title": "Nơi mọi trận đấu được",
   "home.hero.highlight": "vận hành rõ ràng.",
+  "home.hero.highlightFair": "thi đấu công bằng.",
+  "home.hero.highlightLive": "theo dõi tức thời.",
+  "home.hero.highlightGlory": "ghi dấu huy hoàng.",
   "home.hero.description":
     "Tạo giải, tiếp nhận đội đăng ký, thiết lập nhiều vòng đấu và theo dõi hành trình vô địch trên một nền tảng dành cho esports.",
   "home.hero.create": "Tạo giải đấu",

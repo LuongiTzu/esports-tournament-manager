@@ -1,0 +1,142 @@
+.root {
+  --poster-filter: grayscale(0.16) brightness(0.82) saturate(0.82) contrast(0.96);
+  --poster-opacity: 0.54;
+  --poster-mobile-opacity: 0.44;
+  --poster-veil:
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--color-surface) 88%, transparent) 0%,
+      color-mix(in oklab, var(--color-surface) 76%, transparent) 42%,
+      color-mix(in oklab, var(--color-surface) 66%, transparent) 72%,
+      color-mix(in oklab, var(--color-surface) 74%, transparent) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-surface) 54%, transparent),
+      color-mix(in oklab, var(--color-surface) 34%, transparent) 44%,
+      var(--color-surface) 100%
+    ),
+    radial-gradient(
+      circle at 68% 46%,
+      color-mix(in oklab, var(--color-brand) 12%, transparent),
+      transparent 34rem
+    );
+  position: absolute;
+  inset: 0;
+  z-index: -20;
+  overflow: hidden;
+  background: var(--color-surface);
+  pointer-events: none;
+}
+
+.grid {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  width: 140vw;
+  height: 145%;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  transform: translate(-50%, -50%) rotate(-9deg);
+  transform-origin: center;
+}
+
+.row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1rem;
+  will-change: transform;
+}
+
+.poster {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: var(--color-surface-sub);
+}
+
+.image {
+  object-fit: cover;
+  filter: var(--poster-filter);
+  opacity: var(--poster-opacity);
+  transform: scale(1.015);
+}
+
+.veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: var(--poster-veil);
+}
+
+:global(html[data-theme="dark"]) .root {
+  --poster-filter: grayscale(0.5) brightness(0.52) saturate(0.72) contrast(1.06);
+  --poster-opacity: 0.76;
+  --poster-mobile-opacity: 0.62;
+  --poster-veil:
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--color-surface) 86%, transparent) 0%,
+      color-mix(in oklab, var(--color-surface) 73%, transparent) 42%,
+      color-mix(in oklab, var(--color-surface) 58%, transparent) 72%,
+      color-mix(in oklab, var(--color-surface) 68%, transparent) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-surface) 46%, transparent),
+      color-mix(in oklab, var(--color-surface) 25%, transparent) 44%,
+      var(--color-surface) 100%
+    ),
+    radial-gradient(
+      circle at 68% 46%,
+      color-mix(in oklab, var(--color-brand) 15%, transparent),
+      transparent 34rem
+    );
+}
+
+@media (max-width: 1023px) {
+  .grid {
+    width: 165vw;
+    height: 135%;
+    gap: 0.75rem;
+    transform: translate(-50%, -50%) rotate(-7deg);
+  }
+
+  .row {
+    gap: 0.75rem;
+  }
+
+  .veil {
+    background: var(--poster-veil);
+  }
+}
+
+@media (max-width: 639px) {
+  .grid {
+    width: 220vw;
+    height: 125%;
+    gap: 0.625rem;
+    transform: translate(-50%, -50%) rotate(-5deg);
+  }
+
+  .row {
+    gap: 0.625rem;
+  }
+
+  .poster {
+    border-radius: 0.5rem;
+  }
+
+  .image {
+    opacity: var(--poster-mobile-opacity);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    will-change: auto;
+  }
+}

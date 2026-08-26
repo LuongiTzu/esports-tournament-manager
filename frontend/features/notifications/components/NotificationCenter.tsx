@@ -225,11 +225,11 @@ function AuthenticatedNotificationCenter() {
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((value) => !value)}
-        className="relative grid size-10 place-items-center rounded-lg border border-line bg-surface/55 text-ink-muted transition hover:border-brand/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="relative grid size-10 place-items-center rounded-xl text-ink/70 transition hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <BellIcon size={20} weight={unreadCount ? "fill" : "regular"} />
         {unreadCount !== null && unreadCount > 0 && (
-          <span className="absolute -right-1.5 -top-1.5 min-w-5 rounded-full border-2 border-surface bg-rejected px-1 text-center text-[10px] font-bold leading-4 text-on-brand">
+          <span className="absolute right-0 top-0 min-w-4 rounded-full bg-rejected px-1 text-center text-[9px] font-bold leading-4 text-on-brand">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -239,7 +239,7 @@ function AuthenticatedNotificationCenter() {
         <section
           role="dialog"
           aria-label={t("notifications.title")}
-          className="fixed inset-x-4 top-20 z-[70] max-h-[min(70vh,38rem)] overflow-hidden rounded-2xl border border-line bg-surface-elevated shadow-[var(--shadow-elevated)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-96"
+          className="fixed inset-x-4 top-16 z-[70] max-h-[min(70vh,38rem)] overflow-hidden rounded-2xl border border-line bg-surface-elevated shadow-[var(--shadow-elevated)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-96"
         >
           <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
             <div>

@@ -1,0 +1,49 @@
+.root {
+  display: inline-flex;
+  flex-wrap: wrap;
+  position: relative;
+  white-space: pre-wrap;
+}
+
+.screenReaderText {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.animatedText {
+  display: inline-flex;
+  flex-wrap: wrap;
+}
+
+.word {
+  display: inline-flex;
+  overflow: hidden;
+  margin-block: -0.22em -0.12em;
+  padding-block: 0.22em 0.12em;
+}
+
+.character {
+  display: inline-block;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+.space {
+  white-space: pre;
+}
+
+@media (min-width: 640px) {
+  .noWrap,
+  .noWrap .animatedText {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+}

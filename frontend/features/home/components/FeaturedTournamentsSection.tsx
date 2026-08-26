@@ -104,7 +104,7 @@ export default function FeaturedTournamentsSection() {
         <div className="mt-9 flex justify-center">
           <Link
             href="/tournaments"
-            className="inline-flex items-center gap-2 rounded-lg border border-brand/35 bg-brand/10 px-5 py-2.5 text-sm font-semibold text-brand-hover transition hover:border-brand/60 hover:bg-brand/15 hover:shadow-glow-brand"
+            className="inline-flex items-center gap-2 rounded-lg border border-brand/35 bg-brand/10 px-5 py-2.5 text-sm font-semibold text-brand-hover transition hover:border-brand/60 hover:bg-brand/15"
           >
             {t("home.featured.viewAll")}
             <ArrowRightIcon aria-hidden size={17} weight="bold" />

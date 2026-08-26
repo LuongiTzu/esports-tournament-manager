@@ -1,27 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, type ComponentType } from "react";
-import { CheckIcon, DesktopIcon, MoonIcon, SunIcon } from "@phosphor-icons/react";
-import { useLocale, type TranslationKey } from "@/features/locale/store";
+import { useEffect, useRef, useState } from "react";
+import { CheckIcon } from "@phosphor-icons/react";
+import { useLocale } from "@/features/locale/store";
+import { THEME_OPTIONS } from "@/features/theme/options";
 import { useTheme } from "@/features/theme/store";
-import type { ThemeMode } from "@/features/theme/types";
 
-const OPTIONS: Array<{
-  mode: ThemeMode;
-  label: TranslationKey;
-  icon: ComponentType<{ size?: number; weight?: "bold" | "fill" }>;
-}> = [
-  { mode: "light", label: "theme.light", icon: SunIcon },
-  { mode: "dark", label: "theme.dark", icon: MoonIcon },
-  { mode: "system", label: "theme.system", icon: DesktopIcon },
-];
-
-export default function ThemeSwitcher() {
+export default function ThemeSwitcher({ iconOnly = false }: { iconOnly?: boolean }) {
   const { mode, setMode } = useTheme();
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const selected = OPTIONS.find((option) => option.mode === mode) ?? OPTIONS[1];
+  const selected =
+    THEME_OPTIONS.find((option) => option.mode === mode) ?? THEME_OPTIONS[1];
   const SelectedIcon = selected.icon;
 
   useEffect(() => {
@@ -49,10 +40,10 @@ export default function ThemeSwitcher() {
         aria-expanded={open}
         title={`${t("theme.label")}: ${t(selected.label)}`}
         onClick={() => setOpen((current) => !current)}
-        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-surface/55 px-2.5 text-xs font-semibold text-ink-muted transition hover:border-line-strong hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className={`${iconOnly ? "grid size-10 place-items-center rounded-xl" : "inline-flex h-9 items-center gap-1.5 rounded-lg border border-line bg-surface/55 px-2.5"} text-xs font-semibold text-ink-muted transition hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand`}
       >
         <SelectedIcon size={16} />
-        <span className="hidden xl:inline">{t(selected.label)}</span>
+        {!iconOnly && <span className="hidden xl:inline">{t(selected.label)}</span>}
       </button>
 
       {open && (
@@ -61,7 +52,7 @@ export default function ThemeSwitcher() {
           aria-label={t("theme.label")}
           className="absolute right-0 top-full z-50 mt-2 min-w-40 rounded-xl border border-line bg-surface-elevated p-1.5 shadow-[var(--shadow-elevated)]"
         >
-          {OPTIONS.map((option) => {
+          {THEME_OPTIONS.map((option) => {
             const Icon = option.icon;
             const active = option.mode === mode;
             return (

@@ -62,6 +62,9 @@ const en = {
   "home.hero.badge": "Run tournaments from one central workspace",
   "home.hero.title": "Where every match is",
   "home.hero.highlight": "run with clarity.",
+  "home.hero.highlightFair": "fair from the start.",
+  "home.hero.highlightLive": "tracked in real time.",
+  "home.hero.highlightGlory": "made for glory.",
   "home.hero.description":
     "Create tournaments, accept team registrations, configure multiple rounds, and follow the championship journey on one esports platform.",
   "home.hero.create": "Create tournament",

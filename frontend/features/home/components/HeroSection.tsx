@@ -1,75 +1,94 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRightIcon, LightningIcon } from "@phosphor-icons/react";
-import { primaryButtonClass, secondaryButtonClass } from "@/components/ui";
+import { ArrowRightIcon, LightningIcon, PlayIcon } from "@phosphor-icons/react";
 import { useLocale } from "@/features/locale/store";
-import RotatingImage from "@/components/RotatingImage";
-
-const heroBackgroundImages = [
-  { src: "/images/home/hero/hero-background.png", alt: "" },
-  {
-    src: "/images/tournaments/common/backgrounds/tournament-collage.png",
-    alt: "",
-  },
-];
+import RotatingText from "@/components/RotatingText";
+import DepthCarousel from "@/features/home/components/hero/DepthCarousel";
+import GamePosterGridBackground from "@/features/home/components/hero/GamePosterGridBackground";
 
 const heroImages = [
-  { src: "/images/home/formats/single-elimination.jpg", label: "Single elimination" },
-  { src: "/images/home/formats/round-robin.jpg", label: "Round robin" },
-  { src: "/images/home/formats/group-stage.jpg", label: "Group stage" },
-  { src: "/images/home/formats/double-elimination.png", label: "Double elimination" },
-  { src: "/images/home/formats/swiss-stage.png", label: "Swiss stage" },
+  { image: "/images/home/hero/esports-arena.jpg", label: "Esports arena" },
+  { image: "/images/home/hero/professional-esports-team.jpg", label: "Professional esports team" },
+  { image: "/images/home/hero/vietnam-championship-stage.jpg", label: "Championship stage" },
+  { image: "/images/home/hero/esports-world-cup-arena.jpg", label: "International esports event" },
+  { image: "/images/home/hero/vietnam-sea-games-arena.jpg", label: "Vietnam esports arena" },
+  { image: "/images/home/hero/world-championship-trophy.jpg", label: "Tournament trophy" },
+  { image: "/images/home/hero/grand-final-trophy-stage.jpg", label: "Grand final stage" },
+  { image: "/images/home/hero/tournament-crowd.jpg", label: "Tournament audience" },
 ];
 
 export default function HeroSection() {
   const { t } = useLocale();
+  const rotatingHighlights = [
+    t("home.hero.highlight"),
+    t("home.hero.highlightFair"),
+    t("home.hero.highlightLive"),
+    t("home.hero.highlightGlory"),
+  ];
 
   return (
     <section className="relative isolate overflow-hidden">
-      <RotatingImage
-        images={heroBackgroundImages}
-        interval={10000}
-        variant="fill"
-        showOverlay={false}
-        showIndicators={false}
-        sizes="100vw"
-        quality={90}
-        className="pointer-events-none absolute inset-0 -z-20 opacity-40"
-      />
-      <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,color-mix(in_oklab,var(--color-surface)_82%,transparent)_0%,color-mix(in_oklab,var(--color-surface)_56%,transparent)_48%,color-mix(in_oklab,var(--color-surface)_38%,transparent)_100%),linear-gradient(to_bottom,color-mix(in_oklab,var(--color-surface)_18%,transparent),var(--color-surface))]" />
-      <div className="mx-auto grid min-h-[calc(100svh-4.5rem)] max-w-7xl items-center gap-14 px-4 py-16 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 lg:py-20">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand-hover shadow-sm shadow-brand/10">
+      <GamePosterGridBackground />
+      <div className="mx-auto grid min-h-[calc(100svh-3.5rem)] max-w-7xl items-center gap-14 px-4 py-16 sm:px-6 lg:grid-cols-[1.08fr_0.92fr] lg:px-8 lg:py-20">
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-brand-hover">
             <LightningIcon size={15} weight="fill" />
             {t("home.hero.badge")}
           </div>
-          <h1 className="mt-6 max-w-3xl text-4xl font-bold leading-[1.08] tracking-[-0.04em] text-ink sm:text-5xl lg:text-6xl">
-            {t("home.hero.title")} {" "}
-            <span className="bg-gradient-brand bg-clip-text text-transparent">{t("home.hero.highlight")}</span>
+          <h1 className="mt-5 max-w-3xl text-[clamp(2.4rem,4vw,3.75rem)] font-black uppercase leading-[1.01] tracking-[-0.05em] text-ink">
+            {t("home.hero.title")}
+            <span className="mt-2 block text-[0.86em] text-brand-secondary sm:text-[0.9em]">
+              <RotatingText texts={rotatingHighlights} preventWrap />
+            </span>
           </h1>
-          <p className="mt-6 max-w-2xl text-base leading-7 text-ink-muted sm:text-lg">{t("home.hero.description")}</p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/tournaments/new" className={primaryButtonClass}>
+          <p className="mt-6 max-w-2xl text-sm font-medium leading-6 text-ink/72 sm:text-base sm:leading-7">
+            {t("home.hero.description")}
+          </p>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/tournaments/new"
+              className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-md bg-brand-secondary px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-brand transition hover:brightness-110 active:translate-y-px"
+            >
+              <PlayIcon size={19} weight="fill" />
               {t("home.hero.create")}
-              <ArrowRightIcon size={17} weight="bold" />
             </Link>
-            <Link href="/tournaments" className={secondaryButtonClass}>{t("home.hero.discover")}</Link>
+            <Link
+              href="/tournaments"
+              className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-md border border-line-strong bg-surface/45 px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-ink transition hover:border-brand/60 hover:bg-surface-hover active:translate-y-px"
+            >
+              {t("home.hero.discover")}
+              <ArrowRightIcon size={18} weight="bold" />
+            </Link>
           </div>
         </div>
 
-        <div className="relative mx-auto w-full max-w-lg">
-          <div aria-hidden className="absolute -inset-8 rounded-full border border-brand/15 shadow-glow-brand" />
-          <div aria-hidden className="absolute inset-8 rounded-full border border-dashed border-brand-secondary/25" />
-          <div className="relative">
-            <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-[image:var(--gradient-border)]" />
-            <RotatingImage
-              images={heroImages.map((image) => ({
-                src: image.src,
-                alt: `${t("home.hero.illustration")} — ${image.label}`,
-              }))}
-            />
-          </div>
+        <div className="relative mx-auto h-[420px] w-full max-w-xl sm:h-[480px] lg:h-[500px]">
+          <div aria-hidden className="absolute inset-[12%_4%] rounded-full bg-brand/12 blur-3xl" />
+          <DepthCarousel
+            items={heroImages.map((image) => ({
+              image: image.image,
+              alt: `${t("home.hero.illustration")} — ${image.label}`,
+            }))}
+            depth={190}
+            spread={62}
+            tilt={15}
+            tiltDirection="right"
+            perspective={1400}
+            visibleCards={4}
+            falloff={0.18}
+            blur={5}
+            autoplay
+            loop
+            cardWidth={520}
+            cardHeight={320}
+            radius={18}
+            tint="#05060a"
+            duration={760}
+            autoplayDelay={4200}
+            showControls={false}
+            showIndicators
+          />
         </div>
       </div>
     </section>
