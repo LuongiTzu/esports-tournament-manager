@@ -248,6 +248,34 @@ html {
   scroll-behavior: smooth;
 }
 
+.notification-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-line-strong) 75%, transparent)
+    transparent;
+  scrollbar-gutter: stable;
+}
+
+.notification-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notification-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notification-scroll::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: color-mix(
+    in oklab,
+    var(--color-line-strong) 75%,
+    transparent
+  );
+}
+
+.notification-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-line-strong);
+}
+
 .home-sections {
   position: relative;
   isolation: isolate;

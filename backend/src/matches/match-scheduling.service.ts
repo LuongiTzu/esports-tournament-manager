@@ -46,9 +46,14 @@ export class MatchSchedulingService {
         where: { id: { in: ids } },
         select: {
           id: true,
+          matchNumber: true,
+          teamAId: true,
+          teamBId: true,
+          teamA: { select: { name: true } },
+          teamB: { select: { name: true } },
           scheduledAt: true,
           updatedAt: true,
-          round: { select: { tournamentId: true } },
+          round: { select: { name: true, tournamentId: true } },
         },
       });
       if (matches.length !== ids.length) {
@@ -62,6 +67,17 @@ export class MatchSchedulingService {
         );
       }
       const revisions: Array<{ id: string; updatedAt: Date }> = [];
+      const changedMatches: Array<{
+        id: string;
+        matchNumber: number | null;
+        teamAId: string | null;
+        teamBId: string | null;
+        teamAName: string;
+        teamBName: string;
+        roundName: string;
+        oldScheduledAt: Date | null;
+        newScheduledAt: Date | null;
+      }> = [];
       let changedCount = 0;
       for (const item of dto.matches) {
         const match = matches.find(
@@ -78,6 +94,17 @@ export class MatchSchedulingService {
           select: { id: true, updatedAt: true },
         });
         revisions.push(updated);
+        changedMatches.push({
+          id: match.id,
+          matchNumber: match.matchNumber,
+          teamAId: match.teamAId,
+          teamBId: match.teamBId,
+          teamAName: match.teamA?.name ?? 'TBD',
+          teamBName: match.teamB?.name ?? 'TBD',
+          roundName: match.round.name,
+          oldScheduledAt: match.scheduledAt,
+          newScheduledAt: scheduledAt,
+        });
         changedCount++;
       }
       return {
@@ -86,9 +113,16 @@ export class MatchSchedulingService {
         sourceKey: bulkScheduleSourceKey(revisions),
         updatedCount: ids.length,
         matchIds: ids,
+        changedMatches,
       };
     });
-    const { tournamentId, changedCount, sourceKey, ...payload } = result;
+    const {
+      tournamentId,
+      changedCount,
+      sourceKey,
+      changedMatches,
+      ...payload
+    } = result;
     if (changedCount > 0) {
       this.events.publish({
         tournamentId,
@@ -97,13 +131,25 @@ export class MatchSchedulingService {
       });
     }
     if (changedCount > 0) {
-      await this.persistNotifications(tournamentId, [
-        {
+      await this.persistNotifications(
+        tournamentId,
+        changedMatches.map((match) => ({
           type: NotificationType.SCHEDULE_CHANGE,
-          content: `Lịch thi đấu đã được cập nhật cho ${ids.length} trận`,
-          sourceKey,
-        },
-      ]);
+          content: 'Match schedule updated',
+          sourceKey: `${sourceKey}:match:${match.id}`,
+          teamIds: [match.teamAId, match.teamBId],
+          data: {
+            kind: 'MATCH_SCHEDULE',
+            matchId: match.id,
+            matchNumber: match.matchNumber ?? undefined,
+            roundName: match.roundName,
+            teamAName: match.teamAName,
+            teamBName: match.teamBName,
+            oldScheduledAt: match.oldScheduledAt?.toISOString() ?? null,
+            newScheduledAt: match.newScheduledAt?.toISOString() ?? null,
+          },
+        })),
+      );
     }
     return payload;
   }
@@ -169,12 +215,14 @@ export class MatchSchedulingService {
     notifications: Array<{
       type: NotificationType;
       content: string;
+      data: Prisma.InputJsonObject;
+      teamIds: Array<string | null>;
       sourceKey: string;
     }>,
   ) {
     try {
       for (const notification of notifications) {
-        await this.notifications.createForTournamentEvent({
+        await this.notifications.createForMatchEvent({
           tournamentId,
           ...notification,
         });

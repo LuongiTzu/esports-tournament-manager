@@ -1,11 +1,14 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
   MatchStatus,
   ModerationStatus,
+  NotificationType,
   Prisma,
   RoundStatus,
   TournamentMode,
@@ -33,6 +36,11 @@ import {
 } from './domain/tournament-team-size.policy';
 import { TOURNAMENT_GAME_SELECT } from './tournament-prisma.select';
 import { withTournamentGameDisplayName } from './domain/tournament-game-display';
+import {
+  NOTIFICATION_PUBLISHER,
+  NOOP_NOTIFICATION_PUBLISHER,
+  NotificationPublisher,
+} from '../common/ports/notification-publisher';
 
 const DELETABLE_TOURNAMENT_STATUSES: TournamentStatus[] = [
   TournamentStatus.DRAFT,
@@ -44,12 +52,15 @@ const CUSTOM_GAME_CODE = 'CUSTOM';
 @Injectable()
 export class TournamentCommandService {
   private readonly teamSizePolicy = new TournamentTeamSizePolicy();
+  private readonly logger = new Logger(TournamentCommandService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly roundSettingsService: RoundSettingsService,
     private readonly contentFilter: ContentFilterService,
     private readonly lifecyclePolicy: TournamentLifecyclePolicy,
+    @Inject(NOTIFICATION_PUBLISHER)
+    private readonly notifications: NotificationPublisher = NOOP_NOTIFICATION_PUBLISHER,
   ) {}
 
   async create(userId: string, dto: CreateTournamentDto) {
@@ -265,6 +276,27 @@ export class TournamentCommandService {
         rounds: { orderBy: { orderIndex: 'asc' } },
       },
     });
+
+    if (dto.status !== undefined && dto.status !== current.status) {
+      try {
+        await this.notifications.createForTournamentEvent({
+          tournamentId,
+          type: NotificationType.TOURNAMENT_STATUS,
+          content: 'Tournament status updated',
+          data: {
+            kind: 'TOURNAMENT_STATUS',
+            previousStatus: current.status,
+            status: dto.status,
+          },
+          sourceKey: `tournament:${tournamentId}:status:${current.status}:${dto.status}`,
+        });
+      } catch (error) {
+        this.logger.error(
+          `Tournament update committed but notification persistence failed for ${tournamentId}`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    }
 
     return withTournamentGameDisplayName({
       ...updated,

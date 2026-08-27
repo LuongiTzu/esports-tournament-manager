@@ -45,7 +45,7 @@ export class TournamentModerationService {
       );
     const tournament = await this.prisma.tournament.findUnique({
       where: { id },
-      select: { id: true, name: true, organizerId: true },
+      select: { id: true, organizerId: true },
     });
     if (!tournament) throw new NotFoundException('Tournament not found');
     const updated = await this.prisma.tournament.update({
@@ -56,8 +56,14 @@ export class TournamentModerationService {
       await this.notifications.createNotification({
         userId: tournament.organizerId,
         type: NotificationType.ADMIN_WARNING,
-        content: `Tournament "${tournament.name}" was hidden by an administrator. Reason: ${reason!.trim()}`,
+        content: 'Tournament hidden by an administrator',
+        data: {
+          kind: 'TOURNAMENT_MODERATION',
+          moderationStatus,
+          reason: reason!.trim(),
+        },
         tournamentId: tournament.id,
+        sourceKey: `tournament:${tournament.id}:moderation:${moderationStatus}`,
       });
     }
     return updated;

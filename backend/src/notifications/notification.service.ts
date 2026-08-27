@@ -10,7 +10,11 @@ import {
   NotificationScope,
 } from './dto/notification.dto';
 import { NotificationEventsService } from './notification-events.service';
-import { NotificationPublisher } from '../common/ports/notification-publisher';
+import {
+  NotificationData,
+  NotificationInput,
+  NotificationPublisher,
+} from '../common/ports/notification-publisher';
 import { NotificationQueryService } from './notification-query.service';
 
 type NotificationClient = Pick<PrismaService, 'notification'>;
@@ -26,18 +30,31 @@ export class NotificationService implements NotificationPublisher {
   ) {}
 
   async createNotification(
-    data: {
+    input: NotificationInput & {
       userId: string;
-      type: NotificationType;
-      content: string;
-      tournamentId?: string | null;
     },
     client: NotificationClient = this.prisma,
     emit = true,
   ) {
-    const notification = await client.notification.create({ data });
-    if (emit) this.emitCreated(notification);
-    return notification;
+    const { sourceKey, ...base } = input;
+    if (!sourceKey) {
+      const notification = await client.notification.create({ data: base });
+      if (emit) this.emitCreated(notification);
+      return notification;
+    }
+
+    const deduplicationKey = `${sourceKey}:user:${input.userId}`;
+    const [created] = await client.notification.createManyAndReturn({
+      data: [{ ...base, deduplicationKey }],
+      skipDuplicates: true,
+    });
+    if (created) {
+      if (emit) this.emitCreated(created);
+      return created;
+    }
+    return client.notification.findUniqueOrThrow({
+      where: { deduplicationKey },
+    });
   }
 
   emitCreated(notification: Prisma.NotificationGetPayload<object>): void {
@@ -66,6 +83,10 @@ export class NotificationService implements NotificationPublisher {
       where: {
         tournamentId: tournament.id,
         id: dto.scope === NotificationScope.TEAM ? dto.teamId : undefined,
+        status:
+          dto.scope === NotificationScope.WHOLE_TOURNAMENT
+            ? RegistrationStatus.APPROVED
+            : undefined,
       },
       select: {
         id: true,
@@ -88,19 +109,16 @@ export class NotificationService implements NotificationPublisher {
       ),
     ];
     const notifications = await this.prisma.$transaction((tx) =>
-      Promise.all(
-        userIds.map((userId) =>
-          this.createNotification(
-            {
-              userId,
-              type: dto.type,
-              content: dto.content.trim(),
-              tournamentId: tournament.id,
-            },
-            tx,
-            false,
-          ),
-        ),
+      this.createForUsers(
+        {
+          userIds,
+          type: dto.type,
+          content: dto.content.trim(),
+          data: { kind: 'TOURNAMENT_ANNOUNCEMENT' },
+          tournamentId: tournament.id,
+        },
+        tx,
+        false,
       ),
     );
     notifications.forEach((notification) => this.emitCreated(notification));
@@ -111,12 +129,12 @@ export class NotificationService implements NotificationPublisher {
     tournamentId: string;
     type: NotificationType;
     content: string;
+    data?: NotificationData;
     sourceKey: string;
   }) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: data.tournamentId },
       select: {
-        organizerId: true,
         teams: {
           where: { status: RegistrationStatus.APPROVED },
           select: {
@@ -131,33 +149,83 @@ export class NotificationService implements NotificationPublisher {
     });
     if (!tournament) throw new NotFoundException('Tournament not found');
 
-    const userIds = [
-      ...new Set([
-        tournament.organizerId,
-        ...tournament.teams.flatMap((team) => [
-          team.captainId,
-          ...team.members
-            .map((member) => member.userId)
-            .filter((userId): userId is string => userId !== null),
-        ]),
-      ]),
-    ];
-    const notifications = await this.prisma.notification.createManyAndReturn({
-      data: userIds.map((userId) => ({
-        userId,
-        type: data.type,
-        content: data.content,
-        tournamentId: data.tournamentId,
-        deduplicationKey: `${data.sourceKey}:user:${userId}`,
-      })),
-      skipDuplicates: true,
-    });
-    notifications.forEach((notification) => this.emitCreated(notification));
+    const userIds = tournament.teams.flatMap((team) => [
+      team.captainId,
+      ...team.members
+        .map((member) => member.userId)
+        .filter((userId): userId is string => userId !== null),
+    ]);
+    const notifications = await this.createForUsers({ ...data, userIds });
     return {
-      recipientCount: userIds.length,
+      recipientCount: uniqueUserIds(userIds).length,
       createdCount: notifications.length,
       notifications,
     };
+  }
+
+  async createForMatchEvent(data: {
+    tournamentId: string;
+    teamIds: Array<string | null | undefined>;
+    type: NotificationType;
+    content: string;
+    data?: NotificationData;
+    sourceKey: string;
+  }) {
+    const teamIds = [...new Set(data.teamIds.filter(isUserId))];
+    if (teamIds.length === 0) {
+      return { recipientCount: 0, createdCount: 0, notifications: [] };
+    }
+    const teams = await this.prisma.team.findMany({
+      where: { tournamentId: data.tournamentId, id: { in: teamIds } },
+      select: {
+        captainId: true,
+        members: {
+          where: { userId: { not: null } },
+          select: { userId: true },
+        },
+      },
+    });
+    const userIds = teams.flatMap((team) => [
+      team.captainId,
+      ...team.members.map((member) => member.userId),
+    ]);
+    const notifications = await this.createForUsers({ ...data, userIds });
+    return {
+      recipientCount: uniqueUserIds(userIds).length,
+      createdCount: notifications.length,
+      notifications,
+    };
+  }
+
+  async createForUsers(
+    input: NotificationInput & {
+      userIds: Array<string | null | undefined>;
+    },
+    client: NotificationClient = this.prisma,
+    emit = true,
+  ) {
+    const { userIds: rawUserIds, sourceKey, ...notification } = input;
+    const userIds = uniqueUserIds(rawUserIds);
+    if (userIds.length === 0) return [];
+
+    const notifications = sourceKey
+      ? await client.notification.createManyAndReturn({
+          data: userIds.map((userId) => ({
+            ...notification,
+            userId,
+            deduplicationKey: `${sourceKey}:user:${userId}`,
+          })),
+          skipDuplicates: true,
+        })
+      : await Promise.all(
+          userIds.map((userId) =>
+            client.notification.create({ data: { ...notification, userId } }),
+          ),
+        );
+    if (emit) {
+      notifications.forEach((item) => this.emitCreated(item));
+    }
+    return notifications;
   }
 
   async findForUser(
@@ -178,4 +246,12 @@ export class NotificationService implements NotificationPublisher {
   async unreadCount(userId: string) {
     return this.queries.unreadCount(userId);
   }
+}
+
+function isUserId(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+function uniqueUserIds(values: Array<string | null | undefined>): string[] {
+  return [...new Set(values.filter(isUserId))];
 }

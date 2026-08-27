@@ -256,6 +256,7 @@ describe('TournamentGateway', () => {
       tournamentId: 't-1',
       type: 'SYSTEM',
       content: 'Hello',
+      data: null,
       deduplicationKey: null,
       isRead: false,
       createdAt: new Date(),

@@ -12,10 +12,40 @@ const en = {
   "notifications.retry": "Try again",
   "notifications.loadError": "Notifications could not be loaded.",
   "notifications.readError": "The read status could not be updated.",
+  "notifications.allRead": "You're all caught up",
+  "notifications.message.scoreUpdated":
+    "The latest score and match result are now available.",
+  "notifications.message.scheduleUpdated":
+    "The match schedule has been updated.",
+  "notifications.message.matchResult": "{teamA} {scoreA}–{scoreB} {teamB}",
+  "notifications.message.matchSchedule": "{teamA} vs {teamB}",
+  "notifications.message.scheduleAt": "New time: {time}",
+  "notifications.message.scheduleRemoved": "The match is no longer scheduled.",
+  "notifications.message.teamRegistered":
+    "Team {team} submitted a registration.",
+  "notifications.message.teamApproved":
+    "Team {team} was approved for the tournament.",
+  "notifications.message.teamRejected":
+    "Team {team} was rejected from the tournament.",
+  "notifications.message.rejectReason": "Reason: {reason}",
+  "notifications.message.tournamentStatus": "The tournament is now {status}.",
+  "notifications.message.reportThreshold":
+    "The tournament has {count} pending reports.",
+  "notifications.message.moderationHidden":
+    "The tournament was hidden by an administrator.",
+  "notifications.message.moderationReason": "Reason: {reason}",
+  "notifications.status.DRAFT": "a draft",
+  "notifications.status.REGISTRATION": "open for registration",
+  "notifications.status.ONGOING": "in progress",
+  "notifications.status.COMPLETED": "completed",
+  "notifications.status.CANCELLED": "cancelled",
   "notifications.type.schedule": "Schedule changed",
   "notifications.type.score": "Match result",
+  "notifications.type.registered": "New team registration",
   "notifications.type.approved": "Registration approved",
   "notifications.type.rejected": "Registration rejected",
+  "notifications.type.tournamentStatus": "Tournament status",
+  "notifications.type.reportThreshold": "Reports need review",
   "notifications.type.adminWarning": "Administrator warning",
   "notifications.type.system": "System notification",
   "language.label": "Change language",

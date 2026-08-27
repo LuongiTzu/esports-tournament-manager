@@ -11,7 +11,6 @@ import {
   MatchStatus,
   NotificationType,
   Prisma,
-  RoundFormat,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -33,8 +32,11 @@ import { CompetitionProgressionService } from './competition-progression.service
 
 const matchResultSelect = {
   id: true,
+  matchNumber: true,
   teamAId: true,
   teamBId: true,
+  teamA: { select: { name: true } },
+  teamB: { select: { name: true } },
   scoreA: true,
   scoreB: true,
   status: true,
@@ -54,6 +56,7 @@ const matchResultSelect = {
   round: {
     select: {
       id: true,
+      name: true,
       format: true,
       settings: true,
       tournamentId: true,
@@ -156,13 +159,19 @@ export class MatchResultService {
       return {
         updated,
         tournamentId: match.round.tournamentId,
+        teamIds: [match.teamAId, match.teamBId],
         scheduleChanged,
         notifications: [
           ...(scheduleChanged
             ? [
                 {
                   type: NotificationType.SCHEDULE_CHANGE,
-                  content: `Lịch thi đấu của trận ${matchId} đã được cập nhật`,
+                  content: 'Match schedule updated',
+                  data: scheduleNotificationData(
+                    match,
+                    match.scheduledAt,
+                    toNullableDate(dto.scheduledAt!),
+                  ),
                   sourceKey: `match:${matchId}:schedule:${revision}`,
                 },
               ]
@@ -174,7 +183,8 @@ export class MatchResultService {
             ? [
                 {
                   type: NotificationType.SCORE_UPDATE,
-                  content: `Kết quả trận ${matchId} đã được cập nhật`,
+                  content: 'Match result updated',
+                  data: resultNotificationData(match, scoreA, scoreB),
                   sourceKey: `match:${matchId}:result:${revision}`,
                 },
               ]
@@ -188,7 +198,11 @@ export class MatchResultService {
       result.updated,
       result.scheduleChanged,
     );
-    await this.persistNotifications(result.tournamentId, result.notifications);
+    await this.persistNotifications(
+      result.tournamentId,
+      result.teamIds,
+      result.notifications,
+    );
     return result.updated;
   }
 
@@ -252,6 +266,7 @@ export class MatchResultService {
       return {
         updated,
         tournamentId: match.round.tournamentId,
+        teamIds: [match.teamAId, match.teamBId],
         notifications:
           resultChanged &&
           (status === MatchStatus.COMPLETED ||
@@ -259,7 +274,12 @@ export class MatchResultService {
             ? [
                 {
                   type: NotificationType.SCORE_UPDATE,
-                  content: `Kết quả trận ${matchId} đã được cập nhật`,
+                  content: 'Match result updated',
+                  data: resultNotificationData(
+                    match,
+                    calculated.scoreA,
+                    calculated.scoreB,
+                  ),
                   sourceKey: `match:${matchId}:result:${updated.updatedAt.toISOString()}`,
                 },
               ]
@@ -272,7 +292,11 @@ export class MatchResultService {
       result.updated,
       false,
     );
-    await this.persistNotifications(result.tournamentId, result.notifications);
+    await this.persistNotifications(
+      result.tournamentId,
+      result.teamIds,
+      result.notifications,
+    );
     return result.updated;
   }
 
@@ -318,16 +342,19 @@ export class MatchResultService {
 
   private async persistNotifications(
     tournamentId: string,
+    teamIds: Array<string | null>,
     notifications: Array<{
       type: NotificationType;
       content: string;
+      data: Prisma.InputJsonObject;
       sourceKey: string;
     }>,
   ) {
     try {
       for (const notification of notifications) {
-        await this.notifications.createForTournamentEvent({
+        await this.notifications.createForMatchEvent({
           tournamentId,
+          teamIds,
           ...notification,
         });
       }
@@ -387,6 +414,40 @@ export class MatchResultService {
       throw error;
     }
   }
+}
+
+function resultNotificationData(
+  match: ResultMatch,
+  scoreA: number,
+  scoreB: number,
+): Prisma.InputJsonObject {
+  return {
+    kind: 'MATCH_RESULT',
+    matchId: match.id,
+    matchNumber: match.matchNumber ?? undefined,
+    roundName: match.round.name,
+    teamAName: match.teamA?.name ?? 'TBD',
+    teamBName: match.teamB?.name ?? 'TBD',
+    scoreA,
+    scoreB,
+  };
+}
+
+function scheduleNotificationData(
+  match: ResultMatch,
+  oldScheduledAt: Date | null,
+  newScheduledAt: Date | null,
+): Prisma.InputJsonObject {
+  return {
+    kind: 'MATCH_SCHEDULE',
+    matchId: match.id,
+    matchNumber: match.matchNumber ?? undefined,
+    roundName: match.round.name,
+    teamAName: match.teamA?.name ?? 'TBD',
+    teamBName: match.teamB?.name ?? 'TBD',
+    oldScheduledAt: oldScheduledAt?.toISOString() ?? null,
+    newScheduledAt: newScheduledAt?.toISOString() ?? null,
+  };
 }
 
 function toNullableDate(value: string | null): Date | null {

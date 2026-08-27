@@ -21,6 +21,8 @@ function match(overrides: Record<string, unknown> = {}) {
     id: 'match-1',
     teamAId: 'team-a',
     teamBId: 'team-b',
+    teamA: { name: 'Alpha' },
+    teamB: { name: 'Bravo' },
     scoreA: 0,
     scoreB: 0,
     status: MatchStatus.PENDING,
@@ -41,6 +43,7 @@ function match(overrides: Record<string, unknown> = {}) {
     loserNextMatchSlot: null,
     round: {
       id: 'round-1',
+      name: 'Playoffs',
       format: RoundFormat.PLAYOFF,
       settings: null,
       tournamentId: 'tournament-1',
@@ -149,7 +152,7 @@ function harness(
     publish: jest.fn(),
   } as unknown as TournamentEventsService;
   const notifications = {
-    createForTournamentEvent: jest.fn().mockResolvedValue({
+    createForMatchEvent: jest.fn().mockResolvedValue({
       recipientCount: 1,
       createdCount: 1,
       notifications: [],
@@ -550,12 +553,19 @@ describe('MatchesService results', () => {
 
     await service.putScores('match-1', games(['A', 'A']));
 
-    expect(
-      jest.mocked(notifications.createForTournamentEvent),
-    ).toHaveBeenCalledWith(
+    expect(jest.mocked(notifications.createForMatchEvent)).toHaveBeenCalledWith(
       expect.objectContaining({
         tournamentId: 'tournament-1',
         type: NotificationType.SCORE_UPDATE,
+        teamIds: ['team-a', 'team-b'],
+        data: expect.objectContaining({
+          kind: 'MATCH_RESULT',
+          matchId: 'match-1',
+          teamAName: 'Alpha',
+          teamBName: 'Bravo',
+          scoreA: 2,
+          scoreB: 0,
+        }),
         sourceKey: expect.stringContaining('match:match-1:result:') as string,
       }),
     );
@@ -572,9 +582,7 @@ describe('MatchesService results', () => {
 
   it('does not notify an idempotent completed-score retry and notifies a correction', async () => {
     const { service, notifications } = harness();
-    const createNotification = jest.mocked(
-      notifications.createForTournamentEvent,
-    );
+    const createNotification = jest.mocked(notifications.createForMatchEvent);
 
     await service.putScores('match-1', games(['A', 'A']));
     await service.putScores('match-1', games(['A', 'A']));
@@ -600,9 +608,7 @@ describe('MatchesService results', () => {
         _count: { scores: completedScores.length },
       }),
     );
-    const createNotification = jest.mocked(
-      notifications.createForTournamentEvent,
-    );
+    const createNotification = jest.mocked(notifications.createForMatchEvent);
 
     await service.update('match-1', {
       discordLink: 'https://discord.gg/tournament-room',
@@ -615,7 +621,7 @@ describe('MatchesService results', () => {
   it('keeps a committed result when notification persistence fails', async () => {
     const { service, notifications, rows } = harness();
     jest
-      .mocked(notifications.createForTournamentEvent)
+      .mocked(notifications.createForMatchEvent)
       .mockRejectedValueOnce(new Error('notification database unavailable'));
     const log = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
@@ -831,12 +837,17 @@ describe('MatchesService organizer operations', () => {
       scheduledAt: '2026-08-20T10:00:00.000Z',
     });
 
-    expect(
-      jest.mocked(notifications.createForTournamentEvent),
-    ).toHaveBeenCalledWith(
+    expect(jest.mocked(notifications.createForMatchEvent)).toHaveBeenCalledWith(
       expect.objectContaining({
         tournamentId: 'tournament-1',
         type: NotificationType.SCHEDULE_CHANGE,
+        teamIds: ['team-a', 'team-b'],
+        data: expect.objectContaining({
+          kind: 'MATCH_SCHEDULE',
+          teamAName: 'Alpha',
+          teamBName: 'Bravo',
+          newScheduledAt: '2026-08-20T10:00:00.000Z',
+        }),
       }),
     );
     expect(jest.mocked(events.publish)).toHaveBeenCalledWith(
@@ -853,7 +864,7 @@ describe('MatchesService organizer operations', () => {
     });
 
     expect(
-      jest.mocked(notifications.createForTournamentEvent),
+      jest.mocked(notifications.createForMatchEvent),
     ).not.toHaveBeenCalled();
     expect(jest.mocked(events.publish)).not.toHaveBeenCalledWith(
       expect.objectContaining({ event: 'scheduleUpdated' }),
@@ -876,7 +887,7 @@ describe('MatchesService organizer operations', () => {
     });
 
     expect(
-      jest.mocked(notifications.createForTournamentEvent),
+      jest.mocked(notifications.createForMatchEvent),
     ).not.toHaveBeenCalled();
     expect(jest.mocked(events.publish)).not.toHaveBeenCalledWith(
       expect.objectContaining({ event: 'scheduleUpdated' }),
@@ -909,15 +920,25 @@ describe('MatchesService organizer operations', () => {
     tx.match.findMany.mockResolvedValue([
       {
         id: 'm1',
+        matchNumber: 1,
+        teamAId: 'team-a',
+        teamBId: 'team-b',
+        teamA: { name: 'Alpha' },
+        teamB: { name: 'Bravo' },
         scheduledAt: null,
         updatedAt: new Date('2026-08-14T00:00:00.000Z'),
-        round: { tournamentId: 't1' },
+        round: { name: 'Group A', tournamentId: 't1' },
       },
       {
         id: 'm2',
+        matchNumber: 2,
+        teamAId: 'team-c',
+        teamBId: 'team-d',
+        teamA: { name: 'Charlie' },
+        teamB: { name: 'Delta' },
         scheduledAt: null,
         updatedAt: new Date('2026-08-14T00:00:00.000Z'),
-        round: { tournamentId: 't1' },
+        round: { name: 'Group A', tournamentId: 't1' },
       },
     ]);
 
@@ -931,11 +952,9 @@ describe('MatchesService organizer operations', () => {
     ).resolves.toEqual({ updatedCount: 2, matchIds: ['m1', 'm2'] });
     expect(tx.match.update).toHaveBeenCalledTimes(1);
     expect(
-      jest.mocked(notifications.createForTournamentEvent),
+      jest.mocked(notifications.createForMatchEvent),
     ).toHaveBeenCalledTimes(1);
-    expect(
-      jest.mocked(notifications.createForTournamentEvent),
-    ).toHaveBeenCalledWith(
+    expect(jest.mocked(notifications.createForMatchEvent)).toHaveBeenCalledWith(
       expect.objectContaining({ type: NotificationType.SCHEDULE_CHANGE }),
     );
     expect(jest.mocked(events.publish)).toHaveBeenCalledWith(
@@ -972,7 +991,7 @@ describe('MatchesService organizer operations', () => {
 
     expect(tx.match.update).not.toHaveBeenCalled();
     expect(
-      jest.mocked(notifications.createForTournamentEvent),
+      jest.mocked(notifications.createForMatchEvent),
     ).not.toHaveBeenCalled();
     expect(jest.mocked(events.publish)).not.toHaveBeenCalledWith(
       expect.objectContaining({ event: 'scheduleUpdated' }),

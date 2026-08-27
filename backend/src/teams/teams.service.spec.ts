@@ -73,6 +73,7 @@ function harness(teamValue = team()) {
   } as unknown as ContentFilterService;
   const notifications = {
     createNotification: jest.fn().mockResolvedValue({ id: 'notification-1' }),
+    createForUsers: jest.fn().mockResolvedValue([{ id: 'notification-1' }]),
     emitCreated: jest.fn(),
   } as unknown as NotificationService;
   const events = { publish: jest.fn() } as unknown as TournamentEventsService;
@@ -138,9 +139,7 @@ describe('TeamsService roster lifecycle', () => {
         code: 'INVALID_REGISTRATION_STATUS_TRANSITION',
       }),
     });
-    expect(
-      jest.mocked(notifications.createNotification),
-    ).not.toHaveBeenCalled();
+    expect(jest.mocked(notifications.createForUsers)).not.toHaveBeenCalled();
     expect(jest.mocked(events.publish)).not.toHaveBeenCalled();
   });
 
@@ -156,9 +155,7 @@ describe('TeamsService roster lifecycle', () => {
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(teamClient.update).not.toHaveBeenCalled();
-    expect(
-      jest.mocked(notifications.createNotification),
-    ).not.toHaveBeenCalled();
+    expect(jest.mocked(notifications.createForUsers)).not.toHaveBeenCalled();
     expect(jest.mocked(events.publish)).not.toHaveBeenCalled();
   });
 
@@ -192,17 +189,15 @@ describe('TeamsService roster lifecycle', () => {
       NotificationType.TEAM_REJECTED,
     ],
   ] as const)(
-    'preserves the %s captain notification',
+    'notifies the linked users when registration is %s',
     async (status, rejectReason, type) => {
       const { service, notifications } = harness();
 
       await service.updateStatus('team-1', { status, rejectReason });
 
-      expect(
-        jest.mocked(notifications.createNotification),
-      ).toHaveBeenCalledWith(
+      expect(jest.mocked(notifications.createForUsers)).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: 'captain-1',
+          userIds: ['captain-1'],
           tournamentId: 'tournament-1',
           type,
         }),
@@ -214,6 +209,36 @@ describe('TeamsService roster lifecycle', () => {
       });
     },
   );
+
+  it('targets the captain and every linked member on rejection', async () => {
+    const reviewedTeam = {
+      ...team(),
+      members: [
+        { userId: 'captain-1' },
+        { userId: 'member-1' },
+        { userId: null },
+      ],
+    } as never;
+    const { service, notifications } = harness(reviewedTeam);
+
+    await service.updateStatus('team-1', {
+      status: RegistrationStatus.REJECTED,
+      rejectReason: 'Roster is incomplete',
+    });
+
+    expect(notifications.createForUsers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userIds: ['captain-1', 'captain-1', 'member-1', null],
+        data: expect.objectContaining({
+          kind: 'TEAM_REVIEW',
+          teamName: 'Team One',
+          rejectReason: 'Roster is incomplete',
+        }),
+      }),
+      expect.anything(),
+      false,
+    );
+  });
 
   it.each([
     [

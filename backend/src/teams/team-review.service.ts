@@ -132,26 +132,42 @@ export class TeamReviewService {
           members: { orderBy: { orderIndex: 'asc' } },
         },
       });
-      const notification = await this.notifications.createNotification(
+      const notifications = await this.notifications.createForUsers(
         {
-          userId: team.captainId,
+          userIds: [
+            team.captainId,
+            ...team.members.map((member) => member.userId),
+          ],
           type:
             dto.status === RegistrationStatus.APPROVED
               ? NotificationType.TEAM_APPROVED
               : NotificationType.TEAM_REJECTED,
           content:
             dto.status === RegistrationStatus.APPROVED
-              ? `Đội "${team.name}" đã được duyệt tham gia giải`
-              : `Đội "${team.name}" đã bị từ chối. Lý do: ${dto.rejectReason!.trim()}`,
+              ? 'Team registration approved'
+              : 'Team registration rejected',
+          data: {
+            kind: 'TEAM_REVIEW',
+            teamId: team.id,
+            teamName: team.name,
+            status: dto.status,
+            rejectReason:
+              dto.status === RegistrationStatus.REJECTED
+                ? dto.rejectReason!.trim()
+                : undefined,
+          },
           tournamentId: team.tournamentId,
+          sourceKey: `team:${team.id}:review:${dto.status}`,
         },
         tx,
         false,
       );
-      return { updated, notification, tournamentId: team.tournamentId };
+      return { updated, notifications, tournamentId: team.tournamentId };
     });
 
-    this.notifications.emitCreated(result.notification);
+    result.notifications.forEach((notification) =>
+      this.notifications.emitCreated(notification),
+    );
     if (dto.status === RegistrationStatus.APPROVED) {
       this.events.publish({
         tournamentId: result.tournamentId,

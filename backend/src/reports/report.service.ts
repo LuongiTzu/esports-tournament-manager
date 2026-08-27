@@ -31,7 +31,7 @@ export class ReportService {
       async (tx) => {
         const tournament = await tx.tournament.findUnique({
           where: { slug },
-          select: { id: true, name: true },
+          select: { id: true },
         });
         if (!tournament) throw new NotFoundException('Tournament not found');
 
@@ -76,37 +76,27 @@ export class ReportService {
         const adminNotifications: Array<Prisma.NotificationGetPayload<object>> =
           [];
         if (pendingCount === threshold) {
-          const content = `Tournament "${tournament.name}" reached ${threshold} pending reports`;
-          const existingThresholdNotification = await tx.notification.findFirst(
-            {
-              where: {
+          const admins = await tx.user.findMany({
+            where: { role: Role.ADMIN, isLocked: false },
+            select: { id: true },
+          });
+          adminNotifications.push(
+            ...(await this.notifications.createForUsers(
+              {
+                userIds: admins.map((admin) => admin.id),
+                type: NotificationType.REPORT_THRESHOLD,
+                content: 'Tournament report threshold reached',
+                data: {
+                  kind: 'REPORT_THRESHOLD',
+                  pendingCount,
+                },
                 tournamentId: tournament.id,
-                type: NotificationType.SYSTEM,
-                content,
+                sourceKey: `tournament:${tournament.id}:report-threshold:${threshold}`,
               },
-              select: { id: true },
-            },
+              tx,
+              false,
+            )),
           );
-          if (!existingThresholdNotification) {
-            const admins = await tx.user.findMany({
-              where: { role: Role.ADMIN, isLocked: false },
-              select: { id: true },
-            });
-            for (const admin of admins) {
-              adminNotifications.push(
-                await this.notifications.createNotification(
-                  {
-                    userId: admin.id,
-                    type: NotificationType.SYSTEM,
-                    content,
-                    tournamentId: tournament.id,
-                  },
-                  tx,
-                  false,
-                ),
-              );
-            }
-          }
         }
         return { report, pendingCount, adminNotifications };
       },

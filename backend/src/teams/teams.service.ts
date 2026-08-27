@@ -421,9 +421,15 @@ export class TeamsService {
         ? await this.notifications.createNotification(
             {
               userId: lockedTournament.organizerId,
-              type: NotificationType.SYSTEM,
-              content: `Đội "${team.name}" vừa đăng ký tham gia giải "${lockedTournament.name}"`,
+              type: NotificationType.TEAM_REGISTERED,
+              content: 'New team registration submitted',
+              data: {
+                kind: 'TEAM_REGISTERED',
+                teamId: team.id,
+                teamName: team.name,
+              },
               tournamentId: lockedTournament.id,
+              sourceKey: `team:${team.id}:registered`,
             },
             tx,
             false,

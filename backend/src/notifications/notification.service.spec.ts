@@ -104,6 +104,14 @@ describe('NotificationService', () => {
       'captain-2',
       'member',
     ]);
+    expect(prisma.team.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          tournamentId: 't-1',
+          status: RegistrationStatus.APPROVED,
+        }) as object,
+      }),
+    );
   });
 
   it('limits team scope to the requested team', async () => {
@@ -131,10 +139,9 @@ describe('NotificationService', () => {
     );
   });
 
-  it('persists one tournament-event notification per distinct approved participant and organizer', async () => {
+  it('sends tournament-wide events only to distinct approved participants', async () => {
     const { service, prisma, notification, events } = harness();
     jest.mocked(prisma.tournament.findUnique).mockResolvedValue({
-      organizerId: 'organizer',
       teams: [
         {
           captainId: 'captain',
@@ -145,7 +152,7 @@ describe('NotificationService', () => {
           ],
         },
         {
-          captainId: 'organizer',
+          captainId: 'captain-2',
           members: [{ userId: 'member' }],
         },
       ],
@@ -167,8 +174,8 @@ describe('NotificationService', () => {
     );
     expect(notification.createManyAndReturn).toHaveBeenCalledWith({
       data: expect.arrayContaining([
-        expect.objectContaining({ userId: 'organizer' }),
         expect.objectContaining({ userId: 'captain' }),
+        expect.objectContaining({ userId: 'captain-2' }),
         expect.objectContaining({ userId: 'member' }),
       ]),
       skipDuplicates: true,
@@ -182,25 +189,78 @@ describe('NotificationService', () => {
         }) as object,
       }),
     );
-    expect(emitted.sort()).toEqual(['captain', 'member', 'organizer']);
+    expect(emitted.sort()).toEqual(['captain', 'captain-2', 'member']);
     subscription.unsubscribe();
+  });
+
+  it('sends a match event to teams A and B but not team C or the organizer', async () => {
+    const { service, prisma, notification } = harness();
+    jest.mocked(prisma.team.findMany).mockResolvedValue([
+      {
+        captainId: 'captain-a',
+        members: [{ userId: 'shared-user' }, { userId: null }],
+      },
+      {
+        captainId: 'captain-b',
+        members: [{ userId: 'shared-user' }, { userId: 'member-b' }],
+      },
+    ] as never);
+
+    const result = await service.createForMatchEvent({
+      tournamentId: 't-1',
+      teamIds: ['team-a', 'team-b'],
+      type: NotificationType.SCORE_UPDATE,
+      content: 'Match result updated',
+      data: { kind: 'MATCH_RESULT', matchId: 'match-1' },
+      sourceKey: 'match:match-1:result:revision-1',
+    });
+
+    expect(prisma.team.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          tournamentId: 't-1',
+          id: { in: ['team-a', 'team-b'] },
+        },
+      }),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({ recipientCount: 4, createdCount: 4 }),
+    );
+    expect(
+      notification.createManyAndReturn.mock.calls[0][0].data.map(
+        (item: { userId: string }) => item.userId,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        'captain-a',
+        'captain-b',
+        'shared-user',
+        'member-b',
+      ]),
+    );
+    expect(notification.createManyAndReturn.mock.calls[0][0].data).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ userId: 'captain-c' }),
+        expect.objectContaining({ userId: 'organizer' }),
+      ]),
+    );
   });
 
   it('emits only newly inserted records when an event is retried', async () => {
     const { service, prisma, notification, events } = harness();
     jest.mocked(prisma.tournament.findUnique).mockResolvedValue({
-      organizerId: 'organizer',
-      teams: [],
+      teams: [{ captainId: 'participant', members: [] }],
     } as never);
     notification.createManyAndReturn
       .mockResolvedValueOnce([
         {
           id: 'n-1',
-          userId: 'organizer',
+          userId: 'participant',
           tournamentId: 't-1',
           type: NotificationType.SCORE_UPDATE,
           content: 'Result changed',
-          deduplicationKey: 'result-1:user:organizer',
+          deduplicationKey: 'result-1:user:participant',
+          data: null,
           isRead: false,
           createdAt: new Date(),
         },

@@ -3,10 +3,10 @@ import { join } from 'path';
 
 describe('Database constraint migration coverage', () => {
   const migrationsDirectory = join(process.cwd(), 'prisma', 'migrations');
-  const migrationSql = readdirSync(migrationsDirectory, {
+  const migrationEntries = readdirSync(migrationsDirectory, {
     withFileTypes: true,
-  })
-    .filter((entry) => entry.isDirectory())
+  }).filter((entry) => entry.isDirectory());
+  const migrationSql = migrationEntries
     .map((entry) =>
       readFileSync(
         join(migrationsDirectory, entry.name, 'migration.sql'),
@@ -28,6 +28,27 @@ describe('Database constraint migration coverage', () => {
     expect(migrationSql).toContain(
       'CREATE UNIQUE INDEX "notifications_deduplication_key_key"',
     );
+  });
+
+  it('persists structured notification context and stable categories', () => {
+    expect(migrationEntries.map((entry) => entry.name)).toEqual([
+      '20260821060000_baseline',
+    ]);
+    expect(schema).toMatch(/data\s+Json\?/);
+    expect(migrationSql).toMatch(
+      /CREATE TABLE "notifications"[\s\S]*"data" JSONB/,
+    );
+    for (const type of [
+      'TEAM_REGISTERED',
+      'TOURNAMENT_STATUS',
+      'REPORT_THRESHOLD',
+    ]) {
+      expect(migrationSql).toMatch(
+        new RegExp(
+          `CREATE TYPE "NotificationType" AS ENUM \\([^;]*'${type}'[^;]*\\)`,
+        ),
+      );
+    }
   });
 
   it('preserves the tournament roster size check in migration SQL', () => {

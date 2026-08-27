@@ -165,8 +165,11 @@ describe('backend architecture boundaries', () => {
     expect(Object.values(NotificationType)).toEqual([
       'SCHEDULE_CHANGE',
       'SCORE_UPDATE',
+      'TEAM_REGISTERED',
       'TEAM_APPROVED',
       'TEAM_REJECTED',
+      'TOURNAMENT_STATUS',
+      'REPORT_THRESHOLD',
       'ADMIN_WARNING',
       'SYSTEM',
     ]);

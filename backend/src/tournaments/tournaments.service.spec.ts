@@ -15,6 +15,7 @@ import { ContentFilterService } from '../common/services/content-filter.service'
 import { TournamentCommandService } from './tournament-command.service';
 import { TournamentQueryService } from './tournament-query.service';
 import { TournamentLifecyclePolicy } from './domain/tournament-lifecycle.policy';
+import type { NotificationPublisher } from '../common/ports/notification-publisher';
 
 function addRoundPrisma(round: Record<string, jest.Mock>) {
   const tx = {
@@ -38,6 +39,7 @@ function createTournamentsService(
   roundSettingsService: RoundSettingsService,
   standingsService: StandingsService,
   contentFilterService: ContentFilterService,
+  notifications?: NotificationPublisher,
 ) {
   const queries = new TournamentQueryService(
     prisma,
@@ -49,6 +51,7 @@ function createTournamentsService(
     roundSettingsService,
     contentFilterService,
     new TournamentLifecyclePolicy(),
+    notifications,
   );
   return new TournamentsService(commands, queries);
 }
@@ -878,25 +881,43 @@ describe('TournamentsService lifecycle updates', () => {
         update,
       },
     } as unknown as PrismaService;
+    const notifications = {
+      createForTournamentEvent: jest.fn().mockResolvedValue(undefined),
+    } as unknown as NotificationPublisher;
     return {
       service: createTournamentsService(
         prisma,
         new RoundSettingsService(),
         {} as StandingsService,
         {} as ContentFilterService,
+        notifications,
       ),
       update,
+      notifications,
     };
   }
 
   it('allows a verified forward lifecycle transition', async () => {
-    const { service, update } = updateHarness(TournamentStatus.REGISTRATION);
+    const { service, update, notifications } = updateHarness(
+      TournamentStatus.REGISTRATION,
+    );
     await expect(
       service.update('tournament-1', {
         status: TournamentStatus.ONGOING,
       }),
     ).resolves.toMatchObject({ status: TournamentStatus.ONGOING });
     expect(update).toHaveBeenCalled();
+    expect(notifications.createForTournamentEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tournamentId: 'tournament-1',
+        type: 'TOURNAMENT_STATUS',
+        data: {
+          kind: 'TOURNAMENT_STATUS',
+          previousStatus: TournamentStatus.REGISTRATION,
+          status: TournamentStatus.ONGOING,
+        },
+      }),
+    );
   });
 
   it('rejects a transition out of a terminal state with a stable code', async () => {

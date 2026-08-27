@@ -41,6 +41,11 @@ const TYPE_META: Record<
     icon: TrophyIcon,
     tone: "bg-accent/10 text-accent",
   },
+  TEAM_REGISTERED: {
+    titleKey: "notifications.type.registered",
+    icon: InfoIcon,
+    tone: "bg-brand/10 text-brand",
+  },
   TEAM_APPROVED: {
     titleKey: "notifications.type.approved",
     icon: CheckCircleIcon,
@@ -50,6 +55,16 @@ const TYPE_META: Record<
     titleKey: "notifications.type.rejected",
     icon: XCircleIcon,
     tone: "bg-rejected/10 text-rejected",
+  },
+  TOURNAMENT_STATUS: {
+    titleKey: "notifications.type.tournamentStatus",
+    icon: InfoIcon,
+    tone: "bg-accent/10 text-accent",
+  },
+  REPORT_THRESHOLD: {
+    titleKey: "notifications.type.reportThreshold",
+    icon: ShieldWarningIcon,
+    tone: "bg-pending/10 text-pending",
   },
   ADMIN_WARNING: {
     titleKey: "notifications.type.adminWarning",
@@ -72,6 +87,170 @@ function mergeNotifications(
   return [...byId.values()].sort(
     (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
   );
+}
+
+function notificationCopy(
+  notification: UserNotification,
+  t: (key: TranslationKey) => string,
+  locale: "vi" | "en",
+): { message: string; detail?: string } {
+  const data = asRecord(notification.data);
+  if (data?.kind === "MATCH_RESULT") {
+    const teamA = stringField(data, "teamAName");
+    const teamB = stringField(data, "teamBName");
+    const scoreA = numberField(data, "scoreA");
+    const scoreB = numberField(data, "scoreB");
+    if (teamA && teamB && scoreA !== null && scoreB !== null) {
+      return {
+        message: interpolate(t("notifications.message.matchResult"), {
+          teamA,
+          teamB,
+          scoreA,
+          scoreB,
+        }),
+        detail: stringField(data, "roundName") ?? undefined,
+      };
+    }
+  }
+  if (data?.kind === "MATCH_SCHEDULE") {
+    const teamA = stringField(data, "teamAName");
+    const teamB = stringField(data, "teamBName");
+    if (teamA && teamB) {
+      const newTime = stringField(data, "newScheduledAt");
+      return {
+        message: interpolate(t("notifications.message.matchSchedule"), {
+          teamA,
+          teamB,
+        }),
+        detail: newTime
+          ? interpolate(t("notifications.message.scheduleAt"), {
+              time: formatLocalizedDate(newTime, locale, {
+                day: "2-digit",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            })
+          : t("notifications.message.scheduleRemoved"),
+      };
+    }
+  }
+  if (data?.kind === "TEAM_REGISTERED") {
+    const team = stringField(data, "teamName");
+    if (team) {
+      return {
+        message: interpolate(t("notifications.message.teamRegistered"), {
+          team,
+        }),
+      };
+    }
+  }
+  if (data?.kind === "TEAM_REVIEW") {
+    const team = stringField(data, "teamName");
+    const status = stringField(data, "status");
+    if (team && (status === "APPROVED" || status === "REJECTED")) {
+      const reason = stringField(data, "rejectReason");
+      return {
+        message: interpolate(
+          t(
+            status === "APPROVED"
+              ? "notifications.message.teamApproved"
+              : "notifications.message.teamRejected",
+          ),
+          { team },
+        ),
+        detail:
+          status === "REJECTED" && reason
+            ? interpolate(t("notifications.message.rejectReason"), { reason })
+            : undefined,
+      };
+    }
+  }
+  if (data?.kind === "TOURNAMENT_STATUS") {
+    const status = stringField(data, "status");
+    const statusKeys: Record<string, TranslationKey> = {
+      DRAFT: "notifications.status.DRAFT",
+      REGISTRATION: "notifications.status.REGISTRATION",
+      ONGOING: "notifications.status.ONGOING",
+      COMPLETED: "notifications.status.COMPLETED",
+      CANCELLED: "notifications.status.CANCELLED",
+    };
+    if (status && statusKeys[status]) {
+      return {
+        message: interpolate(t("notifications.message.tournamentStatus"), {
+          status: t(statusKeys[status]),
+        }),
+      };
+    }
+  }
+  if (data?.kind === "REPORT_THRESHOLD") {
+    const count = numberField(data, "pendingCount");
+    if (count !== null) {
+      return {
+        message: interpolate(t("notifications.message.reportThreshold"), {
+          count,
+        }),
+      };
+    }
+  }
+  if (data?.kind === "TOURNAMENT_MODERATION") {
+    const reason = stringField(data, "reason");
+    return {
+      message: t("notifications.message.moderationHidden"),
+      detail: reason
+        ? interpolate(t("notifications.message.moderationReason"), { reason })
+        : undefined,
+    };
+  }
+  if (notification.type === "SCORE_UPDATE") {
+    return { message: t("notifications.message.scoreUpdated") };
+  }
+  if (notification.type === "SCHEDULE_CHANGE") {
+    return { message: t("notifications.message.scheduleUpdated") };
+  }
+  return { message: notification.content };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function stringField(data: Record<string, unknown>, key: string) {
+  return typeof data[key] === "string" ? data[key] : null;
+}
+
+function numberField(data: Record<string, unknown>, key: string) {
+  return typeof data[key] === "number" ? data[key] : null;
+}
+
+function interpolate(
+  template: string,
+  values: Record<string, string | number>,
+) {
+  return template.replace(/\{(\w+)\}/g, (placeholder, key: string) =>
+    values[key] === undefined ? placeholder : String(values[key]),
+  );
+}
+
+function notificationDestination(notification: UserNotification) {
+  if (notification.type === "REPORT_THRESHOLD") return "/admin/reports";
+  const slug = notification.tournament?.slug;
+  if (!slug) return null;
+  if (
+    notification.type === "TEAM_REGISTERED" ||
+    notification.type === "ADMIN_WARNING"
+  ) {
+    return `/tournaments/${slug}/manage`;
+  }
+  if (
+    notification.type === "SCORE_UPDATE" ||
+    notification.type === "SCHEDULE_CHANGE"
+  ) {
+    return `/tournaments/${slug}#competition`;
+  }
+  return `/tournaments/${slug}`;
 }
 
 function AuthenticatedNotificationCenter() {
@@ -195,9 +374,10 @@ function AuthenticatedNotificationCenter() {
         });
       }
     }
-    if (notification.tournament?.slug) {
+    const destination = notificationDestination(notification);
+    if (destination) {
       setOpen(false);
-      router.push(`/tournaments/${notification.tournament.slug}`);
+      router.push(destination);
     }
   };
 
@@ -239,14 +419,18 @@ function AuthenticatedNotificationCenter() {
         <section
           role="dialog"
           aria-label={t("notifications.title")}
-          className="fixed inset-x-4 top-16 z-[70] max-h-[min(70vh,38rem)] overflow-hidden rounded-2xl border border-line bg-surface-elevated shadow-[var(--shadow-elevated)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-96"
+          className="fixed inset-x-3 top-16 z-[70] max-h-[min(calc(100dvh-5rem),42rem)] overflow-hidden rounded-xl border border-line bg-surface-elevated shadow-[var(--shadow-elevated)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[28rem]"
         >
-          <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+          <header className="flex items-center justify-between gap-4 border-b border-line bg-surface-card/75 px-5 py-4 backdrop-blur-xl">
             <div>
-              <h2 className="font-bold text-ink">{t("notifications.title")}</h2>
+              <h2 className="text-lg font-bold text-ink">
+                {t("notifications.title")}
+              </h2>
               {unreadCount !== null && (
                 <p className="mt-0.5 text-xs text-ink-faint">
-                  {unreadCount} {t("notifications.unread")}
+                  {unreadCount > 0
+                    ? `${unreadCount} ${t("notifications.unread")}`
+                    : t("notifications.allRead")}
                 </p>
               )}
             </div>
@@ -254,7 +438,7 @@ function AuthenticatedNotificationCenter() {
               type="button"
               onClick={() => void markAllRead()}
               disabled={!unreadCount || markingAll}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-brand transition hover:bg-brand/10 disabled:cursor-not-allowed disabled:opacity-45"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-transparent px-3 py-2 text-xs font-semibold text-brand transition hover:border-brand/20 hover:bg-brand/10 disabled:cursor-not-allowed disabled:opacity-45"
             >
               {markingAll ? (
                 <CircleNotchIcon className="animate-spin" />
@@ -265,7 +449,7 @@ function AuthenticatedNotificationCenter() {
             </button>
           </header>
 
-          <div className="max-h-[calc(min(70vh,38rem)-4.5rem)] overflow-y-auto">
+          <div className="notification-scroll max-h-[calc(min(calc(100dvh-5rem),42rem)-5rem)] overflow-y-auto overscroll-contain">
             {loading ? (
               <div
                 className="grid min-h-44 place-items-center"
@@ -310,27 +494,27 @@ function AuthenticatedNotificationCenter() {
                     {error}
                   </p>
                 )}
-                <ul className="divide-y divide-line">
+                <ul className="divide-y divide-line/80">
                   {notifications.map((notification) => {
-                    const meta = TYPE_META[notification.type];
+                    const meta =
+                      TYPE_META[notification.type] ?? TYPE_META.SYSTEM;
                     const Icon = meta.icon;
                     const marking = markingIds.has(notification.id);
+                    const copy = notificationCopy(notification, t, locale);
                     return (
                       <li key={notification.id}>
                         <button
                           type="button"
                           onClick={() => void openNotification(notification)}
                           disabled={marking}
-                          className={`relative flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-surface-hover disabled:opacity-60 ${notification.isRead ? "bg-surface-elevated" : "bg-brand/5"}`}
+                          className={`group relative flex w-full items-start gap-3.5 border-l-2 px-4 py-3.5 text-left transition-[border-color,background-color] hover:bg-surface-hover disabled:opacity-60 ${
+                            notification.isRead
+                              ? "border-l-transparent bg-surface-elevated"
+                              : "border-l-brand bg-brand/[0.06]"
+                          }`}
                         >
-                          {!notification.isRead && (
-                            <span
-                              className="absolute left-1.5 top-5 size-1.5 rounded-full bg-brand"
-                              aria-label={t("notifications.unread")}
-                            />
-                          )}
                           <span
-                            className={`grid size-9 shrink-0 place-items-center rounded-full ${meta.tone}`}
+                            className={`grid size-10 shrink-0 place-items-center rounded-lg border border-current/10 ${meta.tone}`}
                           >
                             {marking ? (
                               <CircleNotchIcon className="animate-spin" />
@@ -339,17 +523,39 @@ function AuthenticatedNotificationCenter() {
                             )}
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-semibold text-ink">
-                              {t(meta.titleKey)}
+                            <span className="flex items-center gap-2">
+                              <span className="block min-w-0 flex-1 truncate text-sm font-bold text-ink">
+                                {t(meta.titleKey)}
+                              </span>
+                              {!notification.isRead && (
+                                <span
+                                  className="size-2 shrink-0 rounded-full bg-brand shadow-[0_0_8px_color-mix(in_oklab,var(--color-brand)_55%,transparent)]"
+                                  aria-label={t("notifications.unread")}
+                                />
+                              )}
                             </span>
-                            <span className="mt-0.5 block whitespace-normal break-words text-sm leading-5 text-ink-muted">
-                              {notification.content}
+                            <span
+                              title={copy.message}
+                              className="mt-1 block line-clamp-2 whitespace-normal break-words text-sm leading-5 text-ink-muted"
+                            >
+                              {copy.message}
                             </span>
-                            <span className="mt-1.5 block text-xs text-ink-faint">
-                              {formatLocalizedDate(notification.createdAt, locale, {
-                                dateStyle: "medium",
-                                timeStyle: "short",
-                              })}
+                            {copy.detail && (
+                              <span className="mt-1 block line-clamp-2 whitespace-normal break-words text-xs leading-4 text-ink-faint">
+                                {copy.detail}
+                              </span>
+                            )}
+                            <span className="mt-2 block truncate text-[11px] text-ink-faint">
+                              {formatLocalizedDate(
+                                notification.createdAt,
+                                locale,
+                                {
+                                  day: "2-digit",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
                               {notification.tournament
                                 ? ` · ${notification.tournament.name}`
                                 : ""}

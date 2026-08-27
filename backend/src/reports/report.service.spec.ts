@@ -43,7 +43,7 @@ function harness(pendingCount = 1) {
     get: jest.fn().mockReturnValue(3),
   } as unknown as ConfigService;
   const notifications = {
-    createNotification: jest.fn(),
+    createForUsers: jest.fn().mockResolvedValue([]),
     emitCreated: jest.fn(),
   } as unknown as NotificationService;
   return {
@@ -101,19 +101,8 @@ describe('ReportService', () => {
     const { service, tx, notifications } = harness(3);
     tx.user.findMany.mockResolvedValue([{ id: 'admin-1' }, { id: 'admin-2' }]);
     jest
-      .mocked(notifications.createNotification)
-      .mockImplementation(({ userId, type, content, tournamentId }) =>
-        Promise.resolve({
-          id: `n-${userId}`,
-          userId,
-          type,
-          content,
-          tournamentId: tournamentId ?? null,
-          deduplicationKey: null,
-          isRead: false,
-          createdAt: new Date(),
-        }),
-      );
+      .mocked(notifications.createForUsers)
+      .mockResolvedValue([{ id: 'n-admin-1' }, { id: 'n-admin-2' }] as never);
 
     await service.create('cup', { reason: ReportReason.SCAM });
 
@@ -121,12 +110,13 @@ describe('ReportService', () => {
       where: { role: Role.ADMIN, isLocked: false },
       select: { id: true },
     });
-    expect(notifications.createNotification).toHaveBeenCalledTimes(2);
-    expect(notifications.createNotification).toHaveBeenCalledWith(
+    expect(notifications.createForUsers).toHaveBeenCalledTimes(1);
+    expect(notifications.createForUsers).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: 'admin-1',
-        type: NotificationType.SYSTEM,
+        userIds: ['admin-1', 'admin-2'],
+        type: NotificationType.REPORT_THRESHOLD,
         tournamentId: 't-1',
+        sourceKey: 'tournament:t-1:report-threshold:3',
       }),
       tx,
       false,
@@ -138,16 +128,6 @@ describe('ReportService', () => {
     const { service, tx, notifications } = harness(4);
     await service.create('cup', { reason: ReportReason.SCAM });
     expect(tx.user.findMany).not.toHaveBeenCalled();
-    expect(notifications.createNotification).not.toHaveBeenCalled();
-  });
-
-  it('does not repeat an existing threshold notification', async () => {
-    const { service, tx, notifications } = harness(3);
-    tx.notification.findFirst.mockResolvedValue({ id: 'existing' });
-
-    await service.create('cup', { reason: ReportReason.SCAM });
-
-    expect(tx.user.findMany).not.toHaveBeenCalled();
-    expect(notifications.createNotification).not.toHaveBeenCalled();
+    expect(notifications.createForUsers).not.toHaveBeenCalled();
   });
 });

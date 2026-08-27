@@ -11,10 +11,40 @@ const vi = {
   "notifications.retry": "Thử lại",
   "notifications.loadError": "Không tải được thông báo.",
   "notifications.readError": "Không thể cập nhật trạng thái đã đọc.",
+  "notifications.allRead": "Bạn đã đọc tất cả thông báo",
+  "notifications.message.scoreUpdated":
+    "Tỷ số và kết quả mới nhất đã được cập nhật.",
+  "notifications.message.scheduleUpdated":
+    "Thời gian thi đấu mới đã được cập nhật.",
+  "notifications.message.matchResult": "{teamA} {scoreA}–{scoreB} {teamB}",
+  "notifications.message.matchSchedule": "{teamA} gặp {teamB}",
+  "notifications.message.scheduleAt": "Lịch mới: {time}",
+  "notifications.message.scheduleRemoved": "Lịch thi đấu hiện đã được gỡ bỏ.",
+  "notifications.message.teamRegistered":
+    "Đội {team} vừa gửi đăng ký tham gia.",
+  "notifications.message.teamApproved":
+    "Đội {team} đã được duyệt tham gia giải.",
+  "notifications.message.teamRejected":
+    "Đội {team} đã bị từ chối tham gia giải.",
+  "notifications.message.rejectReason": "Lý do: {reason}",
+  "notifications.message.tournamentStatus":
+    "Trạng thái giải đã chuyển sang {status}.",
+  "notifications.message.reportThreshold":
+    "Giải đã có {count} báo cáo đang chờ xử lý.",
+  "notifications.message.moderationHidden": "Giải đã bị quản trị viên ẩn.",
+  "notifications.message.moderationReason": "Lý do: {reason}",
+  "notifications.status.DRAFT": "bản nháp",
+  "notifications.status.REGISTRATION": "mở đăng ký",
+  "notifications.status.ONGOING": "đang thi đấu",
+  "notifications.status.COMPLETED": "đã hoàn tất",
+  "notifications.status.CANCELLED": "đã hủy",
   "notifications.type.schedule": "Lịch thi đấu thay đổi",
   "notifications.type.score": "Kết quả trận đấu",
+  "notifications.type.registered": "Đăng ký đội mới",
   "notifications.type.approved": "Đăng ký được duyệt",
   "notifications.type.rejected": "Đăng ký bị từ chối",
+  "notifications.type.tournamentStatus": "Trạng thái giải đấu",
+  "notifications.type.reportThreshold": "Báo cáo cần xử lý",
   "notifications.type.adminWarning": "Cảnh báo từ quản trị viên",
   "notifications.type.system": "Thông báo hệ thống",
   "language.label": "Đổi ngôn ngữ",
