@@ -3,12 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import ResolvedImage from "@/components/ResolvedImage";
 import { useAuth } from "@/features/auth/store";
 import { tournamentsApi } from "@/features/tournaments/api";
 import TournamentCard from "@/features/tournaments/components/TournamentCard";
 import type { Tournament } from "@/features/tournaments/types";
-import { primaryButtonClass } from "@/components/ui";
 import { useLocale } from "@/features/locale/store";
 
 export default function MyProfilePage() {
@@ -46,85 +44,71 @@ export default function MyProfilePage() {
   const tournaments = result?.data ?? [];
 
   return (
-    <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-10">
-      <div className="rounded-2xl border border-line bg-surface-card p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xl font-bold text-on-brand">
-            <ResolvedImage
-              src={user?.avatarUrl}
-              alt={user ? `${t("profile.avatarAlt")} ${user.displayName}` : t("profile.avatarAlt")}
-              className="size-full object-cover object-center"
-              fallback={user?.displayName?.charAt(0).toUpperCase() || "?"}
-            />
-          </div>
-          <div className="min-w-0">
-            <h1 className="truncate text-xl font-bold text-ink">
-              {user?.displayName}
-            </h1>
-            <p className="truncate text-sm text-ink-muted">{user?.email}</p>
-          </div>
-          <Link href="/profile" className={`${primaryButtonClass} sm:ml-auto`}>
-            {t("profile.editProfile")}
-          </Link>
+    <div className="my-tournaments-page home-sections w-full flex-1">
+      <div className="mx-auto w-full max-w-5xl px-4 py-10">
+        <div className="my-tournaments-tabs flex flex-wrap gap-2">
+          {(["organized", "joined"] as const).map((tabValue) => {
+            const active = tab === tabValue;
+            return (
+              <button
+                key={tabValue}
+                onClick={() => setTab(tabValue)}
+                className={`min-h-10 border px-4 py-2 text-sm font-semibold transition-[border-color,background-color,color,transform] active:scale-[0.98] ${
+                  active
+                    ? "border-brand bg-brand text-on-brand"
+                    : "border-line bg-surface-card/80 text-ink-muted hover:border-brand/60 hover:bg-surface-hover hover:text-ink"
+                }`}
+              >
+                {t(
+                  tabValue === "organized"
+                    ? "profile.organized"
+                    : "profile.joined",
+                )}
+              </button>
+            );
+          })}
         </div>
-      </div>
 
-      <div className="mt-8 flex flex-wrap gap-2">
-        {(["organized", "joined"] as const).map((tabValue) => {
-          const active = tab === tabValue;
-          return (
-            <button
-              key={tabValue}
-              onClick={() => setTab(tabValue)}
-              className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-                active
-                  ? "border-brand bg-brand/12 text-brand"
-                  : "border-line text-ink-muted hover:border-line-strong hover:text-ink"
-              }`}
-            >
-              {t(tabValue === "organized" ? "profile.organized" : "profile.joined")}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-6">
-        {loading ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                aria-hidden
-                className="h-[168px] rounded-xl border border-line bg-surface-card"
-              />
-            ))}
-          </div>
-        ) : tournaments.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-line px-6 py-16 text-center">
-            <p className="font-medium text-ink">
-              {tab === "organized"
-                ? t("profile.emptyOrganized")
-                : t("profile.emptyJoined")}
-            </p>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-ink-muted">
-              {tab === "organized"
-                ? t("profile.emptyOrganizedHelp")
-                : t("profile.emptyJoinedHelp")}
-            </p>
-            <Link
-              href={tab === "organized" ? "/tournaments/new" : "/"}
-              className={`${primaryButtonClass} mt-5`}
-            >
-              {tab === "organized" ? t("profile.createTournament") : t("profile.viewOpen")}
-            </Link>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {tournaments.map((t) => (
-              <TournamentCard key={t.id} tournament={t} />
-            ))}
-          </div>
-        )}
+        <div className="mt-6">
+          {loading ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  aria-hidden
+                  className="h-[168px] rounded-xl border border-line bg-surface-card"
+                />
+              ))}
+            </div>
+          ) : tournaments.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-line px-6 py-16 text-center">
+              <p className="font-medium text-ink">
+                {tab === "organized"
+                  ? t("profile.emptyOrganized")
+                  : t("profile.emptyJoined")}
+              </p>
+              <p className="mx-auto mt-2 max-w-sm text-sm text-ink-muted">
+                {tab === "organized"
+                  ? t("profile.emptyOrganizedHelp")
+                  : t("profile.emptyJoinedHelp")}
+              </p>
+              <Link
+                href={tab === "organized" ? "/tournaments/new" : "/"}
+                className="my-tournaments-cta mt-5 inline-flex min-h-[var(--control-height)] items-center justify-center bg-brand px-6 py-3 text-sm font-bold text-on-brand transition-[transform,filter] hover:brightness-110 active:scale-[0.98]"
+              >
+                {tab === "organized"
+                  ? t("profile.createTournament")
+                  : t("profile.viewOpen")}
+              </Link>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {tournaments.map((tournament) => (
+                <TournamentCard key={tournament.id} tournament={tournament} />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

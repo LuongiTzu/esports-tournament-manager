@@ -122,6 +122,12 @@ export interface Tournament {
   registrationOpen: boolean;
   minTeamSize: number;
   maxTeamSize: number;
+  location?: string | null;
+  minAge?: number | null;
+  maxAge?: number | null;
+  allowedGenders?: Gender[] | null;
+  autoApproveTeams?: boolean;
+  requireMemberFullInfo?: boolean;
   customGameName?: string | null;
   displayGameName?: string;
   registrationStartDate?: string | null;
@@ -129,6 +135,10 @@ export interface Tournament {
   maxTeams?: number | null;
   startDate?: string | null;
   endDate?: string | null;
+  prizePool?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  contactLink?: string | null;
   game?: GameRef;
   organizer?: { id: string; displayName: string; avatarUrl?: string | null };
   rounds?: TournamentRound[];

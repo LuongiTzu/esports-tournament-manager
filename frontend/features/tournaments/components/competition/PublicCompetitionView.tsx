@@ -22,9 +22,11 @@ import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { useCompetitionInvalidation } from "@/features/tournaments/realtime";
 
 export default function PublicCompetitionView({
+  id,
   slug,
   tournamentId,
 }: {
+  id?: string;
   slug: string;
   tournamentId: string;
 }) {
@@ -88,8 +90,9 @@ export default function PublicCompetitionView({
 
   return (
     <section
+      id={id}
       aria-labelledby="public-competition-heading"
-      className="mt-6 min-w-0 overflow-hidden rounded-xl border border-line bg-surface-card p-4 sm:p-6"
+      className="mt-8 min-w-0 scroll-mt-28 overflow-hidden border border-line bg-surface-card/90 p-4 sm:p-7"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>

@@ -22,11 +22,11 @@ const statusLabels: Record<Tournament["status"], TranslationKey> = {
 };
 
 const statusClasses: Record<Tournament["status"], string> = {
-  DRAFT: "border-line bg-surface/85 text-ink-muted",
-  REGISTRATION: "border-approved/35 bg-approved/15 text-approved",
-  ONGOING: "border-brand/35 bg-brand/20 text-brand-hover",
-  COMPLETED: "border-line-strong/50 bg-surface-sub/90 text-ink-muted",
-  CANCELLED: "border-rejected/35 bg-rejected/15 text-rejected",
+  DRAFT: "tournament-status-DRAFT border-line bg-surface/85 text-ink-muted",
+  REGISTRATION: "tournament-status-REGISTRATION border-approved/35 bg-approved/15 text-approved",
+  ONGOING: "tournament-status-ONGOING border-brand/35 bg-brand/20 text-brand-hover",
+  COMPLETED: "tournament-status-COMPLETED border-line-strong/50 bg-surface-sub/90 text-ink-muted",
+  CANCELLED: "tournament-status-CANCELLED border-rejected/35 bg-rejected/15 text-rejected",
 };
 
 export default function TournamentCard({
@@ -50,19 +50,19 @@ export default function TournamentCard({
     <Link
       href={`/tournaments/${t.slug}`}
       style={accentVars(t.game?.name)}
-      className={`group relative overflow-hidden rounded-2xl border border-line bg-surface-card/90 transition duration-300 hover:-translate-y-1 hover:border-accent/55 hover:shadow-xl hover:shadow-accent/10 ${
+      className={`tournament-card group relative overflow-hidden rounded-2xl border border-line bg-surface-card/90 transition duration-300 hover:-translate-y-1 hover:border-accent/55 hover:shadow-xl hover:shadow-accent/10 ${
         listView ? "grid sm:grid-cols-[18rem_minmax(0,1fr)]" : "flex h-full flex-col"
       }`}
     >
-      <div className={`relative overflow-hidden ${listView ? "h-44 sm:h-full sm:min-h-52" : "h-44"}`}>
+      <div className={`tournament-card-media relative overflow-hidden ${listView ? "tournament-card-media-list h-44 sm:h-full sm:min-h-52" : "h-44"}`}>
         <ResolvedImage
           src={getTournamentBannerUrl(t.bannerUrl, t.game?.name, t.game?.code)}
           fallbackSrc={getTournamentBannerUrl(null, t.game?.name, t.game?.code)}
           alt=""
           className="absolute inset-0 size-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
         />
-        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-surface-card via-transparent to-black/10" />
-        <span className={`absolute left-4 top-4 rounded-md border px-2.5 py-1 text-xs font-bold shadow-lg backdrop-blur-md ${statusClasses[t.status]}`}>
+        <div aria-hidden className="tournament-card-media-gradient absolute inset-0 bg-gradient-to-t from-surface-card via-transparent to-black/10" />
+        <span className={`tournament-status absolute left-4 top-4 rounded-md border px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur-md ${statusClasses[t.status]}`}>
           {translate(statusLabels[t.status])}
         </span>
         {t.isVerified && (

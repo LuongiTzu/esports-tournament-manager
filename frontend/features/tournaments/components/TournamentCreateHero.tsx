@@ -1,83 +1,69 @@
 "use client";
 
 import Image from "next/image";
-import {
-  DeviceMobileIcon,
-  GameControllerIcon,
-  KeyboardIcon,
-} from "@phosphor-icons/react";
+import { GameControllerIcon } from "@phosphor-icons/react";
 import { useLocale } from "@/features/locale/store";
 
 export default function TournamentCreateHero() {
   const { t } = useLocale();
+
   return (
-    <section className="relative isolate min-h-64 overflow-hidden rounded-3xl border border-line bg-surface-card/75 shadow-[var(--shadow-elevated)] sm:min-h-72">
+    <section className="relative isolate overflow-hidden rounded-2xl border border-line bg-surface-card shadow-[var(--shadow-elevated)]">
       <div
         aria-hidden
-        className="absolute left-1/2 top-1/2 -z-20 size-[30rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-brand/20"
+        className="absolute inset-0 -z-20 bg-[linear-gradient(110deg,color-mix(in_oklab,var(--color-brand)_13%,var(--color-surface-card))_0%,var(--color-surface-card)_48%,var(--color-surface-sub)_100%)]"
       />
       <div
         aria-hidden
-        className="absolute left-1/2 top-1/2 -z-20 size-[20rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-brand-secondary/20"
-      />
-      <div
-        aria-hidden
-        className="absolute left-1/2 top-1/2 -z-20 size-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand/15 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-30 bg-[radial-gradient(circle_at_8%_80%,color-mix(in_oklab,var(--color-brand)_18%,transparent),transparent_34%),radial-gradient(circle_at_92%_25%,color-mix(in_oklab,var(--color-brand-secondary)_16%,transparent),transparent_34%)]"
+        className="absolute inset-y-0 right-[36%] -z-10 hidden w-px rotate-[14deg] bg-line lg:block"
       />
 
-      <div className="relative z-20 mx-auto flex min-h-64 max-w-lg flex-col items-center justify-center px-6 py-12 text-center sm:min-h-72 xl:max-w-2xl">
-        <span className="grid size-14 place-items-center rounded-2xl border border-brand/30 bg-brand/15 text-brand-hover shadow-glow-brand backdrop-blur">
-          <GameControllerIcon size={32} weight="duotone" />
-        </span>
-        <p className="mt-5 text-xs font-bold uppercase tracking-[0.28em] text-brand-hover">
-          {t("tournament.createHero.eyebrow")}
-        </p>
-        <h1 className="mt-3 text-balance text-3xl font-black tracking-tight text-ink sm:text-4xl">
-          {t("tournament.createHero.title")}
-        </h1>
-        <p className="mt-3 max-w-xl text-sm leading-6 text-ink-muted sm:text-base">
-          {t("tournament.createHero.description")}
-        </p>
-      </div>
+      <div className="grid min-h-72 lg:grid-cols-[minmax(0,0.9fr)_minmax(28rem,1.1fr)]">
+        <div className="flex flex-col justify-center px-6 py-10 sm:px-10 lg:px-12 lg:py-12">
+          <div className="flex items-center gap-3 text-brand-hover">
+            <span className="grid size-10 place-items-center rounded-xl border border-brand/30 bg-brand/12">
+              <GameControllerIcon size={22} weight="duotone" />
+            </span>
+            <p className="text-xs font-bold uppercase tracking-[0.2em]">
+              {t("tournament.createHero.eyebrow")}
+            </p>
+          </div>
+          <h1 className="mt-6 max-w-xl text-balance text-3xl font-black leading-tight tracking-tight text-ink sm:text-4xl lg:text-5xl">
+            {t("tournament.createHero.title")}
+          </h1>
+          <p className="mt-4 max-w-lg text-sm leading-6 text-ink-muted sm:text-base">
+            {t("tournament.createHero.description")}
+          </p>
+        </div>
 
-      <div className="pointer-events-none absolute bottom-0 left-0 z-10 hidden w-52 lg:block xl:left-4 xl:w-72">
-        <div className="absolute -bottom-8 -left-12 -z-20 size-72 rounded-full bg-brand/25 blur-3xl" />
-        <DeviceMobileIcon
-          aria-hidden
-          size={230}
-          weight="duotone"
-          className="absolute -bottom-5 -left-12 -z-10 rotate-[-16deg] text-brand/45 drop-shadow-[0_0_34px_color-mix(in_oklab,var(--color-brand)_72%,transparent)]"
-        />
-        <Image
-          src="/images/home/benefits/adc-player.png"
-          alt=""
-          width={1250}
-          height={1086}
-          sizes="288px"
-          className="relative z-10 h-auto w-full object-contain drop-shadow-[0_18px_26px_rgba(124,58,237,0.22)]"
-        />
-      </div>
-
-      <div className="pointer-events-none absolute bottom-8 right-0 z-10 hidden w-56 lg:block xl:right-4 xl:w-80">
-        <div className="absolute -bottom-10 -right-14 -z-20 size-72 rounded-full bg-brand-secondary/22 blur-3xl" />
-        <KeyboardIcon
-          aria-hidden
-          size={245}
-          weight="duotone"
-          className="absolute -bottom-10 -right-16 -z-10 rotate-12 text-brand-secondary/45 drop-shadow-[0_0_34px_color-mix(in_oklab,var(--color-brand-secondary)_68%,transparent)]"
-        />
-        <Image
-          src="/images/home/benefits/levi-player.png"
-          alt=""
-          width={1450}
-          height={1086}
-          sizes="320px"
-          className="relative z-10 h-auto w-full object-contain drop-shadow-[0_18px_26px_rgba(239,35,60,0.2)]"
-        />
+        <div className="relative hidden min-h-72 overflow-hidden border-l border-line/70 lg:block">
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-[linear-gradient(135deg,color-mix(in_oklab,var(--color-brand)_14%,transparent),transparent_58%),repeating-linear-gradient(135deg,transparent_0_22px,color-mix(in_oklab,var(--color-line)_55%,transparent)_23px_24px)]"
+          />
+          <Image
+            src="/images/home/benefits/adc-player.png"
+            alt=""
+            width={1250}
+            height={1086}
+            priority
+            sizes="(min-width: 1024px) 360px, 0px"
+            className="absolute -bottom-8 left-0 h-[108%] w-auto object-contain object-bottom opacity-90"
+          />
+          <Image
+            src="/images/home/benefits/levi-player.png"
+            alt=""
+            width={1450}
+            height={1086}
+            priority
+            sizes="(min-width: 1024px) 390px, 0px"
+            className="absolute -bottom-10 right-0 h-[112%] w-auto object-contain object-bottom"
+          />
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-surface-card to-transparent"
+          />
+        </div>
       </div>
     </section>
   );

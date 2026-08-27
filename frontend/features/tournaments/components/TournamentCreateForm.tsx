@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BracketsCurlyIcon,
   CalendarBlankIcon,
+  CheckIcon,
   IdentificationCardIcon,
   PlusIcon,
   ShieldCheckIcon,
@@ -23,6 +24,7 @@ import {
   secondaryButtonClass,
 } from "@/components/ui";
 import ImageUploadPicker from "@/components/ImageUploadPicker";
+import SideRays from "@/components/effects/SideRays";
 import { clearSession, useAuth } from "@/features/auth/store";
 import { gamesApi } from "@/features/games/api";
 import { accentVars } from "@/features/games/game-accent";
@@ -30,12 +32,20 @@ import type { Game } from "@/features/games/types";
 import GameStructureFields, {
   type GameStructureValue,
 } from "@/features/games/components/GameStructureFields";
+import {
+  DoubleEliminationIcon,
+  GroupStageIcon,
+  RoundRobinIcon,
+  SingleEliminationIcon,
+  SwissStageIcon,
+  type TournamentFormatIcon,
+} from "@/features/home/components/TournamentFormatIcons";
 import { tournamentsApi } from "@/features/tournaments/api";
 import {
   ROUND_FORMATS,
   type RoundFormatValue,
 } from "@/features/tournaments/round-formats";
-import TournamentCreateHero from "@/features/tournaments/components/TournamentCreateHero";
+import TournamentLivePreview from "@/features/tournaments/components/TournamentLivePreview";
 import type { CreateRoundRequest } from "@/features/tournaments/types";
 import { ApiError } from "@/lib/api/client";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
@@ -123,7 +133,6 @@ interface TournamentFormState {
   customGameName: string;
   description: string;
   rules: string;
-  bannerUrl: string;
   visibility: "PUBLIC" | "PRIVATE";
   status: "DRAFT" | "REGISTRATION";
   mode: "ONLINE" | "OFFLINE" | "HYBRID";
@@ -153,7 +162,6 @@ const INITIAL_FORM: TournamentFormState = {
   customGameName: "",
   description: "",
   rules: "",
-  bannerUrl: "",
   visibility: "PUBLIC",
   status: "REGISTRATION",
   mode: "ONLINE",
@@ -178,6 +186,33 @@ const INITIAL_FORM: TournamentFormState = {
 
 const genderOptions = ["MALE", "FEMALE", "OTHER"] as const;
 
+const ROUND_FORMAT_ICONS: Record<RoundFormatValue, TournamentFormatIcon> = {
+  ROUND_ROBIN: RoundRobinIcon,
+  GROUP_STAGE: GroupStageIcon,
+  SWISS: SwissStageIcon,
+  PLAYOFF: SingleEliminationIcon,
+  DOUBLE_ELIM: DoubleEliminationIcon,
+};
+
+function RoundFormatMark({
+  format,
+  index,
+}: {
+  format: RoundFormatValue;
+  index: number;
+}) {
+  const FormatIcon = ROUND_FORMAT_ICONS[format];
+
+  return (
+    <span className="flex items-center gap-2 self-center text-brand">
+      <span className="grid size-10 place-items-center rounded-lg border border-brand/20 bg-brand/10">
+        <FormatIcon className="size-6" />
+      </span>
+      <span className="font-mono text-xs font-bold">{index + 1}</span>
+    </span>
+  );
+}
+
 function optionalNumber(value: string) {
   return value === "" ? undefined : Number(value);
 }
@@ -187,20 +222,25 @@ function optionalIsoDate(value: string) {
 }
 
 function FormSection({
+  id,
   Icon,
   title,
   description,
   children,
 }: {
+  id: string;
   Icon: Icon;
   title: string;
   description: string;
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-line bg-surface-card/90 shadow-[var(--shadow-elevated)]">
-      <div className="flex items-start gap-3 border-b border-line/80 bg-surface-sub/45 px-5 py-4 sm:px-6">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand/20 to-brand-secondary/15 text-brand-hover">
+    <section
+      id={id}
+      className="scroll-mt-24 overflow-hidden rounded-xl border border-line bg-surface-card shadow-[0_1px_3px_rgb(15_23_42/0.05)]"
+    >
+      <div className="flex items-start gap-3 border-b border-line/80 px-5 py-5 sm:px-6">
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-brand/25 bg-brand/12 text-brand-hover">
           <Icon size={22} weight="duotone" />
         </span>
         <div>
@@ -229,7 +269,7 @@ function ToggleField({
   description: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface/55 p-4 transition hover:border-brand/35">
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface/55 p-4 transition-[border-color,background-color,transform] hover:border-brand/45 hover:bg-surface-hover/70 active:scale-[0.99]">
       <input
         type="checkbox"
         name={name}
@@ -260,6 +300,10 @@ export default function TournamentCreateForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [expandedRoundIndex, setExpandedRoundIndex] = useState<number | null>(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  const wizardTopRef = useRef<HTMLDivElement>(null);
   const [createdTournament, setCreatedTournament] = useState<{
     id: string;
     slug: string;
@@ -291,6 +335,23 @@ export default function TournamentCreateForm() {
   const selectedGame = games.find((game) => game.id === form.gameId);
   const minimumMembers = optionalNumber(form.teamSize);
   const maximumMembers = optionalNumber(form.maxTeamSize);
+  const steps = [
+    t("tournament.create.step.general"),
+    t("tournament.create.step.format"),
+    t("tournament.create.step.configuration"),
+    t("tournament.create.step.review"),
+  ];
+
+  const showStep = (step: number) => {
+    setError("");
+    setCurrentStep(step);
+    wizardTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const goToNextStep = () => {
+    if (!formRef.current?.reportValidity()) return;
+    showStep(Math.min(steps.length - 1, currentStep + 1));
+  };
 
   const handleChange = (
     event: React.ChangeEvent<
@@ -421,7 +482,10 @@ export default function TournamentCreateForm() {
   const addRound = () => {
     setRounds((current) => [
       ...current,
-      createRoundForm(`${t("tournament.create.defaultRound")} ${current.length + 1}`, "PLAYOFF"),
+      createRoundForm(
+        `${t("tournament.create.defaultRound")} ${current.length + 1}`,
+        "PLAYOFF",
+      ),
     ]);
   };
 
@@ -624,7 +688,6 @@ export default function TournamentCreateForm() {
             : undefined,
         description: form.description.trim() || undefined,
         rules: form.rules.trim() || undefined,
-        bannerUrl: form.bannerUrl.trim() || undefined,
         visibility: form.visibility,
         status: form.status,
         mode: form.mode,
@@ -769,9 +832,12 @@ export default function TournamentCreateForm() {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-16">
         <section className="w-full rounded-2xl border border-approved/30 bg-surface-card p-6 shadow-[var(--shadow-elevated)] sm:p-8">
-          <h1 className="text-xl font-bold text-ink">{t("tournament.create.created")}</h1>
+          <h1 className="text-xl font-bold text-ink">
+            {t("tournament.create.created")}
+          </h1>
           <p className="mt-2 text-sm leading-6 text-ink-muted">
-            {t("tournament.create.partialBannerPrefix")} {createdTournament.uploadError}{" "}
+            {t("tournament.create.partialBannerPrefix")}{" "}
+            {createdTournament.uploadError}{" "}
             {t("tournament.create.partialBannerSuffix")}
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
@@ -781,7 +847,9 @@ export default function TournamentCreateForm() {
               onClick={retryBannerUpload}
               className="inline-flex rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-on-brand disabled:opacity-50"
             >
-              {loading ? t("tournament.create.retryingBanner") : t("tournament.create.retryBanner")}
+              {loading
+                ? t("tournament.create.retryingBanner")
+                : t("tournament.create.retryBanner")}
             </button>
             <Link
               href={`/tournaments/${createdTournament.slug}`}
@@ -798,27 +866,115 @@ export default function TournamentCreateForm() {
   return (
     <div
       style={accentVars(selectedGame?.name)}
-      className="relative w-full flex-1 overflow-x-clip px-4 py-8 sm:px-6 lg:px-8 lg:py-10"
+      className="tournament-create-page relative w-full flex-1 overflow-x-clip px-4 py-8 sm:px-6 lg:px-8 lg:py-10"
     >
-      <div className="mx-auto max-w-[90rem]">
-        <TournamentCreateHero />
+      <SideRays
+        speed={2.5}
+        rayColor1="#EAB308"
+        rayColor2="#96C8FF"
+        intensity={2}
+        spread={2}
+        origin="top-right"
+        tilt={0}
+        saturation={1.5}
+        blend={0.75}
+        falloff={1.6}
+        opacity={1}
+      />
 
-        <form
-          onSubmit={handleSubmit}
-          className="mx-auto mt-8 max-w-6xl space-y-6"
+      <div
+        ref={wizardTopRef}
+        className="relative z-10 mx-auto max-w-7xl scroll-mt-24"
+      >
+        <header className="max-w-2xl">
+          <p className="text-sm font-semibold text-brand">
+            {t("tournament.createHero.eyebrow")}
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            {t("tournament.createHero.title")}
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-ink-muted sm:text-base">
+            {t("tournament.createHero.description")}
+          </p>
+        </header>
+
+        <nav
+          aria-label={t("tournament.createHero.title")}
+          className="mt-8 overflow-x-auto rounded-xl border border-line bg-surface-card px-4 py-5 shadow-[0_1px_3px_rgb(15_23_42/0.05)] sm:px-6"
         >
-          <FormSection
-            Icon={IdentificationCardIcon}
-            title={t("tournament.create.section.info")}
-            description={t("tournament.create.section.infoDescription")}
+          <div className="relative min-w-[38rem]">
+            <div className="absolute left-[12.5%] right-[12.5%] top-5 h-0.5 bg-surface-sub" />
+            <div
+              className="absolute left-[12.5%] top-5 h-0.5 bg-brand transition-[width] duration-300"
+              style={{ width: `${(currentStep / (steps.length - 1)) * 75}%` }}
+            />
+            <ol className="relative grid grid-cols-4 gap-2">
+              {steps.map((label, index) => {
+                const completed = index < currentStep;
+                const active = index === currentStep;
+                return (
+                  <li key={label} className="text-center">
+                    <button
+                      type="button"
+                      disabled={index > currentStep}
+                      onClick={() => showStep(index)}
+                      aria-current={active ? "step" : undefined}
+                      className="group inline-flex w-full flex-col items-center gap-2 text-xs font-semibold text-ink-muted disabled:cursor-default"
+                    >
+                      <span
+                        style={
+                          active || completed
+                            ? {
+                                backgroundColor: "var(--color-brand)",
+                                color: "var(--color-on-brand)",
+                              }
+                            : undefined
+                        }
+                        className={`relative grid size-10 place-items-center rounded-full border-2 bg-surface-card transition-colors ${
+                          active || completed
+                            ? "border-brand bg-brand text-on-brand"
+                            : "border-line-strong text-ink-faint"
+                        }`}
+                      >
+                        {completed ? (
+                          <CheckIcon size={16} weight="bold" />
+                        ) : (
+                          index + 1
+                        )}
+                      </span>
+                      <span className={active ? "text-brand" : ""}>{label}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </nav>
+
+        <div
+          className={`mt-8 grid items-start gap-7 ${
+            currentStep === 3
+              ? "lg:grid-cols-[minmax(0,1.85fr)_minmax(18rem,1fr)]"
+              : "grid-cols-1"
+          }`}
+        >
+          <form ref={formRef} onSubmit={handleSubmit} className="min-w-0 space-y-6">
+            {currentStep === 0 && (
+              <>
+            <FormSection
+              id="tournament-info"
+              Icon={IdentificationCardIcon}
+              title={t("tournament.create.section.info")}
+              description={t("tournament.create.section.infoDescription")}
           >
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label htmlFor="name" className={labelClass}>
-                  {t("tournament.create.name")} <span className="text-rejected">*</span>
-                </label>
-                <input
-                  id="name"
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label htmlFor="name" className={labelClass}>
+                    {t("tournament.create.name")}{" "}
+                    <span className="text-rejected">*</span>
+                  </label>
+                  <input
+                    id="name"
                   type="text"
                   name="name"
                   required
@@ -849,31 +1005,13 @@ export default function TournamentCreateForm() {
               </div>
 
               <div className="sm:col-span-2">
-                <label htmlFor="bannerUrl" className={labelClass}>
-                  {t("tournament.create.bannerUrl")}
-                </label>
-                <input
-                  id="bannerUrl"
-                  type="url"
-                  name="bannerUrl"
-                  maxLength={500}
-                  value={form.bannerUrl}
-                  onChange={handleChange}
-                  className={inputClass}
-                  placeholder="https://example.com/tournament-banner.jpg"
-                />
-                <p className={hintClass}>
-                  {t("tournament.create.bannerHint")}
-                </p>
-              </div>
-
-              <div className="sm:col-span-2">
                 <ImageUploadPicker
                   label={t("tournament.create.deviceBanner")}
                   file={bannerFile}
                   onFileChange={setBannerFile}
-                  existingUrl={form.bannerUrl}
                   variant="banner"
+                  dropzone
+                  crop={{ aspect: 16 / 6, maxWidth: 1600, maxHeight: 600 }}
                   disabled={loading}
                   uploading={loading && Boolean(bannerFile)}
                 />
@@ -911,15 +1049,18 @@ export default function TournamentCreateForm() {
                 />
               </div>
             </div>
-          </FormSection>
+            </FormSection>
 
-          <FormSection
-            Icon={SlidersHorizontalIcon}
-            title={t("tournament.create.section.organization")}
-            description={t("tournament.create.section.organizationDescription")}
-          >
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              <div>
+            <FormSection
+              id="tournament-organization"
+              Icon={SlidersHorizontalIcon}
+              title={t("tournament.create.section.organization")}
+              description={t(
+                "tournament.create.section.organizationDescription",
+              )}
+            >
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <div>
                 <label htmlFor="status" className={labelClass}>
                   {t("tournament.create.initialStatus")}
                 </label>
@@ -927,51 +1068,79 @@ export default function TournamentCreateForm() {
                   id="status"
                   name="status"
                   value={form.status}
-                  onChange={handleStatusChange}
-                  className={inputClass}
-                >
-                  <option value="REGISTRATION">{t("tournament.create.openRegistration")}</option>
-                  <option value="DRAFT">{t("tournament.create.draft")}</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="visibility" className={labelClass}>
-                  {t("tournament.create.visibility")}
-                </label>
-                <select
-                  id="visibility"
-                  name="visibility"
-                  value={form.visibility}
-                  onChange={handleChange}
-                  className={inputClass}
-                >
-                  <option value="PUBLIC">{t("tournament.create.public")}</option>
-                  <option value="PRIVATE">{t("tournament.create.private")}</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="mode" className={labelClass}>
-                  {t("tournament.create.mode")}
-                </label>
-                <select
-                  id="mode"
-                  name="mode"
-                  value={form.mode}
-                  onChange={handleChange}
-                  className={inputClass}
-                >
-                  <option value="ONLINE">{t("tournament.mode.ONLINE")}</option>
-                  <option value="OFFLINE">{t("tournament.mode.OFFLINE")}</option>
-                  <option value="HYBRID">{t("tournament.mode.HYBRID")}</option>
-                </select>
-              </div>
-              {form.mode !== "ONLINE" && (
-                <div className="sm:col-span-2 lg:col-span-3">
-                  <label htmlFor="location" className={labelClass}>
-                    {t("tournament.create.location")} <span className="text-rejected">*</span>
-                  </label>
-                  <input
-                    id="location"
+                    onChange={handleStatusChange}
+                    className={inputClass}
+                  >
+                    <option value="REGISTRATION">
+                      {t("tournament.create.openRegistration")}
+                    </option>
+                    <option value="DRAFT">
+                      {t("tournament.create.draft")}
+                    </option>
+                  </select>
+                </div>
+                <fieldset>
+                  <legend className={labelClass}>
+                    {t("tournament.create.visibility")}
+                  </legend>
+                  <div className="grid grid-cols-2 rounded-xl border border-line bg-surface-sub p-1">
+                    {(["PUBLIC", "PRIVATE"] as const).map((visibility) => (
+                      <button
+                        key={visibility}
+                        type="button"
+                        aria-pressed={form.visibility === visibility}
+                        onClick={() =>
+                          setForm((current) => ({ ...current, visibility }))
+                        }
+                        className={`rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${
+                          form.visibility === visibility
+                            ? "bg-surface-card text-brand shadow-sm"
+                            : "text-ink-muted hover:text-ink"
+                        }`}
+                      >
+                        {t(
+                          visibility === "PUBLIC"
+                            ? "tournament.create.public"
+                            : "tournament.create.private",
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <fieldset className="sm:col-span-2 lg:col-span-1">
+                  <legend className={labelClass}>
+                    {t("tournament.create.mode")}
+                  </legend>
+                  <div className="grid grid-cols-3 rounded-xl border border-line bg-surface-sub p-1">
+                    {(["ONLINE", "OFFLINE", "HYBRID"] as const).map(
+                      (mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          aria-pressed={form.mode === mode}
+                          onClick={() =>
+                            setForm((current) => ({ ...current, mode }))
+                          }
+                          className={`rounded-lg px-2 py-2.5 text-xs font-semibold transition-colors ${
+                            form.mode === mode
+                              ? "bg-surface-card text-brand shadow-sm"
+                              : "text-ink-muted hover:text-ink"
+                          }`}
+                        >
+                          {t(`tournament.mode.${mode}` as TranslationKey)}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                </fieldset>
+                {form.mode !== "ONLINE" && (
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <label htmlFor="location" className={labelClass}>
+                      {t("tournament.create.location")}{" "}
+                      <span className="text-rejected">*</span>
+                    </label>
+                    <input
+                      id="location"
                     type="text"
                     name="location"
                     required
@@ -984,12 +1153,17 @@ export default function TournamentCreateForm() {
                 </div>
               )}
             </div>
-          </FormSection>
+            </FormSection>
 
-          <FormSection
-            Icon={UsersThreeIcon}
-            title={t("tournament.create.section.capacity")}
-            description={t("tournament.create.section.capacityDescription")}
+              </>
+            )}
+
+            {currentStep === 1 && (
+            <FormSection
+              id="tournament-capacity"
+              Icon={UsersThreeIcon}
+              title={t("tournament.create.section.capacity")}
+              description={t("tournament.create.section.capacityDescription")}
           >
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
@@ -1041,13 +1215,15 @@ export default function TournamentCreateForm() {
                   onChange={handleChange}
                   className={inputClass}
                   placeholder={t("common.unlimited")}
-                />
-              </div>
-              <fieldset className="sm:col-span-2">
-                <legend className={labelClass}>{t("tournament.create.allowedGenders")}</legend>
-                <div className="flex flex-wrap gap-3">
-                  {genderOptions.map((option) => (
-                    <label
+                  />
+                </div>
+                <fieldset className="sm:col-span-2">
+                  <legend className={labelClass}>
+                    {t("tournament.create.allowedGenders")}
+                  </legend>
+                  <div className="flex flex-wrap gap-3">
+                    {genderOptions.map((option) => (
+                      <label
                       key={option}
                       className={`cursor-pointer rounded-lg border px-4 py-2.5 text-sm font-medium transition ${
                         form.allowedGenders.includes(option)
@@ -1058,24 +1234,30 @@ export default function TournamentCreateForm() {
                       <input
                         type="checkbox"
                         checked={form.allowedGenders.includes(option)}
-                        onChange={() => toggleGender(option)}
-                        className="sr-only"
-                      />
-                      {t(`auth.register.gender.${option.toLowerCase()}` as TranslationKey)}
-                    </label>
-                  ))}
-                </div>
+                          onChange={() => toggleGender(option)}
+                          className="sr-only"
+                        />
+                        {t(
+                          `auth.register.gender.${option.toLowerCase()}` as TranslationKey,
+                        )}
+                      </label>
+                    ))}
+                  </div>
                 <p className={hintClass}>
                   {t("tournament.create.genderHint")}
                 </p>
               </fieldset>
             </div>
-          </FormSection>
+            </FormSection>
+            )}
 
-          <FormSection
-            Icon={CalendarBlankIcon}
-            title={t("tournament.create.section.time")}
-            description={t("tournament.create.section.timeDescription")}
+            {currentStep === 2 && (
+              <>
+            <FormSection
+              id="tournament-time"
+              Icon={CalendarBlankIcon}
+              title={t("tournament.create.section.time")}
+              description={t("tournament.create.section.timeDescription")}
           >
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
@@ -1138,23 +1320,28 @@ export default function TournamentCreateForm() {
                 />
               </div>
             </div>
-          </FormSection>
+            </FormSection>
 
-          <FormSection
-            Icon={ShieldCheckIcon}
-            title={t("tournament.create.section.registration")}
-            description={t("tournament.create.section.registrationDescription")}
-          >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <ToggleField
+            <FormSection
+              id="tournament-registration"
+              Icon={ShieldCheckIcon}
+              title={t("tournament.create.section.registration")}
+              description={t(
+                "tournament.create.section.registrationDescription",
+              )}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ToggleField
                 name="registrationOpen"
-                checked={form.registrationOpen}
-                onChange={handleChange}
-                title={t("tournament.create.allowTeamRegistration")}
-                description={t("tournament.create.allowTeamRegistrationDescription")}
-              />
-              <ToggleField
-                name="autoApproveTeams"
+                  checked={form.registrationOpen}
+                  onChange={handleChange}
+                  title={t("tournament.create.allowTeamRegistration")}
+                  description={t(
+                    "tournament.create.allowTeamRegistrationDescription",
+                  )}
+                />
+                <ToggleField
+                  name="autoApproveTeams"
                 checked={form.autoApproveTeams}
                 onChange={handleChange}
                 title={t("tournament.create.autoApprove")}
@@ -1162,18 +1349,21 @@ export default function TournamentCreateForm() {
               />
               <ToggleField
                 name="requireMemberFullInfo"
-                checked={form.requireMemberFullInfo}
-                onChange={handleChange}
-                title={t("tournament.create.requireMemberInfo")}
-                description={t("tournament.create.requireMemberInfoDescription")}
-              />
-            </div>
-          </FormSection>
+                  checked={form.requireMemberFullInfo}
+                  onChange={handleChange}
+                  title={t("tournament.create.requireMemberInfo")}
+                  description={t(
+                    "tournament.create.requireMemberInfoDescription",
+                  )}
+                />
+              </div>
+            </FormSection>
 
-          <FormSection
-            Icon={TrophyIcon}
-            title={t("tournament.create.section.prize")}
-            description={t("tournament.create.section.prizeDescription")}
+            <FormSection
+              id="tournament-prize"
+              Icon={TrophyIcon}
+              title={t("tournament.create.section.prize")}
+              description={t("tournament.create.section.prizeDescription")}
           >
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="sm:col-span-2">
@@ -1236,12 +1426,17 @@ export default function TournamentCreateForm() {
                 />
               </div>
             </div>
-          </FormSection>
+            </FormSection>
 
-          <FormSection
-            Icon={BracketsCurlyIcon}
-            title={t("tournament.create.section.rounds")}
-            description={t("tournament.create.section.roundsDescription")}
+              </>
+            )}
+
+            {currentStep === 1 && (
+            <FormSection
+              id="tournament-rounds"
+              Icon={BracketsCurlyIcon}
+              title={t("tournament.create.section.rounds")}
+              description={t("tournament.create.section.roundsDescription")}
           >
             <div className="flex justify-end">
               <button
@@ -1260,10 +1455,8 @@ export default function TournamentCreateForm() {
                   key={index}
                   className="rounded-xl border border-line bg-surface/55 p-4"
                 >
-                  <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_minmax(12rem,0.65fr)_7rem_auto] sm:items-end">
-                    <span className="grid size-8 place-items-center self-center rounded-lg bg-brand/15 font-mono text-xs font-bold text-brand-hover">
-                      {index + 1}
-                    </span>
+                  <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_7rem_auto_auto] sm:items-end">
+                    <RoundFormatMark format={round.format} index={index} />
                     <label className={labelClass}>
                       {t("tournament.create.roundName")}
                       <input
@@ -1272,28 +1465,14 @@ export default function TournamentCreateForm() {
                         maxLength={100}
                         value={round.name}
                         onChange={(event) =>
-                          updateRound(index, "name", event.target.value)
-                        }
-                        className={`${inputClass} mt-1 bg-surface`}
-                        placeholder={t("tournament.create.roundNamePlaceholder")}
-                      />
-                    </label>
-                    <label className={labelClass}>
-                      {t("tournament.create.roundFormat")}
-                      <select
-                        value={round.format}
-                        onChange={(event) =>
-                          updateRound(index, "format", event.target.value)
-                        }
-                        className={`${inputClass} mt-1 bg-surface`}
-                      >
-                        {ROUND_FORMATS.map((format) => (
-                          <option key={format.value} value={format.value}>
-                          {t(format.labelKey)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                            updateRound(index, "name", event.target.value)
+                          }
+                          className={`${inputClass} mt-1 bg-surface`}
+                          placeholder={t(
+                            "tournament.create.roundNamePlaceholder",
+                          )}
+                        />
+                      </label>
                     <label className={labelClass}>
                       {t("round.settings.bestOf")}
                       <select
@@ -1310,6 +1489,19 @@ export default function TournamentCreateForm() {
                         ))}
                       </select>
                     </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedRoundIndex((current) =>
+                          current === index ? null : index,
+                        )
+                      }
+                      className="mb-1 rounded-lg border border-line bg-surface-card px-3 py-2 text-xs font-semibold text-brand transition-colors hover:bg-brand/10"
+                    >
+                      {expandedRoundIndex === index
+                        ? t("common.close")
+                        : t("common.edit")}
+                    </button>
                     {rounds.length > 1 && (
                       <button
                         type="button"
@@ -1322,6 +1514,45 @@ export default function TournamentCreateForm() {
                     )}
                   </div>
 
+                  <div className="mt-4">
+                    <p className={labelClass}>
+                      {t("tournament.create.roundFormat")}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+                      {ROUND_FORMATS.map((format) => {
+                        const FormatIcon = ROUND_FORMAT_ICONS[format.value];
+                        const selected = round.format === format.value;
+
+                        return (
+                          <button
+                            key={format.value}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() =>
+                              updateRound(index, "format", format.value)
+                            }
+                            className={`group flex min-h-24 flex-col items-center justify-center border px-3 py-3 text-center transition-[border-color,background-color,color,transform,box-shadow] active:scale-[0.98] ${
+                              selected
+                                ? "border-brand bg-brand/10 text-brand shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-brand)_22%,transparent)]"
+                                : "border-line bg-surface-card text-ink-muted hover:border-brand/45 hover:bg-brand/5 hover:text-ink"
+                            }`}
+                          >
+                            <FormatIcon
+                              className={`size-9 transition-transform duration-200 group-hover:scale-105 ${
+                                selected ? "text-brand" : "text-ink-faint"
+                              }`}
+                            />
+                            <span className="mt-2 text-xs font-bold leading-4">
+                              {t(format.labelKey)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {expandedRoundIndex === index && (
+                    <>
                   {round.format === "ROUND_ROBIN" && (
                     <div className="mt-4 border-t border-line/70 pt-4">
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
@@ -1447,13 +1678,15 @@ export default function TournamentCreateForm() {
                                 index,
                                 "numberOfRounds",
                                 event.target.value,
-                              )
-                            }
-                            className={`${inputClass} mt-1 bg-surface`}
-                            placeholder={t("tournament.create.automaticPlaceholder")}
-                          />
-                          <span className={`${hintClass} mt-1 block`}>
-                            {t("tournament.create.swissRoundsHint")}
+                                )
+                              }
+                              className={`${inputClass} mt-1 bg-surface`}
+                              placeholder={t(
+                                "tournament.create.automaticPlaceholder",
+                              )}
+                            />
+                            <span className={`${hintClass} mt-1 block`}>
+                              {t("tournament.create.swissRoundsHint")}
                           </span>
                         </label>
                         <label className={labelClass}>
@@ -1476,15 +1709,13 @@ export default function TournamentCreateForm() {
                           <span className={`${hintClass} mt-1 block`}>
                             {t("tournament.create.advancingTeamsHint")}
                           </span>
-                        </label>
-                      </div>
-                      <div className="mt-3 rounded-lg border border-line bg-surface/70 px-3 py-2.5 text-xs leading-5 text-ink-muted">
-                        <p>
-                          {t("tournament.create.swissBehavior")}
-                        </p>
-                        {!round.swiss.numberOfRounds &&
-                          optionalNumber(form.maxTeams) !== undefined && (
-                            <p className="mt-1">
+                          </label>
+                        </div>
+                        <div className="mt-3 rounded-lg border border-line bg-surface/70 px-3 py-2.5 text-xs leading-5 text-ink-muted">
+                          <p>{t("tournament.create.swissBehavior")}</p>
+                          {!round.swiss.numberOfRounds &&
+                            optionalNumber(form.maxTeams) !== undefined && (
+                              <p className="mt-1">
                               {t("tournament.create.estimatedCapacity")}:{" "}
                               {Math.ceil(
                                 Math.log2(optionalNumber(form.maxTeams)!),
@@ -1702,28 +1933,38 @@ export default function TournamentCreateForm() {
                           );
                           const hasValidPreview =
                             maxTeams !== undefined &&
-                            Number.isInteger(numberOfGroups) &&
-                            numberOfGroups >= 2;
-                          const capacityDivides =
-                            hasValidPreview && maxTeams % numberOfGroups === 0;
-                          return (
-                            <>
-                              {capacityDivides ? (
-                                <p>
-                                  {t("tournament.create.estimatedCapacity")}:{" "}
-                                  {maxTeams / numberOfGroups} {t("tournament.create.teamsPerGroupEstimated")}
-                                </p>
-                              ) : hasValidPreview ? (
-                                <p className="text-rejected" role="alert">
-                                  {t("tournament.create.maxTeams")} {maxTeams} {t("tournament.create.capacityCannotDivide")}{" "}
-                                  {numberOfGroups} {t("tournament.create.groupsUnit")}
-                                </p>
-                              ) : (
-                                <p>
-                                  {t("tournament.create.teamsPerGroupActualHint")}
-                                </p>
-                              )}
-                              {Number.isInteger(numberOfGroups) &&
+                              Number.isInteger(numberOfGroups) &&
+                              numberOfGroups >= 2;
+                            const capacityDivides =
+                              hasValidPreview &&
+                              maxTeams % numberOfGroups === 0;
+                            return (
+                              <>
+                                {capacityDivides ? (
+                                  <p>
+                                    {t("tournament.create.estimatedCapacity")}:{" "}
+                                    {maxTeams / numberOfGroups}{" "}
+                                    {t(
+                                      "tournament.create.teamsPerGroupEstimated",
+                                    )}
+                                  </p>
+                                ) : hasValidPreview ? (
+                                  <p className="text-rejected" role="alert">
+                                    {t("tournament.create.maxTeams")} {maxTeams}{" "}
+                                    {t(
+                                      "tournament.create.capacityCannotDivide",
+                                    )}{" "}
+                                    {numberOfGroups}{" "}
+                                    {t("tournament.create.groupsUnit")}
+                                  </p>
+                                ) : (
+                                  <p>
+                                    {t(
+                                      "tournament.create.teamsPerGroupActualHint",
+                                    )}
+                                  </p>
+                                )}
+                                {Number.isInteger(numberOfGroups) &&
                                 Number.isInteger(advancingTeamsPerGroup) && (
                                   <p>
                                     {t("tournament.create.total")}{" "}
@@ -1737,10 +1978,60 @@ export default function TournamentCreateForm() {
                       </div>
                     </div>
                   )}
+                    </>
+                  )}
                 </div>
               ))}
             </div>
           </FormSection>
+            )}
+
+            {currentStep === 3 && (
+              <FormSection
+                id="tournament-review"
+                Icon={CheckIcon}
+                title={t("tournament.create.reviewReady")}
+                description={t("tournament.create.reviewHint")}
+              >
+                <dl className="grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-medium text-ink-faint">
+                      {t("tournament.create.name")}
+                    </dt>
+                    <dd className="mt-1 font-semibold text-ink">
+                      {form.name || t("tournament.create.previewName")}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-ink-faint">
+                      {t("tournament.create.game")}
+                    </dt>
+                    <dd className="mt-1 font-semibold text-ink">
+                      {selectedGame?.code === "CUSTOM"
+                        ? form.customGameName
+                        : selectedGame?.name ||
+                          t("tournament.create.previewGame")}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-ink-faint">
+                      {t("tournament.create.maxTeams")}
+                    </dt>
+                    <dd className="mt-1 font-semibold text-ink">
+                      {form.maxTeams || t("common.unlimited")}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-medium text-ink-faint">
+                      {t("tournament.create.section.rounds")}
+                    </dt>
+                    <dd className="mt-1 font-semibold text-ink">
+                      {rounds.length}
+                    </dd>
+                  </div>
+                </dl>
+              </FormSection>
+            )}
 
           {error && (
             <p role="alert" className={alertErrorClass}>
@@ -1748,28 +2039,58 @@ export default function TournamentCreateForm() {
             </p>
           )}
 
-          <div className="sticky bottom-4 z-30 flex flex-col-reverse gap-3 rounded-2xl border border-line bg-surface-card/95 p-4 shadow-[var(--shadow-elevated)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+          <div className="sticky bottom-4 z-30 flex flex-col-reverse gap-3 rounded-xl border border-line bg-surface-card/95 p-4 shadow-[0_8px_24px_rgb(15_23_42/0.08)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-5 text-ink-faint">
               {t("tournament.create.systemManaged")}
             </p>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={() =>
+                  currentStep === 0
+                    ? router.back()
+                    : showStep(currentStep - 1)
+                }
                 className={secondaryButtonClass}
               >
-                {t("common.cancel")}
+                {currentStep === 0
+                  ? t("common.cancel")
+                  : t("common.previous")}
               </button>
-              <button
-                type="submit"
-                disabled={loading || !ready || !user}
-                className="inline-flex items-center justify-center rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-on-brand shadow-lg shadow-brand/15 transition hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading ? t("tournament.create.submitting") : t("tournament.create.submit")}
-              </button>
+              {currentStep < steps.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={goToNextStep}
+                  className="inline-flex min-h-[var(--control-height)] items-center justify-center rounded-[var(--radius-control)] bg-brand px-6 py-3 text-sm font-semibold text-on-brand transition-[transform,filter] hover:brightness-110 active:scale-[0.98]"
+                >
+                  {t("common.next")}
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={loading || !ready || !user}
+                  className="inline-flex min-h-[var(--control-height)] items-center justify-center rounded-[var(--radius-control)] bg-brand px-6 py-3 text-sm font-semibold text-on-brand transition-[transform,filter] hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading
+                    ? t("tournament.create.submitting")
+                    : t("tournament.create.submit")}
+                </button>
+              )}
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
+          {currentStep === 3 && (
+            <TournamentLivePreview
+              name={form.name}
+              bannerFile={bannerFile}
+              customGameName={form.customGameName}
+              selectedGame={selectedGame}
+              maxTeams={form.maxTeams}
+              prizePool={form.prizePool}
+              status={form.status}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

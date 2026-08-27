@@ -164,5 +164,11 @@ TODO.md
 notes.md
 *.tmp.md
 skills-lock.json
-backend/uploads/*
-!backend/uploads/.gitkeep
+# User-generated media (avatars, team logos, tournament banners, etc.)
+# These are runtime/private data and must never be committed.
+/backend/uploads/**
+!/backend/uploads/.gitkeep
+
+# Fallback when the backend is started with the repository root as cwd.
+/uploads/**
+!/uploads/.gitkeep

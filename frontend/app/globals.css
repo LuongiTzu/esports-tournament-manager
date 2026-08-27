@@ -1,3 +1,4 @@
+@import "react-easy-crop/react-easy-crop.css";
 @import "tailwindcss";
 
 /* Semantic theme tokens. Dark remains the visual baseline; light overrides live below. */
@@ -102,6 +103,139 @@ body {
   color: var(--color-ink);
 }
 
+/* Light tournament discovery uses a cooler, cleaner surface system without
+   changing the app-wide theme tokens or the dark presentation. */
+html[data-theme="light"] .tournament-discovery-page {
+  --color-surface: #f8fafc;
+  --color-surface-card: #ffffff;
+  --color-surface-sub: #f1f5f9;
+  --color-surface-hover: #eaf0f7;
+  --color-input: #ffffff;
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+  --color-ink: #0f172a;
+  --color-ink-muted: #475569;
+  --color-ink-faint: #64748b;
+  --shadow-elevated: 0 18px 45px -12px rgb(15 23 42 / 0.12);
+  background: #f8fafc;
+}
+
+html[data-theme="light"] .tournament-discovery-hero {
+  border-color: transparent;
+  background: #f8fafc;
+}
+
+html[data-theme="light"] .tournament-discovery-hero-overlay {
+  background:
+    linear-gradient(
+      180deg,
+      rgb(248 250 252 / 0.28) 0%,
+      rgb(248 250 252 / 0.68) 62%,
+      #f8fafc 100%
+    ),
+    linear-gradient(
+      90deg,
+      rgb(248 250 252 / 0.72),
+      rgb(248 250 252 / 0.28) 50%,
+      rgb(248 250 252 / 0.72)
+    );
+}
+
+html[data-theme="light"] .tournament-discovery-eyebrow {
+  color: #6d28d9;
+  text-shadow: 0 1px 10px rgb(255 255 255 / 0.9);
+}
+
+html[data-theme="light"] .tournament-discovery-title {
+  filter: none;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.75);
+}
+
+html[data-theme="light"] .tournament-filter-panel {
+  border-color: #e2e8f0;
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.05);
+}
+
+html[data-theme="light"] .tournament-view-active {
+  color: #6d28d9;
+  background: #ede9fe;
+  box-shadow: inset 0 0 0 1px rgb(109 40 217 / 0.12);
+}
+
+html[data-theme="light"] .tournament-card {
+  border-color: #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 3px 12px rgb(15 23 42 / 0.05);
+}
+
+html[data-theme="light"] .tournament-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 18px 34px -12px rgb(15 23 42 / 0.2);
+}
+
+html[data-theme="light"] .tournament-card-media {
+  margin: 0.5rem 0.5rem 0;
+  border-radius: 0.75rem;
+}
+
+html[data-theme="light"] .tournament-card-media-list {
+  margin-bottom: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  html[data-theme="light"] .tournament-card-media-list {
+    margin-right: 0;
+    height: auto;
+    align-self: stretch;
+  }
+}
+
+html[data-theme="light"] .tournament-card-media-gradient {
+  background:
+    linear-gradient(
+      to top,
+      #ffffff 0%,
+      rgb(255 255 255 / 0.72) 18%,
+      rgb(255 255 255 / 0.16) 42%,
+      transparent 68%
+    ),
+    linear-gradient(to bottom, rgb(15 23 42 / 0.08), transparent 38%);
+}
+
+html[data-theme="light"] .tournament-status {
+  backdrop-filter: none;
+}
+
+html[data-theme="light"] .tournament-status-DRAFT {
+  color: #475569;
+  border-color: #e2e8f0;
+  background: #f8fafc;
+}
+
+html[data-theme="light"] .tournament-status-REGISTRATION {
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  background: #dbeafe;
+}
+
+html[data-theme="light"] .tournament-status-ONGOING {
+  color: #15803d;
+  border-color: #bbf7d0;
+  background: #dcfce7;
+}
+
+html[data-theme="light"] .tournament-status-COMPLETED {
+  color: #475569;
+  border-color: #e2e8f0;
+  background: #f1f5f9;
+}
+
+html[data-theme="light"] .tournament-status-CANCELLED {
+  color: #b91c1c;
+  border-color: #fecaca;
+  background: #fee2e2;
+}
+
 @utility bg-gradient-brand {
   background-image: var(--gradient-primary);
 }
@@ -129,6 +263,78 @@ html {
     );
 }
 
+.tournament-detail-page {
+  background:
+    radial-gradient(
+      circle at 88% 12%,
+      color-mix(in oklab, var(--accent) 9%, transparent),
+      transparent 34rem
+    ),
+    radial-gradient(
+      circle at 10% 58%,
+      color-mix(in oklab, var(--accent-alt) 6%, transparent),
+      transparent 38rem
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--color-surface) 94%, #090612 6%),
+      var(--color-surface) 58%,
+      color-mix(in oklab, var(--color-surface) 97%, var(--accent) 3%)
+    );
+}
+
+.team-register-page {
+  --radius-control: 0.5rem;
+  --radius-card: 0.625rem;
+}
+
+.my-tournaments-page {
+  --radius-control: 0.5rem;
+  --radius-card: 0.625rem;
+}
+
+.my-tournaments-tabs button,
+.my-tournaments-cta {
+  border-radius: 0.25rem;
+}
+
+.tournament-detail-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 3.5rem;
+  padding-inline: 1.1rem;
+  color: var(--color-ink-muted);
+  font-size: 0.875rem;
+  font-weight: 650;
+  transition: color 180ms ease, background-color 180ms ease;
+}
+
+.tournament-detail-tab::after {
+  content: "";
+  position: absolute;
+  right: 1.1rem;
+  bottom: 0;
+  left: 1.1rem;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 180ms ease;
+}
+
+.tournament-detail-tab:hover,
+.tournament-detail-tab:focus-visible {
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 7%, transparent);
+  outline: none;
+}
+
+.tournament-detail-tab:hover::after,
+.tournament-detail-tab:focus-visible::after {
+  transform: scaleX(1);
+}
+
 .scroll-reveal {
   opacity: 0;
   transform: translateY(24px);
@@ -153,4 +359,72 @@ html {
     transition: none;
   }
 
+}
+
+/* Create tournament: calm, focused SaaS workspace with a sports-blue accent. */
+.tournament-create-page {
+  --color-brand: #2563eb;
+  --color-brand-hover: #1d4ed8;
+  --color-brand-secondary: #0284c7;
+  --color-on-brand: #ffffff;
+  --shadow-focus: 0 0 0 3px rgb(37 99 235 / 0.18);
+  --radius-control: 0.5rem;
+  --radius-card: 0.625rem;
+  isolation: isolate;
+  background:
+    radial-gradient(
+      circle at 92% 14%,
+      color-mix(in oklab, #96c8ff 10%, transparent),
+      transparent 30rem
+    ),
+    radial-gradient(
+      circle at 8% 43%,
+      color-mix(in oklab, #eab308 9%, transparent),
+      transparent 34rem
+    ),
+    radial-gradient(
+      circle at 88% 76%,
+      color-mix(in oklab, #96c8ff 8%, transparent),
+      transparent 32rem
+    ),
+    linear-gradient(
+      180deg,
+      var(--color-surface) 0%,
+      color-mix(in oklab, var(--color-surface) 96%, #2563eb 4%) 48%,
+      var(--color-surface) 100%
+    );
+}
+
+.tournament-create-page .rounded-lg {
+  border-radius: 0.375rem;
+}
+
+.tournament-create-page .rounded-xl {
+  border-radius: 0.5rem;
+}
+
+.tournament-create-page .rounded-2xl {
+  border-radius: 0.625rem;
+}
+
+.tournament-create-page button,
+.tournament-create-page img {
+  border-radius: 0.125rem;
+}
+
+.tournament-create-page button:has(> .rounded-full),
+.tournament-create-page img.rounded-full {
+  border-radius: 9999px;
+}
+
+html[data-theme="light"] .tournament-create-page {
+  --color-surface: #f8fafc;
+  --color-surface-card: #ffffff;
+  --color-surface-sub: #f1f5f9;
+  --color-surface-hover: #eff6ff;
+  --color-line: #e2e8f0;
+  --color-ink: #0f172a;
+  --color-ink-muted: #475569;
+  --color-ink-faint: #64748b;
+  --color-input: #ffffff;
 }

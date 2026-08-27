@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowClockwiseIcon, ImageIcon, TrashIcon } from "@phosphor-icons/react";
+import BannerImageCropper from "@/components/BannerImageCropper";
 import ResolvedImage from "@/components/ResolvedImage";
 import { secondaryButtonClass } from "@/components/ui";
 import { useLocale } from "@/features/locale/store";
@@ -30,6 +31,12 @@ interface ImageUploadPickerProps {
   uploading?: boolean;
   uploadError?: string;
   successMessage?: string;
+  dropzone?: boolean;
+  crop?: {
+    aspect: number;
+    maxWidth: number;
+    maxHeight: number;
+  };
 }
 
 export default function ImageUploadPicker({
@@ -42,10 +49,13 @@ export default function ImageUploadPicker({
   uploading = false,
   uploadError,
   successMessage,
+  dropzone = false,
+  crop,
 }: ImageUploadPickerProps) {
   const { t } = useLocale();
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectionError, setSelectionError] = useState("");
+  const [pendingCropFile, setPendingCropFile] = useState<File | null>(null);
   const previewUrl = useMemo(
     () => (file ? URL.createObjectURL(file) : null),
     [file],
@@ -63,6 +73,28 @@ export default function ImageUploadPicker({
     if (inputRef.current) inputRef.current.value = "";
   };
 
+  const selectFile = (nextFile: File) => {
+    const validationError = validateImageFile(nextFile);
+    if (validationError) {
+      setSelectionError(
+        t(
+          validationError === "INVALID_TYPE"
+            ? "image.invalidType"
+            : "image.tooLarge",
+        ),
+      );
+      return false;
+    }
+
+    setSelectionError("");
+    if (crop) {
+      setPendingCropFile(nextFile);
+    } else {
+      onFileChange(nextFile);
+    }
+    return true;
+  };
+
   const containerClass =
     variant === "banner"
       ? "aspect-[16/6] w-full rounded-xl"
@@ -72,10 +104,67 @@ export default function ImageUploadPicker({
 
   return (
     <div>
+      {pendingCropFile && crop && (
+        <BannerImageCropper
+          file={pendingCropFile}
+          aspect={crop.aspect}
+          maxWidth={crop.maxWidth}
+          maxHeight={crop.maxHeight}
+          onCancel={() => {
+            setPendingCropFile(null);
+            if (inputRef.current) inputRef.current.value = "";
+          }}
+          onConfirm={(croppedFile) => {
+            const validationError = validateImageFile(croppedFile);
+            if (validationError) {
+              setSelectionError(t("image.tooLarge"));
+              return;
+            }
+            setSelectionError("");
+            setPendingCropFile(null);
+            onFileChange(croppedFile);
+            if (inputRef.current) inputRef.current.value = "";
+          }}
+        />
+      )}
       <span className="block text-sm font-medium text-ink">{label}</span>
-      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div
+        className={`mt-2 flex flex-col gap-3 ${
+          variant === "banner" ? "" : "sm:flex-row sm:items-center"
+        }`}
+      >
         <div
-          className={`${containerClass} grid shrink-0 place-items-center overflow-hidden border border-dashed border-line bg-surface-sub text-ink-faint`}
+          role={dropzone ? "button" : undefined}
+          tabIndex={dropzone && !disabled && !uploading ? 0 : undefined}
+          aria-label={dropzone ? label : undefined}
+          onClick={
+            dropzone && !disabled && !uploading
+              ? () => inputRef.current?.click()
+              : undefined
+          }
+          onKeyDown={(event) => {
+            if (!dropzone || disabled || uploading) return;
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
+          onDragOver={(event) => {
+            if (!dropzone || disabled || uploading) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "copy";
+          }}
+          onDrop={(event) => {
+            if (!dropzone || disabled || uploading) return;
+            event.preventDefault();
+            const nextFile = event.dataTransfer.files?.[0];
+            if (nextFile) selectFile(nextFile);
+          }}
+          className={`${containerClass} grid shrink-0 place-items-center overflow-hidden border border-dashed border-line bg-surface-sub text-ink-faint ${
+            dropzone && !disabled
+              ? "cursor-pointer border-2 transition-colors hover:border-brand hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+              : ""
+          }`}
         >
           {previewUrl ? (
             // Object URLs are browser-local previews and must not pass through the persisted URL resolver.
@@ -105,16 +194,9 @@ export default function ImageUploadPicker({
             onChange={(event) => {
               const nextFile = event.target.files?.[0];
               if (!nextFile) return;
-              const validationError = validateImageFile(nextFile);
-              if (validationError) {
-                setSelectionError(
-                  t(validationError === "INVALID_TYPE" ? "image.invalidType" : "image.tooLarge"),
-                );
+              if (!selectFile(nextFile)) {
                 event.target.value = "";
-                return;
               }
-              setSelectionError("");
-              onFileChange(nextFile);
             }}
           />
           <button

@@ -141,8 +141,8 @@ export default function TournamentDiscovery() {
   };
 
   return (
-    <div className="relative w-full flex-1 overflow-x-clip bg-surface">
-      <header className="relative isolate min-h-64 overflow-hidden border-b border-line sm:min-h-72">
+    <div className="tournament-discovery-page relative w-full flex-1 overflow-x-clip bg-surface">
+      <header className="tournament-discovery-hero relative isolate min-h-64 overflow-hidden border-b border-line sm:min-h-72">
         <div
           aria-hidden
           className="absolute inset-0 -z-20 bg-cover bg-center"
@@ -153,13 +153,13 @@ export default function TournamentDiscovery() {
         />
         <div
           aria-hidden
-          className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,color-mix(in_oklab,var(--color-surface)_68%,transparent),color-mix(in_oklab,var(--color-surface)_18%,transparent)_50%,color-mix(in_oklab,var(--color-surface)_68%,transparent)),linear-gradient(0deg,color-mix(in_oklab,var(--color-surface)_78%,transparent),transparent_72%)]"
+          className="tournament-discovery-hero-overlay absolute inset-0 -z-10 bg-[linear-gradient(90deg,color-mix(in_oklab,var(--color-surface)_68%,transparent),color-mix(in_oklab,var(--color-surface)_18%,transparent)_50%,color-mix(in_oklab,var(--color-surface)_68%,transparent)),linear-gradient(0deg,color-mix(in_oklab,var(--color-surface)_78%,transparent),transparent_72%)]"
         />
         <div className="mx-auto flex min-h-64 max-w-7xl flex-col items-center justify-center px-4 py-12 text-center sm:min-h-72 sm:px-6 lg:px-8">
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-brand-hover">
+          <p className="tournament-discovery-eyebrow text-xs font-extrabold uppercase tracking-[0.3em] text-brand-hover">
             {t("tournaments.discovery.eyebrow")}
           </p>
-          <h1 className="mt-4 max-w-4xl text-balance text-[clamp(1.75rem,3vw,2.35rem)] font-black leading-[1.18] tracking-tight text-ink drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]">
+          <h1 className="tournament-discovery-title mt-4 max-w-4xl text-balance text-[clamp(1.75rem,3vw,2.35rem)] font-black leading-[1.18] tracking-tight text-ink drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]">
             {t("tournaments.discovery.heroTitle")}
           </h1>
           <p className="mt-5 max-w-2xl text-sm leading-7 text-ink-muted sm:text-base">
@@ -169,7 +169,7 @@ export default function TournamentDiscovery() {
       </header>
 
       <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
-        <div className="relative z-10 -mt-7 rounded-2xl border border-line bg-surface-card/95 p-4 shadow-[var(--shadow-elevated)] backdrop-blur-xl sm:p-5">
+        <div className="tournament-filter-panel relative z-10 -mt-7 rounded-2xl border border-line bg-surface-card/95 p-4 shadow-[var(--shadow-elevated)] backdrop-blur-xl sm:p-5">
           <div className="mb-4 flex items-center gap-2 text-sm font-bold text-ink">
             <span className="grid size-8 place-items-center rounded-lg bg-brand/15 text-brand-hover">
               <FunnelSimpleIcon size={18} weight="duotone" />
@@ -306,7 +306,7 @@ export default function TournamentDiscovery() {
                   onClick={() => setView("grid")}
                   className={`grid size-9 place-items-center rounded-md transition ${
                     view === "grid"
-                      ? "bg-gradient-brand text-on-brand shadow-md shadow-brand/20"
+                      ? "tournament-view-active bg-gradient-brand text-on-brand shadow-md shadow-brand/20"
                       : "text-ink-faint hover:bg-surface-sub hover:text-ink"
                   }`}
                 >
@@ -319,7 +319,7 @@ export default function TournamentDiscovery() {
                   onClick={() => setView("list")}
                   className={`grid size-9 place-items-center rounded-md transition ${
                     view === "list"
-                      ? "bg-gradient-brand text-on-brand shadow-md shadow-brand/20"
+                      ? "tournament-view-active bg-gradient-brand text-on-brand shadow-md shadow-brand/20"
                       : "text-ink-faint hover:bg-surface-sub hover:text-ink"
                   }`}
                 >

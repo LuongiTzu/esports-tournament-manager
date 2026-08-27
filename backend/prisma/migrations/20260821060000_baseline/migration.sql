@@ -14,6 +14,9 @@ CREATE TYPE "GameGenre" AS ENUM ('MOBA', 'FPS', 'SPORTS', 'BATTLE_ROYALE', 'FIGH
 CREATE TYPE "GamePositionMode" AS ENUM ('FIXED', 'OPTIONAL', 'NONE');
 
 -- CreateEnum
+CREATE TYPE "TeamSizeMode" AS ENUM ('FIXED', 'PRESET', 'FLEXIBLE');
+
+-- CreateEnum
 CREATE TYPE "Visibility" AS ENUM ('PUBLIC', 'PRIVATE');
 
 -- CreateEnum
@@ -91,14 +94,19 @@ CREATE TABLE "users" (
 -- CreateTable
 CREATE TABLE "games" (
     "id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "icon_url" TEXT,
     "genre" "GameGenre" NOT NULL DEFAULT 'OTHER',
     "positions" JSONB,
     "position_mode" "GamePositionMode" NOT NULL DEFAULT 'NONE',
+    "team_size_mode" "TeamSizeMode" NOT NULL DEFAULT 'FIXED',
     "default_team_size" INTEGER NOT NULL,
     "min_team_size" INTEGER NOT NULL,
     "max_team_size" INTEGER NOT NULL,
+    "allowed_team_sizes" INTEGER[] NOT NULL DEFAULT ARRAY[]::INTEGER[],
+    "min_selectable_team_size" INTEGER,
+    "max_selectable_team_size" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "games_pkey" PRIMARY KEY ("id")
@@ -110,6 +118,7 @@ CREATE TABLE "tournaments" (
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "description" TEXT,
+    "custom_game_name" TEXT,
     "rules" TEXT,
     "banner_url" TEXT,
     "visibility" "Visibility" NOT NULL DEFAULT 'PUBLIC',
@@ -330,6 +339,9 @@ CREATE TABLE "banned_keywords" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "games_code_key" ON "games"("code");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "games_name_key" ON "games"("name");
