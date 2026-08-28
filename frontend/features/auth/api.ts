@@ -1,4 +1,5 @@
 import type {
+  ChangePasswordRequest,
   LoginRequest,
   LoginResponse,
   RegisterAccountRequest,
@@ -22,6 +23,12 @@ export const authApi = {
   logout: () =>
     request<{ message: string }>("/auth/logout", {
       method: "POST",
+      auth: true,
+    }),
+  changePassword: (data: ChangePasswordRequest) =>
+    request<{ message: string }>("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify(data),
       auth: true,
     }),
   getMe: () => request<User>("/users/me", { auth: true }),

@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowClockwiseIcon, ImageIcon, TrashIcon } from "@phosphor-icons/react";
+import {
+  ArrowClockwiseIcon,
+  CameraIcon,
+  ImageIcon,
+  SpinnerGapIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import BannerImageCropper from "@/components/BannerImageCropper";
 import ResolvedImage from "@/components/ResolvedImage";
 import { secondaryButtonClass } from "@/components/ui";
@@ -32,6 +38,7 @@ interface ImageUploadPickerProps {
   uploadError?: string;
   successMessage?: string;
   dropzone?: boolean;
+  appearance?: "default" | "avatar-overlay";
   crop?: {
     aspect: number;
     maxWidth: number;
@@ -50,6 +57,7 @@ export default function ImageUploadPicker({
   uploadError,
   successMessage,
   dropzone = false,
+  appearance = "default",
   crop,
 }: ImageUploadPickerProps) {
   const { t } = useLocale();
@@ -127,6 +135,66 @@ export default function ImageUploadPicker({
           }}
         />
       )}
+      {appearance === "avatar-overlay" ? (
+        <div className="inline-flex max-w-40 flex-col items-center">
+          <input
+            ref={inputRef}
+            type="file"
+            accept={IMAGE_ACCEPT}
+            disabled={disabled || uploading}
+            className="sr-only"
+            onChange={(event) => {
+              const nextFile = event.target.files?.[0];
+              if (!nextFile) return;
+              if (!selectFile(nextFile)) event.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            disabled={disabled || uploading}
+            onClick={() => inputRef.current?.click()}
+            aria-label={label}
+            title={label}
+            className="group relative size-28 rounded-full focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] disabled:cursor-wait"
+          >
+            <span className="grid size-full place-items-center overflow-hidden rounded-full border-2 border-line-strong bg-surface-sub text-ink-faint shadow-[var(--shadow-elevated)] transition group-hover:border-brand">
+              {previewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewUrl}
+                  alt={t("image.selectedPreview")}
+                  className="size-full object-cover object-center"
+                />
+              ) : (
+                <ResolvedImage
+                  src={existingUrl}
+                  alt={t("image.current")}
+                  className="size-full object-cover object-center"
+                  fallback={<ImageIcon size={30} weight="duotone" />}
+                />
+              )}
+            </span>
+            <span className="absolute bottom-0 right-0 grid size-9 place-items-center rounded-full border-2 border-surface-card bg-surface-sub text-ink shadow-md transition group-hover:bg-brand group-hover:text-on-brand">
+              {uploading ? (
+                <SpinnerGapIcon className="animate-spin" size={18} />
+              ) : (
+                <CameraIcon size={18} weight="bold" />
+              )}
+            </span>
+          </button>
+          {(selectionError || uploadError) && (
+            <p role="alert" className="mt-2 text-center text-xs text-rejected">
+              {selectionError || uploadError}
+            </p>
+          )}
+          {successMessage && (
+            <p role="status" className="mt-2 text-center text-xs text-approved">
+              {successMessage}
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
       <span className="block text-sm font-medium text-ink">{label}</span>
       <div
         className={`mt-2 flex flex-col gap-3 ${
@@ -237,6 +305,8 @@ export default function ImageUploadPicker({
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

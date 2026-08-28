@@ -111,6 +111,30 @@ const extendedEn = {
   "profile.displayNameInvalid":
     "The display name must contain at least 2 characters.",
   "profile.editProfile": "Edit profile",
+  "profile.passwordTitle": "Account security",
+  "profile.passwordDescription":
+    "Changing your password signs the account out on every device to protect your sessions.",
+  "profile.currentPassword": "Current password",
+  "profile.newPassword": "New password",
+  "profile.confirmNewPassword": "Confirm new password",
+  "profile.passwordRequirements":
+    "Use 6–50 characters with at least one letter and one number.",
+  "profile.changePassword": "Change password",
+  "profile.passwordChanging": "Changing password…",
+  "profile.passwordCurrentInvalid":
+    "Your current password must contain at least 6 characters.",
+  "profile.passwordNewInvalid":
+    "Your new password must contain 6–50 characters, including at least one letter and one number.",
+  "profile.passwordMustDiffer":
+    "Your new password must be different from your current password.",
+  "profile.passwordConfirmMismatch": "The new password confirmation does not match.",
+  "profile.passwordChanged":
+    "Password changed successfully. You will be redirected to sign in.",
+  "profile.passwordChangeError": "Your password could not be changed.",
+  "profile.passwordCancel": "Cancel",
+  "profile.closePasswordModal": "Close change password dialog",
+  "auth.login.passwordChanged":
+    "Your password has been changed. Sign in with your new password.",
   "image.invalidType": "Only JPEG, PNG, WebP, or GIF images are supported.",
   "image.tooLarge": "The image must not exceed 5 MiB.",
   "image.selectedPreview": "Selected image preview",
@@ -1076,6 +1100,25 @@ const extendedEn = {
   "comments.hideError": "The comment could not be hidden.",
   "comments.replyError": "The reply could not be posted.",
   "comments.deletedTombstone": "[Comment deleted]",
+  "pageTitle.default": "Esports tournament management",
+  "pageTitle.home": "Home",
+  "pageTitle.login": "Sign in",
+  "pageTitle.register": "Create an account",
+  "pageTitle.profile": "Profile",
+  "pageTitle.myTournaments": "My tournaments",
+  "pageTitle.tournaments": "Tournament directory",
+  "pageTitle.createTournament": "Create tournament",
+  "pageTitle.tournamentDetail": "Tournament details",
+  "pageTitle.manageTournament": "Manage tournament",
+  "pageTitle.registerTeam": "Register a team",
+  "pageTitle.admin": "Administration",
+  "pageTitle.adminTournaments": "Manage tournaments",
+  "pageTitle.adminUsers": "Manage users",
+  "pageTitle.adminReports": "Manage reports",
+  "pageTitle.adminModeration": "Content moderation",
+  "pageTitle.terms": "Terms of use",
+  "pageTitle.privacy": "Privacy policy",
+  "pageTitle.personalData": "Personal data policy",
 } satisfies Record<keyof typeof extendedVi, string>;
 
 export default extendedEn;

@@ -1,18 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { FloppyDiskIcon, UserCircleIcon } from "@phosphor-icons/react";
+import { useEffect, useRef, useState } from "react";
+import {
+  EyeIcon,
+  EyeSlashIcon,
+  FloppyDiskIcon,
+  LockKeyIcon,
+  ShieldCheckIcon,
+  UserCircleIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import ImageUploadPicker from "@/components/ImageUploadPicker";
 import {
   alertErrorClass,
   inputClass,
   labelClass,
-  primaryButtonClass,
 } from "@/components/ui";
 import { authApi } from "@/features/auth/api";
-import { updateCurrentUser, useAuth } from "@/features/auth/store";
+import {
+  clearSession,
+  updateCurrentUser,
+  useAuth,
+} from "@/features/auth/store";
 import type { Gender, User } from "@/features/auth/types";
+import GamePosterGridBackground from "@/features/home/components/hero/GamePosterGridBackground";
 import { useLocale } from "@/features/locale/store";
 
 interface ProfileFormState {
@@ -32,6 +44,77 @@ const EMPTY_FORM: ProfileFormState = {
   currentAddress: "",
   bio: "",
 };
+
+interface PasswordFormState {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+const EMPTY_PASSWORD_FORM: PasswordFormState = {
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+};
+
+const STRONG_PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d).+$/;
+
+function PasswordField({
+  id,
+  label,
+  value,
+  visible,
+  autoComplete,
+  onChange,
+  onToggleVisibility,
+  showLabel,
+  hideLabel,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  visible: boolean;
+  autoComplete: "current-password" | "new-password";
+  onChange: (value: string) => void;
+  onToggleVisibility: () => void;
+  showLabel: string;
+  hideLabel: string;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className={labelClass}>
+        {label}
+      </label>
+      <div className="relative">
+        <LockKeyIcon
+          aria-hidden
+          size={18}
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+        />
+        <input
+          id={id}
+          type={visible ? "text" : "password"}
+          required
+          minLength={6}
+          maxLength={50}
+          autoComplete={autoComplete}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={`${inputClass} px-11`}
+        />
+        <button
+          type="button"
+          onClick={onToggleVisibility}
+          aria-label={visible ? hideLabel : showLabel}
+          aria-pressed={visible}
+          className="absolute right-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-ink-faint transition hover:bg-surface-hover hover:text-brand focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+        >
+          {visible ? <EyeSlashIcon size={18} /> : <EyeIcon size={18} />}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function formFromUser(user: User): ProfileFormState {
   return {
@@ -59,6 +142,41 @@ export default function ProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const [avatarSuccess, setAvatarSuccess] = useState("");
+  const [passwordForm, setPasswordForm] =
+    useState<PasswordFormState>(EMPTY_PASSWORD_FORM);
+  const [visiblePasswords, setVisiblePasswords] = useState({
+    current: false,
+    next: false,
+    confirm: false,
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!passwordModalOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !changingPassword) {
+        setPasswordModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [changingPassword, passwordModalOpen]);
 
   useEffect(() => {
     if (!ready) return;
@@ -138,13 +256,14 @@ export default function ProfilePage() {
     }
   };
 
-  const uploadAvatar = async () => {
-    if (!avatarFile || !profile) return;
+  const uploadAvatar = async (file: File | null) => {
+    if (!file || !profile) return;
+    setAvatarFile(file);
     setAvatarUploading(true);
     setAvatarError("");
     setAvatarSuccess("");
     try {
-      const uploaded = await authApi.uploadAvatar(avatarFile);
+      const uploaded = await authApi.uploadAvatar(file);
       const updatedUser = { ...profile, avatarUrl: uploaded.url };
       setProfile(updatedUser);
       updateCurrentUser(updatedUser);
@@ -161,10 +280,85 @@ export default function ProfilePage() {
     }
   };
 
+  const updatePasswordField = (
+    field: keyof PasswordFormState,
+    value: string,
+  ) => {
+    setPasswordForm((current) => ({ ...current, [field]: value }));
+    setPasswordError("");
+    setPasswordSuccess("");
+  };
+
+  const openPasswordModal = () => {
+    setPasswordForm(EMPTY_PASSWORD_FORM);
+    setVisiblePasswords({ current: false, next: false, confirm: false });
+    setPasswordError("");
+    setPasswordSuccess("");
+    setPasswordModalOpen(true);
+  };
+
+  const closePasswordModal = () => {
+    if (changingPassword) return;
+    setPasswordModalOpen(false);
+    setPasswordForm(EMPTY_PASSWORD_FORM);
+    setPasswordError("");
+    setPasswordSuccess("");
+  };
+
+  const handlePasswordSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const { currentPassword, newPassword, confirmPassword } = passwordForm;
+
+    if (currentPassword.length < 6) {
+      setPasswordError(t("profile.passwordCurrentInvalid"));
+      return;
+    }
+    if (
+      newPassword.length < 6 ||
+      newPassword.length > 50 ||
+      !STRONG_PASSWORD_PATTERN.test(newPassword)
+    ) {
+      setPasswordError(t("profile.passwordNewInvalid"));
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setPasswordError(t("profile.passwordMustDiffer"));
+      return;
+    }
+    if (confirmPassword !== newPassword) {
+      setPasswordError(t("profile.passwordConfirmMismatch"));
+      return;
+    }
+
+    setChangingPassword(true);
+    setPasswordError("");
+    setPasswordSuccess("");
+    try {
+      await authApi.changePassword({ currentPassword, newPassword });
+      setPasswordForm(EMPTY_PASSWORD_FORM);
+      setPasswordSuccess(t("profile.passwordChanged"));
+      redirectTimerRef.current = setTimeout(() => {
+        clearSession();
+        router.replace("/login?passwordChanged=1");
+      }, 1200);
+    } catch (error) {
+      setPasswordError(
+        error instanceof Error
+          ? error.message
+          : t("profile.passwordChangeError"),
+      );
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   if (!ready || (user && loadingProfile)) {
     return (
-      <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
-        <div className="h-[34rem] animate-pulse rounded-2xl border border-line bg-surface-card" />
+      <div className="relative isolate flex-1 overflow-hidden">
+        <GamePosterGridBackground dense />
+        <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="h-[34rem] animate-pulse rounded-2xl border border-line bg-surface-card/90 backdrop-blur" />
+        </div>
       </div>
     );
   }
@@ -172,75 +366,68 @@ export default function ProfilePage() {
   if (!user) return null;
 
   return (
-    <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand">
-          {t("profile.eyebrow")}
-        </p>
-        <h1 className="mt-2 flex items-center gap-3 text-2xl font-bold text-ink sm:text-3xl">
-          <UserCircleIcon className="text-brand" weight="duotone" />
-          {t("profile.title")}
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
-          {t("profile.description")}
-        </p>
-      </div>
-
-      <div className="grid overflow-hidden rounded-2xl border border-line bg-surface-card shadow-[var(--shadow-elevated)] lg:grid-cols-[20rem_1fr]">
-        <aside className="border-b border-line bg-surface-sub/45 p-6 lg:border-b-0 lg:border-r sm:p-8">
-          <h2 className="text-lg font-semibold text-ink">
-            {t("profile.avatarSection")}
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-ink-muted">
-            {t("profile.avatarDescription")}
+    <div className="relative isolate flex-1 overflow-hidden">
+      <GamePosterGridBackground dense />
+      <div className="relative z-10 mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+        <header className="mb-6">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand">
+            {t("profile.eyebrow")}
           </p>
-          <div className="mt-6">
+          <h1 className="mt-2 flex items-center gap-3 text-2xl font-bold text-ink sm:text-3xl">
+            <UserCircleIcon className="text-brand" weight="duotone" />
+            {t("profile.title")}
+          </h1>
+        </header>
+
+        <div className="overflow-hidden rounded-2xl border border-line bg-surface-card/92 shadow-[var(--shadow-elevated)] backdrop-blur-md">
+          <section className="p-6 sm:p-8 lg:p-10">
+            <div className="flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:items-center">
             <ImageUploadPicker
               label={t("profile.changeAvatar")}
               file={avatarFile}
               onFileChange={(file) => {
-                setAvatarFile(file);
                 setAvatarError("");
                 setAvatarSuccess("");
+                void uploadAvatar(file);
               }}
               existingUrl={profile?.avatarUrl}
               variant="avatar"
+              appearance="avatar-overlay"
               uploading={avatarUploading}
               uploadError={avatarError}
               successMessage={avatarSuccess}
             />
-            {avatarFile && (
+              <div className="min-w-0">
+                <h2 className="text-xl font-bold text-ink">
+                  {profile?.displayName ?? user.displayName}
+                </h2>
+                <p className="mt-1 break-all text-sm text-ink-muted">
+                  {profile?.email ?? user.email}
+                </p>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-ink-faint">
+                  {t("profile.avatarDescription")}
+                </p>
+              </div>
               <button
                 type="button"
-                disabled={avatarUploading}
-                onClick={uploadAvatar}
-                className={`${primaryButtonClass} mt-4 w-full`}
+                onClick={openPasswordModal}
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-line-strong bg-surface/65 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-brand/60 hover:bg-surface-hover focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] sm:ml-auto"
               >
-                {avatarUploading
-                  ? t("profile.uploading")
-                  : t("profile.saveAvatar")}
+                <LockKeyIcon size={18} weight="bold" />
+                {t("profile.changePassword")}
               </button>
-            )}
-          </div>
-          <div className="mt-8 border-t border-line pt-5">
-            <p className="break-all text-sm font-medium text-ink">
-              {profile?.email ?? user.email}
-            </p>
-            <p className="mt-1 text-xs text-ink-faint">
-              {t("profile.emailReadOnly")}
-            </p>
-          </div>
-        </aside>
+            </div>
 
-        <section className="p-6 sm:p-8 lg:p-10">
-          <h2 className="text-lg font-semibold text-ink">
-            {t("profile.personalDetails")}
-          </h2>
-          <p className="mt-1 text-sm text-ink-muted">
-            {t("profile.personalDetailsDescription")}
-          </p>
+            <div className="mt-7">
+              <h2 className="text-lg font-semibold text-ink">
+                {t("profile.personalDetails")}
+              </h2>
+              <p className="mt-1 text-sm text-ink-muted">
+                {t("profile.personalDetailsDescription")}
+              </p>
+            </div>
 
-          <form onSubmit={handleSubmit} className="mt-7 space-y-5">
+            <form onSubmit={handleSubmit} className="mt-7 space-y-5">
             <div>
               <label htmlFor="displayName" className={labelClass}>
                 {t("auth.register.displayName")} <span className="text-brand-secondary">*</span>
@@ -363,14 +550,155 @@ export default function ProfilePage() {
             )}
 
             <div className="flex justify-end border-t border-line pt-5">
-              <button type="submit" disabled={saving} className={primaryButtonClass}>
-                <FloppyDiskIcon size={18} weight="bold" />
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-md bg-brand-secondary px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-brand shadow-[0_12px_30px_-14px_var(--color-brand-secondary)] transition hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55"
+              >
+                <FloppyDiskIcon size={19} weight="fill" />
                 {saving ? t("profile.saving") : t("profile.saveDetails")}
               </button>
             </div>
-          </form>
-        </section>
+            </form>
+          </section>
+
+        </div>
       </div>
+
+      {passwordModalOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closePasswordModal();
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="change-password-title"
+            className="max-h-[calc(100svh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-line-strong bg-surface-card shadow-[var(--shadow-elevated)]"
+          >
+            <header className="flex items-start justify-between gap-4 border-b border-line px-5 py-5 sm:px-6">
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
+                  <ShieldCheckIcon size={22} weight="duotone" />
+                </span>
+                <div>
+                  <h2 id="change-password-title" className="text-lg font-bold text-ink">
+                    {t("profile.passwordTitle")}
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-ink-muted">
+                    {t("profile.passwordDescription")}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={changingPassword}
+                onClick={closePasswordModal}
+                aria-label={t("profile.closePasswordModal")}
+                className="grid size-10 shrink-0 place-items-center rounded-lg text-ink-faint transition hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] disabled:opacity-50"
+              >
+                <XIcon size={20} weight="bold" />
+              </button>
+            </header>
+
+            <form onSubmit={handlePasswordSubmit} className="space-y-5 p-5 sm:p-6">
+              <PasswordField
+                id="currentPassword"
+                label={t("profile.currentPassword")}
+                value={passwordForm.currentPassword}
+                visible={visiblePasswords.current}
+                autoComplete="current-password"
+                onChange={(value) => updatePasswordField("currentPassword", value)}
+                onToggleVisibility={() =>
+                  setVisiblePasswords((current) => ({
+                    ...current,
+                    current: !current.current,
+                  }))
+                }
+                showLabel={t("auth.login.showPassword")}
+                hideLabel={t("auth.login.hidePassword")}
+              />
+
+              <PasswordField
+                id="newPassword"
+                label={t("profile.newPassword")}
+                value={passwordForm.newPassword}
+                visible={visiblePasswords.next}
+                autoComplete="new-password"
+                onChange={(value) => updatePasswordField("newPassword", value)}
+                onToggleVisibility={() =>
+                  setVisiblePasswords((current) => ({
+                    ...current,
+                    next: !current.next,
+                  }))
+                }
+                showLabel={t("auth.login.showPassword")}
+                hideLabel={t("auth.login.hidePassword")}
+              />
+
+              <PasswordField
+                id="confirmNewPassword"
+                label={t("profile.confirmNewPassword")}
+                value={passwordForm.confirmPassword}
+                visible={visiblePasswords.confirm}
+                autoComplete="new-password"
+                onChange={(value) =>
+                  updatePasswordField("confirmPassword", value)
+                }
+                onToggleVisibility={() =>
+                  setVisiblePasswords((current) => ({
+                    ...current,
+                    confirm: !current.confirm,
+                  }))
+                }
+                showLabel={t("auth.login.showPassword")}
+                hideLabel={t("auth.login.hidePassword")}
+              />
+
+              <p className="text-xs leading-5 text-ink-faint">
+                {t("profile.passwordRequirements")}
+              </p>
+
+              {passwordError && (
+                <p role="alert" className={alertErrorClass}>
+                  {passwordError}
+                </p>
+              )}
+              {passwordSuccess && (
+                <p
+                  role="status"
+                  className="rounded-[var(--radius-control)] border border-approved/40 bg-approved/10 px-4 py-3 text-sm text-approved"
+                >
+                  {passwordSuccess}
+                </p>
+              )}
+
+              <div className="flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  disabled={changingPassword || Boolean(passwordSuccess)}
+                  onClick={closePasswordModal}
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-line-strong px-5 py-2.5 text-sm font-bold text-ink-muted transition hover:bg-surface-hover hover:text-ink disabled:opacity-50"
+                >
+                  {t("profile.passwordCancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={changingPassword || Boolean(passwordSuccess)}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-brand-secondary px-5 py-2.5 text-xs font-black uppercase tracking-wide text-on-brand transition hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  <LockKeyIcon size={18} weight="bold" />
+                  {changingPassword
+                    ? t("profile.passwordChanging")
+                    : t("profile.changePassword")}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

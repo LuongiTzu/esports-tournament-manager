@@ -20,6 +20,11 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface UpdateProfileRequest {
   displayName?: string;
   birthDate?: string;

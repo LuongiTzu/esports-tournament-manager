@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Role } from '@prisma/client';
@@ -270,5 +270,79 @@ describe('AuthService password reset exposure', () => {
         tokenVersion: { increment: 1 },
       },
     });
+  });
+});
+
+describe('AuthService change password', () => {
+  beforeEach(() => {
+    comparePassword.mockReset();
+    hashValue.mockReset().mockResolvedValue('new-password-hash');
+  });
+
+  it('verifies the current password and invalidates every existing session', async () => {
+    const { service, prisma } = harness();
+    prisma.user.findUnique.mockResolvedValue(user());
+    comparePassword.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+    await expect(
+      service.changePassword('user-1', {
+        currentPassword: 'Current123',
+        newPassword: 'NewPassword456',
+      }),
+    ).resolves.toEqual({
+      message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại',
+    });
+
+    expect(comparePassword).toHaveBeenNthCalledWith(
+      1,
+      'Current123',
+      'password-hash',
+    );
+    expect(comparePassword).toHaveBeenNthCalledWith(
+      2,
+      'NewPassword456',
+      'password-hash',
+    );
+    expect(hashValue).toHaveBeenCalledWith('NewPassword456', 10);
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: {
+        passwordHash: 'new-password-hash',
+        refreshToken: null,
+        tokenVersion: { increment: 1 },
+      },
+    });
+  });
+
+  it('rejects an incorrect current password without updating the account', async () => {
+    const { service, prisma } = harness();
+    prisma.user.findUnique.mockResolvedValue(user());
+    comparePassword.mockResolvedValue(false);
+
+    await expect(
+      service.changePassword('user-1', {
+        currentPassword: 'Wrong123',
+        newPassword: 'NewPassword456',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(hashValue).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects reusing the current password', async () => {
+    const { service, prisma } = harness();
+    prisma.user.findUnique.mockResolvedValue(user());
+    comparePassword.mockResolvedValue(true);
+
+    await expect(
+      service.changePassword('user-1', {
+        currentPassword: 'Current123',
+        newPassword: 'Current123',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(hashValue).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
   });
 });

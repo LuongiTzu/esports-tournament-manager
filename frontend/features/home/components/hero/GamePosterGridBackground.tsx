@@ -30,7 +30,8 @@ const GAME_POSTERS = [
   `${POSTER_ROOT}/crossfire.jpg`,
 ] as const;
 
-const ROW_COUNT = 4;
+const DEFAULT_ROW_COUNT = 4;
+const DENSE_ROW_COUNT = 8;
 const ITEMS_PER_ROW = 7;
 const MAX_ROW_MOVEMENT = [92, 72, 82, 64] as const;
 
@@ -49,7 +50,8 @@ function PosterRow({
   pointerPosition: MotionValue<number>;
 }) {
   const direction = rowIndex % 2 === 0 ? 1 : -1;
-  const movement = MAX_ROW_MOVEMENT[rowIndex] * direction;
+  const movement =
+    MAX_ROW_MOVEMENT[rowIndex % MAX_ROW_MOVEMENT.length] * direction;
   const x = useTransform(pointerPosition, [-1, 1], [-movement, movement]);
 
   return (
@@ -70,7 +72,11 @@ function PosterRow({
   );
 }
 
-export default function GamePosterGridBackground() {
+export default function GamePosterGridBackground({
+  dense = false,
+}: {
+  dense?: boolean;
+}) {
   const prefersReducedMotion = useReducedMotion();
   const pointerPosition = useMotionValue(0);
   const smoothPointerPosition = useSpring(pointerPosition, {
@@ -98,15 +104,21 @@ export default function GamePosterGridBackground() {
   }, [pointerPosition, prefersReducedMotion]);
 
   return (
-    <div aria-hidden="true" className={styles.root}>
+    <div
+      aria-hidden="true"
+      className={`${styles.root} ${dense ? styles.dense : ""}`}
+    >
       <div className={styles.grid}>
-        {Array.from({ length: ROW_COUNT }, (_, rowIndex) => (
+        {Array.from(
+          { length: dense ? DENSE_ROW_COUNT : DEFAULT_ROW_COUNT },
+          (_, rowIndex) => (
           <PosterRow
             key={rowIndex}
             rowIndex={rowIndex}
             pointerPosition={smoothPointerPosition}
           />
-        ))}
+          ),
+        )}
       </div>
       <div className={styles.veil} />
     </div>

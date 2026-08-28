@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -21,6 +21,11 @@ import {
 } from "@/components/ui";
 import { useLocale } from "@/features/locale/store";
 
+const subscribeToLocation = () => () => {};
+const getPasswordChangedSnapshot = () =>
+  new URLSearchParams(window.location.search).get("passwordChanged") === "1";
+const getServerPasswordChangedSnapshot = () => false;
+
 export default function LoginPage() {
   const router = useRouter();
   const { t } = useLocale();
@@ -29,6 +34,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const passwordChanged = useSyncExternalStore(
+    subscribeToLocation,
+    getPasswordChangedSnapshot,
+    getServerPasswordChangedSnapshot,
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +70,14 @@ export default function LoginPage() {
       }
     >
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        {passwordChanged && (
+          <p
+            role="status"
+            className="rounded-[var(--radius-control)] border border-approved/40 bg-approved/10 px-4 py-3 text-sm text-approved"
+          >
+            {t("auth.login.passwordChanged")}
+          </p>
+        )}
         <div>
           <label htmlFor="email" className={labelClass}>
             {t("common.email")}

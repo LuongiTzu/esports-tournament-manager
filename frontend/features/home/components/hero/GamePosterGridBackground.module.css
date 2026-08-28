@@ -42,6 +42,13 @@
   transform-origin: center;
 }
 
+.dense .grid {
+  height: auto;
+  min-height: 135%;
+  grid-template-rows: repeat(8, clamp(8.5rem, 13vw, 12rem));
+  align-content: center;
+}
+
 .row {
   display: grid;
   min-width: 0;
