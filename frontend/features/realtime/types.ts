@@ -18,4 +18,5 @@ export type NotificationRealtimeListener = (
 
 export type TournamentRealtimeListener = (
   event: TournamentRealtimeEvent,
+  payload: unknown,
 ) => void;

@@ -34,6 +34,7 @@ const en = {
   "notifications.message.moderationHidden":
     "The tournament was hidden by an administrator.",
   "notifications.message.moderationReason": "Reason: {reason}",
+  "notifications.message.commentReply": "{replier} replied to your comment:",
   "notifications.status.DRAFT": "a draft",
   "notifications.status.REGISTRATION": "open for registration",
   "notifications.status.ONGOING": "in progress",
@@ -47,6 +48,7 @@ const en = {
   "notifications.type.tournamentStatus": "Tournament status",
   "notifications.type.reportThreshold": "Reports need review",
   "notifications.type.adminWarning": "Administrator warning",
+  "notifications.type.commentReply": "New reply",
   "notifications.type.system": "System notification",
   "language.label": "Change language",
   "language.vi": "Vietnamese",

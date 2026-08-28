@@ -154,6 +154,7 @@ enum NotificationType {
   TOURNAMENT_STATUS
   REPORT_THRESHOLD
   ADMIN_WARNING
+  COMMENT_REPLY
   SYSTEM
 }
 
@@ -209,7 +210,8 @@ model User {
   organizedTournaments Tournament[]   @relation("OrganizerTournaments")
   captainedTeams       Team[]         @relation("CaptainedTeams")
   teamMembers          TeamMember[]
-  comments             Comment[]
+  comments             Comment[]      @relation("CommentAuthor")
+  commentReplyTargets  Comment[]      @relation("CommentReplyTarget")
   notifications        Notification[]
   reportedReports      Report[]       @relation("ReporterReports")
   reviewedReports      Report[]       @relation("ReviewedReports")
@@ -528,21 +530,30 @@ model MatchScore {
 
 /// Bình luận dưới giải đấu
 model Comment {
-  id       String  @id @default(cuid())
-  content  String
-  isHidden Boolean @default(false) @map("is_hidden") /// BTC/Admin ẩn bình luận vi phạm
+  id        String    @id @default(cuid())
+  content   String
+  isHidden  Boolean   @default(false) @map("is_hidden") /// BTC/Admin ẩn bình luận vi phạm
+  deletedAt DateTime? @map("deleted_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
   authorId String @map("author_id")
-  author   User   @relation(fields: [authorId], references: [id])
+  author   User   @relation("CommentAuthor", fields: [authorId], references: [id])
+
+  parentId String?   @map("parent_id")
+  parent   Comment?  @relation("CommentThread", fields: [parentId], references: [id], onDelete: Restrict)
+  replies  Comment[] @relation("CommentThread")
+
+  replyToUserId String? @map("reply_to_user_id")
+  replyToUser   User?   @relation("CommentReplyTarget", fields: [replyToUserId], references: [id], onDelete: Restrict)
 
   tournamentId String     @map("tournament_id")
   tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
   @@index([tournamentId, createdAt])
+  @@index([parentId, createdAt])
   @@map("comments")
 }
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   BellIcon,
   CalendarDotsIcon,
+  ChatCircleDotsIcon,
   CheckCircleIcon,
   ChecksIcon,
   CircleNotchIcon,
@@ -70,6 +71,11 @@ const TYPE_META: Record<
     titleKey: "notifications.type.adminWarning",
     icon: ShieldWarningIcon,
     tone: "bg-pending/10 text-pending",
+  },
+  COMMENT_REPLY: {
+    titleKey: "notifications.type.commentReply",
+    icon: ChatCircleDotsIcon,
+    tone: "bg-accent/10 text-accent",
   },
   SYSTEM: {
     titleKey: "notifications.type.system",
@@ -202,6 +208,18 @@ function notificationCopy(
         : undefined,
     };
   }
+  if (data?.kind === "COMMENT_REPLY") {
+    const replierName = stringField(data, "replierName");
+    const preview = stringField(data, "replyPreview");
+    if (replierName) {
+      return {
+        message: interpolate(t("notifications.message.commentReply"), {
+          replier: `@${replierName}`,
+        }),
+        detail: preview ? `“${preview}”` : undefined,
+      };
+    }
+  }
   if (notification.type === "SCORE_UPDATE") {
     return { message: t("notifications.message.scoreUpdated") };
   }
@@ -238,6 +256,13 @@ function notificationDestination(notification: UserNotification) {
   if (notification.type === "REPORT_THRESHOLD") return "/admin/reports";
   const slug = notification.tournament?.slug;
   if (!slug) return null;
+  if (notification.type === "COMMENT_REPLY") {
+    const data = asRecord(notification.data);
+    const rootCommentId = data ? stringField(data, "rootCommentId") : null;
+    return rootCommentId
+      ? `/tournaments/${slug}#comment-${encodeURIComponent(rootCommentId)}`
+      : `/tournaments/${slug}#comments`;
+  }
   if (
     notification.type === "TEAM_REGISTERED" ||
     notification.type === "ADMIN_WARNING"

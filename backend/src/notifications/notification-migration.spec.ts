@@ -42,6 +42,7 @@ describe('Database constraint migration coverage', () => {
       'TEAM_REGISTERED',
       'TOURNAMENT_STATUS',
       'REPORT_THRESHOLD',
+      'COMMENT_REPLY',
     ]) {
       expect(migrationSql).toMatch(
         new RegExp(

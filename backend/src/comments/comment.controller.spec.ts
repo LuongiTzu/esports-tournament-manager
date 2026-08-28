@@ -15,6 +15,7 @@ describe('CommentController', () => {
       'cup',
       'authenticated-user',
       'Hello',
+      undefined,
     );
   });
 
@@ -24,5 +25,19 @@ describe('CommentController', () => {
       CommentController.prototype.create,
     ) as unknown[];
     expect(guards[0]).toBe(JwtAuthGuard);
+  });
+
+  it('forwards only the clicked reply target identifier', async () => {
+    jest.mocked(comments.create).mockResolvedValue({ id: 'reply-1' } as never);
+    await controller.create('cup', 'authenticated-user', {
+      content: 'Reply',
+      replyToCommentId: 'clicked-comment',
+    });
+    expect(comments.create).toHaveBeenCalledWith(
+      'cup',
+      'authenticated-user',
+      'Reply',
+      'clicked-comment',
+    );
   });
 });

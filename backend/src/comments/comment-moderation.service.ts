@@ -9,6 +9,7 @@ export class CommentModerationService {
     const search = query.search?.trim();
     return this.prisma.comment.findMany({
       where: {
+        deletedAt: null,
         isHidden: query.isHidden,
         ...(search
           ? {
@@ -32,11 +33,22 @@ export class CommentModerationService {
   async remove(id: string) {
     const comment = await this.prisma.comment.findUnique({
       where: { id },
-      select: { id: true },
+      select: {
+        id: true,
+        parentId: true,
+        _count: { select: { replies: true } },
+      },
     });
     if (!comment) throw new NotFoundException('Comment not found');
+    if (comment.parentId === null && comment._count.replies > 0) {
+      await this.prisma.comment.update({
+        where: { id },
+        data: { content: '', deletedAt: new Date(), isHidden: false },
+      });
+      return { message: 'Comment deleted', id, tombstoned: true };
+    }
     await this.prisma.comment.delete({ where: { id } });
-    return { message: 'Comment deleted', id };
+    return { message: 'Comment deleted', id, tombstoned: false };
   }
   private async setHidden(id: string, isHidden: boolean) {
     const comment = await this.prisma.comment.findUnique({

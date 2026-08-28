@@ -9,6 +9,7 @@ export const NOTIFICATION_TYPES = [
   "TOURNAMENT_STATUS",
   "REPORT_THRESHOLD",
   "ADMIN_WARNING",
+  "COMMENT_REPLY",
   "SYSTEM",
 ] as const;
 
@@ -60,6 +61,16 @@ export type NotificationData =
       kind: "TOURNAMENT_MODERATION";
       moderationStatus: string;
       reason: string;
+    }
+  | {
+      kind: "COMMENT_REPLY";
+      tournamentId: string;
+      tournamentName: string;
+      rootCommentId: string;
+      replyCommentId: string;
+      replierId: string;
+      replierName: string;
+      replyPreview: string;
     }
   | { kind: "TOURNAMENT_ANNOUNCEMENT" };
 

@@ -110,7 +110,11 @@ describe('AdminService P2 workflows', () => {
     const prisma = {
       comment: {
         findMany: jest.fn().mockResolvedValue([]),
-        findUnique: jest.fn().mockResolvedValue({ id: 'c-1' }),
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'c-1',
+          parentId: null,
+          _count: { replies: 0 },
+        }),
         update: jest
           .fn()
           .mockImplementation(({ data }) => ({ id: 'c-1', ...data })),
@@ -123,6 +127,7 @@ describe('AdminService P2 workflows', () => {
     expect(prisma.comment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
+          deletedAt: null,
           isHidden: true,
           content: { contains: 'spam', mode: Prisma.QueryMode.insensitive },
         },
@@ -140,6 +145,7 @@ describe('AdminService P2 workflows', () => {
     await expect(service.deleteComment('c-1')).resolves.toEqual({
       message: 'Comment deleted',
       id: 'c-1',
+      tombstoned: false,
     });
   });
 

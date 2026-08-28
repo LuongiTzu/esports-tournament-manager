@@ -35,7 +35,12 @@ export class CommentController {
     @CurrentUser('id') authorId: string,
     @Body() dto: CreateCommentDto,
   ) {
-    return this.comments.create(slug, authorId, dto.content);
+    return this.comments.create(
+      slug,
+      authorId,
+      dto.content,
+      dto.replyToCommentId,
+    );
   }
 
   @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)

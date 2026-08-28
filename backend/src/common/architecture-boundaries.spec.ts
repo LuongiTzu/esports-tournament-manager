@@ -171,6 +171,7 @@ describe('backend architecture boundaries', () => {
       'TOURNAMENT_STATUS',
       'REPORT_THRESHOLD',
       'ADMIN_WARNING',
+      'COMMENT_REPLY',
       'SYSTEM',
     ]);
   });

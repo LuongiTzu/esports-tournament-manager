@@ -33,6 +33,8 @@ const vi = {
     "Giải đã có {count} báo cáo đang chờ xử lý.",
   "notifications.message.moderationHidden": "Giải đã bị quản trị viên ẩn.",
   "notifications.message.moderationReason": "Lý do: {reason}",
+  "notifications.message.commentReply":
+    "{replier} đã phản hồi bình luận của bạn:",
   "notifications.status.DRAFT": "bản nháp",
   "notifications.status.REGISTRATION": "mở đăng ký",
   "notifications.status.ONGOING": "đang thi đấu",
@@ -46,6 +48,7 @@ const vi = {
   "notifications.type.tournamentStatus": "Trạng thái giải đấu",
   "notifications.type.reportThreshold": "Báo cáo cần xử lý",
   "notifications.type.adminWarning": "Cảnh báo từ quản trị viên",
+  "notifications.type.commentReply": "Phản hồi mới",
   "notifications.type.system": "Thông báo hệ thống",
   "language.label": "Đổi ngôn ngữ",
   "language.vi": "Tiếng Việt",

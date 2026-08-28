@@ -16,7 +16,6 @@ import type { NotificationRecord } from "@/features/notifications/types";
 import {
   TOURNAMENT_REALTIME_EVENTS,
   type NotificationRealtimeListener,
-  type TournamentRealtimeEvent,
   type TournamentRealtimeListener,
 } from "@/features/realtime/types";
 import { API_BASE_URL } from "@/lib/api/client";
@@ -88,11 +87,11 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       );
     };
     const tournamentHandlers = TOURNAMENT_REALTIME_EVENTS.map((event) => {
-      const handler = () => {
-        // Gateway payloads do not carry their room id. Only mounted tournament
-        // subscribers are notified, then each view refetches its own read model.
+      const handler = (payload: unknown) => {
+        // Room membership scopes delivery on the server. Views that can verify
+        // tournament context from a payload should additionally do so.
         tournamentListeners.current.forEach((listeners) => {
-          listeners.forEach((listener) => listener(event));
+          listeners.forEach((listener) => listener(event, payload));
         });
       };
       socket.on(event, handler);
@@ -184,7 +183,7 @@ export function useNotificationRealtime(
 
 export function useTournamentRealtime(
   tournamentId: string | undefined,
-  listener: (event: TournamentRealtimeEvent) => void,
+  listener: TournamentRealtimeListener,
 ) {
   const { subscribeTournament } = useRealtime();
   const listenerRef = useRef(listener);
@@ -195,8 +194,8 @@ export function useTournamentRealtime(
 
   useEffect(() => {
     if (!tournamentId) return;
-    return subscribeTournament(tournamentId, (event) =>
-      listenerRef.current(event),
+    return subscribeTournament(tournamentId, (event, payload) =>
+      listenerRef.current(event, payload),
     );
   }, [subscribeTournament, tournamentId]);
 }

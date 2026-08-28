@@ -3,7 +3,6 @@
 import { use, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
-  ArrowLeftIcon,
   CalendarBlankIcon,
   ClockIcon,
   EnvelopeSimpleIcon,
@@ -20,6 +19,7 @@ import {
 import ResolvedImage from "@/components/ResolvedImage";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { clearSession, useAuth } from "@/features/auth/store";
+import TournamentComments from "@/features/comments/components/TournamentComments";
 import { accentVars } from "@/features/games/game-accent";
 import RosterSummary from "@/features/games/components/RosterSummary";
 import { gamePositionLabel } from "@/features/games/position-labels";
@@ -199,17 +199,7 @@ export default function TournamentDetailPage({
       style={accentVars(tournament.game.name)}
       className="tournament-detail-page w-full flex-1 pb-16"
     >
-      <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-        <Link
-          href="/tournaments"
-          className="inline-flex items-center gap-2 text-sm text-ink-muted transition hover:text-ink"
-        >
-          <ArrowLeftIcon size={16} />
-          {t("tournament.detail.backToList")}
-        </Link>
-      </div>
-
-      <div className="mx-auto mt-5 w-full max-w-[100rem] px-0 sm:px-4">
+      <div className="mx-auto w-full max-w-[100rem] px-0 sm:px-4">
         <header className="overflow-hidden border-y border-line bg-surface-card sm:border-x">
           <div className="relative aspect-[16/6] min-h-64 overflow-hidden bg-surface-sub sm:min-h-80">
             <ResolvedImage
@@ -325,6 +315,9 @@ export default function TournamentDetailPage({
               </a>
               <a href="#participants" className="tournament-detail-tab">
                 {t("tournament.detail.participants")}
+              </a>
+              <a href="#comments" className="tournament-detail-tab">
+                {t("comments.title")}
               </a>
               {tournament.rules && (
                 <a href="#rules" className="tournament-detail-tab">
@@ -651,6 +644,13 @@ export default function TournamentDetailPage({
             </ul>
           )}
         </section>
+
+        <TournamentComments
+          key={tournament.id}
+          slug={slug}
+          tournamentId={tournament.id}
+          organizerId={tournament.organizer?.id}
+        />
 
         {tournament.rules && (
           <section

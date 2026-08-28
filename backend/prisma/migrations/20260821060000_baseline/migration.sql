@@ -56,7 +56,7 @@ CREATE TYPE "BracketType" AS ENUM ('WINNER', 'LOSER');
 CREATE TYPE "MatchSlot" AS ENUM ('A', 'B');
 
 -- CreateEnum
-CREATE TYPE "NotificationType" AS ENUM ('SCHEDULE_CHANGE', 'SCORE_UPDATE', 'TEAM_REGISTERED', 'TEAM_APPROVED', 'TEAM_REJECTED', 'TOURNAMENT_STATUS', 'REPORT_THRESHOLD', 'ADMIN_WARNING', 'SYSTEM');
+CREATE TYPE "NotificationType" AS ENUM ('SCHEDULE_CHANGE', 'SCORE_UPDATE', 'TEAM_REGISTERED', 'TEAM_APPROVED', 'TEAM_REJECTED', 'TOURNAMENT_STATUS', 'REPORT_THRESHOLD', 'ADMIN_WARNING', 'COMMENT_REPLY', 'SYSTEM');
 
 -- CreateEnum
 CREATE TYPE "ReportReason" AS ENUM ('GAMBLING', 'SCAM', 'INAPPROPRIATE_CONTENT', 'OTHER');
@@ -290,9 +290,12 @@ CREATE TABLE "comments" (
     "id" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "is_hidden" BOOLEAN NOT NULL DEFAULT false,
+    "deleted_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "author_id" TEXT NOT NULL,
+    "parent_id" TEXT,
+    "reply_to_user_id" TEXT,
     "tournament_id" TEXT NOT NULL,
 
     CONSTRAINT "comments_pkey" PRIMARY KEY ("id")
@@ -402,6 +405,9 @@ CREATE INDEX "match_scores_match_id_idx" ON "match_scores"("match_id");
 CREATE INDEX "comments_tournament_id_created_at_idx" ON "comments"("tournament_id", "created_at");
 
 -- CreateIndex
+CREATE INDEX "comments_parent_id_created_at_idx" ON "comments"("parent_id", "created_at");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "notifications_deduplication_key_key" ON "notifications"("deduplication_key");
 
 -- CreateIndex
@@ -481,6 +487,12 @@ ALTER TABLE "comments" ADD CONSTRAINT "comments_author_id_fkey" FOREIGN KEY ("au
 
 -- AddForeignKey
 ALTER TABLE "comments" ADD CONSTRAINT "comments_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "comments" ADD CONSTRAINT "comments_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "comments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "comments" ADD CONSTRAINT "comments_reply_to_user_id_fkey" FOREIGN KEY ("reply_to_user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
