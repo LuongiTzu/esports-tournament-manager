@@ -25,6 +25,7 @@ import RosterSummary from "@/features/games/components/RosterSummary";
 import { gamePositionLabel } from "@/features/games/position-labels";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
+import TournamentReportAction from "@/features/reports/components/TournamentReportAction";
 import { teamsApi } from "@/features/teams/api";
 import StatusBadge from "@/features/teams/components/StatusBadge";
 import type { TeamWithMembers } from "@/features/teams/types";
@@ -293,11 +294,15 @@ export default function TournamentDetailPage({
                 {canRegister && (
                   <Link
                     href={`/tournaments/${slug}/register-team`}
-                    className="inline-flex min-h-[var(--control-height)] items-center justify-center bg-accent px-7 py-3 text-sm font-bold text-on-accent transition hover:brightness-110"
+                    className="inline-flex min-h-[var(--control-height)] items-center justify-center rounded-lg bg-accent px-6 py-3 text-sm font-black uppercase tracking-wide text-on-accent shadow-[0_12px_30px_-14px_var(--color-accent)] transition-[transform,filter] hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
                   >
                     {t("tournament.detail.registerTeam")}
                   </Link>
                 )}
+                <TournamentReportAction
+                  slug={slug}
+                  tournamentName={tournament.name}
+                />
               </div>
             </div>
           </div>

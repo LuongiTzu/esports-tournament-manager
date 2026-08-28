@@ -102,7 +102,14 @@ export type AdminTournamentMutationResult = Pick<
 export type AdminReportStatus = "PENDING" | "REVIEWED" | "DISMISSED";
 export type AdminReportReason =
   | "GAMBLING"
+  | "MINOR_SAFETY"
+  | "HARASSMENT_OR_HATE"
+  | "VIOLENCE_OR_SELF_HARM"
+  | "RESTRICTED_GOODS"
+  | "ADULT_CONTENT"
   | "SCAM"
+  | "INTELLECTUAL_PROPERTY"
+  | "SPAM_OR_MALICIOUS_LINKS"
   | "INAPPROPRIATE_CONTENT"
   | "OTHER";
 
