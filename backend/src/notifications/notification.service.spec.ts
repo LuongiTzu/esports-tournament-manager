@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { NotificationType, RegistrationStatus } from '@prisma/client';
+import {
+  ModerationStatus,
+  NotificationType,
+  RegistrationStatus,
+  Role,
+  Visibility,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationScope } from './dto/notification.dto';
 import { NotificationEventsService } from './notification-events.service';
@@ -38,6 +44,13 @@ function harness() {
   };
   const prisma = {
     notification,
+    user: {
+      findMany: jest.fn(({ where }: { where: { id: { in: string[] } } }) =>
+        Promise.resolve(
+          where.id.in.map((id) => ({ id, role: Role.SIGNED_UP_USER })),
+        ),
+      ),
+    },
     tournament: {
       findUnique: jest.fn().mockResolvedValue({ id: 't-1' }),
     },
@@ -142,8 +155,13 @@ describe('NotificationService', () => {
   it('sends tournament-wide events only to distinct approved participants', async () => {
     const { service, prisma, notification, events } = harness();
     jest.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      organizerId: 'organizer',
+      visibility: Visibility.PUBLIC,
+      moderationStatus: ModerationStatus.ACTIVE,
+      favorites: [],
       teams: [
         {
+          status: RegistrationStatus.APPROVED,
           captainId: 'captain',
           members: [
             { userId: 'captain' },
@@ -152,6 +170,7 @@ describe('NotificationService', () => {
           ],
         },
         {
+          status: RegistrationStatus.APPROVED,
           captainId: 'captain-2',
           members: [{ userId: 'member' }],
         },
@@ -183,9 +202,8 @@ describe('NotificationService', () => {
     expect(prisma.tournament.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         select: expect.objectContaining({
-          teams: expect.objectContaining({
-            where: { status: RegistrationStatus.APPROVED },
-          }) as object,
+          teams: expect.any(Object) as object,
+          favorites: expect.any(Object) as object,
         }) as object,
       }),
     );
@@ -244,12 +262,25 @@ describe('NotificationService', () => {
         expect.objectContaining({ userId: 'organizer' }),
       ]),
     );
+    expect(
+      notification.createManyAndReturn.mock.calls[0][0].data[0],
+    ).not.toHaveProperty('teamIds');
   });
 
   it('emits only newly inserted records when an event is retried', async () => {
     const { service, prisma, notification, events } = harness();
     jest.mocked(prisma.tournament.findUnique).mockResolvedValue({
-      teams: [{ captainId: 'participant', members: [] }],
+      organizerId: 'organizer',
+      visibility: Visibility.PUBLIC,
+      moderationStatus: ModerationStatus.ACTIVE,
+      favorites: [],
+      teams: [
+        {
+          status: RegistrationStatus.APPROVED,
+          captainId: 'participant',
+          members: [],
+        },
+      ],
     } as never);
     notification.createManyAndReturn
       .mockResolvedValueOnce([
@@ -283,6 +314,117 @@ describe('NotificationService', () => {
     expect(notification.createManyAndReturn).toHaveBeenCalledTimes(2);
     expect(emitted).toEqual(['n-1']);
     subscription.unsubscribe();
+  });
+
+  it('merges visible followers with participants and deduplicates overlapping roles', async () => {
+    const { service, prisma, notification } = harness();
+    jest.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      organizerId: 'organizer',
+      visibility: Visibility.PUBLIC,
+      moderationStatus: ModerationStatus.ACTIVE,
+      teams: [
+        {
+          status: RegistrationStatus.APPROVED,
+          captainId: 'participant-follower',
+          members: [],
+        },
+      ],
+      favorites: [
+        {
+          user: {
+            id: 'participant-follower',
+            role: Role.SIGNED_UP_USER,
+          },
+        },
+        {
+          user: { id: 'organizer', role: Role.SIGNED_UP_USER },
+        },
+        {
+          user: { id: 'follower', role: Role.SIGNED_UP_USER },
+        },
+      ],
+    } as never);
+
+    const result = await service.createForTournamentEvent({
+      tournamentId: 't-1',
+      type: NotificationType.TOURNAMENT_STATUS,
+      content: 'Tournament status updated',
+      sourceKey: 'tournament:t-1:status:REGISTRATION:ONGOING',
+    });
+
+    const recipientIds = notification.createManyAndReturn.mock.calls[0][0].data
+      .map((item: { userId: string }) => item.userId)
+      .sort();
+    expect(recipientIds).toEqual([
+      'follower',
+      'organizer',
+      'participant-follower',
+    ]);
+    expect(result).toEqual(
+      expect.objectContaining({ recipientCount: 3, createdCount: 3 }),
+    );
+  });
+
+  it('stops future follower delivery after the Favorite relation is absent', async () => {
+    const { service, prisma, notification } = harness();
+    const tournament = {
+      organizerId: 'organizer',
+      visibility: Visibility.PUBLIC,
+      moderationStatus: ModerationStatus.ACTIVE,
+      teams: [],
+      favorites: [{ user: { id: 'follower', role: Role.SIGNED_UP_USER } }],
+    };
+    jest
+      .mocked(prisma.tournament.findUnique)
+      .mockResolvedValueOnce(tournament as never)
+      .mockResolvedValueOnce({ ...tournament, favorites: [] } as never);
+
+    await service.createForTournamentEvent({
+      tournamentId: 't-1',
+      type: NotificationType.TOURNAMENT_STATUS,
+      content: 'Tournament started',
+      sourceKey: 'status-1',
+    });
+    await service.createForTournamentEvent({
+      tournamentId: 't-1',
+      type: NotificationType.TOURNAMENT_STATUS,
+      content: 'Tournament completed',
+      sourceKey: 'status-2',
+    });
+
+    expect(notification.createManyAndReturn).toHaveBeenCalledTimes(1);
+    expect(notification.createManyAndReturn.mock.calls[0][0].data).toEqual([
+      expect.objectContaining({ userId: 'follower' }),
+    ]);
+  });
+
+  it('does not notify a follower or participant who can no longer view a hidden tournament', async () => {
+    const { service, prisma, notification } = harness();
+    jest.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      organizerId: 'organizer',
+      visibility: Visibility.PUBLIC,
+      moderationStatus: ModerationStatus.HIDDEN_BY_ADMIN,
+      teams: [
+        {
+          status: RegistrationStatus.APPROVED,
+          captainId: 'former-viewer',
+          members: [],
+        },
+      ],
+      favorites: [{ user: { id: 'former-viewer', role: Role.SIGNED_UP_USER } }],
+    } as never);
+
+    await expect(
+      service.createForTournamentEvent({
+        tournamentId: 't-1',
+        type: NotificationType.TOURNAMENT_STATUS,
+        content: 'Tournament status updated',
+        sourceKey: 'private-status',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({ recipientCount: 0, createdCount: 0 }),
+    );
+    expect(notification.createManyAndReturn).not.toHaveBeenCalled();
   });
 
   it('rejects a team outside the tournament', async () => {

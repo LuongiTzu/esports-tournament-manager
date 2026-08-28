@@ -153,6 +153,15 @@ CREATE TABLE "tournaments" (
 );
 
 -- CreateTable
+CREATE TABLE "tournament_favorites" (
+    "user_id" TEXT NOT NULL,
+    "tournament_id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "tournament_favorites_pkey" PRIMARY KEY ("user_id","tournament_id")
+);
+
+-- CreateTable
 CREATE TABLE "rounds" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -360,6 +369,12 @@ CREATE INDEX "tournaments_game_id_visibility_moderation_status_idx" ON "tourname
 CREATE INDEX "tournaments_status_start_date_idx" ON "tournaments"("status", "start_date");
 
 -- CreateIndex
+CREATE INDEX "tournament_favorites_tournament_id_idx" ON "tournament_favorites"("tournament_id");
+
+-- CreateIndex
+CREATE INDEX "tournament_favorites_user_id_created_at_idx" ON "tournament_favorites"("user_id", "created_at");
+
+-- CreateIndex
 CREATE INDEX "rounds_tournament_id_order_index_idx" ON "rounds"("tournament_id", "order_index");
 
 -- CreateIndex
@@ -424,6 +439,12 @@ ALTER TABLE "tournaments" ADD CONSTRAINT "tournaments_game_id_fkey" FOREIGN KEY 
 
 -- AddForeignKey
 ALTER TABLE "tournaments" ADD CONSTRAINT "tournaments_organizer_id_fkey" FOREIGN KEY ("organizer_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tournament_favorites" ADD CONSTRAINT "tournament_favorites_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tournament_favorites" ADD CONSTRAINT "tournament_favorites_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "rounds" ADD CONSTRAINT "rounds_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE;

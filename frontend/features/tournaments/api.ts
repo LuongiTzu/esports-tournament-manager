@@ -9,6 +9,7 @@ import type {
   Tournament,
   TournamentBracket,
   TournamentDetail,
+  TournamentFavoriteMutationResult,
   TournamentMutationResult,
   TournamentStandingsResponse,
   UpdateTournamentLifecycleRequest,
@@ -28,6 +29,7 @@ export const tournamentsApi = {
     const search = query.toString();
     return request<Paginated<Tournament>>(
       `/tournaments${search ? `?${search}` : ""}`,
+      { auth: true },
     );
   },
   findBySlug: (slug: string) =>
@@ -84,4 +86,16 @@ export const tournamentsApi = {
     }),
   findMine: (tab: "organized" | "joined") =>
     request<Tournament[]>(`/users/me/tournaments?tab=${tab}`, { auth: true }),
+  findFavorites: () =>
+    request<Tournament[]>("/users/me/favorite-tournaments", { auth: true }),
+  favorite: (slug: string) =>
+    request<TournamentFavoriteMutationResult>(`/tournaments/${slug}/favorite`, {
+      method: "POST",
+      auth: true,
+    }),
+  unfavorite: (slug: string) =>
+    request<TournamentFavoriteMutationResult>(`/tournaments/${slug}/favorite`, {
+      method: "DELETE",
+      auth: true,
+    }),
 };

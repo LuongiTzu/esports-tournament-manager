@@ -16,6 +16,7 @@ import { TournamentCommandService } from './tournament-command.service';
 import { TournamentQueryService } from './tournament-query.service';
 import { TournamentLifecyclePolicy } from './domain/tournament-lifecycle.policy';
 import type { NotificationPublisher } from '../common/ports/notification-publisher';
+import { TournamentFavoriteService } from './tournament-favorite.service';
 
 function addRoundPrisma(round: Record<string, jest.Mock>) {
   const tx = {
@@ -53,7 +54,11 @@ function createTournamentsService(
     new TournamentLifecyclePolicy(),
     notifications,
   );
-  return new TournamentsService(commands, queries);
+  return new TournamentsService(
+    commands,
+    queries,
+    {} as TournamentFavoriteService,
+  );
 }
 
 function harness(total = 45) {

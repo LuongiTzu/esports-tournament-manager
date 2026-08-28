@@ -8,7 +8,17 @@ import {
   Param,
   Query,
   UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiExtraModels,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
@@ -24,10 +34,16 @@ import {
 } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { TournamentListQueryDto } from './dto/tournament-list-query.dto';
+import {
+  TournamentFavoriteMutationResultDto,
+  TournamentFavoriteViewFieldsDto,
+} from './dto/tournament-favorite.dto';
 
 /**
  * Controller Tournament — quản lý giải đấu (UC-U04, U05, U09, U10, U18)
  */
+@ApiTags('Tournaments')
+@ApiExtraModels(TournamentFavoriteViewFieldsDto)
 @Controller('tournaments')
 export class TournamentsController {
   constructor(private tournamentsService: TournamentsService) {}
@@ -36,15 +52,34 @@ export class TournamentsController {
    * GET /api/tournaments
    * Danh sách giải đấu Public (UC-G01, UC-G02) — không cần đăng nhập
    */
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOkResponse({
+    description:
+      'Public Tournament page; every item includes derived favoriteCount and viewer-specific isFavorited.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: { $ref: getSchemaPath(TournamentFavoriteViewFieldsDto) },
+        },
+      },
+      additionalProperties: true,
+    },
+  })
   @Get()
   findAll(
     @Query()
     query: TournamentListQueryDto,
+    @CurrentUser() user?: AuthenticatedUser,
   ) {
-    return this.tournamentsService.findAllPublic({
-      ...query,
-      search: query.q ?? query.search,
-    });
+    return this.tournamentsService.findAllPublic(
+      {
+        ...query,
+        search: query.q ?? query.search,
+      },
+      user?.id,
+    );
   }
 
   /**
@@ -53,12 +88,48 @@ export class TournamentsController {
    */
   @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
   @VisibilityResource('slug:slug')
+  @ApiOkResponse({
+    description:
+      'Tournament detail including derived favoriteCount and viewer-specific isFavorited.',
+    type: TournamentFavoriteViewFieldsDto,
+  })
   @Get('slug/:slug')
   findByLegacySlug(
     @Param('slug') slug: string,
     @CurrentUser() user?: AuthenticatedUser,
   ) {
     return this.tournamentsService.findBySlug(slug, user?.id, user?.role);
+  }
+
+  @UseGuards(JwtAuthGuard, VisibilityGuard)
+  @VisibilityResource('slug:slug')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Favorite and follow important Tournament-wide updates',
+  })
+  @ApiOkResponse({ type: TournamentFavoriteMutationResultDto })
+  @HttpCode(HttpStatus.OK)
+  @Post(':slug/favorite')
+  favorite(
+    @Param('slug') slug: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.tournamentsService.favorite(user.id, slug);
+  }
+
+  @UseGuards(JwtAuthGuard, VisibilityGuard)
+  @VisibilityResource('slug:slug')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Remove a Favorite and stop future follower notifications',
+  })
+  @ApiOkResponse({ type: TournamentFavoriteMutationResultDto })
+  @Delete(':slug/favorite')
+  unfavorite(
+    @Param('slug') slug: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.tournamentsService.unfavorite(user.id, slug);
   }
 
   @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
@@ -87,6 +158,11 @@ export class TournamentsController {
 
   @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
   @VisibilityResource('slug:slug')
+  @ApiOkResponse({
+    description:
+      'Tournament detail including derived favoriteCount and viewer-specific isFavorited.',
+    type: TournamentFavoriteViewFieldsDto,
+  })
   @Get(':slug')
   findBySlug(
     @Param('slug') slug: string,

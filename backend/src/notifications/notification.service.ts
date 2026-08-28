@@ -16,6 +16,7 @@ import {
   NotificationPublisher,
 } from '../common/ports/notification-publisher';
 import { NotificationQueryService } from './notification-query.service';
+import { tournamentVisibilityPolicy } from '../common/policies/tournament-visibility.policy';
 
 type NotificationClient = Pick<PrismaService, 'notification'>;
 
@@ -135,9 +136,12 @@ export class NotificationService implements NotificationPublisher {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: data.tournamentId },
       select: {
+        organizerId: true,
+        visibility: true,
+        moderationStatus: true,
         teams: {
-          where: { status: RegistrationStatus.APPROVED },
           select: {
+            status: true,
             captainId: true,
             members: {
               where: { userId: { not: null } },
@@ -145,16 +149,54 @@ export class NotificationService implements NotificationPublisher {
             },
           },
         },
+        favorites: {
+          select: {
+            user: { select: { id: true, role: true } },
+          },
+        },
       },
     });
     if (!tournament) throw new NotFoundException('Tournament not found');
 
-    const userIds = tournament.teams.flatMap((team) => [
-      team.captainId,
-      ...team.members
-        .map((member) => member.userId)
-        .filter((userId): userId is string => userId !== null),
-    ]);
+    const relatedUserIds = new Set(
+      tournament.teams.flatMap((team) => [
+        team.captainId,
+        ...team.members
+          .map((member) => member.userId)
+          .filter((userId): userId is string => userId !== null),
+      ]),
+    );
+    const participantCandidates = uniqueUserIds(
+      tournament.teams
+        .filter((team) => team.status === RegistrationStatus.APPROVED)
+        .flatMap((team) => [
+          team.captainId,
+          ...team.members.map((member) => member.userId),
+        ]),
+    );
+    const participantUsers = await this.prisma.user.findMany({
+      where: { id: { in: participantCandidates } },
+      select: { id: true, role: true },
+    });
+    const participantUserIds = participantUsers.flatMap((user) =>
+      tournamentVisibilityPolicy.canView({
+        ...tournament,
+        user,
+        isRelatedParticipant: true,
+      })
+        ? [user.id]
+        : [],
+    );
+    const followerUserIds = tournament.favorites.flatMap(({ user }) =>
+      tournamentVisibilityPolicy.canView({
+        ...tournament,
+        user,
+        isRelatedParticipant: relatedUserIds.has(user.id),
+      })
+        ? [user.id]
+        : [],
+    );
+    const userIds = [...participantUserIds, ...followerUserIds];
     const notifications = await this.createForUsers({ ...data, userIds });
     return {
       recipientCount: uniqueUserIds(userIds).length,
@@ -171,7 +213,8 @@ export class NotificationService implements NotificationPublisher {
     data?: NotificationData;
     sourceKey: string;
   }) {
-    const teamIds = [...new Set(data.teamIds.filter(isUserId))];
+    const { teamIds: rawTeamIds, ...notificationInput } = data;
+    const teamIds = [...new Set(rawTeamIds.filter(isUserId))];
     if (teamIds.length === 0) {
       return { recipientCount: 0, createdCount: 0, notifications: [] };
     }
@@ -189,7 +232,10 @@ export class NotificationService implements NotificationPublisher {
       team.captainId,
       ...team.members.map((member) => member.userId),
     ]);
-    const notifications = await this.createForUsers({ ...data, userIds });
+    const notifications = await this.createForUsers({
+      ...notificationInput,
+      userIds,
+    });
     return {
       recipientCount: uniqueUserIds(userIds).length,
       createdCount: notifications.length,

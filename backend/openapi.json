@@ -600,13 +600,59 @@
         ]
       }
     },
+    "/api/users/me/favorite-tournaments": {
+      "get": {
+        "operationId": "UsersController_getFavoriteTournaments",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Most recently favorited first. Inaccessible Tournaments are omitted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TournamentFavoriteViewFieldsDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List saved Tournaments followed by the current User",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
     "/api/tournaments": {
       "get": {
         "operationId": "TournamentsController_findAll",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Public Tournament page; every item includes derived favoriteCount and viewer-specific isFavorited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TournamentFavoriteViewFieldsDto"
+                      }
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -651,9 +697,86 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Tournament detail including derived favoriteCount and viewer-specific isFavorited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentFavoriteViewFieldsDto"
+                }
+              }
+            }
           }
         },
+        "tags": [
+          "Tournaments"
+        ]
+      }
+    },
+    "/api/tournaments/{slug}/favorite": {
+      "post": {
+        "operationId": "TournamentsController_favorite",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentFavoriteMutationResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Favorite and follow important Tournament-wide updates",
+        "tags": [
+          "Tournaments"
+        ]
+      },
+      "delete": {
+        "operationId": "TournamentsController_unfavorite",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentFavoriteMutationResultDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a Favorite and stop future follower notifications",
         "tags": [
           "Tournaments"
         ]
@@ -743,7 +866,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Tournament detail including derived favoriteCount and viewer-specific isFavorited.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentFavoriteViewFieldsDto"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2050,9 +2180,45 @@
         "type": "object",
         "properties": {}
       },
+      "TournamentFavoriteViewFieldsDto": {
+        "type": "object",
+        "properties": {
+          "favoriteCount": {
+            "type": "number",
+            "example": 42,
+            "minimum": 0
+          },
+          "isFavorited": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "favoriteCount",
+          "isFavorited"
+        ]
+      },
       "UpdateProfileDto": {
         "type": "object",
         "properties": {}
+      },
+      "TournamentFavoriteMutationResultDto": {
+        "type": "object",
+        "properties": {
+          "isFavorited": {
+            "type": "boolean",
+            "example": true
+          },
+          "favoriteCount": {
+            "type": "number",
+            "example": 42,
+            "minimum": 0
+          }
+        },
+        "required": [
+          "isFavorited",
+          "favoriteCount"
+        ]
       },
       "CreateTournamentDto": {
         "type": "object",

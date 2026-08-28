@@ -134,10 +134,10 @@ export default function TournamentReportAction({
           setSubmitted(false);
           setOpen(true);
         }}
-        className="inline-flex min-h-[var(--control-height)] items-center justify-center gap-2 rounded-lg bg-brand-secondary px-6 py-3 text-sm font-black uppercase tracking-wide text-on-brand shadow-[0_12px_30px_-14px_var(--color-brand-secondary)] transition-[transform,filter] hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+        className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-md bg-brand-secondary px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-brand transition hover:brightness-110 active:translate-y-px"
         aria-haspopup="dialog"
       >
-        <FlagIcon size={17} aria-hidden />
+        <FlagIcon size={19} weight="fill" aria-hidden />
         {t("report.action")}
       </button>
 

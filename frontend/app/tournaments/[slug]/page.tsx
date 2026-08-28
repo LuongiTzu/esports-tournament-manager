@@ -32,6 +32,7 @@ import type { TeamWithMembers } from "@/features/teams/types";
 import { tournamentsApi } from "@/features/tournaments/api";
 import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 import PublicCompetitionView from "@/features/tournaments/components/competition/PublicCompetitionView";
+import TournamentFavoriteButton from "@/features/tournaments/components/TournamentFavoriteButton";
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { ApiError } from "@/lib/api/client";
 
@@ -281,11 +282,11 @@ export default function TournamentDetailPage({
                   ? `${t("tournament.detail.registrationUntil")} ${formatDateTime(tournament.registrationDeadline)}`
                   : t("tournament.detail.registrationNoDeadline")}
               </p>
-              <div className="mt-4 flex flex-wrap gap-2 lg:justify-end">
+              <div className="mt-4 grid w-full gap-2 sm:grid-cols-2 lg:grid-cols-1">
                 {isOrganizer && (
                   <Link
                     href={`/tournaments/${slug}/manage`}
-                    className={secondaryButtonClass}
+                    className={`${secondaryButtonClass} w-full`}
                   >
                     <GearSixIcon size={17} />
                     {t("tournament.detail.manage")}
@@ -294,14 +295,36 @@ export default function TournamentDetailPage({
                 {canRegister && (
                   <Link
                     href={`/tournaments/${slug}/register-team`}
-                    className="inline-flex min-h-[var(--control-height)] items-center justify-center rounded-lg bg-accent px-6 py-3 text-sm font-black uppercase tracking-wide text-on-accent shadow-[0_12px_30px_-14px_var(--color-accent)] transition-[transform,filter] hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+                    className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-md bg-accent px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-accent transition hover:brightness-110 active:translate-y-px"
                   >
+                    <UsersThreeIcon size={19} weight="fill" aria-hidden />
                     {t("tournament.detail.registerTeam")}
                   </Link>
                 )}
                 <TournamentReportAction
                   slug={slug}
                   tournamentName={tournament.name}
+                />
+                <TournamentFavoriteButton
+                  slug={slug}
+                  isFavorited={tournament.isFavorited}
+                  favoriteCount={tournament.favoriteCount}
+                  className="justify-self-end"
+                  onOptimisticChange={(favoriteState) =>
+                    setTournament((current) =>
+                      current ? { ...current, ...favoriteState } : current,
+                    )
+                  }
+                  onReconciled={(favoriteState) =>
+                    setTournament((current) =>
+                      current ? { ...current, ...favoriteState } : current,
+                    )
+                  }
+                  onRollback={(favoriteState) =>
+                    setTournament((current) =>
+                      current ? { ...current, ...favoriteState } : current,
+                    )
+                  }
                 />
               </div>
             </div>

@@ -65,7 +65,16 @@ const extendedVi = {
   "auth.register.visualTitle": "Gia nhập cộng đồng thi đấu.",
   "auth.register.visualDescription": "Tạo hồ sơ để tổ chức giải đấu, đăng ký đội và kết nối với cộng đồng Esports trên cùng một nền tảng.",
   "profile.organized": "Giải đã tổ chức",
+  "profile.myTournaments": "Giải đấu của tôi",
   "profile.joined": "Giải đã tham gia",
+  "profile.favorites": "Yêu thích",
+  "profile.favoriteTournaments": "Giải đấu yêu thích",
+  "profile.emptyFavorites": "Chưa có giải đấu yêu thích",
+  "profile.emptyFavoritesHelp":
+    "Nhấn biểu tượng trái tim ở một giải đấu để lưu và theo dõi các cập nhật quan trọng.",
+  "profile.favoritesLoadError": "Không thể tải danh sách giải đấu yêu thích.",
+  "profile.favoritesRetryHelp": "Vui lòng thử tải lại danh sách.",
+  "profile.browseTournaments": "Khám phá giải đấu",
   "profile.avatarAlt": "Ảnh đại diện",
   "profile.changeAvatar": "Đổi ảnh đại diện",
   "profile.uploadAvatar": "Tải ảnh đại diện",
@@ -77,6 +86,18 @@ const extendedVi = {
   "profile.emptyJoinedHelp": "Tìm một giải đang mở đăng ký và nộp đội của bạn.",
   "profile.createTournament": "Tạo giải đấu",
   "profile.viewOpen": "Xem giải đang mở",
+  "tournament.favorite.label": "Yêu thích",
+  "tournament.favorite.saveAndFollow":
+    "Lưu vào mục yêu thích và theo dõi giải đấu",
+  "tournament.favorite.removeAndUnfollow":
+    "Bỏ yêu thích và ngừng theo dõi giải đấu",
+  "tournament.favorite.savedAndFollowed": "Đã lưu và theo dõi giải đấu.",
+  "tournament.favorite.removedAndUnfollowed":
+    "Đã bỏ yêu thích và ngừng theo dõi.",
+  "tournament.favorite.loginRequired":
+    "Đăng nhập để lưu và theo dõi giải đấu.",
+  "tournament.favorite.failure":
+    "Không thể cập nhật giải đấu yêu thích. Vui lòng thử lại.",
   "profile.saveAvatar": "Lưu ảnh đại diện",
   "profile.uploading": "Đang tải lên…",
   "profile.eyebrow": "Tài khoản của bạn",
@@ -971,7 +992,7 @@ const extendedVi = {
   "comments.hideError": "Không thể ẩn bình luận.",
   "comments.replyError": "Không thể đăng phản hồi.",
   "comments.deletedTombstone": "[Bình luận đã bị xóa]",
-  "report.action": "Báo cáo giải đấu",
+  "report.action": "Báo cáo",
   "report.title": "Báo cáo",
   "report.dialogDescription": "Chọn vấn đề phù hợp nhất để chúng tôi xem xét.",
   "report.reasonLabel": "Tại sao bạn báo cáo giải đấu này?",

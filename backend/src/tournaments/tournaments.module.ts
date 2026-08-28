@@ -8,6 +8,7 @@ import { TournamentQueryService } from './tournament-query.service';
 import { TournamentLifecyclePolicy } from './domain/tournament-lifecycle.policy';
 import { TournamentModerationService } from './tournament-moderation.service';
 import { NotificationModule } from '../notifications/notification.module';
+import { TournamentFavoriteService } from './tournament-favorite.service';
 
 /**
  * Module Tournament — quản lý giải đấu (UC-U04, U05, U09, U10, U18)
@@ -21,6 +22,7 @@ import { NotificationModule } from '../notifications/notification.module';
     TournamentQueryService,
     TournamentLifecyclePolicy,
     TournamentModerationService,
+    TournamentFavoriteService,
   ],
   exports: [
     TournamentsService,

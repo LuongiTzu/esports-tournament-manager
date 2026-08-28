@@ -1,14 +1,37 @@
 import TournamentCard from "@/features/tournaments/components/TournamentCard";
-import type { Tournament } from "@/features/tournaments/types";
+import type {
+  Tournament,
+  TournamentFavoriteMutationResult,
+} from "@/features/tournaments/types";
 
 export type TournamentView = "grid" | "list";
 
 export function TournamentGrid({
   tournaments,
   view = "grid",
+  onFavoriteOptimisticChange,
+  onFavoriteReconciled,
+  onFavoriteRollback,
+  showFavoriteFeedback = true,
 }: {
   tournaments: Tournament[];
   view?: TournamentView;
+  onFavoriteOptimisticChange?: (
+    tournament: Tournament,
+    state: TournamentFavoriteMutationResult,
+    index: number,
+  ) => void;
+  onFavoriteReconciled?: (
+    tournament: Tournament,
+    state: TournamentFavoriteMutationResult,
+    index: number,
+  ) => void;
+  onFavoriteRollback?: (
+    tournament: Tournament,
+    state: TournamentFavoriteMutationResult,
+    index: number,
+  ) => void;
+  showFavoriteFeedback?: boolean;
 }) {
   return (
     <div
@@ -18,11 +41,21 @@ export function TournamentGrid({
           : "grid gap-4"
       }
     >
-      {tournaments.map((tournament) => (
+      {tournaments.map((tournament, index) => (
         <TournamentCard
           key={tournament.id}
           tournament={tournament}
           view={view}
+          onFavoriteOptimisticChange={(state) =>
+            onFavoriteOptimisticChange?.(tournament, state, index)
+          }
+          onFavoriteReconciled={(state) =>
+            onFavoriteReconciled?.(tournament, state, index)
+          }
+          onFavoriteRollback={(state) =>
+            onFavoriteRollback?.(tournament, state, index)
+          }
+          showFavoriteFeedback={showFavoriteFeedback}
         />
       ))}
     </div>

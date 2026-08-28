@@ -35,15 +35,18 @@ export class TournamentQueryService {
     private readonly standingsService: StandingsService,
   ) {}
 
-  async findAllPublic(query: {
-    search?: string;
-    gameId?: string;
-    status?: TournamentStatus;
-    mode?: TournamentMode;
-    isVerified?: boolean;
-    page?: number;
-    limit?: number;
-  }) {
+  async findAllPublic(
+    query: {
+      search?: string;
+      gameId?: string;
+      status?: TournamentStatus;
+      mode?: TournamentMode;
+      isVerified?: boolean;
+      page?: number;
+      limit?: number;
+    },
+    userId?: string,
+  ) {
     const page = query.page ?? 1;
     const limit = Math.min(50, query.limit ?? 20);
     const skip = (page - 1) * limit;
@@ -94,14 +97,17 @@ export class TournamentQueryService {
         ],
         include: {
           game: { select: TOURNAMENT_GAME_SELECT },
-          _count: { select: { teams: true } },
+          favorites: viewerFavoriteSelection(userId),
+          _count: { select: { teams: true, favorites: true } },
         },
       }),
       this.prisma.tournament.count({ where }),
     ]);
 
     return {
-      data: data.map(withTournamentGameDisplayName),
+      data: data.map((tournament) =>
+        withTournamentFavoriteState(withTournamentGameDisplayName(tournament)),
+      ),
       pagination: {
         page,
         limit,
@@ -137,7 +143,10 @@ export class TournamentQueryService {
             _count: { select: { members: true } },
           },
         },
-        _count: { select: { teams: true, comments: true } },
+        favorites: viewerFavoriteSelection(userId),
+        _count: {
+          select: { teams: true, comments: true, favorites: true },
+        },
       },
     });
 
@@ -149,16 +158,18 @@ export class TournamentQueryService {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
 
-    return withTournamentGameDisplayName({
-      ...tournament,
-      rounds: tournament.rounds.map((round) => ({
-        ...round,
-        settings: this.roundSettingsService.getEffectiveSettings(
-          round.format,
-          round.settings,
-        ),
-      })),
-    });
+    return withTournamentFavoriteState(
+      withTournamentGameDisplayName({
+        ...tournament,
+        rounds: tournament.rounds.map((round) => ({
+          ...round,
+          settings: this.roundSettingsService.getEffectiveSettings(
+            round.format,
+            round.settings,
+          ),
+        })),
+      }),
+    );
   }
 
   async findMyTournaments(
@@ -175,10 +186,13 @@ export class TournamentQueryService {
         orderBy: { createdAt: 'desc' },
         include: {
           game: { select: { id: true, code: true, name: true, iconUrl: true } },
-          _count: { select: { teams: true } },
+          favorites: viewerFavoriteSelection(userId),
+          _count: { select: { teams: true, favorites: true } },
         },
       });
-      return tournaments.map(withTournamentGameDisplayName);
+      return tournaments.map((tournament) =>
+        withTournamentFavoriteState(withTournamentGameDisplayName(tournament)),
+      );
     }
 
     // joined: giải có đội mà user là captain hoặc thành viên
@@ -200,10 +214,65 @@ export class TournamentQueryService {
       orderBy: { createdAt: 'desc' },
       include: {
         game: { select: { id: true, code: true, name: true, iconUrl: true } },
-        _count: { select: { teams: true } },
+        favorites: viewerFavoriteSelection(userId),
+        _count: { select: { teams: true, favorites: true } },
       },
     });
-    return tournaments.map(withTournamentGameDisplayName);
+    return tournaments.map((tournament) =>
+      withTournamentFavoriteState(withTournamentGameDisplayName(tournament)),
+    );
+  }
+
+  async findFavoriteTournaments(userId: string, userRole?: string) {
+    const favorites = await this.prisma.tournamentFavorite.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: 'desc' }, { tournamentId: 'asc' }],
+      include: {
+        tournament: {
+          include: {
+            game: {
+              select: { id: true, code: true, name: true, iconUrl: true },
+            },
+            favorites: viewerFavoriteSelection(userId),
+            _count: { select: { teams: true, favorites: true } },
+            teams: {
+              select: {
+                captainId: true,
+                members: {
+                  where: { userId: { not: null } },
+                  select: { userId: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    const user = { id: userId, role: userRole ?? '' };
+
+    return favorites.flatMap(({ tournament }) => {
+      const { teams, ...visibleTournament } = tournament;
+      const relatedUserIds = new Set(
+        teams.flatMap((team) => [
+          team.captainId,
+          ...team.members.map((member) => member.userId),
+        ]),
+      );
+      if (
+        !tournamentVisibilityPolicy.canView({
+          ...visibleTournament,
+          user,
+          isRelatedParticipant: relatedUserIds.has(userId),
+        })
+      ) {
+        return [];
+      }
+      return [
+        withTournamentFavoriteState(
+          withTournamentGameDisplayName(visibleTournament),
+        ),
+      ];
+    });
   }
 
   async getStandings(slug: string, userId?: string, userRole?: string) {
@@ -562,4 +631,26 @@ export class TournamentQueryService {
       isRelatedParticipant: team !== null,
     });
   }
+}
+
+function viewerFavoriteSelection(userId?: string) {
+  return {
+    where: userId ? { userId } : { userId: { in: [] as string[] } },
+    select: { userId: true },
+    take: 1,
+  } as const;
+}
+
+function withTournamentFavoriteState<
+  T extends {
+    favorites?: ReadonlyArray<unknown>;
+    _count?: { favorites?: number };
+  },
+>(tournament: T) {
+  const { favorites = [], ...readModel } = tournament;
+  return {
+    ...readModel,
+    favoriteCount: tournament._count?.favorites ?? 0,
+    isFavorited: favorites.length > 0,
+  };
 }

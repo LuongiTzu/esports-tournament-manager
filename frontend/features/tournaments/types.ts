@@ -143,7 +143,14 @@ export interface Tournament {
   organizer?: { id: string; displayName: string; avatarUrl?: string | null };
   rounds?: TournamentRound[];
   _count?: { teams: number; comments?: number };
+  favoriteCount: number;
+  isFavorited: boolean;
   createdAt: string;
+}
+
+export interface TournamentFavoriteMutationResult {
+  isFavorited: boolean;
+  favoriteCount: number;
 }
 
 export interface FindAllTournamentsParams {

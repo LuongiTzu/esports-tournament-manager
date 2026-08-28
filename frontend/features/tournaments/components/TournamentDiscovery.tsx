@@ -17,7 +17,11 @@ import {
   TournamentGridSkeleton,
   type TournamentView,
 } from "@/features/tournaments/components/TournamentGrid";
-import type { Paginated, Tournament } from "@/features/tournaments/types";
+import type {
+  Paginated,
+  Tournament,
+  TournamentFavoriteMutationResult,
+} from "@/features/tournaments/types";
 
 const PAGE_SIZE = 12;
 type TournamentSort = "recommended" | "name" | "newest" | "teams";
@@ -138,6 +142,24 @@ export default function TournamentDiscovery() {
     setGameId("");
     setStatus("");
     setPage(1);
+  };
+
+  const updateFavoriteState = (
+    tournament: Tournament,
+    favoriteState: TournamentFavoriteMutationResult,
+  ) => {
+    setResult((current) => {
+      if (!current?.response) return current;
+      return {
+        ...current,
+        response: {
+          ...current.response,
+          data: current.response.data.map((item) =>
+            item.id === tournament.id ? { ...item, ...favoriteState } : item,
+          ),
+        },
+      };
+    });
   };
 
   return (
@@ -369,7 +391,13 @@ export default function TournamentDiscovery() {
               )}
             </div>
           ) : (
-            <TournamentGrid tournaments={sortedTournaments} view={view} />
+            <TournamentGrid
+              tournaments={sortedTournaments}
+              view={view}
+              onFavoriteOptimisticChange={updateFavoriteState}
+              onFavoriteReconciled={updateFavoriteState}
+              onFavoriteRollback={updateFavoriteState}
+            />
           )}
 
           {!loading && !error && pagination && pagination.totalPages > 1 && (

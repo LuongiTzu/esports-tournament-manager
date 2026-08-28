@@ -73,7 +73,16 @@ const extendedEn = {
   "auth.register.visualDescription":
     "Create a profile to organize tournaments, register teams, and connect with the Esports community on one platform.",
   "profile.organized": "Organized tournaments",
+  "profile.myTournaments": "My tournaments",
   "profile.joined": "Joined tournaments",
+  "profile.favorites": "Favorites",
+  "profile.favoriteTournaments": "Favorite tournaments",
+  "profile.emptyFavorites": "No favorite tournaments yet",
+  "profile.emptyFavoritesHelp":
+    "Use the heart on a tournament to save it and follow important updates.",
+  "profile.favoritesLoadError": "Favorite tournaments could not be loaded.",
+  "profile.favoritesRetryHelp": "Please try loading the list again.",
+  "profile.browseTournaments": "Browse tournaments",
   "profile.avatarAlt": "Profile picture",
   "profile.changeAvatar": "Change profile picture",
   "profile.uploadAvatar": "Upload profile picture",
@@ -87,6 +96,18 @@ const extendedEn = {
     "Find a tournament with open registration and submit your team.",
   "profile.createTournament": "Create tournament",
   "profile.viewOpen": "View open tournaments",
+  "tournament.favorite.label": "Favorite",
+  "tournament.favorite.saveAndFollow":
+    "Save to favorites and follow tournament",
+  "tournament.favorite.removeAndUnfollow":
+    "Remove from favorites and stop following",
+  "tournament.favorite.savedAndFollowed": "Tournament saved and followed.",
+  "tournament.favorite.removedAndUnfollowed":
+    "Removed from favorites and unfollowed.",
+  "tournament.favorite.loginRequired":
+    "Log in to save and follow this tournament.",
+  "tournament.favorite.failure":
+    "Favorite could not be updated. Please try again.",
   "profile.saveAvatar": "Save profile picture",
   "profile.uploading": "Uploading…",
   "profile.eyebrow": "Your account",
@@ -1107,7 +1128,7 @@ const extendedEn = {
   "comments.hideError": "The comment could not be hidden.",
   "comments.replyError": "The reply could not be posted.",
   "comments.deletedTombstone": "[Comment deleted]",
-  "report.action": "Report tournament",
+  "report.action": "Report",
   "report.title": "Report",
   "report.dialogDescription": "Choose the issue that best fits so we can review it.",
   "report.reasonLabel": "Why are you reporting this tournament?",

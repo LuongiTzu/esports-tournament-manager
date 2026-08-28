@@ -113,3 +113,105 @@ describe('TournamentQueryService GF-5 read models', () => {
     );
   });
 });
+
+describe('TournamentQueryService favorite read models', () => {
+  const baseTournament = {
+    id: 'tournament-1',
+    slug: 'arena-cup',
+    organizerId: 'organizer-1',
+    visibility: Visibility.PUBLIC,
+    moderationStatus: ModerationStatus.ACTIVE,
+    customGameName: null,
+    game: customGame,
+    rounds: [],
+    teams: [],
+    organizer: {},
+  };
+
+  it.each([
+    ['anonymous', undefined, [], false],
+    ['favoriting viewer', 'user-a', [{ userId: 'user-a' }], true],
+    ['other viewer', 'user-b', [], false],
+  ] as const)(
+    'keeps list and detail favorite state aligned for %s',
+    async (_label, userId, viewerFavorites, expected) => {
+      const listRow = {
+        ...baseTournament,
+        favorites: viewerFavorites,
+        _count: { teams: 0, favorites: 1 },
+      };
+      const detailRow = {
+        ...listRow,
+        _count: { teams: 0, comments: 0, favorites: 1 },
+      };
+      const prisma = {
+        tournament: {
+          findMany: jest.fn().mockResolvedValue([listRow]),
+          count: jest.fn().mockResolvedValue(1),
+          findUnique: jest.fn().mockResolvedValue(detailRow),
+        },
+      } as unknown as PrismaService;
+      const service = queryService(prisma);
+
+      const list = await service.findAllPublic({}, userId);
+      const detail = await service.findBySlug('arena-cup', userId);
+
+      expect(list.data[0]).toEqual(
+        expect.objectContaining({ favoriteCount: 1, isFavorited: expected }),
+      );
+      expect(detail).toEqual(
+        expect.objectContaining({ favoriteCount: 1, isFavorited: expected }),
+      );
+      expect(list.data[0]).not.toHaveProperty('favorites');
+      expect(detail).not.toHaveProperty('favorites');
+    },
+  );
+
+  it('returns only visible current-user favorites in saved order', async () => {
+    const favoriteRows = [
+      {
+        createdAt: new Date('2026-08-28T02:00:00Z'),
+        tournamentId: 'public',
+        tournament: {
+          ...baseTournament,
+          id: 'public',
+          favorites: [{ userId: 'user-a' }],
+          _count: { teams: 2, favorites: 4 },
+          teams: [],
+        },
+      },
+      {
+        createdAt: new Date('2026-08-28T01:00:00Z'),
+        tournamentId: 'private',
+        tournament: {
+          ...baseTournament,
+          id: 'private',
+          visibility: Visibility.PRIVATE,
+          favorites: [{ userId: 'user-a' }],
+          _count: { teams: 0, favorites: 1 },
+          teams: [],
+        },
+      },
+    ];
+    const findMany = jest.fn().mockResolvedValue(favoriteRows);
+    const prisma = {
+      tournamentFavorite: { findMany },
+    } as unknown as PrismaService;
+
+    await expect(
+      queryService(prisma).findFavoriteTournaments('user-a', 'SIGNED_UP_USER'),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: 'public',
+        favoriteCount: 4,
+        isFavorited: true,
+      }),
+    ]);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'user-a' },
+        orderBy: [{ createdAt: 'desc' }, { tournamentId: 'asc' }],
+      }),
+    );
+  });
+});

@@ -12,6 +12,8 @@ import { accentVars } from "@/features/games/game-accent";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { formatLocalizedDate } from "@/features/locale/format";
 import ResolvedImage from "@/components/ResolvedImage";
+import TournamentFavoriteButton from "@/features/tournaments/components/TournamentFavoriteButton";
+import type { TournamentFavoriteMutationResult } from "@/features/tournaments/types";
 
 const statusLabels: Record<Tournament["status"], TranslationKey> = {
   DRAFT: "tournaments.discovery.draft",
@@ -32,9 +34,19 @@ const statusClasses: Record<Tournament["status"], string> = {
 export default function TournamentCard({
   tournament: t,
   view = "grid",
+  onFavoriteOptimisticChange,
+  onFavoriteReconciled,
+  onFavoriteRollback,
+  showFavoriteFeedback = true,
 }: {
   tournament: Tournament;
   view?: TournamentView;
+  onFavoriteOptimisticChange?: (
+    state: TournamentFavoriteMutationResult,
+  ) => void;
+  onFavoriteReconciled?: (state: TournamentFavoriteMutationResult) => void;
+  onFavoriteRollback?: (state: TournamentFavoriteMutationResult) => void;
+  showFavoriteFeedback?: boolean;
 }) {
   const { locale, t: translate } = useLocale();
   const formattedDate = t.startDate
@@ -47,13 +59,17 @@ export default function TournamentCard({
   const listView = view === "list";
 
   return (
-    <Link
-      href={`/tournaments/${t.slug}`}
+    <article
       style={accentVars(t.game?.name)}
       className={`tournament-card group relative overflow-hidden rounded-2xl border border-line bg-surface-card/90 transition duration-300 hover:-translate-y-1 hover:border-accent/55 hover:shadow-xl hover:shadow-accent/10 ${
         listView ? "grid sm:grid-cols-[18rem_minmax(0,1fr)]" : "flex h-full flex-col"
       }`}
     >
+      <Link
+        href={`/tournaments/${t.slug}`}
+        aria-label={t.name}
+        className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_3px_var(--color-accent)]"
+      />
       <div className={`tournament-card-media relative overflow-hidden ${listView ? "tournament-card-media-list h-44 sm:h-full sm:min-h-52" : "h-44"}`}>
         <ResolvedImage
           src={getTournamentBannerUrl(t.bannerUrl, t.game?.name, t.game?.code)}
@@ -71,6 +87,18 @@ export default function TournamentCard({
             {translate("tournament.card.verified")}
           </span>
         )}
+
+        <TournamentFavoriteButton
+          slug={t.slug}
+          isFavorited={t.isFavorited}
+          favoriteCount={t.favoriteCount}
+          compact
+          className="absolute bottom-3 left-4 z-20"
+          onOptimisticChange={onFavoriteOptimisticChange}
+          onReconciled={onFavoriteReconciled}
+          onRollback={onFavoriteRollback}
+          showFeedback={showFavoriteFeedback}
+        />
 
         <span className="absolute bottom-3 right-4 grid size-14 place-items-center overflow-hidden rounded-xl border border-white/15 bg-surface/90 text-accent shadow-lg shadow-black/30 backdrop-blur-md">
           <ResolvedImage
@@ -120,6 +148,6 @@ export default function TournamentCard({
           </div>
         )}
       </div>
-    </Link>
+    </article>
   );
 }

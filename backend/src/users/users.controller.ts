@@ -8,13 +8,24 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiExtraModels,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { TournamentsService } from '../tournaments/tournaments.service';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { TournamentFavoriteViewFieldsDto } from '../tournaments/dto/tournament-favorite.dto';
 
+@ApiTags('Users')
+@ApiExtraModels(TournamentFavoriteViewFieldsDto)
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 export class UsersController {
@@ -52,5 +63,22 @@ export class UsersController {
     @Query('tab') tab: 'organized' | 'joined' = 'organized',
   ) {
     return this.tournamentsService.findMyTournaments(user.id, tab, user.role);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'List saved Tournaments followed by the current User',
+  })
+  @ApiOkResponse({
+    description:
+      'Most recently favorited first. Inaccessible Tournaments are omitted.',
+    schema: {
+      type: 'array',
+      items: { $ref: getSchemaPath(TournamentFavoriteViewFieldsDto) },
+    },
+  })
+  @Get('me/favorite-tournaments')
+  getFavoriteTournaments(@CurrentUser() user: AuthenticatedUser) {
+    return this.tournamentsService.findFavoriteTournaments(user.id, user.role);
   }
 }

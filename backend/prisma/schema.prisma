@@ -214,14 +214,15 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  organizedTournaments Tournament[]   @relation("OrganizerTournaments")
-  captainedTeams       Team[]         @relation("CaptainedTeams")
+  organizedTournaments Tournament[]         @relation("OrganizerTournaments")
+  captainedTeams       Team[]               @relation("CaptainedTeams")
   teamMembers          TeamMember[]
-  comments             Comment[]      @relation("CommentAuthor")
-  commentReplyTargets  Comment[]      @relation("CommentReplyTarget")
+  comments             Comment[]            @relation("CommentAuthor")
+  commentReplyTargets  Comment[]            @relation("CommentReplyTarget")
   notifications        Notification[]
-  reportedReports      Report[]       @relation("ReporterReports")
-  reviewedReports      Report[]       @relation("ReviewedReports")
+  tournamentFavorites  TournamentFavorite[]
+  reportedReports      Report[]             @relation("ReporterReports")
+  reviewedReports      Report[]             @relation("ReviewedReports")
 
   @@map("users")
 }
@@ -306,10 +307,26 @@ model Tournament {
   comments      Comment[]
   reports       Report[]
   notifications Notification[]
+  favorites     TournamentFavorite[]
 
   @@index([gameId, visibility, moderationStatus])
   @@index([status, startDate])
   @@map("tournaments")
+}
+
+/// A saved Tournament and its important Tournament-wide notification subscription.
+model TournamentFavorite {
+  userId       String   @map("user_id")
+  tournamentId String   @map("tournament_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@id([userId, tournamentId])
+  @@index([tournamentId])
+  @@index([userId, createdAt])
+  @@map("tournament_favorites")
 }
 
 /// Vòng/giai đoạn trong giải đấu, mỗi Round có 1 thể thức riêng

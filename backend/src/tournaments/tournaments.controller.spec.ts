@@ -3,8 +3,10 @@ import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { OWNERSHIP_PARAM_KEY } from '../common/decorators/ownership.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
+import { VisibilityGuard } from '../common/guards/visibility.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { TournamentsController } from './tournaments.controller';
 
@@ -61,4 +63,28 @@ describe('TournamentsController deletion authorization', () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     },
   );
+});
+
+describe('TournamentsController favorite authorization', () => {
+  it.each([
+    TournamentsController.prototype.favorite,
+    TournamentsController.prototype.unfavorite,
+  ])(
+    'requires authentication and canonical Tournament visibility',
+    (method) => {
+      expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
+        JwtAuthGuard,
+        VisibilityGuard,
+      ]);
+    },
+  );
+
+  it('keeps the public list optionally authenticated', () => {
+    expect(
+      Reflect.getMetadata(
+        GUARDS_METADATA,
+        TournamentsController.prototype.findAll,
+      ),
+    ).toEqual([OptionalJwtAuthGuard]);
+  });
 });
