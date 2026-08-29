@@ -34,6 +34,7 @@ const extendedEn = {
   "auth.login.registerNow": "Register now",
   "auth.login.password": "Password",
   "auth.login.passwordPlaceholder": "Enter your password",
+  "auth.login.forgotPassword": "Forgot your password?",
   "auth.login.showPassword": "Show password",
   "auth.login.hidePassword": "Hide password",
   "auth.login.submitting": "Logging in…",

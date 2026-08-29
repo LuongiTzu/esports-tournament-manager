@@ -30,6 +30,7 @@ const extendedVi = {
   "auth.login.registerNow": "Đăng ký ngay",
   "auth.login.password": "Mật khẩu",
   "auth.login.passwordPlaceholder": "Nhập mật khẩu",
+  "auth.login.forgotPassword": "Quên mật khẩu?",
   "auth.login.showPassword": "Hiện mật khẩu",
   "auth.login.hidePassword": "Ẩn mật khẩu",
   "auth.login.submitting": "Đang đăng nhập…",

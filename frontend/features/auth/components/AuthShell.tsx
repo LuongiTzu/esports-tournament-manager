@@ -3,7 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import SideRays from "@/components/effects/SideRays";
 import { useLocale } from "@/features/locale/store";
+import styles from "./AuthSurface.module.css";
 
 /** Khung 2 cột cho trang đăng nhập / đăng ký — tránh bố cục card căn giữa mặc định */
 export default function AuthShell({
@@ -25,7 +27,21 @@ export default function AuthShell({
   const resolvedEyebrow = eyebrow ?? t("auth.login.eyebrow");
   if (visual) {
     return (
-      <div className="relative isolate flex w-full flex-1 items-center overflow-hidden px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-14">
+      <div className={`${styles.page} relative isolate flex w-full flex-1 items-center overflow-hidden px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-14`}>
+        <SideRays
+          speed={2.5}
+          rayColor1="#EAB308"
+          rayColor2="#96C8FF"
+          intensity={2}
+          spread={2}
+          origin="top-right"
+          tilt={0}
+          saturation={1.5}
+          blend={0.75}
+          falloff={1.6}
+          opacity={1}
+        />
+
         <div
           aria-hidden
           className="absolute left-[8%] top-[12%] -z-10 size-80 rounded-full bg-brand/10 blur-3xl"
@@ -35,22 +51,24 @@ export default function AuthShell({
           className="absolute bottom-[8%] right-[6%] -z-10 size-80 rounded-full bg-brand-secondary/10 blur-3xl"
         />
 
-        <div className="mx-auto grid w-full max-w-[69.375rem] overflow-hidden rounded-[1.25rem] border border-line bg-surface-card shadow-[var(--shadow-elevated)] md:grid-cols-[1.05fr_0.95fr]">
+        <div className={`${styles.frame} relative z-10 mx-auto grid w-full max-w-[69.375rem] overflow-hidden rounded-[1.25rem] border md:grid-cols-[1.05fr_0.95fr]`}>
           {visual}
-          <section className="flex min-h-[34rem] flex-col justify-center p-6 sm:p-9 md:p-8 lg:p-10">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-hover">
-              {resolvedEyebrow}
-            </p>
-            <h1 className="mt-3 text-[1.625rem] font-bold leading-9 text-ink">
-              {title}
-            </h1>
-            <p className="mt-2 max-w-md text-sm leading-6 text-ink-muted">
-              {subtitle}
-            </p>
-            {children}
-            <p className="mt-6 text-center text-sm leading-6 text-ink-muted">
-              {footer}
-            </p>
+          <section className={`${styles.formPanel} flex min-h-[34rem] flex-col justify-center p-6 sm:p-9 md:p-8 lg:p-10`}>
+            <div className={styles.formContent}>
+              <p className={`${styles.eyebrow} text-sm font-semibold uppercase tracking-[0.18em]`}>
+                {resolvedEyebrow}
+              </p>
+              <h1 className={`${styles.title} mt-3 text-[1.625rem] font-bold leading-9`}>
+                {title}
+              </h1>
+              <p className={`${styles.subtitle} mt-2 max-w-md text-sm leading-6`}>
+                {subtitle}
+              </p>
+              {children}
+              <p className={`${styles.footer} mt-6 text-center text-sm leading-6`}>
+                {footer}
+              </p>
+            </div>
           </section>
         </div>
       </div>

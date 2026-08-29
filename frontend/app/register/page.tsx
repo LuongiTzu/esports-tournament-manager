@@ -13,19 +13,13 @@ import {
   MapPinIcon,
   PhoneIcon,
   UserCircleIcon,
-  UserPlusIcon,
 } from "@phosphor-icons/react";
 import { authApi } from "@/features/auth/api";
 import AuthShell from "@/features/auth/components/AuthShell";
 import AuthVisualPanel from "@/features/auth/components/AuthVisualPanel";
+import styles from "@/features/auth/components/AuthSurface.module.css";
 import type { Gender } from "@/features/auth/types";
-import {
-  alertErrorClass,
-  authSubmitButtonClass,
-  hintClass,
-  inputClass,
-  labelClass,
-} from "@/components/ui";
+import { alertErrorClass } from "@/components/ui";
 import { useLocale } from "@/features/locale/store";
 
 interface RegisterForm {
@@ -107,14 +101,14 @@ export default function RegisterPage() {
     >
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
-          <label htmlFor="displayName" className={labelClass}>
+          <label htmlFor="displayName" className={styles.label}>
             {t("auth.register.displayName")} <span className="text-brand-secondary">*</span>
           </label>
           <div className="relative">
             <UserCircleIcon
               aria-hidden
               size={19}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+              className={styles.fieldIcon}
             />
             <input
               id="displayName"
@@ -126,22 +120,22 @@ export default function RegisterPage() {
               autoComplete="nickname"
               value={form.displayName}
               onChange={handleChange}
-              className={`${inputClass} pl-11`}
+              className={`${styles.input} ${styles.registerInput}`}
               placeholder={t("auth.register.displayNamePlaceholder")}
             />
           </div>
-          <p className={hintClass}>{t("auth.register.displayNameHint")}</p>
+          <p className={styles.hint}>{t("auth.register.displayNameHint")}</p>
         </div>
 
         <div>
-          <label htmlFor="email" className={labelClass}>
+          <label htmlFor="email" className={styles.label}>
             {t("common.email")} <span className="text-brand-secondary">*</span>
           </label>
           <div className="relative">
             <EnvelopeSimpleIcon
               aria-hidden
               size={19}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+              className={styles.fieldIcon}
             />
             <input
               id="email"
@@ -151,7 +145,7 @@ export default function RegisterPage() {
               autoComplete="email"
               value={form.email}
               onChange={handleChange}
-              className={`${inputClass} pl-11`}
+              className={`${styles.input} ${styles.registerInput}`}
               placeholder="ban@vidu.com"
             />
           </div>
@@ -159,14 +153,14 @@ export default function RegisterPage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="phoneNumber" className={labelClass}>
+            <label htmlFor="phoneNumber" className={styles.label}>
               {t("auth.register.phone")}
             </label>
             <div className="relative">
               <PhoneIcon
                 aria-hidden
                 size={19}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+                className={styles.fieldIcon}
               />
               <input
                 id="phoneNumber"
@@ -178,21 +172,21 @@ export default function RegisterPage() {
                 autoComplete="tel"
                 value={form.phoneNumber}
                 onChange={handleChange}
-                className={`${inputClass} pl-11`}
+                className={`${styles.input} ${styles.registerInput}`}
                 placeholder="09xxxxxxxx"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="birthDate" className={labelClass}>
+            <label htmlFor="birthDate" className={styles.label}>
               {t("auth.register.birthDate")}
             </label>
             <div className="relative">
               <CalendarBlankIcon
                 aria-hidden
                 size={19}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+                className={styles.fieldIcon}
               />
               <input
                 id="birthDate"
@@ -201,7 +195,7 @@ export default function RegisterPage() {
                 autoComplete="bday"
                 value={form.birthDate}
                 onChange={handleChange}
-                className={`${inputClass} pl-11`}
+                className={`${styles.input} ${styles.registerInput}`}
               />
             </div>
           </div>
@@ -209,21 +203,21 @@ export default function RegisterPage() {
 
         <div className="grid gap-4 sm:grid-cols-[0.72fr_1.28fr]">
           <div>
-            <label htmlFor="gender" className={labelClass}>
+            <label htmlFor="gender" className={styles.label}>
               {t("auth.register.gender")}
             </label>
             <div className="relative">
               <GenderIntersexIcon
                 aria-hidden
                 size={19}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+                className={styles.fieldIcon}
               />
               <select
                 id="gender"
                 name="gender"
                 value={form.gender}
                 onChange={handleChange}
-                className={`${inputClass} pl-11`}
+                className={`${styles.input} ${styles.registerInput}`}
               >
                 <option value="">{t("auth.register.gender.none")}</option>
                 <option value="MALE">{t("auth.register.gender.male")}</option>
@@ -234,14 +228,14 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label htmlFor="currentAddress" className={labelClass}>
+            <label htmlFor="currentAddress" className={styles.label}>
               {t("auth.register.address")}
             </label>
             <div className="relative">
               <MapPinIcon
                 aria-hidden
                 size={19}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+                className={styles.fieldIcon}
               />
               <input
                 id="currentAddress"
@@ -251,7 +245,7 @@ export default function RegisterPage() {
                 autoComplete="street-address"
                 value={form.currentAddress}
                 onChange={handleChange}
-                className={`${inputClass} pl-11`}
+                className={`${styles.input} ${styles.registerInput}`}
                 placeholder={t("auth.register.addressPlaceholder")}
               />
             </div>
@@ -260,14 +254,14 @@ export default function RegisterPage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="password" className={labelClass}>
+            <label htmlFor="password" className={styles.label}>
               {t("auth.register.password")} <span className="text-brand-secondary">*</span>
             </label>
             <div className="relative">
               <LockKeyIcon
                 aria-hidden
                 size={19}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+                className={styles.fieldIcon}
               />
               <input
                 id="password"
@@ -279,21 +273,21 @@ export default function RegisterPage() {
                 autoComplete="new-password"
                 value={form.password}
                 onChange={handleChange}
-                className={`${inputClass} px-11`}
+                className={`${styles.input} ${styles.registerInput} ${styles.registerPasswordInput}`}
                 placeholder={t("auth.register.passwordPlaceholder")}
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="confirmPassword" className={labelClass}>
+            <label htmlFor="confirmPassword" className={styles.label}>
               {t("auth.register.confirmPassword")} <span className="text-brand-secondary">*</span>
             </label>
             <div className="relative">
               <LockKeyIcon
                 aria-hidden
                 size={19}
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+                className={styles.fieldIcon}
               />
               <input
                 id="confirmPassword"
@@ -303,7 +297,7 @@ export default function RegisterPage() {
                 autoComplete="new-password"
                 value={form.confirmPassword}
                 onChange={handleChange}
-                className={`${inputClass} px-11`}
+                className={`${styles.input} ${styles.registerInput} ${styles.registerPasswordInput}`}
                 placeholder={t("auth.register.confirmPasswordPlaceholder")}
               />
               <button
@@ -311,7 +305,7 @@ export default function RegisterPage() {
                 onClick={() => setShowPassword((visible) => !visible)}
                 aria-label={showPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
                 aria-pressed={showPassword}
-                className="absolute right-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-ink-faint transition hover:bg-surface-hover hover:text-brand-hover focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+                className={styles.passwordToggle}
               >
                 {showPassword ? <EyeSlashIcon size={19} /> : <EyeIcon size={19} />}
               </button>
@@ -319,7 +313,7 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <p className={hintClass}>
+        <p className={styles.hint}>
           {t("auth.register.optionalHint")}
         </p>
 
@@ -332,10 +326,9 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={loading}
-          className={authSubmitButtonClass}
+          className={styles.submitButton}
         >
           {loading ? t("auth.register.submitting") : t("auth.register.submit")}
-          {!loading && <UserPlusIcon size={18} weight="bold" />}
         </button>
       </form>
     </AuthShell>

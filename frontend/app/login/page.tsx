@@ -4,21 +4,14 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  EnvelopeSimpleIcon,
   EyeIcon,
   EyeSlashIcon,
-  LockKeyIcon,
-  SignInIcon,
 } from "@phosphor-icons/react";
 import AuthShell from "@/features/auth/components/AuthShell";
 import AuthVisualPanel from "@/features/auth/components/AuthVisualPanel";
+import styles from "@/features/auth/components/AuthSurface.module.css";
 import { login } from "@/features/auth/store";
-import {
-  alertErrorClass,
-  authSubmitButtonClass,
-  inputClass,
-  labelClass,
-} from "@/components/ui";
+import { alertErrorClass } from "@/components/ui";
 import { useLocale } from "@/features/locale/store";
 
 const subscribeToLocation = () => () => {};
@@ -69,7 +62,7 @@ export default function LoginPage() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-4">
         {passwordChanged && (
           <p
             role="status"
@@ -79,38 +72,26 @@ export default function LoginPage() {
           </p>
         )}
         <div>
-          <label htmlFor="email" className={labelClass}>
+          <label htmlFor="email" className="sr-only">
             {t("common.email")}
           </label>
-          <div className="relative">
-            <EnvelopeSimpleIcon
-              aria-hidden
-              size={19}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
-            />
-            <input
-              id="email"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={`${inputClass} pl-11`}
-              placeholder="ban@vidu.com"
-            />
-          </div>
+          <input
+            id="email"
+            type="email"
+            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={`${styles.input} ${styles.loginInput}`}
+            placeholder={t("common.email")}
+          />
         </div>
 
         <div>
-          <label htmlFor="password" className={labelClass}>
+          <label htmlFor="password" className="sr-only">
             {t("auth.login.password")}
           </label>
           <div className="relative">
-            <LockKeyIcon
-              aria-hidden
-              size={19}
-              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
-            />
             <input
               id="password"
               type={showPassword ? "text" : "password"}
@@ -118,7 +99,7 @@ export default function LoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={`${inputClass} px-11`}
+              className={`${styles.input} ${styles.loginInput} ${styles.passwordInput}`}
               placeholder={t("auth.login.passwordPlaceholder")}
             />
             <button
@@ -126,12 +107,16 @@ export default function LoginPage() {
               onClick={() => setShowPassword((visible) => !visible)}
               aria-label={showPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
               aria-pressed={showPassword}
-              className="absolute right-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-ink-faint transition hover:bg-surface-hover hover:text-brand-hover focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+              className={styles.passwordToggle}
             >
               {showPassword ? <EyeSlashIcon size={19} /> : <EyeIcon size={19} />}
             </button>
           </div>
         </div>
+
+        <p className={styles.forgotPasswordText}>
+          {t("auth.login.forgotPassword")}
+        </p>
 
         {error && (
           <p role="alert" className={alertErrorClass}>
@@ -142,10 +127,9 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className={authSubmitButtonClass}
+          className={styles.submitButton}
         >
           {loading ? t("auth.login.submitting") : t("auth.login.submit")}
-          {!loading && <SignInIcon size={18} weight="bold" />}
         </button>
       </form>
     </AuthShell>
