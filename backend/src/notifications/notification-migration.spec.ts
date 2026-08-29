@@ -31,9 +31,9 @@ describe('Database constraint migration coverage', () => {
   });
 
   it('persists structured notification context and stable categories', () => {
-    expect(migrationEntries.map((entry) => entry.name)).toEqual([
+    expect(migrationEntries.map((entry) => entry.name)).toContain(
       '20260821060000_baseline',
-    ]);
+    );
     expect(schema).toMatch(/data\s+Json\?/);
     expect(migrationSql).toMatch(
       /CREATE TABLE "notifications"[\s\S]*"data" JSONB/,

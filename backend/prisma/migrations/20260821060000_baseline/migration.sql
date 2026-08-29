@@ -71,7 +71,8 @@ CREATE TYPE "BannedKeywordCategory" AS ENUM ('GAMBLING', 'PROFANITY', 'MALICIOUS
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
-    "password_hash" TEXT NOT NULL,
+    "password_hash" TEXT,
+    "google_subject" TEXT,
     "display_name" TEXT NOT NULL,
     "avatar_url" TEXT,
     "birth_date" TIMESTAMP(3),
@@ -352,6 +353,9 @@ CREATE TABLE "banned_keywords" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_google_subject_key" ON "users"("google_subject");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "games_code_key" ON "games"("code");

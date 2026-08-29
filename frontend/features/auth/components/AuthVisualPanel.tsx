@@ -42,18 +42,45 @@ export default function AuthVisualPanel({
     : { title: t("auth.register.visualTitle"), description: t("auth.register.visualDescription") };
 
   return (
-    <section className="relative isolate flex h-full min-h-[19rem] overflow-hidden bg-surface-sub md:min-h-[38rem]">
-      <RotatingImage
-        images={tournamentPosters}
-        variant="fill"
-        showOverlay={false}
-        showIndicators={false}
-        imageFit="contain"
-        blurredBackdrop
-        quality={95}
-        sizes="(min-width: 768px) 52vw, 100vw"
-        className="absolute inset-0 -z-30"
-      />
+    <section
+      className={`relative isolate flex overflow-hidden bg-surface-sub ${
+        mode === "register"
+          ? "h-auto min-h-0 flex-col md:h-full md:min-h-[38rem]"
+          : "h-full min-h-[19rem] md:min-h-[38rem]"
+      }`}
+    >
+      {mode === "register" && (
+        <div aria-hidden className="h-16 shrink-0 sm:h-20 md:h-[20%]" />
+      )}
+      <div
+        className={
+          mode === "register"
+            ? "relative -z-30 aspect-video w-full shrink-0"
+            : "absolute inset-0 -z-30"
+        }
+        style={
+          mode === "register"
+            ? {
+                maskImage:
+                  "linear-gradient(to bottom, transparent, black 14%, black 86%, transparent)",
+                WebkitMaskImage:
+                  "linear-gradient(to bottom, transparent, black 14%, black 86%, transparent)",
+              }
+            : undefined
+        }
+      >
+        <RotatingImage
+          images={tournamentPosters}
+          variant="fill"
+          showOverlay={false}
+          showIndicators={false}
+          imageFit={mode === "register" ? "cover" : "contain"}
+          blurredBackdrop={mode === "login"}
+          quality={95}
+          sizes="(min-width: 768px) 52vw, 100vw"
+          className="absolute inset-0"
+        />
+      </div>
       <div
         aria-hidden
         className="absolute inset-0 -z-20 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-visual-backdrop)_35%,transparent)_0%,color-mix(in_oklab,var(--color-visual-backdrop)_62%,transparent)_48%,var(--color-visual-backdrop)_100%),linear-gradient(110deg,color-mix(in_oklab,var(--color-brand)_32%,transparent),color-mix(in_oklab,var(--color-brand-secondary)_24%,transparent))]"
@@ -67,8 +94,18 @@ export default function AuthVisualPanel({
         className="absolute -right-24 bottom-0 -z-10 size-72 rounded-full bg-brand-secondary/25 blur-3xl"
       />
 
-      <div className="flex w-full flex-col p-6 sm:p-8 md:p-10">
-        <div className="mt-auto max-w-lg pt-14 md:pt-20">
+      <div
+        className={`flex w-full flex-1 flex-col p-6 sm:p-8 md:p-10 ${
+          mode === "register" ? "justify-center" : ""
+        }`}
+      >
+        <div
+          className={
+            mode === "register"
+              ? "max-w-lg"
+              : "mt-auto max-w-lg pt-14 md:pt-20"
+          }
+        >
           <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-visual-accent">
             <LightningIcon size={17} weight="fill" />
             {t("auth.brand.eyebrow")}

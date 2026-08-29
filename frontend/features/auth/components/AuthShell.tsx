@@ -27,8 +27,11 @@ export default function AuthShell({
   const resolvedEyebrow = eyebrow ?? t("auth.login.eyebrow");
   if (visual) {
     return (
-      <div className={`${styles.page} relative isolate flex w-full flex-1 items-center overflow-hidden px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-14`}>
+      <div
+        className={`${styles.page} relative isolate flex w-full flex-1 items-center overflow-hidden px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-14`}
+      >
         <SideRays
+          fillContainer
           speed={2.5}
           rayColor1="#EAB308"
           rayColor2="#96C8FF"
@@ -51,21 +54,33 @@ export default function AuthShell({
           className="absolute bottom-[8%] right-[6%] -z-10 size-80 rounded-full bg-brand-secondary/10 blur-3xl"
         />
 
-        <div className={`${styles.frame} relative z-10 mx-auto grid w-full max-w-[69.375rem] overflow-hidden rounded-[1.25rem] border md:grid-cols-[1.05fr_0.95fr]`}>
+        <div
+          className={`${styles.frame} relative z-10 mx-auto grid w-full max-w-[69.375rem] overflow-hidden rounded-[1.25rem] border md:grid-cols-[1.05fr_0.95fr]`}
+        >
           {visual}
-          <section className={`${styles.formPanel} flex min-h-[34rem] flex-col justify-center p-6 sm:p-9 md:p-8 lg:p-10`}>
+          <section
+            className={`${styles.formPanel} flex min-h-[34rem] flex-col justify-center p-6 sm:p-9 md:p-8 lg:p-10`}
+          >
             <div className={styles.formContent}>
-              <p className={`${styles.eyebrow} text-sm font-semibold uppercase tracking-[0.18em]`}>
+              <p
+                className={`${styles.eyebrow} text-sm font-semibold uppercase tracking-[0.18em]`}
+              >
                 {resolvedEyebrow}
               </p>
-              <h1 className={`${styles.title} mt-3 text-[1.625rem] font-bold leading-9`}>
+              <h1
+                className={`${styles.title} mt-3 text-[1.625rem] font-bold leading-9`}
+              >
                 {title}
               </h1>
-              <p className={`${styles.subtitle} mt-2 max-w-md text-sm leading-6`}>
+              <p
+                className={`${styles.subtitle} mt-2 max-w-md text-sm leading-6`}
+              >
                 {subtitle}
               </p>
               {children}
-              <p className={`${styles.footer} mt-6 text-center text-sm leading-6`}>
+              <p
+                className={`${styles.footer} mt-6 text-center text-sm leading-6`}
+              >
                 {footer}
               </p>
             </div>

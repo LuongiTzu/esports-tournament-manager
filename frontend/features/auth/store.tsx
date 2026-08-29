@@ -33,12 +33,19 @@ function hydrateAuthState() {
   setState({ user: tokenStore.getUser<User>(), ready: true });
 }
 
-export async function login(email: string, password: string) {
-  const res = await authApi.login({ email, password });
+function persistLogin(res: Awaited<ReturnType<typeof authApi.login>>) {
   tokenStore.accessToken = res.accessToken;
   tokenStore.refreshToken = res.refreshToken;
   tokenStore.setUser(res.user);
   setState({ user: res.user, ready: true });
+}
+
+export async function login(email: string, password: string) {
+  persistLogin(await authApi.login({ email, password }));
+}
+
+export async function loginWithGoogle(credential: string) {
+  persistLogin(await authApi.googleLogin({ credential }));
 }
 
 export async function logout() {

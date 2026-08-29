@@ -195,7 +195,8 @@ enum BannedKeywordCategory {
 model User {
   id                   String    @id @default(cuid())
   email                String    @unique
-  passwordHash         String    @map("password_hash") /// Mật khẩu mã hóa bcrypt
+  passwordHash         String?   @map("password_hash") /// Mật khẩu mã hóa bcrypt; null với tài khoản chỉ dùng OAuth
+  googleSubject        String?   @unique @map("google_subject") /// Google `sub` ổn định, không dùng email làm định danh OAuth
   displayName          String    @map("display_name")
   avatarUrl            String?   @map("avatar_url")
   birthDate            DateTime? @map("birth_date") /// Ngày sinh

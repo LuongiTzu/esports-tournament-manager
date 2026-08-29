@@ -117,7 +117,8 @@ export async function validateSeed(
   );
   for (const user of users) {
     assert(
-      await bcrypt.compare(DEVELOPMENT_PASSWORD, user.passwordHash),
+      user.passwordHash !== null &&
+        (await bcrypt.compare(DEVELOPMENT_PASSWORD, user.passwordHash)),
       `Development password does not match ${user.email}`,
     );
   }

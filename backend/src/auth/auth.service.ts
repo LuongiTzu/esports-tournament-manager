@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import type { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -15,6 +16,8 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import type { JwtPayload } from './strategies/jwt.strategy';
 import { PasswordHasher } from './password-hasher.service';
 import { AuthTokenService } from './auth-token.service';
+import { GoogleLoginDto } from './dto/google-login.dto';
+import { GoogleIdentityService } from './google-identity.service';
 
 const FORGOT_PASSWORD_MESSAGE =
   'Nếu email tồn tại, bạn sẽ nhận được liên kết đặt lại mật khẩu';
@@ -28,6 +31,9 @@ export class AuthService {
     private readonly passwordHasher: PasswordHasher = new PasswordHasher(),
     private readonly tokens: AuthTokenService = new AuthTokenService(
       jwtService,
+      configService,
+    ),
+    private readonly googleIdentity: GoogleIdentityService = new GoogleIdentityService(
       configService,
     ),
   ) {}
@@ -85,7 +91,7 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (!user) {
+    if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
@@ -105,38 +111,56 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
-    const tokens = await this.tokens.issuePair(
-      user.id,
-      user.email,
-      user.role,
-      user.tokenVersion,
-    );
+    return this.createSession(user, 'Đăng nhập thành công');
+  }
 
-    // Lưu hash refresh token vào DB
-    const hashedRefreshToken = await this.passwordHasher.hash(
-      tokens.refreshToken,
-    );
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { refreshToken: hashedRefreshToken },
+  async googleLogin(dto: GoogleLoginDto) {
+    const identity = await this.googleIdentity.verifyCredential(dto.credential);
+    const subjectUser = await this.prisma.user.findUnique({
+      where: { googleSubject: identity.subject },
     });
 
-    return {
-      message: 'Đăng nhập thành công',
-      user: {
-        id: user.id,
-        email: user.email,
-        displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
-        birthDate: user.birthDate,
-        currentAddress: user.currentAddress,
-        phoneNumber: user.phoneNumber,
-        gender: user.gender,
-        bio: user.bio,
-        role: user.role,
-      },
-      ...tokens,
-    };
+    if (subjectUser) {
+      return this.createSession(subjectUser, 'Đăng nhập Google thành công');
+    }
+
+    const emailUser = await this.prisma.user.findUnique({
+      where: { email: identity.email },
+    });
+
+    let user: User;
+    if (emailUser) {
+      if (emailUser.googleSubject) {
+        throw new UnauthorizedException(
+          'Tài khoản Google không khớp với tài khoản đã liên kết',
+        );
+      }
+      if (!identity.canSafelyLinkByEmail) {
+        throw new ConflictException(
+          'Email đã được đăng ký. Hãy đăng nhập bằng mật khẩu trước khi liên kết Google',
+        );
+      }
+
+      user = await this.prisma.user.update({
+        where: { id: emailUser.id },
+        data: {
+          googleSubject: identity.subject,
+          avatarUrl: emailUser.avatarUrl ?? identity.avatarUrl,
+        },
+      });
+    } else {
+      user = await this.prisma.user.create({
+        data: {
+          email: identity.email,
+          passwordHash: null,
+          googleSubject: identity.subject,
+          displayName: identity.displayName,
+          avatarUrl: identity.avatarUrl,
+        },
+      });
+    }
+
+    return this.createSession(user, 'Đăng nhập Google thành công');
   }
 
   // ─── Refresh token ───────────────────────────────────────────────
@@ -221,6 +245,12 @@ export class AuthService {
 
     if (!user) {
       throw new UnauthorizedException('Tài khoản không tồn tại');
+    }
+
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'Tài khoản này chưa thiết lập mật khẩu. Hãy tiếp tục đăng nhập bằng Google',
+      );
     }
 
     // Kiểm tra mật khẩu hiện tại
@@ -343,5 +373,42 @@ export class AuthService {
     return { message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại' };
   }
 
-  // ─── Helper: sinh access + refresh token ────────────────────────
+  private async createSession(user: User, message: string) {
+    if (user.isLocked) {
+      throw new UnauthorizedException(
+        'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin để biết thêm chi tiết',
+      );
+    }
+
+    const tokens = await this.tokens.issuePair(
+      user.id,
+      user.email,
+      user.role,
+      user.tokenVersion,
+    );
+    const hashedRefreshToken = await this.passwordHasher.hash(
+      tokens.refreshToken,
+    );
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { refreshToken: hashedRefreshToken },
+    });
+
+    return {
+      message,
+      user: {
+        id: user.id,
+        email: user.email,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+        birthDate: user.birthDate,
+        currentAddress: user.currentAddress,
+        phoneNumber: user.phoneNumber,
+        gender: user.gender,
+        bio: user.bio,
+        role: user.role,
+      },
+      ...tokens,
+    };
+  }
 }

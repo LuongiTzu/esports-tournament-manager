@@ -1,16 +1,14 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  EyeIcon,
-  EyeSlashIcon,
-} from "@phosphor-icons/react";
+import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import AuthShell from "@/features/auth/components/AuthShell";
 import AuthVisualPanel from "@/features/auth/components/AuthVisualPanel";
+import GoogleSignInButton from "@/features/auth/components/GoogleSignInButton";
 import styles from "@/features/auth/components/AuthSurface.module.css";
-import { login } from "@/features/auth/store";
+import { login, loginWithGoogle } from "@/features/auth/store";
 import { alertErrorClass } from "@/components/ui";
 import { useLocale } from "@/features/locale/store";
 
@@ -27,6 +25,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const passwordChanged = useSyncExternalStore(
     subscribeToLocation,
     getPasswordChangedSnapshot,
@@ -41,11 +40,35 @@ export default function LoginPage() {
       await login(email, password);
       router.push("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("auth.login.fallbackError"));
+      setError(
+        err instanceof Error ? err.message : t("auth.login.fallbackError"),
+      );
     } finally {
       setLoading(false);
     }
   };
+
+  const handleGoogleCredential = useCallback(
+    async (credential: string) => {
+      setError("");
+      setGoogleLoading(true);
+      try {
+        await loginWithGoogle(credential);
+        router.push("/");
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : t("auth.google.fallbackError"),
+        );
+      } finally {
+        setGoogleLoading(false);
+      }
+    },
+    [router, t],
+  );
+
+  const handleGoogleError = useCallback(() => {
+    setError(t("auth.google.fallbackError"));
+  }, [t]);
 
   return (
     <AuthShell
@@ -55,14 +78,27 @@ export default function LoginPage() {
       visual={<AuthVisualPanel mode="login" />}
       footer={
         <>
-          {t("auth.login.noAccount")} {" "}
-          <Link href="/register" className="font-medium text-brand hover:underline">
+          {t("auth.login.noAccount")}{" "}
+          <Link
+            href="/register"
+            className="font-medium text-brand hover:underline"
+          >
             {t("auth.login.registerNow")}
           </Link>
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="mt-7 flex flex-col gap-4">
+      <GoogleSignInButton
+        mode="signin"
+        disabled={loading || googleLoading}
+        onCredential={handleGoogleCredential}
+        onError={handleGoogleError}
+      />
+      <div className={styles.authDivider}>
+        <span>{t("auth.google.orEmail")}</span>
+      </div>
+
+      <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
         {passwordChanged && (
           <p
             role="status"
@@ -105,11 +141,19 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPassword((visible) => !visible)}
-              aria-label={showPassword ? t("auth.login.hidePassword") : t("auth.login.showPassword")}
+              aria-label={
+                showPassword
+                  ? t("auth.login.hidePassword")
+                  : t("auth.login.showPassword")
+              }
               aria-pressed={showPassword}
               className={styles.passwordToggle}
             >
-              {showPassword ? <EyeSlashIcon size={19} /> : <EyeIcon size={19} />}
+              {showPassword ? (
+                <EyeSlashIcon size={19} />
+              ) : (
+                <EyeIcon size={19} />
+              )}
             </button>
           </div>
         </div>
@@ -126,7 +170,7 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || googleLoading}
           className={styles.submitButton}
         >
           {loading ? t("auth.login.submitting") : t("auth.login.submit")}

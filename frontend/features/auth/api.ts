@@ -1,5 +1,6 @@
 import type {
   ChangePasswordRequest,
+  GoogleLoginRequest,
   LoginRequest,
   LoginResponse,
   RegisterAccountRequest,
@@ -12,6 +13,11 @@ import { uploadImage } from "@/lib/api/upload";
 export const authApi = {
   login: (data: LoginRequest) =>
     request<LoginResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  googleLogin: (data: GoogleLoginRequest) =>
+    request<LoginResponse>("/auth/google", {
       method: "POST",
       body: JSON.stringify(data),
     }),

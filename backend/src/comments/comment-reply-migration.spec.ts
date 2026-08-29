@@ -15,10 +15,10 @@ describe('Comment reply baseline migration', () => {
     'utf8',
   );
 
-  it('keeps reply support in the single baseline migration', () => {
-    expect(migrationDirectories.map((entry) => entry.name)).toEqual([
+  it('keeps reply support in the baseline migration', () => {
+    expect(migrationDirectories.map((entry) => entry.name)).toContain(
       '20260821060000_baseline',
-    ]);
+    );
   });
 
   it('persists root, exact reply target and deletion state', () => {

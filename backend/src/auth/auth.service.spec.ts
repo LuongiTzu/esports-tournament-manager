@@ -1,10 +1,15 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { GoogleIdentityService } from './google-identity.service';
 
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),
@@ -26,6 +31,7 @@ function user(overrides: Record<string, unknown> = {}) {
     id: 'user-1',
     email: 'user@example.com',
     passwordHash: 'password-hash',
+    googleSubject: null,
     displayName: 'User',
     avatarUrl: null,
     birthDate: null,
@@ -49,6 +55,7 @@ function harness(environment: string | null = 'test') {
   const prisma = {
     user: {
       findUnique: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
     },
   };
@@ -82,17 +89,147 @@ function harness(environment: string | null = 'test') {
       return value;
     }),
   };
+  const googleIdentity = {
+    verifyCredential: jest.fn(),
+  };
 
   return {
     service: new AuthService(
       prisma as unknown as PrismaService,
       jwt as unknown as JwtService,
       config as unknown as ConfigService,
+      undefined,
+      undefined,
+      googleIdentity as unknown as GoogleIdentityService,
     ),
     prisma,
     jwt,
+    googleIdentity,
   };
 }
+
+describe('AuthService Google sign-in', () => {
+  beforeEach(() => {
+    comparePassword.mockReset().mockResolvedValue(true);
+    hashValue.mockReset().mockResolvedValue('stored-refresh-hash');
+  });
+
+  it('creates a Google-only account and issues the established token pair', async () => {
+    const { service, prisma, googleIdentity } = harness();
+    googleIdentity.verifyCredential.mockResolvedValue({
+      subject: 'google-subject',
+      email: 'player@gmail.com',
+      displayName: 'Google Player',
+      avatarUrl: 'https://example.com/avatar.png',
+      canSafelyLinkByEmail: true,
+    });
+    prisma.user.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    prisma.user.create.mockResolvedValue(
+      user({
+        email: 'player@gmail.com',
+        passwordHash: null,
+        googleSubject: 'google-subject',
+        displayName: 'Google Player',
+        avatarUrl: 'https://example.com/avatar.png',
+      }),
+    );
+
+    const response = await service.googleLogin({ credential: 'google-jwt' });
+
+    expect(googleIdentity.verifyCredential).toHaveBeenCalledWith('google-jwt');
+    expect(prisma.user.create).toHaveBeenCalledWith({
+      data: {
+        email: 'player@gmail.com',
+        passwordHash: null,
+        googleSubject: 'google-subject',
+        displayName: 'Google Player',
+        avatarUrl: 'https://example.com/avatar.png',
+      },
+    });
+    expect(response).toMatchObject({
+      message: 'Đăng nhập Google thành công',
+      user: { email: 'player@gmail.com', displayName: 'Google Player' },
+      accessToken: 'new-access-token',
+      refreshToken: 'new-refresh-token',
+    });
+    expect(prisma.user.update).toHaveBeenLastCalledWith({
+      where: { id: 'user-1' },
+      data: { refreshToken: 'stored-refresh-hash' },
+    });
+  });
+
+  it('links an authoritative verified email to an existing local account', async () => {
+    const { service, prisma, googleIdentity } = harness();
+    const localUser = user({ email: 'player@gmail.com' });
+    const linkedUser = user({
+      email: 'player@gmail.com',
+      googleSubject: 'google-subject',
+    });
+    googleIdentity.verifyCredential.mockResolvedValue({
+      subject: 'google-subject',
+      email: 'player@gmail.com',
+      displayName: 'Google Player',
+      avatarUrl: 'https://example.com/avatar.png',
+      canSafelyLinkByEmail: true,
+    });
+    prisma.user.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(localUser);
+    prisma.user.update
+      .mockResolvedValueOnce(linkedUser)
+      .mockResolvedValueOnce(linkedUser);
+
+    await service.googleLogin({ credential: 'google-jwt' });
+
+    expect(prisma.user.update).toHaveBeenNthCalledWith(1, {
+      where: { id: 'user-1' },
+      data: {
+        googleSubject: 'google-subject',
+        avatarUrl: 'https://example.com/avatar.png',
+      },
+    });
+    expect(prisma.user.create).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-link a non-authoritative email domain', async () => {
+    const { service, prisma, googleIdentity } = harness();
+    googleIdentity.verifyCredential.mockResolvedValue({
+      subject: 'google-subject',
+      email: 'player@example.com',
+      displayName: 'Google Player',
+      canSafelyLinkByEmail: false,
+    });
+    prisma.user.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(user());
+
+    await expect(
+      service.googleLogin({ credential: 'google-jwt' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.user.create).not.toHaveBeenCalled();
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a locked Google-linked account before issuing tokens', async () => {
+    const { service, prisma, googleIdentity, jwt } = harness();
+    googleIdentity.verifyCredential.mockResolvedValue({
+      subject: 'google-subject',
+      email: 'player@gmail.com',
+      displayName: 'Google Player',
+      canSafelyLinkByEmail: true,
+    });
+    prisma.user.findUnique.mockResolvedValue(
+      user({ googleSubject: 'google-subject', isLocked: true }),
+    );
+
+    await expect(
+      service.googleLogin({ credential: 'google-jwt' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(jwt.signAsync).not.toHaveBeenCalled();
+  });
+});
 
 describe('AuthService refresh security', () => {
   beforeEach(() => {

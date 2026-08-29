@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { PasswordHasher } from './password-hasher.service';
 import { AuthTokenService } from './auth-token.service';
+import { GoogleIdentityService } from './google-identity.service';
 
 @Module({
   imports: [
@@ -27,7 +28,13 @@ import { AuthTokenService } from './auth-token.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, PasswordHasher, AuthTokenService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    PasswordHasher,
+    AuthTokenService,
+    GoogleIdentityService,
+  ],
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

@@ -19,6 +19,7 @@ interface SideRaysProps {
   falloff?: number;
   opacity?: number;
   className?: string;
+  fillContainer?: boolean;
 }
 
 const vertexShader = `
@@ -131,6 +132,7 @@ export default function SideRays({
   falloff = 1.6,
   opacity = 1,
   className = "",
+  fillContainer = false,
 }: SideRaysProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -248,7 +250,7 @@ export default function SideRays({
     <div
       ref={containerRef}
       aria-hidden="true"
-      className={`${styles.container} ${className}`.trim()}
+      className={`${styles.container} ${fillContainer ? styles.fillContainer : ""} ${className}`.trim()}
     >
       <div ref={viewportRef} className={styles.viewport} />
     </div>
