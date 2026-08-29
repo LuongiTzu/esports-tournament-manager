@@ -19,6 +19,7 @@ import {
 import ResolvedImage from "@/components/ResolvedImage";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { clearSession, useAuth } from "@/features/auth/store";
+import { hasVerifiedEmail } from "@/features/auth/email-verification";
 import TournamentComments from "@/features/comments/components/TournamentComments";
 import { accentVars } from "@/features/games/game-accent";
 import RosterSummary from "@/features/games/components/RosterSummary";
@@ -164,6 +165,7 @@ export default function TournamentDetailPage({
   const isOrganizer = Boolean(
     user && tournament.organizer?.id === user.id,
   );
+  const emailVerified = hasVerifiedEmail(user);
   const ownTeam = user ? myTeam : null;
   const canRegister = Boolean(
     user && tournament.registrationOpen && !ownTeam,
@@ -283,7 +285,7 @@ export default function TournamentDetailPage({
                   : t("tournament.detail.registrationNoDeadline")}
               </p>
               <div className="mt-4 grid w-full gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                {isOrganizer && (
+                {isOrganizer && emailVerified && (
                   <Link
                     href={`/tournaments/${slug}/manage`}
                     className={`${secondaryButtonClass} w-full`}
@@ -292,7 +294,7 @@ export default function TournamentDetailPage({
                     {t("tournament.detail.manage")}
                   </Link>
                 )}
-                {canRegister && (
+                {canRegister && emailVerified && (
                   <Link
                     href={`/tournaments/${slug}/register-team`}
                     className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-md bg-accent px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-accent transition hover:brightness-110 active:translate-y-px"

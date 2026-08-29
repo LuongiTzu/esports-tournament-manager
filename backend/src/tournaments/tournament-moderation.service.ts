@@ -45,25 +45,32 @@ export class TournamentModerationService {
       );
     const tournament = await this.prisma.tournament.findUnique({
       where: { id },
-      select: { id: true, organizerId: true },
+      select: { id: true, organizerId: true, moderationStatus: true },
     });
     if (!tournament) throw new NotFoundException('Tournament not found');
     const updated = await this.prisma.tournament.update({
       where: { id },
       data: { moderationStatus },
     });
-    if (moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN) {
+    if (moderationStatus !== tournament.moderationStatus) {
       await this.notifications.createNotification({
         userId: tournament.organizerId,
         type: NotificationType.ADMIN_WARNING,
-        content: 'Tournament hidden by an administrator',
+        content:
+          moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN
+            ? 'Tournament hidden by an administrator'
+            : 'Tournament restored by an administrator',
         data: {
           kind: 'TOURNAMENT_MODERATION',
           moderationStatus,
-          reason: reason!.trim(),
+          previousModerationStatus: tournament.moderationStatus,
+          reason:
+            moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN
+              ? reason!.trim()
+              : undefined,
         },
         tournamentId: tournament.id,
-        sourceKey: `tournament:${tournament.id}:moderation:${moderationStatus}`,
+        sourceKey: `tournament:${tournament.id}:moderation:${updated.updatedAt?.toISOString() ?? `${tournament.moderationStatus}:${moderationStatus}`}`,
       });
     }
     return updated;

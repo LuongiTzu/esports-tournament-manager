@@ -12,6 +12,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { CreateTournamentNotificationDto } from './dto/notification.dto';
 import { NotificationService } from './notification.service';
 import { NotificationListQueryDto } from './dto/notification-list-query.dto';
@@ -20,7 +21,7 @@ import { NotificationListQueryDto } from './dto/notification-list-query.dto';
 export class NotificationController {
   constructor(private readonly notifications: NotificationService) {}
 
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('slug:slug')
   @Post('tournaments/:slug/notifications')
   createForTournament(

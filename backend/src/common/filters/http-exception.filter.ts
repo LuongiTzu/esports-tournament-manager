@@ -6,6 +6,10 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { ApplicationErrorCode } from '../errors/application-error-code';
+
+const RATE_LIMIT_MESSAGE =
+  'Bạn thao tác quá nhiều lần. Vui lòng chờ rồi thử lại sau.';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -24,15 +28,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
       : Array.isArray(rawMessage)
         ? rawMessage
         : [];
-    const message = Array.isArray(rawMessage)
-      ? 'Validation failed'
-      : typeof rawMessage === 'string'
-        ? rawMessage
-        : status === 500
-          ? 'Internal server error'
-          : exception instanceof Error
-            ? exception.message
-            : 'Request failed';
+    const message =
+      status === HttpStatus.TOO_MANY_REQUESTS
+        ? RATE_LIMIT_MESSAGE
+        : Array.isArray(rawMessage)
+          ? 'Validation failed'
+          : typeof rawMessage === 'string'
+            ? rawMessage
+            : status === 500
+              ? 'Internal server error'
+              : exception instanceof Error
+                ? exception.message
+                : 'Request failed';
 
     const publicBody: Record<string, unknown> = {
       statusCode: status,
@@ -42,6 +49,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     if (typeof structuredBody?.code === 'string') {
       publicBody.code = structuredBody.code;
+    } else if (status === HttpStatus.TOO_MANY_REQUESTS) {
+      publicBody.code = ApplicationErrorCode.RATE_LIMITED;
     }
     if (Array.isArray(structuredBody?.matches)) {
       publicBody.matches = structuredBody.matches;

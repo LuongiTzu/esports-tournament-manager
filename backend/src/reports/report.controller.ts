@@ -2,8 +2,9 @@ import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { CreateReportDto } from './dto/create-report.dto';
 import { ReportService } from './report.service';
 
@@ -12,14 +13,14 @@ import { ReportService } from './report.service';
 export class ReportController {
   constructor(private readonly reports: ReportService) {}
 
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post(':slug/reports')
   create(
     @Param('slug') slug: string,
     @Body() dto: CreateReportDto,
-    @CurrentUser() user?: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.reports.create(slug, dto, user?.id);
+    return this.reports.create(slug, dto, user.id);
   }
 }

@@ -14,6 +14,9 @@ interface TokenPair {
   refreshToken: string;
 }
 
+const RATE_LIMIT_MESSAGE =
+  "Bạn thao tác quá nhiều lần. Vui lòng chờ rồi thử lại sau.";
+
 let refreshRequest: Promise<string | null> | null = null;
 
 function isApiSuccessEnvelope(
@@ -160,8 +163,10 @@ export async function request<T>(
         ? (body as Record<string, unknown>)
         : undefined;
     const message =
-      (body as { message?: string | string[] })?.message ||
-      (typeof body === "string" ? body : "Có lỗi xảy ra");
+      res.status === 429
+        ? RATE_LIMIT_MESSAGE
+        : (body as { message?: string | string[] })?.message ||
+          (typeof body === "string" ? body : "Có lỗi xảy ra");
     const validationErrors = Array.isArray(errorBody?.errors)
       ? errorBody.errors.filter(
           (

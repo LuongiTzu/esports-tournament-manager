@@ -17,6 +17,7 @@ import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { VisibilityResource } from '../common/decorators/visibility.decorator';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { CommentService } from './comment.service';
 import { CreateCommentDto } from './dto/comment.dto';
 import { CommentListQueryDto } from './dto/comment-list-query.dto';
@@ -26,7 +27,7 @@ import { CommentListQueryDto } from './dto/comment-list-query.dto';
 export class CommentController {
   constructor(private readonly comments: CommentService) {}
 
-  @UseGuards(JwtAuthGuard, VisibilityGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, VisibilityGuard)
   @VisibilityResource('slug:slug')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('tournaments/:slug/comments')
@@ -54,13 +55,13 @@ export class CommentController {
     return this.comments.findByTournament(slug, user, query);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   @Patch('comments/:id/hide')
   hide(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.comments.hide(id, user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   @Delete('comments/:id')
   remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.comments.remove(id, user);

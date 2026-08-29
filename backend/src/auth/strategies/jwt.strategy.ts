@@ -23,6 +23,7 @@ export interface AuthenticatedUser {
   gender: string | null;
   bio: string | null;
   role: string;
+  emailVerifiedAt: Date | null;
   isLocked: boolean;
   tokenVersion: number;
 }
@@ -54,6 +55,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         gender: true,
         bio: true,
         role: true,
+        emailVerifiedAt: true,
         isLocked: true,
         tokenVersion: true,
       },

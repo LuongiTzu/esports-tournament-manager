@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { OWNERSHIP_PARAM_KEY } from '../common/decorators/ownership.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { TournamentsController } from './tournaments.controller';
@@ -42,6 +43,7 @@ describe('TournamentsController deletion authorization', () => {
 
     expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
       JwtAuthGuard,
+      EmailVerifiedGuard,
       OwnershipGuard,
     ]);
     expect(Reflect.getMetadata(OWNERSHIP_PARAM_KEY, method)).toBe(

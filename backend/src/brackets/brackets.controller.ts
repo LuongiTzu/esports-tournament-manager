@@ -26,6 +26,7 @@ import { Ownership } from '../common/decorators/ownership.decorator';
 import { VisibilityResource } from '../common/decorators/visibility.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { BracketOperationsService } from './bracket-operations.service';
 import { UpdateSeedsDto } from './dto/bracket-operations.dto';
 import { SwissService } from './swiss.service';
@@ -38,7 +39,7 @@ export class BracketsController {
     private readonly swiss: SwissService,
   ) {}
 
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
   @Post(':id/generate')
   generate(
@@ -48,14 +49,14 @@ export class BracketsController {
     return this.operations.generate(id, force);
   }
 
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
   @Patch(':id/seeds')
   updateSeeds(@Param('id') id: string, @Body() dto: UpdateSeedsDto) {
     return this.operations.updateSeeds(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
   @Post(':id/advance')
   advance(@Param('id') id: string) {
@@ -86,14 +87,14 @@ export class BracketsController {
     description:
       'Wrong format, incomplete current round, round limit reached, or insufficient teams',
   })
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
   @Post(':id/swiss/generate-next')
   generateNextSwissRound(@Param('id') id: string) {
     return this.swiss.generateNextSwissRound(id);
   }
 
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
   @Delete(':id')
   remove(@Param('id') id: string) {

@@ -1,61 +1,71 @@
 import {
-  Injectable,
-  ConflictException,
-  UnauthorizedException,
   BadRequestException,
+  ConflictException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import type { User } from '@prisma/client';
+import { ApplicationErrorCode } from '../common/errors/application-error-code';
+import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import type { JwtPayload } from './strategies/jwt.strategy';
-import { PasswordHasher } from './password-hasher.service';
+import { AccountTokenService } from './account-token.service';
 import { AuthTokenService } from './auth-token.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ConfirmEmailChangeDto } from './dto/confirm-email-change.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { RequestEmailChangeDto } from './dto/request-email-change.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { GoogleIdentityService } from './google-identity.service';
+import { PasswordHasher } from './password-hasher.service';
+import type { JwtPayload } from './strategies/jwt.strategy';
 
+const HOUR = 60 * 60 * 1000;
+const EMAIL_TOKEN_TTL_MS = 24 * HOUR;
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
+const VERIFICATION_COOLDOWN_MS = 5 * 60 * 1000;
+const RESET_COOLDOWN_MS = 60 * 1000;
+const EMAIL_CHANGE_COOLDOWN_MS = 5 * 60 * 1000;
 const FORGOT_PASSWORD_MESSAGE =
   'Nếu email tồn tại, bạn sẽ nhận được liên kết đặt lại mật khẩu';
+const RESEND_VERIFICATION_MESSAGE =
+  'Nếu tài khoản cần xác minh, email hướng dẫn sẽ được gửi';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
-    private configService: ConfigService,
-    private readonly passwordHasher: PasswordHasher = new PasswordHasher(),
-    private readonly tokens: AuthTokenService = new AuthTokenService(
-      jwtService,
-      configService,
-    ),
-    private readonly googleIdentity: GoogleIdentityService = new GoogleIdentityService(
-      configService,
-    ),
+    private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
+    private readonly passwordHasher: PasswordHasher,
+    private readonly tokens: AuthTokenService,
+    private readonly googleIdentity: GoogleIdentityService,
+    private readonly accountTokens: AccountTokenService,
+    private readonly email: EmailService,
   ) {}
 
-  // ─── Đăng ký ────────────────────────────────────────────────────
   async register(dto: RegisterDto) {
-    // Kiểm tra email đã tồn tại chưa
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+    const email = this.normalizeEmail(dto.email);
+    const existingUser = await this.prisma.user.findFirst({
+      where: { OR: [{ email }, { pendingEmail: email }] },
+      select: { id: true },
     });
+    if (existingUser) throw new ConflictException('Email này đã được sử dụng');
 
-    if (existingUser) {
-      throw new ConflictException('Email này đã được sử dụng');
-    }
-
-    // Hash password
+    const { token, hash } = this.accountTokens.create();
     const hashedPassword = await this.passwordHasher.hash(dto.password);
-
-    // Tạo user mới (birthDate: string → Date)
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        email,
         passwordHash: hashedPassword,
         displayName: dto.displayName,
         birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
@@ -63,6 +73,9 @@ export class AuthService {
         phoneNumber: dto.phoneNumber,
         gender: dto.gender,
         bio: dto.bio,
+        emailVerifiedAt: null,
+        emailVerificationTokenHash: hash,
+        emailVerificationExpiresAt: new Date(Date.now() + EMAIL_TOKEN_TTL_MS),
       },
       select: {
         id: true,
@@ -75,42 +88,52 @@ export class AuthService {
         gender: true,
         bio: true,
         role: true,
+        emailVerifiedAt: true,
         createdAt: true,
       },
     });
 
+    try {
+      await this.email.sendVerification(
+        user.email,
+        user.displayName,
+        this.frontendLink('/verify-email', token),
+      );
+    } catch {
+      await this.runCleanupSafely(() =>
+        this.clearVerificationToken(user.id, hash),
+      );
+      this.logger.warn('Verification email delivery failed after registration');
+    }
+
     return {
-      message: 'Đăng ký thành công',
+      message:
+        'Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản',
       user,
     };
   }
 
-  // ─── Đăng nhập ──────────────────────────────────────────────────
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email: this.normalizeEmail(dto.email) },
     });
-
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
-
-    // Kiểm tra tài khoản có bị khóa không
     if (user.isLocked) {
       throw new UnauthorizedException(
         'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin để biết thêm chi tiết',
       );
     }
-
-    const isPasswordValid = await this.passwordHasher.verify(
-      dto.password,
-      user.passwordHash,
-    );
-
-    if (!isPasswordValid) {
+    if (!(await this.passwordHasher.verify(dto.password, user.passwordHash))) {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
-
+    if (!user.emailVerifiedAt) {
+      throw new UnauthorizedException({
+        message: 'Email chưa được xác minh',
+        code: ApplicationErrorCode.EMAIL_NOT_VERIFIED,
+      });
+    }
     return this.createSession(user, 'Đăng nhập thành công');
   }
 
@@ -119,15 +142,23 @@ export class AuthService {
     const subjectUser = await this.prisma.user.findUnique({
       where: { googleSubject: identity.subject },
     });
-
     if (subjectUser) {
-      return this.createSession(subjectUser, 'Đăng nhập Google thành công');
+      const verifiedUser = subjectUser.emailVerifiedAt
+        ? subjectUser
+        : await this.prisma.user.update({
+            where: { id: subjectUser.id },
+            data: {
+              emailVerifiedAt: new Date(),
+              emailVerificationTokenHash: null,
+              emailVerificationExpiresAt: null,
+            },
+          });
+      return this.createSession(verifiedUser, 'Đăng nhập Google thành công');
     }
 
     const emailUser = await this.prisma.user.findUnique({
       where: { email: identity.email },
     });
-
     let user: User;
     if (emailUser) {
       if (emailUser.googleSubject) {
@@ -140,12 +171,14 @@ export class AuthService {
           'Email đã được đăng ký. Hãy đăng nhập bằng mật khẩu trước khi liên kết Google',
         );
       }
-
       user = await this.prisma.user.update({
         where: { id: emailUser.id },
         data: {
           googleSubject: identity.subject,
           avatarUrl: emailUser.avatarUrl ?? identity.avatarUrl,
+          emailVerifiedAt: emailUser.emailVerifiedAt ?? new Date(),
+          emailVerificationTokenHash: null,
+          emailVerificationExpiresAt: null,
         },
       });
     } else {
@@ -156,14 +189,87 @@ export class AuthService {
           googleSubject: identity.subject,
           displayName: identity.displayName,
           avatarUrl: identity.avatarUrl,
+          emailVerifiedAt: new Date(),
         },
       });
     }
-
     return this.createSession(user, 'Đăng nhập Google thành công');
   }
 
-  // ─── Refresh token ───────────────────────────────────────────────
+  async verifyEmail(dto: VerifyEmailDto) {
+    const hash = this.accountTokens.hash(dto.token);
+    const user = await this.prisma.user.findUnique({
+      where: { emailVerificationTokenHash: hash },
+    });
+    if (!user || !user.emailVerificationTokenHash || user.emailVerifiedAt) {
+      throw new BadRequestException(
+        'Liên kết xác minh không hợp lệ hoặc đã được sử dụng',
+      );
+    }
+    if (
+      !this.accountTokens.matches(dto.token, user.emailVerificationTokenHash)
+    ) {
+      throw new BadRequestException('Liên kết xác minh không hợp lệ');
+    }
+    if (
+      !user.emailVerificationExpiresAt ||
+      user.emailVerificationExpiresAt <= new Date()
+    ) {
+      throw new BadRequestException('Liên kết xác minh đã hết hạn');
+    }
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerifiedAt: new Date(),
+        emailVerificationTokenHash: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+    return { message: 'Xác minh email thành công. Bạn có thể đăng nhập' };
+  }
+
+  async resendVerification(dto: ResendVerificationDto) {
+    const startedAt = Date.now();
+    const user = await this.prisma.user.findUnique({
+      where: { email: this.normalizeEmail(dto.email) },
+    });
+    if (!user || user.emailVerifiedAt || !user.passwordHash) {
+      return this.resendVerificationResponse(startedAt);
+    }
+    if (
+      this.isWithinCooldown(
+        user.emailVerificationExpiresAt,
+        EMAIL_TOKEN_TTL_MS,
+        VERIFICATION_COOLDOWN_MS,
+      )
+    ) {
+      return this.resendVerificationResponse(startedAt);
+    }
+
+    const { token, hash } = this.accountTokens.create();
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationTokenHash: hash,
+        emailVerificationExpiresAt: new Date(Date.now() + EMAIL_TOKEN_TTL_MS),
+      },
+    });
+    try {
+      await this.email.sendVerification(
+        user.email,
+        user.displayName,
+        this.frontendLink('/verify-email', token),
+        true,
+      );
+    } catch {
+      await this.runCleanupSafely(() =>
+        this.clearVerificationToken(user.id, hash),
+      );
+      this.logger.warn('Verification email redelivery failed');
+    }
+    return this.resendVerificationResponse(startedAt);
+  }
+
   async refreshTokens(refreshToken: string) {
     let payload: JwtPayload;
     try {
@@ -173,7 +279,6 @@ export class AuthService {
         'Refresh token không hợp lệ hoặc đã hết hạn',
       );
     }
-
     if (
       typeof payload.sub !== 'string' ||
       typeof payload.tokenVersion !== 'number'
@@ -182,11 +287,9 @@ export class AuthService {
         'Refresh token không hợp lệ hoặc đã hết hạn',
       );
     }
-
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
-
     if (
       !user ||
       !user.refreshToken ||
@@ -195,182 +298,270 @@ export class AuthService {
     ) {
       throw new UnauthorizedException('Phiên đăng nhập không hợp lệ');
     }
-
-    const isRefreshTokenValid = await this.passwordHasher.verify(
-      refreshToken,
-      user.refreshToken,
-    );
-
-    if (!isRefreshTokenValid) {
+    if (!(await this.passwordHasher.verify(refreshToken, user.refreshToken))) {
       throw new UnauthorizedException('Refresh token không hợp lệ');
     }
-
     const tokens = await this.tokens.issuePair(
       user.id,
       user.email,
       user.role,
       user.tokenVersion,
     );
-
-    // Cập nhật refresh token mới
-    const hashedRefreshToken = await this.passwordHasher.hash(
-      tokens.refreshToken,
-    );
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { refreshToken: hashedRefreshToken },
+      data: {
+        refreshToken: await this.passwordHasher.hash(tokens.refreshToken),
+      },
     });
-
     return tokens;
   }
 
-  // ─── Đăng xuất ──────────────────────────────────────────────────
   async logout(userId: string) {
-    // Tăng tokenVersion để vô hiệu toàn bộ access token đang lưu hành
     await this.prisma.user.update({
       where: { id: userId },
-      data: {
-        refreshToken: null,
-        tokenVersion: { increment: 1 },
-      },
+      data: { refreshToken: null, tokenVersion: { increment: 1 } },
     });
     return { message: 'Đăng xuất thành công' };
   }
 
-  // ─── Đổi mật khẩu (khi đã đăng nhập) ───────────────────────────
   async changePassword(userId: string, dto: ChangePasswordDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('Tài khoản không tồn tại');
-    }
-
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Tài khoản không tồn tại');
     if (!user.passwordHash) {
       throw new BadRequestException(
         'Tài khoản này chưa thiết lập mật khẩu. Hãy tiếp tục đăng nhập bằng Google',
       );
     }
-
-    // Kiểm tra mật khẩu hiện tại
-    const isCurrentPasswordValid = await this.passwordHasher.verify(
-      dto.currentPassword,
-      user.passwordHash,
-    );
-    if (!isCurrentPasswordValid) {
+    if (
+      !(await this.passwordHasher.verify(
+        dto.currentPassword,
+        user.passwordHash,
+      ))
+    ) {
       throw new BadRequestException('Mật khẩu hiện tại không đúng');
     }
-
-    // Tránh đặt trùng mật khẩu cũ
-    const isSamePassword = await this.passwordHasher.verify(
-      dto.newPassword,
-      user.passwordHash,
-    );
-    if (isSamePassword) {
+    if (await this.passwordHasher.verify(dto.newPassword, user.passwordHash)) {
       throw new BadRequestException(
         'Mật khẩu mới không được trùng với mật khẩu hiện tại',
       );
     }
-
-    // Hash mật khẩu mới + tăng tokenVersion để vô hiệu token cũ
-    const hashedPassword = await this.passwordHasher.hash(dto.newPassword);
     await this.prisma.user.update({
       where: { id: userId },
       data: {
-        passwordHash: hashedPassword,
+        passwordHash: await this.passwordHasher.hash(dto.newPassword),
         refreshToken: null,
         tokenVersion: { increment: 1 },
       },
     });
-
+    await this.sendSecurityEmail(() =>
+      this.email.sendPasswordChanged(user.email, user.displayName),
+    );
     return { message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại' };
   }
 
-  // ─── Quên mật khẩu (gửi email) ─────────────────────────────────
   async forgotPassword(dto: ForgotPasswordDto) {
+    const startedAt = Date.now();
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email: this.normalizeEmail(dto.email) },
     });
-
-    // Trả về message chung để không lộ email đã đăng ký
-    if (!user) {
-      return { message: FORGOT_PASSWORD_MESSAGE };
+    if (
+      user?.passwordHash &&
+      !this.isWithinCooldown(
+        user.resetPasswordExpires,
+        RESET_TOKEN_TTL_MS,
+        RESET_COOLDOWN_MS,
+      )
+    ) {
+      const { token, hash } = this.accountTokens.create();
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetPasswordToken: hash,
+          resetPasswordExpires: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+        },
+      });
+      try {
+        await this.email.sendPasswordReset(
+          user.email,
+          user.displayName,
+          this.frontendLink('/reset-password', token),
+        );
+      } catch {
+        await this.runCleanupSafely(() => this.clearResetToken(user.id, hash));
+        this.logger.warn('Password reset email delivery failed');
+      }
     }
-
-    // Tạo reset token JWT (hạn 15 phút)
-    const resetToken = await this.tokens.issueReset(user.id, user.email);
-
-    // Lưu hash token + hạn sử dụng vào DB
-    const hashedResetToken = await this.passwordHasher.hash(resetToken);
-    const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 phút
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetPasswordToken: hashedResetToken,
-        resetPasswordExpires: resetExpires,
-      },
-    });
-
-    const environment = this.configService.get<string>('NODE_ENV');
-    return environment === 'development' || environment === 'test'
-      ? { message: FORGOT_PASSWORD_MESSAGE, resetToken, expiresIn: '15m' }
-      : { message: FORGOT_PASSWORD_MESSAGE };
+    await this.ensureMinimumDuration(startedAt, 250);
+    return { message: FORGOT_PASSWORD_MESSAGE };
   }
 
-  // ─── Đặt lại mật khẩu (dùng token từ email) ────────────────────
   async resetPassword(dto: ResetPasswordDto) {
-    let payload: { sub: string };
-
-    try {
-      payload = await this.tokens.verifyReset(dto.token);
-    } catch {
-      throw new BadRequestException(
-        'Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn',
-      );
-    }
-
+    const hash = this.accountTokens.hash(dto.token);
     const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
+      where: { resetPasswordToken: hash },
     });
-
-    if (!user) {
-      throw new BadRequestException('Tài khoản không tồn tại');
-    }
-
-    // Kiểm tra token hash có khớp và chưa hết hạn
-    if (!user.resetPasswordToken) {
+    if (!user || !user.resetPasswordToken) {
       throw new BadRequestException(
-        'Yêu cầu đặt lại mật khẩu chưa được khởi tạo',
+        'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã được sử dụng',
       );
     }
-
-    const isTokenValid = await this.passwordHasher.verify(
-      dto.token,
-      user.resetPasswordToken,
-    );
-    if (!isTokenValid) {
-      throw new BadRequestException('Token đặt lại mật khẩu không hợp lệ');
+    if (!this.accountTokens.matches(dto.token, user.resetPasswordToken)) {
+      throw new BadRequestException('Liên kết đặt lại mật khẩu không hợp lệ');
     }
-
-    if (!user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
-      throw new BadRequestException('Token đặt lại mật khẩu đã hết hạn');
+    if (!user.resetPasswordExpires || user.resetPasswordExpires <= new Date()) {
+      throw new BadRequestException('Liên kết đặt lại mật khẩu đã hết hạn');
     }
-
-    // Hash mật khẩu mới + xóa token + tăng tokenVersion (vô hiệu token cũ)
-    const hashedPassword = await this.passwordHasher.hash(dto.newPassword);
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        passwordHash: hashedPassword,
+        passwordHash: await this.passwordHasher.hash(dto.newPassword),
         resetPasswordToken: null,
         resetPasswordExpires: null,
         refreshToken: null,
         tokenVersion: { increment: 1 },
       },
     });
-
+    await this.sendSecurityEmail(() =>
+      this.email.sendPasswordChanged(user.email, user.displayName),
+    );
     return { message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại' };
+  }
+
+  async requestEmailChange(userId: string, dto: RequestEmailChangeDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Tài khoản không tồn tại');
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'Tài khoản Google-only không thể đổi email bằng luồng mật khẩu. Hãy quản lý email trong tài khoản Google',
+      );
+    }
+    if (
+      !dto.currentPassword ||
+      !(await this.passwordHasher.verify(
+        dto.currentPassword,
+        user.passwordHash,
+      ))
+    ) {
+      throw new BadRequestException('Mật khẩu hiện tại không đúng');
+    }
+    const newEmail = this.normalizeEmail(dto.newEmail);
+    if (newEmail === user.email) {
+      throw new BadRequestException('Email mới phải khác email hiện tại');
+    }
+    const conflict = await this.prisma.user.findFirst({
+      where: {
+        id: { not: user.id },
+        OR: [{ email: newEmail }, { pendingEmail: newEmail }],
+      },
+      select: { id: true },
+    });
+    if (conflict) throw new ConflictException('Email mới đã được sử dụng');
+    if (
+      user.pendingEmail === newEmail &&
+      this.isWithinCooldown(
+        user.emailChangeExpiresAt,
+        EMAIL_TOKEN_TTL_MS,
+        EMAIL_CHANGE_COOLDOWN_MS,
+      )
+    ) {
+      throw new HttpException(
+        'Yêu cầu đổi email vừa được gửi. Vui lòng chờ trước khi thử lại',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    const { token, hash } = this.accountTokens.create();
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        pendingEmail: newEmail,
+        emailChangeTokenHash: hash,
+        emailChangeExpiresAt: new Date(Date.now() + EMAIL_TOKEN_TTL_MS),
+      },
+    });
+    try {
+      await this.email.sendEmailChangeConfirmation(
+        newEmail,
+        user.displayName,
+        this.frontendLink('/confirm-email-change', token),
+      );
+    } catch {
+      await this.runCleanupSafely(() =>
+        this.clearEmailChangeToken(user.id, hash),
+      );
+      throw new HttpException(
+        'Không thể gửi email xác nhận lúc này. Vui lòng thử lại',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+    await this.sendSecurityEmail(() =>
+      this.email.sendEmailChangeRequestedNotice(
+        user.email,
+        user.displayName,
+        newEmail,
+      ),
+    );
+    return { message: 'Đã gửi liên kết xác nhận tới email mới' };
+  }
+
+  async confirmEmailChange(dto: ConfirmEmailChangeDto) {
+    const hash = this.accountTokens.hash(dto.token);
+    const user = await this.prisma.user.findUnique({
+      where: { emailChangeTokenHash: hash },
+    });
+    if (!user || !user.pendingEmail || !user.emailChangeTokenHash) {
+      throw new BadRequestException(
+        'Liên kết đổi email không hợp lệ hoặc đã được sử dụng',
+      );
+    }
+    if (!this.accountTokens.matches(dto.token, user.emailChangeTokenHash)) {
+      throw new BadRequestException('Liên kết đổi email không hợp lệ');
+    }
+    if (!user.emailChangeExpiresAt || user.emailChangeExpiresAt <= new Date()) {
+      throw new BadRequestException('Liên kết đổi email đã hết hạn');
+    }
+    const pendingEmail = user.pendingEmail;
+    const conflict = await this.prisma.user.findFirst({
+      where: {
+        id: { not: user.id },
+        OR: [{ email: pendingEmail }, { pendingEmail }],
+      },
+      select: { id: true },
+    });
+    if (conflict) throw new ConflictException('Email mới đã được sử dụng');
+
+    const oldEmail = user.email;
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        email: pendingEmail,
+        emailVerifiedAt: new Date(),
+        pendingEmail: null,
+        emailChangeTokenHash: null,
+        emailChangeExpiresAt: null,
+        refreshToken: null,
+        tokenVersion: { increment: 1 },
+      },
+    });
+    await Promise.all([
+      this.sendSecurityEmail(() =>
+        this.email.sendEmailChanged(
+          oldEmail,
+          user.displayName,
+          oldEmail,
+          pendingEmail,
+        ),
+      ),
+      this.sendSecurityEmail(() =>
+        this.email.sendEmailChanged(
+          pendingEmail,
+          user.displayName,
+          oldEmail,
+          pendingEmail,
+        ),
+      ),
+    ]);
+    return { message: 'Đổi email thành công. Vui lòng đăng nhập lại' };
   }
 
   private async createSession(user: User, message: string) {
@@ -379,21 +570,18 @@ export class AuthService {
         'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Admin để biết thêm chi tiết',
       );
     }
-
     const tokens = await this.tokens.issuePair(
       user.id,
       user.email,
       user.role,
       user.tokenVersion,
     );
-    const hashedRefreshToken = await this.passwordHasher.hash(
-      tokens.refreshToken,
-    );
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { refreshToken: hashedRefreshToken },
+      data: {
+        refreshToken: await this.passwordHasher.hash(tokens.refreshToken),
+      },
     });
-
     return {
       message,
       user: {
@@ -407,8 +595,88 @@ export class AuthService {
         gender: user.gender,
         bio: user.bio,
         role: user.role,
+        emailVerifiedAt: user.emailVerifiedAt,
       },
       ...tokens,
     };
+  }
+
+  private frontendLink(path: string, token: string): string {
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const url = new URL(
+      path,
+      frontendUrl.endsWith('/') ? frontendUrl : `${frontendUrl}/`,
+    );
+    url.searchParams.set('token', token);
+    return url.toString();
+  }
+
+  private normalizeEmail(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
+  private isWithinCooldown(
+    expiresAt: Date | null,
+    ttlMs: number,
+    cooldownMs: number,
+  ): boolean {
+    if (!expiresAt) return false;
+    return Date.now() - (expiresAt.getTime() - ttlMs) < cooldownMs;
+  }
+
+  private async clearVerificationToken(userId: string, hash: string) {
+    await this.prisma.user.updateMany({
+      where: { id: userId, emailVerificationTokenHash: hash },
+      data: {
+        emailVerificationTokenHash: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+  }
+
+  private async clearResetToken(userId: string, hash: string) {
+    await this.prisma.user.updateMany({
+      where: { id: userId, resetPasswordToken: hash },
+      data: { resetPasswordToken: null, resetPasswordExpires: null },
+    });
+  }
+
+  private async clearEmailChangeToken(userId: string, hash: string) {
+    await this.prisma.user.updateMany({
+      where: { id: userId, emailChangeTokenHash: hash },
+      data: {
+        pendingEmail: null,
+        emailChangeTokenHash: null,
+        emailChangeExpiresAt: null,
+      },
+    });
+  }
+
+  private async sendSecurityEmail(send: () => Promise<void>): Promise<void> {
+    try {
+      await send();
+    } catch {
+      this.logger.warn('Security notification email delivery failed');
+    }
+  }
+
+  private async runCleanupSafely(cleanup: () => Promise<void>): Promise<void> {
+    try {
+      await cleanup();
+    } catch {
+      this.logger.warn('Token cleanup after email delivery failure failed');
+    }
+  }
+
+  private async ensureMinimumDuration(startedAt: number, durationMs: number) {
+    const remaining = durationMs - (Date.now() - startedAt);
+    if (remaining > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remaining));
+    }
+  }
+
+  private async resendVerificationResponse(startedAt: number) {
+    await this.ensureMinimumDuration(startedAt, 250);
+    return { message: RESEND_VERIFICATION_MESSAGE };
   }
 }

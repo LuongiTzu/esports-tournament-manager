@@ -11,6 +11,9 @@ import styles from "@/features/auth/components/AuthSurface.module.css";
 import { login, loginWithGoogle } from "@/features/auth/store";
 import { alertErrorClass } from "@/components/ui";
 import { useLocale } from "@/features/locale/store";
+import { authApi } from "@/features/auth/api";
+import { ApiError } from "@/lib/api/client";
+import { useCooldown } from "@/features/auth/hooks/useCooldown";
 
 const subscribeToLocation = () => () => {};
 const getPasswordChangedSnapshot = () =>
@@ -26,6 +29,10 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
+  const resendCooldown = useCooldown();
   const passwordChanged = useSyncExternalStore(
     subscribeToLocation,
     getPasswordChangedSnapshot,
@@ -35,16 +42,38 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setVerificationRequired(false);
+    setResendMessage("");
     setLoading(true);
     try {
       await login(email, password);
       router.push("/");
     } catch (err) {
+      setVerificationRequired(
+        err instanceof ApiError && err.code === "EMAIL_NOT_VERIFIED",
+      );
       setError(
         err instanceof Error ? err.message : t("auth.login.fallbackError"),
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (resendLoading || resendCooldown.seconds > 0 || !email) return;
+    setResendLoading(true);
+    setResendMessage("");
+    try {
+      const response = await authApi.resendVerification(email);
+      setResendMessage(response.message);
+      resendCooldown.start(300);
+    } catch (err) {
+      setResendMessage(
+        err instanceof Error ? err.message : "Không thể gửi lại email xác minh",
+      );
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -159,13 +188,34 @@ export default function LoginPage() {
         </div>
 
         <p className={styles.forgotPasswordText}>
-          {t("auth.login.forgotPassword")}
+          <Link href="/forgot-password">{t("auth.login.forgotPassword")}</Link>
         </p>
 
         {error && (
           <p role="alert" className={alertErrorClass}>
             {error}
           </p>
+        )}
+        {verificationRequired && (
+          <div className="space-y-2 text-center">
+            <button
+              type="button"
+              disabled={resendLoading || resendCooldown.seconds > 0}
+              onClick={handleResendVerification}
+              className="text-sm font-bold text-[#861536] underline underline-offset-4 transition hover:text-[#a10f3b] disabled:opacity-50 dark:text-rose-400"
+            >
+              {resendLoading
+                ? "Đang gửi…"
+                : resendCooldown.seconds > 0
+                  ? `Gửi lại sau ${resendCooldown.seconds}s`
+                  : "Gửi lại email xác minh"}
+            </button>
+            {resendMessage && (
+              <p role="status" className="text-xs leading-5 text-ink-muted">
+                {resendMessage}
+              </p>
+            )}
+          </div>
         )}
 
         <button

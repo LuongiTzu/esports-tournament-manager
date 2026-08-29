@@ -9,9 +9,12 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { PasswordHasher } from './password-hasher.service';
 import { AuthTokenService } from './auth-token.service';
 import { GoogleIdentityService } from './google-identity.service';
+import { AccountTokenService } from './account-token.service';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
+    EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -34,6 +37,7 @@ import { GoogleIdentityService } from './google-identity.service';
     PasswordHasher,
     AuthTokenService,
     GoogleIdentityService,
+    AccountTokenService,
   ],
   exports: [AuthService, JwtModule],
 })

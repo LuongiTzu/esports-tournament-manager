@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   CalendarBlankIcon,
-  CheckCircleIcon,
   GameControllerIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react";
@@ -25,10 +24,14 @@ const statusLabels: Record<Tournament["status"], TranslationKey> = {
 
 const statusClasses: Record<Tournament["status"], string> = {
   DRAFT: "tournament-status-DRAFT border-line bg-surface/85 text-ink-muted",
-  REGISTRATION: "tournament-status-REGISTRATION border-approved/35 bg-approved/15 text-approved",
-  ONGOING: "tournament-status-ONGOING border-brand/35 bg-brand/20 text-brand-hover",
-  COMPLETED: "tournament-status-COMPLETED border-line-strong/50 bg-surface-sub/90 text-ink-muted",
-  CANCELLED: "tournament-status-CANCELLED border-rejected/35 bg-rejected/15 text-rejected",
+  REGISTRATION:
+    "tournament-status-REGISTRATION border-approved/35 bg-approved/15 text-approved",
+  ONGOING:
+    "tournament-status-ONGOING border-brand/35 bg-brand/20 text-brand-hover",
+  COMPLETED:
+    "tournament-status-COMPLETED border-line-strong/50 bg-surface-sub/90 text-ink-muted",
+  CANCELLED:
+    "tournament-status-CANCELLED border-rejected/35 bg-rejected/15 text-rejected",
 };
 
 export default function TournamentCard({
@@ -62,7 +65,9 @@ export default function TournamentCard({
     <article
       style={accentVars(t.game?.name)}
       className={`tournament-card group relative overflow-hidden rounded-2xl border border-line bg-surface-card/90 transition duration-300 hover:-translate-y-1 hover:border-accent/55 hover:shadow-xl hover:shadow-accent/10 ${
-        listView ? "grid sm:grid-cols-[18rem_minmax(0,1fr)]" : "flex h-full flex-col"
+        listView
+          ? "grid sm:grid-cols-[18rem_minmax(0,1fr)]"
+          : "flex h-full flex-col"
       }`}
     >
       <Link
@@ -70,30 +75,30 @@ export default function TournamentCard({
         aria-label={t.name}
         className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_3px_var(--color-accent)]"
       />
-      <div className={`tournament-card-media relative overflow-hidden ${listView ? "tournament-card-media-list h-44 sm:h-full sm:min-h-52" : "h-44"}`}>
+      <div
+        className={`tournament-card-media relative overflow-hidden ${listView ? "tournament-card-media-list h-44 sm:h-full sm:min-h-52" : "h-44"}`}
+      >
         <ResolvedImage
           src={getTournamentBannerUrl(t.bannerUrl, t.game?.name, t.game?.code)}
           fallbackSrc={getTournamentBannerUrl(null, t.game?.name, t.game?.code)}
           alt=""
           className="absolute inset-0 size-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
         />
-        <div aria-hidden className="tournament-card-media-gradient absolute inset-0 bg-gradient-to-t from-surface-card via-transparent to-black/10" />
-        <span className={`tournament-status absolute left-4 top-4 rounded-md border px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur-md ${statusClasses[t.status]}`}>
+        <div
+          aria-hidden
+          className="tournament-card-media-gradient absolute inset-0 bg-gradient-to-t from-surface-card via-transparent to-black/10"
+        />
+        <span
+          className={`tournament-status absolute left-4 top-4 rounded-md border px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur-md ${statusClasses[t.status]}`}
+        >
           {translate(statusLabels[t.status])}
         </span>
-        {t.isVerified && (
-          <span className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-md border border-accent/35 bg-surface/80 px-2 py-1 text-xs font-semibold text-accent backdrop-blur-md">
-            <CheckCircleIcon size={14} weight="fill" />
-            {translate("tournament.card.verified")}
-          </span>
-        )}
-
         <TournamentFavoriteButton
           slug={t.slug}
           isFavorited={t.isFavorited}
           favoriteCount={t.favoriteCount}
           compact
-          className="absolute bottom-3 left-4 z-20"
+          className="!absolute !right-4 !top-4 !bottom-auto !left-auto z-20"
           onOptimisticChange={onFavoriteOptimisticChange}
           onReconciled={onFavoriteReconciled}
           onRollback={onFavoriteRollback}
@@ -110,7 +115,9 @@ export default function TournamentCard({
         </span>
       </div>
 
-      <div className={`flex flex-1 flex-col ${listView ? "p-5 sm:p-6" : "p-5"}`}>
+      <div
+        className={`flex flex-1 flex-col ${listView ? "p-5 sm:p-6" : "p-5"}`}
+      >
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-bold text-ink transition group-hover:text-accent">
             {t.name}

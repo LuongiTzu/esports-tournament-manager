@@ -5,7 +5,6 @@ import {
   ReportStatus,
 } from '@prisma/client';
 import { ContentFilterService } from '../common/services/content-filter.service';
-import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminService } from './admin.service';
 import {
@@ -102,6 +101,7 @@ describe('AdminService moderation', () => {
       id: 't-1',
       name: 'Cup',
       organizerId: 'u-1',
+      moderationStatus: ModerationStatus.ACTIVE,
     });
     prisma.tournament.update.mockResolvedValue({ id: 't-1' });
     await service.moderateTournament(
@@ -114,6 +114,33 @@ describe('AdminService moderation', () => {
         userId: 'u-1',
         type: NotificationType.ADMIN_WARNING,
         tournamentId: 't-1',
+      }),
+    );
+  });
+
+  it('notifies the organizer when a hidden tournament is restored', async () => {
+    const { service, prisma, notifications } = setup();
+    prisma.tournament.findUnique.mockResolvedValue({
+      id: 't-1',
+      organizerId: 'u-1',
+      moderationStatus: ModerationStatus.HIDDEN_BY_ADMIN,
+    });
+    prisma.tournament.update.mockResolvedValue({
+      id: 't-1',
+      moderationStatus: ModerationStatus.ACTIVE,
+      updatedAt: new Date('2026-08-29T00:00:00.000Z'),
+    });
+
+    await service.moderateTournament('t-1', ModerationStatus.ACTIVE);
+
+    expect(notifications.createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'u-1',
+        type: NotificationType.ADMIN_WARNING,
+        data: expect.objectContaining({
+          kind: 'TOURNAMENT_MODERATION',
+          moderationStatus: ModerationStatus.ACTIVE,
+        }),
       }),
     );
   });

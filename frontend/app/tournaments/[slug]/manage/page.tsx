@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "@phosphor-icons/react";
 import { useAuth } from "@/features/auth/store";
+import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
 import { accentVars } from "@/features/games/game-accent";
 import RegistrationManagement from "@/features/teams/components/manage/RegistrationManagement";
 import { tournamentsApi } from "@/features/tournaments/api";
@@ -62,6 +63,14 @@ export default function ManagePage({
   const refreshTournament = async () => {
     setTournament(await tournamentsApi.findBySlug(slug));
   };
+
+  if (ready && user?.emailVerifiedAt === null) {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-16">
+        <EmailVerificationNotice email={user.email} className="w-full" />
+      </div>
+    );
+  }
 
   if (loading) {
     return (

@@ -22,6 +22,7 @@ import styles from "@/features/auth/components/AuthSurface.module.css";
 import { loginWithGoogle } from "@/features/auth/store";
 import type { Gender } from "@/features/auth/types";
 import { alertErrorClass } from "@/components/ui";
+import { PENDING_VERIFICATION_EMAIL_KEY } from "@/features/auth/email-verification";
 import { useLocale } from "@/features/locale/store";
 
 interface RegisterForm {
@@ -70,7 +71,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await authApi.register({
+      const result = await authApi.register({
         displayName: form.displayName.trim(),
         email: form.email,
         password: form.password,
@@ -79,7 +80,8 @@ export default function RegisterPage() {
         phoneNumber: form.phoneNumber.trim() || undefined,
         gender: form.gender || undefined,
       });
-      router.push("/login");
+      sessionStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, result.user.email);
+      router.push("/verify-email?registered=1");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : t("auth.register.fallbackError"),

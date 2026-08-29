@@ -4,6 +4,7 @@ import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { VISIBILITY_RESOURCE_KEY } from '../common/decorators/visibility.decorator';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { TEAM_ACCESS_KEY, TeamAccessGuard } from './guards/team-access.guard';
 import { TeamsController } from './teams.controller';
 
@@ -33,6 +34,7 @@ describe('TeamsController visibility', () => {
 
       expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
         JwtAuthGuard,
+        EmailVerifiedGuard,
         TeamAccessGuard,
       ]);
       expect(Reflect.getMetadata(TEAM_ACCESS_KEY, method)).toBe(

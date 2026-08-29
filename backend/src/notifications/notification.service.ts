@@ -1,6 +1,8 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { NotificationType, Prisma, RegistrationStatus } from '@prisma/client';
@@ -17,17 +19,26 @@ import {
 } from '../common/ports/notification-publisher';
 import { NotificationQueryService } from './notification-query.service';
 import { tournamentVisibilityPolicy } from '../common/policies/tournament-visibility.policy';
+import {
+  ACTIVITY_EMAIL_PUBLISHER,
+  ActivityEmailPublisher,
+  NOOP_ACTIVITY_EMAIL_PUBLISHER,
+} from '../common/ports/activity-email-publisher';
 
 type NotificationClient = Pick<PrismaService, 'notification'>;
 
 @Injectable()
 export class NotificationService implements NotificationPublisher {
+  private readonly logger = new Logger(NotificationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: NotificationEventsService,
     private readonly queries: NotificationQueryService = new NotificationQueryService(
       prisma,
     ),
+    @Inject(ACTIVITY_EMAIL_PUBLISHER)
+    private readonly activityEmails: ActivityEmailPublisher = NOOP_ACTIVITY_EMAIL_PUBLISHER,
   ) {}
 
   async createNotification(
@@ -60,6 +71,22 @@ export class NotificationService implements NotificationPublisher {
 
   emitCreated(notification: Prisma.NotificationGetPayload<object>): void {
     this.events.publish(notification);
+    void this.activityEmails
+      .publish({
+        kind: 'NOTIFICATION_CREATED',
+        notification: {
+          userId: notification.userId,
+          type: notification.type,
+          data: notification.data,
+          tournamentId: notification.tournamentId,
+        },
+      })
+      .catch((error: unknown) => {
+        this.logger.error(
+          `Notification ${notification.id} was emitted but email publishing failed`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      });
   }
 
   async createForTournament(

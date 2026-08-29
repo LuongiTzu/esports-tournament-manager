@@ -16,6 +16,7 @@ import { Role } from '@prisma/client';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import {
@@ -36,7 +37,7 @@ import {
 } from './dto/admin-query.dto';
 
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, EmailVerifiedGuard, RolesGuard)
 @Roles(Role.ADMIN)
 export class AdminController {
   constructor(private adminService: AdminService) {}

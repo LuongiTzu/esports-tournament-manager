@@ -1,6 +1,7 @@
 import {
   ArgumentsHost,
   BadRequestException,
+  HttpException,
   HttpStatus,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -92,6 +93,20 @@ describe('HttpExceptionFilter', () => {
       message: 'Content contains prohibited keywords',
       errors: [],
       matches,
+    });
+  });
+
+  it('returns a friendly Vietnamese message for rate limiting', () => {
+    const { status, json } = catchException(
+      new HttpException('ThrottlerException: Too Many Requests', 429),
+    );
+
+    expect(status).toHaveBeenCalledWith(HttpStatus.TOO_MANY_REQUESTS);
+    expect(json).toHaveBeenCalledWith({
+      statusCode: HttpStatus.TOO_MANY_REQUESTS,
+      code: ApplicationErrorCode.RATE_LIMITED,
+      message: 'Bạn thao tác quá nhiều lần. Vui lòng chờ rồi thử lại sau.',
+      errors: [],
     });
   });
 

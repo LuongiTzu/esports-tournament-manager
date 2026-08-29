@@ -82,6 +82,15 @@ export class TournamentCommandService {
       game.code,
       dto.customGameName,
     );
+    const status = dto.status ?? TournamentStatus.REGISTRATION;
+    const visibility =
+      status === TournamentStatus.DRAFT
+        ? Visibility.PRIVATE
+        : (dto.visibility ?? Visibility.PUBLIC);
+    const registrationOpen =
+      status === TournamentStatus.DRAFT
+        ? false
+        : (dto.registrationOpen ?? true);
 
     // 2. Lọc từ khóa cấm (UC-U19)
     this.validateContent(dto.name, dto.description, dto.rules);
@@ -112,12 +121,12 @@ export class TournamentCommandService {
           customGameName,
           rules: dto.rules,
           bannerUrl: dto.bannerUrl,
-          visibility: dto.visibility ?? Visibility.PUBLIC,
+          visibility,
           moderationStatus: ModerationStatus.ACTIVE, // Instant Publishing
-          status: dto.status ?? TournamentStatus.REGISTRATION,
+          status,
           mode,
           location: dto.location,
-          registrationOpen: dto.registrationOpen ?? true,
+          registrationOpen,
           maxTeams: dto.maxTeams,
           minTeamSize,
           maxTeamSize,
@@ -234,6 +243,23 @@ export class TournamentCommandService {
     const merged = { ...current, ...stripUndefined(dto) };
     this.validateMergedSettings(merged);
 
+    const targetStatus = dto.status ?? current.status;
+    const publishingDraft =
+      current.status === TournamentStatus.DRAFT &&
+      targetStatus === TournamentStatus.REGISTRATION;
+    const visibility =
+      targetStatus === TournamentStatus.DRAFT
+        ? Visibility.PRIVATE
+        : publishingDraft
+          ? Visibility.PUBLIC
+          : dto.visibility;
+    const registrationOpen =
+      targetStatus === TournamentStatus.DRAFT
+        ? false
+        : publishingDraft
+          ? true
+          : dto.registrationOpen;
+
     const updated = await this.prisma.tournament.update({
       where: { id: tournamentId },
       data: {
@@ -245,11 +271,11 @@ export class TournamentCommandService {
             : undefined,
         rules: dto.rules,
         bannerUrl: dto.bannerUrl,
-        visibility: dto.visibility,
+        visibility,
         status: dto.status,
         mode: dto.mode,
         location: dto.location,
-        registrationOpen: dto.registrationOpen,
+        registrationOpen,
         maxTeams: dto.maxTeams,
         minTeamSize: gameChanged || teamSizeChanged ? minTeamSize : undefined,
         maxTeamSize:

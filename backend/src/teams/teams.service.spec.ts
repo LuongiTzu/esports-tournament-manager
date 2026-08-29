@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RegistrationValidatorService } from './registration-validator.service';
 import { TeamsService } from './teams.service';
 import { TournamentEventsService } from '../tournaments/tournament-events.service';
+import { ActivityEmailPublisher } from '../common/ports/activity-email-publisher';
 
 function lifecycleTournament(overrides: Record<string, unknown> = {}) {
   return {
@@ -77,6 +78,9 @@ function harness(teamValue = team()) {
     emitCreated: jest.fn(),
   } as unknown as NotificationService;
   const events = { publish: jest.fn() } as unknown as TournamentEventsService;
+  const activityEmails = {
+    publish: jest.fn().mockResolvedValue(undefined),
+  } as unknown as ActivityEmailPublisher;
   return {
     service: new TeamsService(
       prisma,
@@ -84,16 +88,44 @@ function harness(teamValue = team()) {
       notifications,
       contentFilter,
       events,
+      activityEmails,
     ),
     teamClient,
     teamMemberClient,
     notifications,
     validator,
     events,
+    activityEmails,
   };
 }
 
 describe('TeamsService roster lifecycle', () => {
+  it('publishes a registration-success email only after the team is created', async () => {
+    const { service, activityEmails } = harness();
+    Object.assign(service, {
+      loadTournamentForRegistration: jest.fn().mockResolvedValue({
+        id: 'tournament-1',
+        autoApproveTeams: false,
+      }),
+      resolveBlockingReason: jest.fn().mockResolvedValue(null),
+      createTeam: jest.fn().mockResolvedValue({
+        id: 'team-1',
+        name: 'Ruby Wolves',
+        status: RegistrationStatus.PENDING,
+      }),
+    });
+
+    await service.register('captain-1', 'arena-cup', {} as never);
+
+    expect(activityEmails.publish).toHaveBeenCalledWith({
+      kind: 'TEAM_REGISTRATION_SUCCEEDED',
+      userId: 'captain-1',
+      tournamentId: 'tournament-1',
+      teamName: 'Ruby Wolves',
+      status: RegistrationStatus.PENDING,
+    });
+  });
+
   it.each([
     RegistrationStatus.PENDING,
     RegistrationStatus.APPROVED,

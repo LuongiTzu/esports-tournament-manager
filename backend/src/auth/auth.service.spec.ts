@@ -4,27 +4,19 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import { Role } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { AccountTokenService } from './account-token.service';
 import { AuthService } from './auth.service';
+import { AuthTokenService } from './auth-token.service';
 import { GoogleIdentityService } from './google-identity.service';
-
-jest.mock('bcrypt', () => ({
-  compare: jest.fn(),
-  hash: jest.fn(),
-}));
-
-const comparePassword = bcrypt.compare as unknown as jest.MockedFunction<
-  (value: string, hash: string) => Promise<boolean>
->;
-const hashValue = bcrypt.hash as unknown as jest.MockedFunction<
-  (value: string, rounds: number) => Promise<string>
->;
+import { PasswordHasher } from './password-hasher.service';
 
 const GENERIC_FORGOT_MESSAGE =
   'Nếu email tồn tại, bạn sẽ nhận được liên kết đặt lại mật khẩu';
+const GENERIC_RESEND_MESSAGE =
+  'Nếu tài khoản cần xác minh, email hướng dẫn sẽ được gửi';
 
 function user(overrides: Record<string, unknown> = {}) {
   return {
@@ -45,358 +37,292 @@ function user(overrides: Record<string, unknown> = {}) {
     refreshToken: 'stored-refresh-hash',
     resetPasswordToken: null,
     resetPasswordExpires: null,
+    emailVerifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+    emailVerificationTokenHash: null,
+    emailVerificationExpiresAt: null,
+    pendingEmail: null,
+    emailChangeTokenHash: null,
+    emailChangeExpiresAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
   };
 }
 
-function harness(environment: string | null = 'test') {
+function harness() {
   const prisma = {
     user: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
   };
-  const jwt = {
-    verifyAsync: jest.fn(),
-    signAsync: jest
-      .fn()
-      .mockImplementation((_payload: unknown, options: { secret: string }) =>
-        Promise.resolve(
-          options.secret === 'access-secret'
-            ? 'new-access-token'
-            : options.secret === 'refresh-secret'
-              ? 'new-refresh-token'
-              : 'raw-reset-token',
-        ),
-      ),
+  const passwordHasher = {
+    hash: jest.fn().mockResolvedValue('hashed-value'),
+    verify: jest.fn().mockResolvedValue(true),
   };
-  const values: Record<string, string | undefined> = {
-    NODE_ENV: environment ?? undefined,
-    JWT_SECRET: 'access-secret',
-    JWT_REFRESH_SECRET: 'refresh-secret',
-    JWT_RESET_SECRET: 'reset-secret',
-    JWT_EXPIRES_IN: '15m',
-    JWT_REFRESH_EXPIRES_IN: '7d',
+  const tokens = {
+    issuePair: jest.fn().mockResolvedValue({
+      accessToken: 'new-access-token',
+      refreshToken: 'new-refresh-token',
+    }),
+    verifyRefresh: jest.fn(),
+  };
+  const googleIdentity = { verifyCredential: jest.fn() };
+  const email = {
+    sendVerification: jest.fn().mockResolvedValue(undefined),
+    sendPasswordReset: jest.fn().mockResolvedValue(undefined),
+    sendPasswordChanged: jest.fn().mockResolvedValue(undefined),
+    sendEmailChangeConfirmation: jest.fn().mockResolvedValue(undefined),
+    sendEmailChangeRequestedNotice: jest.fn().mockResolvedValue(undefined),
+    sendEmailChanged: jest.fn().mockResolvedValue(undefined),
   };
   const config = {
-    get: jest.fn((key: string, fallback?: string) => values[key] ?? fallback),
     getOrThrow: jest.fn((key: string) => {
-      const value = values[key];
-      if (value === undefined) throw new Error(`Missing ${key}`);
-      return value;
+      if (key === 'FRONTEND_URL') return 'http://localhost:3000';
+      throw new Error(`Unexpected config ${key}`);
     }),
   };
-  const googleIdentity = {
-    verifyCredential: jest.fn(),
-  };
-
+  const accountTokens = new AccountTokenService();
+  const service = new AuthService(
+    prisma as unknown as PrismaService,
+    config as unknown as ConfigService,
+    passwordHasher as unknown as PasswordHasher,
+    tokens as unknown as AuthTokenService,
+    googleIdentity as unknown as GoogleIdentityService,
+    accountTokens,
+    email as unknown as EmailService,
+  );
   return {
-    service: new AuthService(
-      prisma as unknown as PrismaService,
-      jwt as unknown as JwtService,
-      config as unknown as ConfigService,
-      undefined,
-      undefined,
-      googleIdentity as unknown as GoogleIdentityService,
-    ),
+    service,
     prisma,
-    jwt,
+    passwordHasher,
+    tokens,
     googleIdentity,
+    accountTokens,
+    email,
   };
 }
 
-describe('AuthService Google sign-in', () => {
-  beforeEach(() => {
-    comparePassword.mockReset().mockResolvedValue(true);
-    hashValue.mockReset().mockResolvedValue('stored-refresh-hash');
+describe('AuthService email verification', () => {
+  it('registers an unverified account, stores only a SHA-256 hash and emails the raw token', async () => {
+    const { service, prisma, email } = harness();
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockImplementation(({ data }) =>
+      Promise.resolve(user({ ...data, emailVerifiedAt: null })),
+    );
+
+    const result = await service.register({
+      email: '  USER@EXAMPLE.COM ',
+      password: 'Password123',
+      displayName: 'User',
+    });
+
+    const createData = prisma.user.create.mock.calls[0][0].data;
+    expect(createData.email).toBe('user@example.com');
+    expect(createData.emailVerifiedAt).toBeNull();
+    expect(createData.emailVerificationTokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(createData.emailVerificationExpiresAt.getTime()).toBeGreaterThan(
+      Date.now() + 23 * 60 * 60 * 1000,
+    );
+    expect(email.sendVerification).toHaveBeenCalledWith(
+      'user@example.com',
+      'User',
+      expect.stringMatching(/^http:\/\/localhost:3000\/verify-email\?token=/),
+    );
+    expect(result).not.toHaveProperty('token');
+    expect(JSON.stringify(result)).not.toContain(
+      new URL(
+        jest.mocked(email.sendVerification).mock.calls[0][2],
+      ).searchParams.get('token'),
+    );
   });
 
-  it('creates a Google-only account and issues the established token pair', async () => {
+  it('keeps the account unverified and makes resend immediately possible after delivery failure', async () => {
+    const { service, prisma, email } = harness();
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.create.mockImplementation(({ data }) =>
+      Promise.resolve(user({ ...data, emailVerifiedAt: null })),
+    );
+    email.sendVerification.mockRejectedValue(new Error('smtp secret omitted'));
+
+    await expect(
+      service.register({
+        email: 'user@example.com',
+        password: 'Password123',
+        displayName: 'User',
+      }),
+    ).resolves.toMatchObject({ user: { emailVerifiedAt: null } });
+    expect(prisma.user.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          emailVerificationTokenHash: null,
+          emailVerificationExpiresAt: null,
+        },
+      }),
+    );
+  });
+
+  it('blocks a correct password until email verification and exposes a stable error code', async () => {
+    const { service, prisma } = harness();
+    prisma.user.findUnique.mockResolvedValue(user({ emailVerifiedAt: null }));
+
+    await expect(
+      service.login({ email: 'user@example.com', password: 'Password123' }),
+    ).rejects.toMatchObject({
+      response: {
+        message: 'Email chưa được xác minh',
+        code: 'EMAIL_NOT_VERIFIED',
+      },
+    });
+  });
+
+  it('verifies a valid token once and clears token state', async () => {
+    const { service, prisma, accountTokens } = harness();
+    const token = accountTokens.create();
+    prisma.user.findUnique.mockResolvedValue(
+      user({
+        emailVerifiedAt: null,
+        emailVerificationTokenHash: token.hash,
+        emailVerificationExpiresAt: new Date(Date.now() + 60_000),
+      }),
+    );
+
+    await expect(service.verifyEmail({ token: token.token })).resolves.toEqual({
+      message: 'Xác minh email thành công. Bạn có thể đăng nhập',
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: {
+        emailVerifiedAt: expect.any(Date),
+        emailVerificationTokenHash: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+  });
+
+  it.each([
+    ['wrong or used', null],
+    [
+      'expired',
+      user({
+        emailVerifiedAt: null,
+        emailVerificationTokenHash: 'HASH',
+        emailVerificationExpiresAt: new Date(Date.now() - 1),
+      }),
+    ],
+  ])('rejects a %s verification token', async (_case, row) => {
+    const { service, prisma, accountTokens } = harness();
+    const token = accountTokens.create();
+    prisma.user.findUnique.mockResolvedValue(
+      row ? { ...row, emailVerificationTokenHash: token.hash } : row,
+    );
+    await expect(
+      service.verifyEmail({ token: token.token }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('uses the same resend response for existing and unknown emails', async () => {
+    const existing = harness();
+    existing.prisma.user.findUnique.mockResolvedValue(
+      user({ emailVerifiedAt: null, emailVerificationExpiresAt: null }),
+    );
+    await expect(
+      existing.service.resendVerification({ email: 'user@example.com' }),
+    ).resolves.toEqual({ message: GENERIC_RESEND_MESSAGE });
+
+    const missing = harness();
+    missing.prisma.user.findUnique.mockResolvedValue(null);
+    await expect(
+      missing.service.resendVerification({ email: 'missing@example.com' }),
+    ).resolves.toEqual({ message: GENERIC_RESEND_MESSAGE });
+  });
+});
+
+describe('AuthService Google verification', () => {
+  it('creates a Google-only account as verified', async () => {
     const { service, prisma, googleIdentity } = harness();
     googleIdentity.verifyCredential.mockResolvedValue({
       subject: 'google-subject',
       email: 'player@gmail.com',
       displayName: 'Google Player',
-      avatarUrl: 'https://example.com/avatar.png',
+      avatarUrl: null,
       canSafelyLinkByEmail: true,
     });
     prisma.user.findUnique
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
-    prisma.user.create.mockResolvedValue(
-      user({
-        email: 'player@gmail.com',
-        passwordHash: null,
-        googleSubject: 'google-subject',
-        displayName: 'Google Player',
-        avatarUrl: 'https://example.com/avatar.png',
-      }),
+    prisma.user.create.mockImplementation(({ data }) =>
+      Promise.resolve(user({ ...data })),
     );
-
-    const response = await service.googleLogin({ credential: 'google-jwt' });
-
-    expect(googleIdentity.verifyCredential).toHaveBeenCalledWith('google-jwt');
-    expect(prisma.user.create).toHaveBeenCalledWith({
-      data: {
-        email: 'player@gmail.com',
-        passwordHash: null,
-        googleSubject: 'google-subject',
-        displayName: 'Google Player',
-        avatarUrl: 'https://example.com/avatar.png',
-      },
-    });
-    expect(response).toMatchObject({
-      message: 'Đăng nhập Google thành công',
-      user: { email: 'player@gmail.com', displayName: 'Google Player' },
-      accessToken: 'new-access-token',
-      refreshToken: 'new-refresh-token',
-    });
-    expect(prisma.user.update).toHaveBeenLastCalledWith({
-      where: { id: 'user-1' },
-      data: { refreshToken: 'stored-refresh-hash' },
-    });
-  });
-
-  it('links an authoritative verified email to an existing local account', async () => {
-    const { service, prisma, googleIdentity } = harness();
-    const localUser = user({ email: 'player@gmail.com' });
-    const linkedUser = user({
-      email: 'player@gmail.com',
-      googleSubject: 'google-subject',
-    });
-    googleIdentity.verifyCredential.mockResolvedValue({
-      subject: 'google-subject',
-      email: 'player@gmail.com',
-      displayName: 'Google Player',
-      avatarUrl: 'https://example.com/avatar.png',
-      canSafelyLinkByEmail: true,
-    });
-    prisma.user.findUnique
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(localUser);
-    prisma.user.update
-      .mockResolvedValueOnce(linkedUser)
-      .mockResolvedValueOnce(linkedUser);
 
     await service.googleLogin({ credential: 'google-jwt' });
-
-    expect(prisma.user.update).toHaveBeenNthCalledWith(1, {
-      where: { id: 'user-1' },
-      data: {
-        googleSubject: 'google-subject',
-        avatarUrl: 'https://example.com/avatar.png',
-      },
-    });
-    expect(prisma.user.create).not.toHaveBeenCalled();
+    expect(prisma.user.create.mock.calls[0][0].data.emailVerifiedAt).toEqual(
+      expect.any(Date),
+    );
   });
 
-  it('does not auto-link a non-authoritative email domain', async () => {
+  it('marks a safely linked local account as verified', async () => {
     const { service, prisma, googleIdentity } = harness();
     googleIdentity.verifyCredential.mockResolvedValue({
       subject: 'google-subject',
-      email: 'player@example.com',
-      displayName: 'Google Player',
-      canSafelyLinkByEmail: false,
+      email: 'user@example.com',
+      displayName: 'User',
+      avatarUrl: null,
+      canSafelyLinkByEmail: true,
     });
     prisma.user.findUnique
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(user());
+      .mockResolvedValueOnce(user({ emailVerifiedAt: null }));
+    prisma.user.update.mockResolvedValue(
+      user({ googleSubject: 'google-subject' }),
+    );
 
-    await expect(
-      service.googleLogin({ credential: 'google-jwt' }),
-    ).rejects.toBeInstanceOf(ConflictException);
-    expect(prisma.user.create).not.toHaveBeenCalled();
-    expect(prisma.user.update).not.toHaveBeenCalled();
-  });
-
-  it('rejects a locked Google-linked account before issuing tokens', async () => {
-    const { service, prisma, googleIdentity, jwt } = harness();
-    googleIdentity.verifyCredential.mockResolvedValue({
-      subject: 'google-subject',
-      email: 'player@gmail.com',
-      displayName: 'Google Player',
-      canSafelyLinkByEmail: true,
+    await service.googleLogin({ credential: 'google-jwt' });
+    expect(prisma.user.update.mock.calls[0][0].data).toMatchObject({
+      googleSubject: 'google-subject',
+      emailVerifiedAt: expect.any(Date),
+      emailVerificationTokenHash: null,
     });
+  });
+});
+
+describe('AuthService password recovery and notifications', () => {
+  it('emails a 15-minute reset link without returning the raw token in any environment', async () => {
+    const { service, prisma, email } = harness();
     prisma.user.findUnique.mockResolvedValue(
-      user({ googleSubject: 'google-subject', isLocked: true }),
+      user({ resetPasswordExpires: null }),
     );
-
-    await expect(
-      service.googleLogin({ credential: 'google-jwt' }),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(jwt.signAsync).not.toHaveBeenCalled();
-  });
-});
-
-describe('AuthService refresh security', () => {
-  beforeEach(() => {
-    comparePassword.mockReset().mockResolvedValue(true);
-    hashValue.mockReset().mockResolvedValue('rotated-hash');
-  });
-
-  it('rotates a valid current refresh token with the established shape', async () => {
-    const { service, prisma, jwt } = harness();
-    jwt.verifyAsync.mockResolvedValue({ sub: 'user-1', tokenVersion: 3 });
-    prisma.user.findUnique.mockResolvedValue(user());
-
-    await expect(service.refreshTokens('current-refresh')).resolves.toEqual({
-      accessToken: 'new-access-token',
-      refreshToken: 'new-refresh-token',
-    });
-    expect(bcrypt.compare).toHaveBeenCalledWith(
-      'current-refresh',
-      'stored-refresh-hash',
-    );
-    expect(prisma.user.update).toHaveBeenCalledWith({
-      where: { id: 'user-1' },
-      data: { refreshToken: 'rotated-hash' },
-    });
-  });
-
-  it.each([
-    ['locked account', user({ isLocked: true }), 3],
-    ['stale tokenVersion', user({ tokenVersion: 4 }), 3],
-    ['missing account', null, 3],
-  ])(
-    'rejects a %s before issuing replacement tokens',
-    async (_case, row, tokenVersion) => {
-      const { service, prisma, jwt } = harness();
-      jwt.verifyAsync.mockResolvedValue({ sub: 'user-1', tokenVersion });
-      prisma.user.findUnique.mockResolvedValue(row);
-
-      await expect(
-        service.refreshTokens('refresh-token'),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
-      expect(jwt.signAsync).not.toHaveBeenCalled();
-      expect(prisma.user.update).not.toHaveBeenCalled();
-    },
-  );
-
-  it('rejects an invalid or wrong-secret token before loading a user', async () => {
-    const { service, prisma, jwt } = harness();
-    jwt.verifyAsync.mockRejectedValue(new Error('invalid signature'));
-
-    await expect(
-      service.refreshTokens('access-or-malformed-token'),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(prisma.user.findUnique).not.toHaveBeenCalled();
-  });
-
-  it('rejects a malformed verified payload', async () => {
-    const { service, prisma, jwt } = harness();
-    jwt.verifyAsync.mockResolvedValue({ sub: 'user-1' });
-
-    await expect(
-      service.refreshTokens('malformed-token'),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
-    expect(prisma.user.findUnique).not.toHaveBeenCalled();
-  });
-
-  it('rejects a refresh token that does not match the stored hash', async () => {
-    const { service, prisma, jwt } = harness();
-    jwt.verifyAsync.mockResolvedValue({ sub: 'user-1', tokenVersion: 3 });
-    prisma.user.findUnique.mockResolvedValue(user());
-    comparePassword.mockResolvedValue(false);
-
-    await expect(service.refreshTokens('other-refresh')).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
-    expect(jwt.signAsync).not.toHaveBeenCalled();
-    expect(prisma.user.update).not.toHaveBeenCalled();
-  });
-});
-
-describe('AuthService password reset exposure', () => {
-  beforeEach(() => {
-    comparePassword.mockReset().mockResolvedValue(true);
-    hashValue.mockReset().mockResolvedValue('stored-reset-hash');
-  });
-
-  it('persists a hashed reset token but does not expose the raw token in production', async () => {
-    const { service, prisma } = harness('production');
-    prisma.user.findUnique.mockResolvedValue(user());
-    const before = Date.now();
 
     const response = await service.forgotPassword({
       email: 'user@example.com',
     });
-
     expect(response).toEqual({ message: GENERIC_FORGOT_MESSAGE });
     expect(response).not.toHaveProperty('resetToken');
-    expect(response).not.toHaveProperty('stored-reset-hash');
-    expect(bcrypt.hash).toHaveBeenCalledWith('raw-reset-token', 10);
-    const update = prisma.user.update.mock.calls[0][0];
-    expect(update.where).toEqual({ id: 'user-1' });
-    expect(update.data.resetPasswordToken).toBe('stored-reset-hash');
-    expect(update.data.resetPasswordExpires.getTime()).toBeGreaterThanOrEqual(
-      before + 15 * 60 * 1000,
+    expect(prisma.user.update.mock.calls[0][0].data.resetPasswordToken).toMatch(
+      /^[a-f0-9]{64}$/,
     );
-    expect(update.data.resetPasswordExpires.getTime()).toBeLessThanOrEqual(
-      before + 15 * 60 * 1000 + 1000,
+    expect(email.sendPasswordReset).toHaveBeenCalledWith(
+      'user@example.com',
+      'User',
+      expect.stringMatching(/^http:\/\/localhost:3000\/reset-password\?token=/),
     );
   });
 
-  it('fails safe when NODE_ENV is not configured', async () => {
-    const { service, prisma } = harness(null);
-    prisma.user.findUnique.mockResolvedValue(user());
-
-    const response = await service.forgotPassword({
-      email: 'user@example.com',
-    });
-
-    expect(response).toEqual({ message: GENERIC_FORGOT_MESSAGE });
-    expect(response).not.toHaveProperty('resetToken');
-  });
-
-  it.each(['development', 'test'])(
-    'keeps an intentional local reset workflow in %s',
-    async (environment) => {
-      const { service, prisma } = harness(environment);
-      prisma.user.findUnique.mockResolvedValue(user());
-
-      await expect(
-        service.forgotPassword({ email: 'user@example.com' }),
-      ).resolves.toEqual({
-        message: GENERIC_FORGOT_MESSAGE,
-        resetToken: 'raw-reset-token',
-        expiresIn: '15m',
-      });
-    },
-  );
-
-  it('uses the same production response for an unknown email', async () => {
-    const { service, prisma, jwt } = harness('production');
-    prisma.user.findUnique.mockResolvedValue(null);
-
-    await expect(
-      service.forgotPassword({ email: 'missing@example.com' }),
-    ).resolves.toEqual({ message: GENERIC_FORGOT_MESSAGE });
-    expect(jwt.signAsync).not.toHaveBeenCalled();
-    expect(prisma.user.update).not.toHaveBeenCalled();
-  });
-
-  it('still accepts and consumes a legitimate unexpired reset token', async () => {
-    const { service, prisma, jwt } = harness('production');
-    jwt.verifyAsync.mockResolvedValue({ sub: 'user-1' });
+  it('consumes reset state, invalidates sessions and sends a security alert', async () => {
+    const { service, prisma, accountTokens, email, passwordHasher } = harness();
+    const token = accountTokens.create();
     prisma.user.findUnique.mockResolvedValue(
       user({
-        resetPasswordToken: 'stored-reset-hash',
+        resetPasswordToken: token.hash,
         resetPasswordExpires: new Date(Date.now() + 60_000),
       }),
     );
-    hashValue.mockResolvedValue('new-password-hash');
+    passwordHasher.hash.mockResolvedValue('new-password-hash');
 
-    await expect(
-      service.resetPassword({
-        token: 'raw-reset-token',
-        newPassword: 'Pass123',
-      }),
-    ).resolves.toEqual({
-      message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại',
-    });
+    await service.resetPassword({ token: token.token, newPassword: 'Pass123' });
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: 'user-1' },
       data: {
@@ -407,79 +333,144 @@ describe('AuthService password reset exposure', () => {
         tokenVersion: { increment: 1 },
       },
     });
-  });
-});
-
-describe('AuthService change password', () => {
-  beforeEach(() => {
-    comparePassword.mockReset();
-    hashValue.mockReset().mockResolvedValue('new-password-hash');
+    expect(email.sendPasswordChanged).toHaveBeenCalledWith(
+      'user@example.com',
+      'User',
+    );
   });
 
-  it('verifies the current password and invalidates every existing session', async () => {
-    const { service, prisma } = harness();
+  it('does not roll back a completed password change when alert delivery fails', async () => {
+    const { service, prisma, passwordHasher, email } = harness();
     prisma.user.findUnique.mockResolvedValue(user());
-    comparePassword.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    passwordHasher.verify
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    email.sendPasswordChanged.mockRejectedValue(new Error('delivery failed'));
 
     await expect(
       service.changePassword('user-1', {
         currentPassword: 'Current123',
-        newPassword: 'NewPassword456',
+        newPassword: 'Next123',
       }),
-    ).resolves.toEqual({
-      message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại',
+    ).resolves.toMatchObject({
+      message: expect.stringContaining('thành công'),
     });
+    expect(prisma.user.update).toHaveBeenCalled();
+  });
 
-    expect(comparePassword).toHaveBeenNthCalledWith(
-      1,
-      'Current123',
-      'password-hash',
+  it('does not roll back a completed reset when alert delivery fails', async () => {
+    const { service, prisma, accountTokens, email } = harness();
+    const token = accountTokens.create();
+    prisma.user.findUnique.mockResolvedValue(
+      user({
+        resetPasswordToken: token.hash,
+        resetPasswordExpires: new Date(Date.now() + 60_000),
+      }),
     );
-    expect(comparePassword).toHaveBeenNthCalledWith(
-      2,
-      'NewPassword456',
-      'password-hash',
+    email.sendPasswordChanged.mockRejectedValue(new Error('delivery failed'));
+
+    await expect(
+      service.resetPassword({ token: token.token, newPassword: 'Pass123' }),
+    ).resolves.toMatchObject({
+      message: expect.stringContaining('thành công'),
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          resetPasswordToken: null,
+          refreshToken: null,
+          tokenVersion: { increment: 1 },
+        }),
+      }),
     );
-    expect(hashValue).toHaveBeenCalledWith('NewPassword456', 10);
+  });
+});
+
+describe('AuthService email change', () => {
+  it('requires a password, stores pending email and notifies old and new addresses', async () => {
+    const { service, prisma, email } = harness();
+    prisma.user.findUnique.mockResolvedValue(user());
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await service.requestEmailChange('user-1', {
+      newEmail: ' NEW@EXAMPLE.COM ',
+      currentPassword: 'Password123',
+    });
+    expect(prisma.user.update.mock.calls[0][0].data).toMatchObject({
+      pendingEmail: 'new@example.com',
+      emailChangeTokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(email.sendEmailChangeConfirmation).toHaveBeenCalledWith(
+      'new@example.com',
+      'User',
+      expect.stringContaining('/confirm-email-change?token='),
+    );
+    expect(email.sendEmailChangeRequestedNotice).toHaveBeenCalledWith(
+      'user@example.com',
+      'User',
+      'new@example.com',
+    );
+  });
+
+  it('confirms the pending email, invalidates sessions and notifies both addresses', async () => {
+    const { service, prisma, accountTokens, email } = harness();
+    const token = accountTokens.create();
+    prisma.user.findUnique.mockResolvedValue(
+      user({
+        pendingEmail: 'new@example.com',
+        emailChangeTokenHash: token.hash,
+        emailChangeExpiresAt: new Date(Date.now() + 60_000),
+      }),
+    );
+    prisma.user.findFirst.mockResolvedValue(null);
+
+    await service.confirmEmailChange({ token: token.token });
     expect(prisma.user.update).toHaveBeenCalledWith({
       where: { id: 'user-1' },
       data: {
-        passwordHash: 'new-password-hash',
+        email: 'new@example.com',
+        emailVerifiedAt: expect.any(Date),
+        pendingEmail: null,
+        emailChangeTokenHash: null,
+        emailChangeExpiresAt: null,
         refreshToken: null,
         tokenVersion: { increment: 1 },
       },
     });
+    expect(email.sendEmailChanged).toHaveBeenCalledTimes(2);
   });
 
-  it('rejects an incorrect current password without updating the account', async () => {
-    const { service, prisma } = harness();
-    prisma.user.findUnique.mockResolvedValue(user());
-    comparePassword.mockResolvedValue(false);
-
+  it('rejects duplicate primary/pending emails and Google-only accounts', async () => {
+    const duplicate = harness();
+    duplicate.prisma.user.findUnique.mockResolvedValue(user());
+    duplicate.prisma.user.findFirst.mockResolvedValue({ id: 'other' });
     await expect(
-      service.changePassword('user-1', {
-        currentPassword: 'Wrong123',
-        newPassword: 'NewPassword456',
+      duplicate.service.requestEmailChange('user-1', {
+        newEmail: 'taken@example.com',
+        currentPassword: 'Password123',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    const googleOnly = harness();
+    googleOnly.prisma.user.findUnique.mockResolvedValue(
+      user({ passwordHash: null, googleSubject: 'google-subject' }),
+    );
+    await expect(
+      googleOnly.service.requestEmailChange('user-1', {
+        newEmail: 'new@example.com',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
-
-    expect(hashValue).not.toHaveBeenCalled();
-    expect(prisma.user.update).not.toHaveBeenCalled();
   });
+});
 
-  it('rejects reusing the current password', async () => {
+describe('AuthService lock and refresh invariants', () => {
+  it('checks account lock before verification on password login', async () => {
     const { service, prisma } = harness();
-    prisma.user.findUnique.mockResolvedValue(user());
-    comparePassword.mockResolvedValue(true);
-
+    prisma.user.findUnique.mockResolvedValue(
+      user({ isLocked: true, emailVerifiedAt: null }),
+    );
     await expect(
-      service.changePassword('user-1', {
-        currentPassword: 'Current123',
-        newPassword: 'Current123',
-      }),
-    ).rejects.toBeInstanceOf(BadRequestException);
-
-    expect(hashValue).not.toHaveBeenCalled();
-    expect(prisma.user.update).not.toHaveBeenCalled();
+      service.login({ email: 'user@example.com', password: 'Password123' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

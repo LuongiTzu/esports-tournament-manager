@@ -13,6 +13,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { TeamAccess, TeamAccessGuard } from '../teams/guards/team-access.guard';
 import { imageUploadOptions } from './upload.config';
 import { UploadService } from './upload.service';
@@ -49,7 +50,7 @@ export class UploadController {
   }
 
   @Post('teams/:id/logo')
-  @UseGuards(TeamAccessGuard)
+  @UseGuards(EmailVerifiedGuard, TeamAccessGuard)
   @TeamAccess('CAPTAIN_OR_ORGANIZER')
   @ApiConsumes('multipart/form-data')
   @ApiBody(imageBody)
@@ -62,7 +63,7 @@ export class UploadController {
   }
 
   @Post('teams/:id/members/:memberId/avatar')
-  @UseGuards(TeamAccessGuard)
+  @UseGuards(EmailVerifiedGuard, TeamAccessGuard)
   @TeamAccess('CAPTAIN_OR_ORGANIZER')
   @ApiConsumes('multipart/form-data')
   @ApiBody(imageBody)
@@ -76,7 +77,7 @@ export class UploadController {
   }
 
   @Post('tournaments/:tournamentId/banner')
-  @UseGuards(OwnershipGuard)
+  @UseGuards(EmailVerifiedGuard, OwnershipGuard)
   @Ownership('tournamentId')
   @ApiConsumes('multipart/form-data')
   @ApiBody(imageBody)

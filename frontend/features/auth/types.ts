@@ -13,6 +13,7 @@ export interface User {
   gender?: Gender | null;
   bio?: string | null;
   role: "ADMIN" | "SIGNED_UP_USER";
+  emailVerifiedAt: string | null;
 }
 
 export interface LoginRequest {
@@ -27,6 +28,16 @@ export interface GoogleLoginRequest {
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
+export interface RequestEmailChangeRequest {
+  newEmail: string;
+  currentPassword: string;
 }
 
 export interface UpdateProfileRequest {

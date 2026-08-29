@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { OwnershipGuard } from './guards/ownership.guard';
 import { VisibilityGuard } from './guards/visibility.guard';
 import { ContentFilterService } from './services/content-filter.service';
+import { EmailVerifiedGuard } from './guards/email-verified.guard';
 
 /**
  * Module dùng chung — export các guard để dùng được qua @UseGuards().
@@ -9,7 +10,17 @@ import { ContentFilterService } from './services/content-filter.service';
  */
 @Global()
 @Module({
-  providers: [OwnershipGuard, VisibilityGuard, ContentFilterService],
-  exports: [OwnershipGuard, VisibilityGuard, ContentFilterService],
+  providers: [
+    OwnershipGuard,
+    VisibilityGuard,
+    EmailVerifiedGuard,
+    ContentFilterService,
+  ],
+  exports: [
+    OwnershipGuard,
+    VisibilityGuard,
+    EmailVerifiedGuard,
+    ContentFilterService,
+  ],
 })
 export class CommonModule {}

@@ -1,4 +1,13 @@
 const extendedVi = {
+  "emailVerification.title": "Xác minh email để tiếp tục",
+  "emailVerification.required":
+    "Bạn cần xác minh email trước khi thực hiện thao tác này.",
+  "emailVerification.resend": "Gửi lại email xác minh",
+  "emailVerification.sending": "Đang gửi…",
+  "emailVerification.resendIn": "Gửi lại sau",
+  "emailVerification.resendSuccess": "Email xác minh đã được gửi lại.",
+  "emailVerification.resendError": "Không thể gửi lại email xác minh.",
+  "emailVerification.signIn": "Đăng nhập để tiếp tục",
   "common.loading": "Đang tải…",
   "common.retry": "Thử lại",
   "common.cancel": "Hủy",
@@ -22,7 +31,8 @@ const extendedVi = {
   "auth.brand.eyebrow": "Nền tảng tổ chức Esports",
   "auth.brand.titleLine1": "Tổ chức giải đấu,",
   "auth.brand.titleLine2": "không cần bảng tính.",
-  "auth.brand.description": "Tạo giải nhiều vòng với thể thức riêng cho từng vòng, nhận đăng ký từ các đội và duyệt danh sách tham dự ở một nơi.",
+  "auth.brand.description":
+    "Tạo giải nhiều vòng với thể thức riêng cho từng vòng, nhận đăng ký từ các đội và duyệt danh sách tham dự ở một nơi.",
   "auth.login.eyebrow": "Chào mừng trở lại",
   "auth.login.title": "Đăng nhập",
   "auth.login.subtitle": "Đăng nhập để tạo giải và quản lý đội đăng ký.",
@@ -34,17 +44,20 @@ const extendedVi = {
   "auth.google.orEmail": "Hoặc dùng email",
   "auth.google.loading": "Đang tải Google…",
   "auth.google.unavailable": "Google Sign-In chưa khả dụng",
-  "auth.google.fallbackError": "Không thể đăng nhập bằng Google. Vui lòng thử lại.",
+  "auth.google.fallbackError":
+    "Không thể đăng nhập bằng Google. Vui lòng thử lại.",
   "auth.login.showPassword": "Hiện mật khẩu",
   "auth.login.hidePassword": "Ẩn mật khẩu",
   "auth.login.submitting": "Đang đăng nhập…",
   "auth.login.submit": "Đăng nhập",
   "auth.login.fallbackError": "Đăng nhập thất bại",
   "auth.login.visualTitle": "Sẵn sàng cho trận đấu tiếp theo?",
-  "auth.login.visualDescription": "Đăng nhập để tạo giải, tiếp nhận đội và quản lý toàn bộ hành trình thi đấu trong một không gian duy nhất.",
+  "auth.login.visualDescription":
+    "Đăng nhập để tạo giải, tiếp nhận đội và quản lý toàn bộ hành trình thi đấu trong một không gian duy nhất.",
   "auth.register.eyebrow": "Gia nhập đấu trường",
   "auth.register.title": "Tạo tài khoản",
-  "auth.register.subtitle": "Một tài khoản dùng được cho cả vai trò ban tổ chức và người tham gia.",
+  "auth.register.subtitle":
+    "Một tài khoản dùng được cho cả vai trò ban tổ chức và người tham gia.",
   "auth.register.hasAccount": "Đã có tài khoản?",
   "auth.register.displayName": "Tên hiển thị",
   "auth.register.displayNamePlaceholder": "Tên bạn muốn hiển thị",
@@ -62,13 +75,15 @@ const extendedVi = {
   "auth.register.passwordPlaceholder": "Ít nhất 6 ký tự",
   "auth.register.confirmPassword": "Xác nhận",
   "auth.register.confirmPasswordPlaceholder": "Nhập lại mật khẩu",
-  "auth.register.optionalHint": "Các trường không có dấu * là tùy chọn và có thể cập nhật sau.",
+  "auth.register.optionalHint":
+    "Các trường không có dấu * là tùy chọn và có thể cập nhật sau.",
   "auth.register.submitting": "Đang tạo tài khoản…",
   "auth.register.submit": "Đăng ký",
   "auth.register.passwordMismatch": "Mật khẩu xác nhận không khớp",
   "auth.register.fallbackError": "Đăng ký thất bại",
   "auth.register.visualTitle": "Gia nhập cộng đồng thi đấu.",
-  "auth.register.visualDescription": "Tạo hồ sơ để tổ chức giải đấu, đăng ký đội và kết nối với cộng đồng Esports trên cùng một nền tảng.",
+  "auth.register.visualDescription":
+    "Tạo hồ sơ để tổ chức giải đấu, đăng ký đội và kết nối với cộng đồng Esports trên cùng một nền tảng.",
   "profile.organized": "Giải đã tổ chức",
   "profile.myTournaments": "Giải đấu của tôi",
   "profile.joined": "Giải đã tham gia",
@@ -87,7 +102,8 @@ const extendedVi = {
   "profile.avatarUpdateError": "Không thể cập nhật ảnh đại diện.",
   "profile.emptyOrganized": "Bạn chưa tổ chức giải đấu nào.",
   "profile.emptyJoined": "Bạn chưa tham gia giải đấu nào.",
-  "profile.emptyOrganizedHelp": "Tạo giải đấu để bắt đầu nhận đăng ký từ các đội.",
+  "profile.emptyOrganizedHelp":
+    "Tạo giải đấu để bắt đầu nhận đăng ký từ các đội.",
   "profile.emptyJoinedHelp": "Tìm một giải đang mở đăng ký và nộp đội của bạn.",
   "profile.createTournament": "Tạo giải đấu",
   "profile.viewOpen": "Xem giải đang mở",
@@ -99,20 +115,22 @@ const extendedVi = {
   "tournament.favorite.savedAndFollowed": "Đã lưu và theo dõi giải đấu.",
   "tournament.favorite.removedAndUnfollowed":
     "Đã bỏ yêu thích và ngừng theo dõi.",
-  "tournament.favorite.loginRequired":
-    "Đăng nhập để lưu và theo dõi giải đấu.",
+  "tournament.favorite.loginRequired": "Đăng nhập để lưu và theo dõi giải đấu.",
   "tournament.favorite.failure":
     "Không thể cập nhật giải đấu yêu thích. Vui lòng thử lại.",
   "profile.saveAvatar": "Lưu ảnh đại diện",
   "profile.uploading": "Đang tải lên…",
   "profile.eyebrow": "Tài khoản của bạn",
   "profile.title": "Thông tin cá nhân",
-  "profile.description": "Quản lý thông tin hiển thị và dữ liệu cá nhân được dùng trên ArenaVerse.",
+  "profile.description":
+    "Quản lý thông tin hiển thị và dữ liệu cá nhân được dùng trên ArenaVerse.",
   "profile.avatarSection": "Ảnh đại diện",
-  "profile.avatarDescription": "Ảnh này xuất hiện cùng tên của bạn trên các giải đấu và bình luận.",
+  "profile.avatarDescription":
+    "Ảnh này xuất hiện cùng tên của bạn trên các giải đấu và bình luận.",
   "profile.emailReadOnly": "Email đăng nhập không thể thay đổi tại đây.",
   "profile.personalDetails": "Chi tiết hồ sơ",
-  "profile.personalDetailsDescription": "Các trường dưới đây được lưu trực tiếp vào hồ sơ tài khoản của bạn.",
+  "profile.personalDetailsDescription":
+    "Các trường dưới đây được lưu trực tiếp vào hồ sơ tài khoản của bạn.",
   "profile.bio": "Giới thiệu",
   "profile.bioPlaceholder": "Hãy giới thiệu đôi chút về bản thân…",
   "profile.saveDetails": "Lưu thay đổi",
@@ -132,10 +150,12 @@ const extendedVi = {
     "Mật khẩu mới gồm 6–50 ký tự, có ít nhất một chữ cái và một chữ số.",
   "profile.changePassword": "Đổi mật khẩu",
   "profile.passwordChanging": "Đang đổi mật khẩu…",
-  "profile.passwordCurrentInvalid": "Mật khẩu hiện tại phải có ít nhất 6 ký tự.",
+  "profile.passwordCurrentInvalid":
+    "Mật khẩu hiện tại phải có ít nhất 6 ký tự.",
   "profile.passwordNewInvalid":
     "Mật khẩu mới phải gồm 6–50 ký tự, có ít nhất một chữ cái và một chữ số.",
-  "profile.passwordMustDiffer": "Mật khẩu mới không được trùng mật khẩu hiện tại.",
+  "profile.passwordMustDiffer":
+    "Mật khẩu mới không được trùng mật khẩu hiện tại.",
   "profile.passwordConfirmMismatch": "Xác nhận mật khẩu mới không khớp.",
   "profile.passwordChanged":
     "Đổi mật khẩu thành công. Bạn sẽ được chuyển tới trang đăng nhập.",
@@ -154,7 +174,8 @@ const extendedVi = {
   "image.requirements": "JPEG, PNG, WebP hoặc GIF. Tối đa 5 MiB.",
   "image.uploading": "Đang tải ảnh lên…",
   "image.cropTitle": "Cắt ảnh banner giải đấu",
-  "image.cropHint": "Kéo để chọn vùng ảnh, sau đó phóng to, thu nhỏ hoặc xoay cho vừa khung banner.",
+  "image.cropHint":
+    "Kéo để chọn vùng ảnh, sau đó phóng to, thu nhỏ hoặc xoay cho vừa khung banner.",
   "image.zoom": "Phóng to, thu nhỏ",
   "image.rotateLeft": "Xoay trái",
   "image.rotateRight": "Xoay phải",
@@ -171,7 +192,8 @@ const extendedVi = {
   "round.format.DOUBLE_ELIM": "Nhánh thắng - nhánh thua",
   "tournament.createHero.eyebrow": "Không gian tổ chức của bạn",
   "tournament.createHero.title": "Tạo một giải đấu mới",
-  "tournament.createHero.description": "Thiết lập thông tin, điều kiện tham gia và cấu trúc thi đấu trong một luồng thống nhất.",
+  "tournament.createHero.description":
+    "Thiết lập thông tin, điều kiện tham gia và cấu trúc thi đấu trong một luồng thống nhất.",
   "tournament.detail.loadError": "Không tải được giải đấu",
   "tournament.detail.notFound": "Không tìm thấy giải đấu",
   "tournament.detail.backToList": "Về danh sách giải",
@@ -188,15 +210,18 @@ const extendedVi = {
   "tournament.detail.mode": "Hình thức",
   "tournament.detail.yourTeam": "Đội của bạn",
   "tournament.detail.members": "thành viên",
-  "tournament.detail.pendingReview": "Ban tổ chức đang xem xét đăng ký của bạn.",
-  "tournament.detail.rejectedHelp": "Đăng ký của bạn không được chấp nhận. Liên hệ ban tổ chức nếu cần biết thêm chi tiết.",
+  "tournament.detail.pendingReview":
+    "Ban tổ chức đang xem xét đăng ký của bạn.",
+  "tournament.detail.rejectedHelp":
+    "Đăng ký của bạn không được chấp nhận. Liên hệ ban tổ chức nếu cần biết thêm chi tiết.",
   "tournament.detail.rules": "Thể lệ",
   "tournament.detail.approvedTeams": "Đội đã được duyệt",
   "tournament.detail.noApprovedTeams": "Chưa có đội nào được duyệt.",
   "tournament.detail.loginToRegister": "để đăng ký đội tham gia.",
   "tournament.detail.teamLogoAlt": "Logo đội",
   "tournament.detail.registrationUntil": "Mở đến",
-  "tournament.detail.registrationNoDeadline": "Không giới hạn thời gian đăng ký",
+  "tournament.detail.registrationNoDeadline":
+    "Không giới hạn thời gian đăng ký",
   "tournament.detail.sectionNavigation": "Các phần của giải đấu",
   "tournament.detail.overview": "Tổng quan",
   "tournament.detail.competition": "Giai đoạn & trận đấu",
@@ -233,7 +258,8 @@ const extendedVi = {
   "tournament.status.CANCELLED": "Đã hủy",
   "competition.eyebrow": "Thi đấu",
   "competition.title": "Diễn biến giải đấu",
-  "competition.description": "Lịch đấu, kết quả, xếp hạng và tiến trình chính thức từ hệ thống.",
+  "competition.description":
+    "Lịch đấu, kết quả, xếp hạng và tiến trình chính thức từ hệ thống.",
   "competition.loadError": "Không tải được dữ liệu thi đấu.",
   "competition.loading": "Đang tải dữ liệu thi đấu",
   "competition.noRounds": "Giải đấu chưa có giai đoạn thi đấu.",
@@ -283,14 +309,17 @@ const extendedVi = {
   "progress.NOT_GENERATED": "Giai đoạn chưa được tạo",
   "progress.IN_PROGRESS": "Đang chờ hoàn tất các trận bắt buộc",
   "progress.TERMINAL_COMPLETE": "Giai đoạn cuối đã hoàn tất",
-  "progress.ADVANCEMENT_UNSUPPORTED": "Không có quy tắc chuyển vòng được cấu hình",
+  "progress.ADVANCEMENT_UNSUPPORTED":
+    "Không có quy tắc chuyển vòng được cấu hình",
   "progress.AWAITING_ADVANCEMENT": "Đang chờ hệ thống ghi nhận đội đi tiếp",
-  "progress.READY_FOR_GENERATION": "Đội đi tiếp đã sẵn sàng; vòng sau chờ tạo cấu trúc",
+  "progress.READY_FOR_GENERATION":
+    "Đội đi tiếp đã sẵn sàng; vòng sau chờ tạo cấu trúc",
   "progress.NEXT_STAGE_GENERATED": "Vòng tiếp theo đã được tạo",
   "progress.NEXT_STAGE_COMPLETED": "Vòng tiếp theo đã hoàn tất",
   "progress.stageProgress": "Tiến độ giai đoạn",
   "progress.requiredMatchesCompleted": "trận bắt buộc hoàn tất",
-  "progress.structureMatches": "trận trong cấu trúc, gồm trận điều kiện chưa kích hoạt.",
+  "progress.structureMatches":
+    "trận trong cấu trúc, gồm trận điều kiện chưa kích hoạt.",
   "progress.nextRound": "Vòng tiếp theo",
   "progress.teamsAssigned": "đội được gán",
   "progress.matches": "trận",
@@ -321,11 +350,15 @@ const extendedVi = {
   "standings.buchholzCut1": "Cut-1",
   "standings.eliminationResult": "Kết quả loại trực tiếp",
   "standings.champion": "Nhà vô địch",
-  "standings.eliminationNoTable": "Thể thức loại trực tiếp không sử dụng bảng xếp hạng. Nhà vô địch sẽ xuất hiện khi hệ thống hoàn tất giải đấu.",
+  "standings.eliminationNoTable":
+    "Thể thức loại trực tiếp không sử dụng bảng xếp hạng. Nhà vô địch sẽ xuất hiện khi hệ thống hoàn tất giải đấu.",
   "standings.advanceEachGroup": "đội đi tiếp mỗi bảng.",
-  "standings.qualifiedPersistedHint": "Dấu “Đi tiếp” chỉ phản ánh dữ liệu chuyển vòng đã được hệ thống lưu.",
-  "standings.swissHint": "Hệ thống xếp hạng theo thành tích và các chỉ số tiebreak cố định. Swiss không chấp nhận kết quả hòa.",
-  "standings.roundRobinNoAdvancement": "Vòng tròn hiện không có quy tắc chuyển vòng được cấu hình, nên không hiển thị đội đi tiếp.",
+  "standings.qualifiedPersistedHint":
+    "Dấu “Đi tiếp” chỉ phản ánh dữ liệu chuyển vòng đã được hệ thống lưu.",
+  "standings.swissHint":
+    "Hệ thống xếp hạng theo thành tích và các chỉ số tiebreak cố định. Swiss không chấp nhận kết quả hòa.",
+  "standings.roundRobinNoAdvancement":
+    "Vòng tròn hiện không có quy tắc chuyển vòng được cấu hình, nên không hiển thị đội đi tiếp.",
   "manage.notOrganizer": "Bạn không phải ban tổ chức của giải đấu này",
   "manage.loadError": "Không tải được dữ liệu",
   "manage.eyebrow": "Không gian ban tổ chức",
@@ -339,18 +372,21 @@ const extendedVi = {
   "team.register.rosterRangePrefix": "Giải đấu yêu cầu từ",
   "team.register.rosterRangeSuffix": "thành viên",
   "team.register.rangeConnector": "đến",
-  "team.register.positionRequired": "Vui lòng chọn vị trí cho tất cả thành viên",
+  "team.register.positionRequired":
+    "Vui lòng chọn vị trí cho tất cả thành viên",
   "team.register.logoUploadError": "Không thể tải logo lên.",
   "team.register.submitError": "Đăng ký đội thất bại",
   "team.register.createdPrefix": "Đội",
   "team.register.createdSuffix": "đã được đăng ký",
   "team.register.partialUploadPrefix": "Logo chưa tải lên được:",
-  "team.register.partialUploadSuffix": "Hồ sơ đội vẫn được giữ nguyên và sẽ không bị đăng ký lại.",
+  "team.register.partialUploadSuffix":
+    "Hồ sơ đội vẫn được giữ nguyên và sẽ không bị đăng ký lại.",
   "team.register.retryingLogo": "Đang tải lại…",
   "team.register.retryLogo": "Thử tải logo lại",
   "team.register.goToTournament": "Đi tới giải đấu",
   "team.register.title": "Đăng ký đội tham gia",
-  "team.register.subtitle": "Đội của bạn sẽ ở trạng thái chờ duyệt cho tới khi ban tổ chức xác nhận.",
+  "team.register.subtitle":
+    "Đội của bạn sẽ ở trạng thái chờ duyệt cho tới khi ban tổ chức xác nhận.",
   "team.register.unavailable": "Hiện không thể đăng ký đội",
   "team.register.back": "Về trang giải đấu",
   "team.register.teamInfo": "Thông tin đội",
@@ -359,12 +395,14 @@ const extendedVi = {
   "team.register.activePlayers": "Đội hình chính",
   "team.register.rosterLimit": "Tổng thành viên",
   "team.register.availableSubstitutes": "Số dự bị tối đa",
-  "team.register.reviewNotice": "Hồ sơ sẽ được gửi tới ban tổ chức để xét duyệt.",
+  "team.register.reviewNotice":
+    "Hồ sơ sẽ được gửi tới ban tổ chức để xét duyệt.",
   "team.register.memberDetails": "Thông tin thi đấu và liên hệ của thành viên.",
   "team.register.teamName": "Tên đội",
   "team.register.teamNamePlaceholder": "Tên đội của bạn",
   "team.register.logoUrl": "Link logo đội",
-  "team.register.logoUrlHint": "Có thể giữ link ảnh ngoài hoặc chọn tệp từ thiết bị bên dưới.",
+  "team.register.logoUrlHint":
+    "Có thể giữ link ảnh ngoài hoặc chọn tệp từ thiết bị bên dưới.",
   "team.register.deviceLogo": "Logo từ thiết bị",
   "team.register.representative": "Người đại diện",
   "team.register.representativeEmail": "Email đại diện",
@@ -393,38 +431,53 @@ const extendedVi = {
   "team.register.positionAria": "Vị trí của thành viên",
   "team.register.selectPosition": "Chọn vị trí thi đấu",
   "team.register.noPosition": "Không chọn",
-  "team.register.optionalContacts": "Email và số điện thoại thành viên đều không bắt buộc.",
+  "team.register.optionalContacts":
+    "Email và số điện thoại thành viên đều không bắt buộc.",
   "team.register.submitting": "Đang gửi...",
   "team.register.submit": "Gửi đăng ký",
   "tournament.create.defaultGroupRound": "Vòng bảng",
   "tournament.create.defaultRound": "Vòng",
-  "tournament.create.locationRequired": "Vui lòng nhập địa điểm cho giải Offline hoặc Hybrid.",
+  "tournament.create.locationRequired":
+    "Vui lòng nhập địa điểm cho giải Offline hoặc Hybrid.",
   "tournament.create.gameRequired": "Vui lòng chọn trò chơi.",
-  "tournament.create.maxMembersRange": "Số thành viên tối đa phải nằm trong giới hạn của trò chơi.",
-  "tournament.create.ageRangeInvalid": "Tuổi tối thiểu không được lớn hơn tuổi tối đa.",
+  "tournament.create.maxMembersRange":
+    "Số thành viên tối đa phải nằm trong giới hạn của trò chơi.",
+  "tournament.create.ageRangeInvalid":
+    "Tuổi tối thiểu không được lớn hơn tuổi tối đa.",
   "tournament.create.registrationOpensAt": "Thời điểm mở đăng ký",
   "tournament.create.registrationDeadline": "Hạn đăng ký",
   "tournament.create.startsAt": "Thời điểm bắt đầu",
   "tournament.create.endsAt": "Thời điểm kết thúc",
   "tournament.create.mustBeAfter": "phải sau",
   "tournament.create.roundNameRequired": "Tên vòng đấu không được để trống.",
-  "tournament.create.swissRoundsInvalid": "Số vòng Swiss phải là số nguyên từ 1 đến 20, hoặc để trống để tự động tính.",
-  "tournament.create.swissAdvanceInvalid": "Số đội đi tiếp từ Swiss phải là số nguyên từ 1 đến 256.",
+  "tournament.create.swissRoundsInvalid":
+    "Số vòng Swiss phải là số nguyên từ 1 đến 20, hoặc để trống để tự động tính.",
+  "tournament.create.swissAdvanceInvalid":
+    "Số đội đi tiếp từ Swiss phải là số nguyên từ 1 đến 256.",
   "tournament.create.groupsInvalid": "Số bảng phải là số nguyên từ 2 đến 16.",
-  "tournament.create.advancePerGroupInvalid": "Số đội đi tiếp mỗi bảng phải là số nguyên dương.",
-  "tournament.create.groupPointsInvalid": "Điểm vòng bảng phải là số nguyên từ 0 đến 100.",
-  "tournament.create.meetingsInvalid": "Số lượt gặp nhau phải là số nguyên từ 1 đến 4.",
+  "tournament.create.advancePerGroupInvalid":
+    "Số đội đi tiếp mỗi bảng phải là số nguyên dương.",
+  "tournament.create.groupPointsInvalid":
+    "Điểm vòng bảng phải là số nguyên từ 0 đến 100.",
+  "tournament.create.meetingsInvalid":
+    "Số lượt gặp nhau phải là số nguyên từ 1 đến 4.",
   "tournament.create.winPointsInvalid": "Điểm thắng phải lớn hơn điểm thua.",
-  "tournament.create.drawPointsInvalid": "Khi cho phép hòa, điểm phải thỏa: thắng > hòa ≥ thua.",
-  "tournament.create.capacityDivisibilityInvalid": "Số đội tối đa phải chia hết cho số bảng để các bảng bằng nhau.",
-  "tournament.create.advanceTooMany": "Số đội đi tiếp mỗi bảng phải ít hơn số đội dự kiến trong bảng.",
-  "tournament.create.roundRobinPointsInvalid": "Điểm Round Robin phải là số nguyên từ 0 đến 100.",
+  "tournament.create.drawPointsInvalid":
+    "Khi cho phép hòa, điểm phải thỏa: thắng > hòa ≥ thua.",
+  "tournament.create.capacityDivisibilityInvalid":
+    "Số đội tối đa phải chia hết cho số bảng để các bảng bằng nhau.",
+  "tournament.create.advanceTooMany":
+    "Số đội đi tiếp mỗi bảng phải ít hơn số đội dự kiến trong bảng.",
+  "tournament.create.roundRobinPointsInvalid":
+    "Điểm Round Robin phải là số nguyên từ 0 đến 100.",
   "tournament.create.bannerUploadError": "Không thể tải banner lên.",
-  "tournament.create.sessionExpired": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+  "tournament.create.sessionExpired":
+    "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
   "tournament.create.submitError": "Tạo giải đấu thất bại.",
   "tournament.create.created": "Giải đấu đã được tạo",
   "tournament.create.partialBannerPrefix": "Banner chưa tải lên được:",
-  "tournament.create.partialBannerSuffix": "Giải đấu vẫn được giữ nguyên và sẽ không bị tạo lại.",
+  "tournament.create.partialBannerSuffix":
+    "Giải đấu vẫn được giữ nguyên và sẽ không bị tạo lại.",
   "tournament.create.retryingBanner": "Đang tải lại…",
   "tournament.create.retryBanner": "Thử tải banner lại",
   "tournament.create.goToTournament": "Đi tới giải đấu",
@@ -439,24 +492,32 @@ const extendedVi = {
   "tournament.create.previewPrize": "Giải thưởng",
   "tournament.create.previewPrizeEmpty": "Chưa cập nhật giải thưởng",
   "tournament.create.reviewReady": "Sẵn sàng tạo giải đấu",
-  "tournament.create.reviewHint": "Kiểm tra bản xem trước và các thông tin chính trước khi hoàn tất.",
+  "tournament.create.reviewHint":
+    "Kiểm tra bản xem trước và các thông tin chính trước khi hoàn tất.",
   "tournament.create.section.info": "Thông tin giải đấu",
-  "tournament.create.section.infoDescription": "Những nội dung người tham gia nhìn thấy đầu tiên khi khám phá giải.",
+  "tournament.create.section.infoDescription":
+    "Những nội dung người tham gia nhìn thấy đầu tiên khi khám phá giải.",
   "tournament.create.name": "Tên giải đấu",
-  "tournament.create.namePlaceholder": "Ví dụ: ArenaVERSE Summer Championship 2026",
+  "tournament.create.namePlaceholder":
+    "Ví dụ: ArenaVERSE Summer Championship 2026",
   "tournament.create.game": "Trò chơi",
   "tournament.create.selectGame": "Chọn trò chơi",
   "tournament.create.peoplePerTeam": "người/đội",
-  "tournament.create.gamesLoadError": "Không tải được danh sách trò chơi. Vui lòng tải lại trang.",
+  "tournament.create.gamesLoadError":
+    "Không tải được danh sách trò chơi. Vui lòng tải lại trang.",
   "tournament.create.bannerUrl": "URL ảnh banner",
-  "tournament.create.bannerHint": "Có thể giữ URL ảnh ngoài hoặc chọn một tệp từ thiết bị bên dưới.",
+  "tournament.create.bannerHint":
+    "Có thể giữ URL ảnh ngoài hoặc chọn một tệp từ thiết bị bên dưới.",
   "tournament.create.deviceBanner": "Banner từ thiết bị",
   "tournament.create.description": "Mô tả",
-  "tournament.create.descriptionPlaceholder": "Giới thiệu mục tiêu, đối tượng và điểm nổi bật của giải đấu",
+  "tournament.create.descriptionPlaceholder":
+    "Giới thiệu mục tiêu, đối tượng và điểm nổi bật của giải đấu",
   "tournament.create.rules": "Thể lệ",
-  "tournament.create.rulesPlaceholder": "Luật thi đấu, quy định đội hình, cách xử lý vi phạm...",
+  "tournament.create.rulesPlaceholder":
+    "Luật thi đấu, quy định đội hình, cách xử lý vi phạm...",
   "tournament.create.section.organization": "Cách tổ chức",
-  "tournament.create.section.organizationDescription": "Quyết định giải được công bố như thế nào và thi đấu ở đâu.",
+  "tournament.create.section.organizationDescription":
+    "Quyết định giải được công bố như thế nào và thi đấu ở đâu.",
   "tournament.create.initialStatus": "Trạng thái khi tạo",
   "tournament.create.openRegistration": "Mở đăng ký",
   "tournament.create.draft": "Bản nháp",
@@ -467,7 +528,8 @@ const extendedVi = {
   "tournament.create.location": "Địa điểm",
   "tournament.create.locationPlaceholder": "Nhập địa chỉ tổ chức thi đấu",
   "tournament.create.section.capacity": "Quy mô và điều kiện đội",
-  "tournament.create.section.capacityDescription": "Thiết lập sức chứa giải, kích thước đội hình và giới hạn người tham gia.",
+  "tournament.create.section.capacityDescription":
+    "Thiết lập sức chứa giải, kích thước đội hình và giới hạn người tham gia.",
   "tournament.create.maxTeams": "Số đội tối đa",
   "tournament.create.minMembers": "Thành viên tối thiểu",
   "tournament.create.maxMembers": "Thành viên tối đa",
@@ -477,33 +539,43 @@ const extendedVi = {
   "tournament.create.allowFrom": "Cho phép từ",
   "tournament.create.players": "cầu thủ",
   "tournament.create.maxSubstitutes": "Dự bị tối đa",
-  "tournament.create.maxSubstitutesHint": "Tự động tính từ số thành viên tối đa",
+  "tournament.create.maxSubstitutesHint":
+    "Tự động tính từ số thành viên tối đa",
   "tournament.create.minAge": "Tuổi tối thiểu",
   "tournament.create.maxAge": "Tuổi tối đa",
   "tournament.create.allowedGenders": "Giới tính được phép",
-  "tournament.create.genderHint": "Không chọn mục nào nếu giải không giới hạn giới tính.",
+  "tournament.create.genderHint":
+    "Không chọn mục nào nếu giải không giới hạn giới tính.",
   "tournament.create.section.time": "Thời gian",
-  "tournament.create.section.timeDescription": "Các mốc được sắp theo thứ tự mở đăng ký, đóng đăng ký, bắt đầu và kết thúc.",
+  "tournament.create.section.timeDescription":
+    "Các mốc được sắp theo thứ tự mở đăng ký, đóng đăng ký, bắt đầu và kết thúc.",
   "tournament.create.registrationOpens": "Mở đăng ký",
   "tournament.create.tournamentStarts": "Bắt đầu giải",
   "tournament.create.tournamentEnds": "Kết thúc giải",
   "tournament.create.section.registration": "Đăng ký và duyệt đội",
-  "tournament.create.section.registrationDescription": "Kiểm soát cách đội gửi hồ sơ và đi vào danh sách tham dự.",
+  "tournament.create.section.registrationDescription":
+    "Kiểm soát cách đội gửi hồ sơ và đi vào danh sách tham dự.",
   "tournament.create.allowTeamRegistration": "Cho phép đăng ký đội",
-  "tournament.create.allowTeamRegistrationDescription": "Các đội có thể gửi hồ sơ ngay khi giải được công bố.",
+  "tournament.create.allowTeamRegistrationDescription":
+    "Các đội có thể gửi hồ sơ ngay khi giải được công bố.",
   "tournament.create.autoApprove": "Tự động duyệt đội",
-  "tournament.create.autoApproveDescription": "Đội hợp lệ được duyệt ngay mà không cần chờ ban tổ chức.",
+  "tournament.create.autoApproveDescription":
+    "Đội hợp lệ được duyệt ngay mà không cần chờ ban tổ chức.",
   "tournament.create.requireMemberInfo": "Yêu cầu đầy đủ hồ sơ thành viên",
-  "tournament.create.requireMemberInfoDescription": "Mỗi thành viên phải cung cấp đủ thông tin theo yêu cầu của hệ thống.",
+  "tournament.create.requireMemberInfoDescription":
+    "Mỗi thành viên phải cung cấp đủ thông tin theo yêu cầu của hệ thống.",
   "tournament.create.section.prize": "Giải thưởng và liên hệ",
-  "tournament.create.section.prizeDescription": "Giúp đội tham gia biết quyền lợi và cách liên hệ với ban tổ chức.",
+  "tournament.create.section.prizeDescription":
+    "Giúp đội tham gia biết quyền lợi và cách liên hệ với ban tổ chức.",
   "tournament.create.prizePool": "Cơ cấu giải thưởng",
-  "tournament.create.prizePlaceholder": "Ví dụ: Vô địch 10.000.000đ, Á quân 5.000.000đ...",
+  "tournament.create.prizePlaceholder":
+    "Ví dụ: Vô địch 10.000.000đ, Á quân 5.000.000đ...",
   "tournament.create.contactEmail": "Email liên hệ",
   "tournament.create.contactPhone": "Số điện thoại",
   "tournament.create.contactLink": "Fanpage hoặc Discord",
   "tournament.create.section.rounds": "Các vòng đấu",
-  "tournament.create.section.roundsDescription": "Mỗi vòng có thể dùng một thể thức và số ván thắng riêng.",
+  "tournament.create.section.roundsDescription":
+    "Mỗi vòng có thể dùng một thể thức và số ván thắng riêng.",
   "tournament.create.addRound": "Thêm vòng",
   "tournament.create.roundName": "Tên vòng",
   "tournament.create.roundNamePlaceholder": "Tên vòng",
@@ -511,7 +583,8 @@ const extendedVi = {
   "tournament.create.removeRound": "Xóa vòng",
   "tournament.create.roundRobinSettings": "Cài đặt Round Robin",
   "tournament.create.meetingsPerPair": "Số lượt gặp nhau",
-  "tournament.create.meetingsHint": "Số lượt mỗi cặp đội gặp nhau trong vòng này (1–4).",
+  "tournament.create.meetingsHint":
+    "Số lượt mỗi cặp đội gặp nhau trong vòng này (1–4).",
   "tournament.create.winPoints": "Điểm thắng",
   "tournament.create.lossPoints": "Điểm thua",
   "tournament.create.allowDraws": "Cho phép hòa",
@@ -519,27 +592,35 @@ const extendedVi = {
   "tournament.create.swissSettings": "Cài đặt Swiss",
   "tournament.create.swissRounds": "Số vòng Swiss",
   "tournament.create.automaticPlaceholder": "Tự động",
-  "tournament.create.swissRoundsHint": "Số lượt ghép cặp Swiss. Để trống để hệ thống tính từ số đội thực tế khi sinh vòng.",
+  "tournament.create.swissRoundsHint":
+    "Số lượt ghép cặp Swiss. Để trống để hệ thống tính từ số đội thực tế khi sinh vòng.",
   "tournament.create.advancingTeams": "Số đội đi tiếp",
-  "tournament.create.advancingTeamsHint": "Các đội đứng đầu bảng xếp hạng cuối cùng sẽ vào vòng tiếp theo.",
-  "tournament.create.swissBehavior": "Đội có thành tích gần nhau được ưu tiên ghép cặp. Hệ thống tránh tái đấu khi còn phương án hợp lệ; các trận Swiss phải có đội thắng.",
+  "tournament.create.advancingTeamsHint":
+    "Các đội đứng đầu bảng xếp hạng cuối cùng sẽ vào vòng tiếp theo.",
+  "tournament.create.swissBehavior":
+    "Đội có thành tích gần nhau được ưu tiên ghép cặp. Hệ thống tránh tái đấu khi còn phương án hợp lệ; các trận Swiss phải có đội thắng.",
   "tournament.create.estimatedCapacity": "Dự kiến theo sức chứa tối đa",
-  "tournament.create.actualRoundsHint": "vòng. Số vòng thực tế được tính lại khi sinh vòng.",
+  "tournament.create.actualRoundsHint":
+    "vòng. Số vòng thực tế được tính lại khi sinh vòng.",
   "tournament.create.playoffSettings": "Cài đặt loại trực tiếp",
   "tournament.create.thirdPlace": "Thi đấu tranh hạng ba",
-  "tournament.create.thirdPlaceHint": "Hai đội thua ở bán kết thi đấu thêm một trận để xác định hạng ba.",
+  "tournament.create.thirdPlaceHint":
+    "Hai đội thua ở bán kết thi đấu thêm một trận để xác định hạng ba.",
   "tournament.create.doubleElimSettings": "Cài đặt nhánh thắng - nhánh thua",
-  "tournament.create.grandFinalResetHint": "Nếu đội từ nhánh thua thắng Grand Final đầu tiên, hai đội sẽ đấu thêm một trận quyết định.",
+  "tournament.create.grandFinalResetHint":
+    "Nếu đội từ nhánh thua thắng Grand Final đầu tiên, hai đội sẽ đấu thêm một trận quyết định.",
   "tournament.create.groupSettings": "Cài đặt vòng bảng",
   "tournament.create.numberOfGroups": "Số bảng",
   "tournament.create.advancePerGroup": "Số đội đi tiếp mỗi bảng",
   "tournament.create.teamsPerGroupEstimated": "đội / bảng.",
   "tournament.create.capacityCannotDivide": "đội không thể chia đều vào",
   "tournament.create.groupsUnit": "bảng.",
-  "tournament.create.teamsPerGroupActualHint": "Số đội mỗi bảng sẽ được tính từ các đội thực tế khi sinh vòng.",
+  "tournament.create.teamsPerGroupActualHint":
+    "Số đội mỗi bảng sẽ được tính từ các đội thực tế khi sinh vòng.",
   "tournament.create.total": "Tổng",
   "tournament.create.advanceNextRound": "đội vào vòng tiếp theo.",
-  "tournament.create.systemManaged": "Slug, người tổ chức và trạng thái xác minh được hệ thống tự quản lý.",
+  "tournament.create.systemManaged":
+    "Slug, người tổ chức và trạng thái xác minh được hệ thống tự quản lý.",
   "tournament.create.submitting": "Đang tạo...",
   "tournament.create.submit": "Tạo giải đấu",
   "match.manage.unscheduled": "Chưa lên lịch",
@@ -549,7 +630,8 @@ const extendedVi = {
   "match.manage.inactiveReadOnly": "Trận điều kiện chưa được backend kích hoạt",
   "match.manage.missingTeams": "Chưa đủ hai đội tham gia",
   "match.manage.cancelledTournament": "Giải đấu đã bị hủy",
-  "match.manage.linkInvalid": "Link phòng đấu phải là URL đầy đủ, ví dụ https://...",
+  "match.manage.linkInvalid":
+    "Link phòng đấu phải là URL đầy đủ, ví dụ https://...",
   "match.manage.scheduleUpdated": "Đã cập nhật lịch thi đấu.",
   "match.manage.scheduleUpdateError": "Không thể cập nhật lịch",
   "match.manage.seriesScoreInvalid": "Tỷ số series phải là số nguyên không âm.",
@@ -557,13 +639,17 @@ const extendedVi = {
   "match.manage.decisiveRequired": "Thể thức này yêu cầu một đội thắng.",
   "match.manage.winnerRequiredPrefix": "Đội thắng phải đạt",
   "match.manage.gamesUnit": "ván.",
-  "match.manage.seriesCompleteStatus": "Series đã đủ số ván thắng và phải chuyển sang Đã hoàn thành.",
-  "match.manage.correctResultConfirm": "Sửa kết quả đã hoàn thành có thể rollback và cập nhật các slot downstream. Backend sẽ từ chối nếu downstream đã hoàn tất. Tiếp tục?",
+  "match.manage.seriesCompleteStatus":
+    "Series đã đủ số ván thắng và phải chuyển sang Đã hoàn thành.",
+  "match.manage.correctResultConfirm":
+    "Sửa kết quả đã hoàn thành có thể rollback và cập nhật các slot downstream. Backend sẽ từ chối nếu downstream đã hoàn tất. Tiếp tục?",
   "match.manage.resultUpdated": "Đã cập nhật kết quả từ backend.",
   "match.manage.resultUpdateError": "Không thể cập nhật kết quả",
   "match.manage.gameScoreRequired": "Cần ít nhất một game score.",
-  "match.manage.gameScoreInvalid": "Điểm từng game phải là số nguyên không âm và không được hòa.",
-  "match.manage.correctGameScoresConfirm": "Sửa game scores đã hoàn thành có thể rollback và cập nhật các slot downstream. Tiếp tục?",
+  "match.manage.gameScoreInvalid":
+    "Điểm từng game phải là số nguyên không âm và không được hòa.",
+  "match.manage.correctGameScoresConfirm":
+    "Sửa game scores đã hoàn thành có thể rollback và cập nhật các slot downstream. Tiếp tục?",
   "match.manage.gameScoresUpdated": "Đã cập nhật game scores từ backend.",
   "match.manage.gameScoresUpdateError": "Không thể cập nhật game scores",
   "match.manage.title": "Quản lý trận",
@@ -592,9 +678,11 @@ const extendedVi = {
   "match.manage.saveResult": "Lưu kết quả",
   "match.manage.setDraw": "Đặt kết quả hòa",
   "match.manage.notFound": "Không tìm thấy trận đấu",
-  "competition.manage.structureNotFound": "Không tìm thấy cấu trúc của giai đoạn",
+  "competition.manage.structureNotFound":
+    "Không tìm thấy cấu trúc của giai đoạn",
   "competition.manage.loadError": "Không tải được cấu trúc thi đấu",
-  "competition.manage.regenerateConfirm": "Tạo lại sẽ thay thế cấu trúc hiện tại nếu backend xác nhận chưa có kết quả hoặc tiến độ. Bạn muốn tiếp tục?",
+  "competition.manage.regenerateConfirm":
+    "Tạo lại sẽ thay thế cấu trúc hiện tại nếu backend xác nhận chưa có kết quả hoặc tiến độ. Bạn muốn tiếp tục?",
   "competition.manage.generatedPrefix": "Đã tạo",
   "competition.manage.fromApproved": "trận từ",
   "competition.manage.approvedTeams": "đội được duyệt",
@@ -606,7 +694,8 @@ const extendedVi = {
   "competition.manage.nextRoundFallback": "vòng tiếp theo",
   "competition.manage.advanceError": "Không thể chuyển đội vào vòng tiếp theo",
   "competition.manage.noStages": "Chưa có giai đoạn thi đấu",
-  "competition.manage.noStagesHint": "Tournament này chưa cấu hình round nào để tạo cấu trúc.",
+  "competition.manage.noStagesHint":
+    "Tournament này chưa cấu hình round nào để tạo cấu trúc.",
   "competition.manage.eyebrow": "Điều khiển thi đấu",
   "competition.manage.structure": "Cấu trúc thi đấu",
   "competition.manage.maximum": "tối đa",
@@ -622,14 +711,21 @@ const extendedVi = {
   "competition.manage.noStructure": "Không có dữ liệu cấu trúc để hiển thị.",
   "competition.manage.standingsEyebrow": "Xếp hạng & chuyển vòng",
   "competition.manage.standingsTitle": "Xếp hạng và chuyển vòng",
-  "competition.manage.noProgressData": "Không có dữ liệu xếp hạng hoặc tiến độ để hiển thị.",
+  "competition.manage.noProgressData":
+    "Không có dữ liệu xếp hạng hoặc tiến độ để hiển thị.",
   "lifecycle.opened": "Đã mở nhận đăng ký.",
   "lifecycle.closed": "Đã đóng nhận đăng ký.",
   "lifecycle.updateError": "Không thể cập nhật trạng thái đăng ký.",
   "lifecycle.eyebrow": "Vòng đời",
   "lifecycle.title": "Vòng đời giải đấu",
   "lifecycle.transitionTitle": "Chuyển trạng thái giải",
-  "lifecycle.transitionUnavailable": "Hệ thống hiện chưa cung cấp contract chuyển trạng thái có kiểm tra điều kiện và chiều chuyển hợp lệ. Vì vậy trang quản lý không hiển thị thao tác bắt đầu, hoàn tất, hủy hoặc khôi phục giải.",
+  "lifecycle.transitionUnavailable":
+    "Hệ thống hiện chưa cung cấp contract chuyển trạng thái có kiểm tra điều kiện và chiều chuyển hợp lệ. Vì vậy trang quản lý không hiển thị thao tác bắt đầu, hoàn tất, hủy hoặc khôi phục giải.",
+  "lifecycle.draftDescription":
+    "Bản nháp đang được giữ riêng tư và chưa nhận đăng ký. Khi công bố, giải sẽ chuyển sang công khai và mở nhận đội.",
+  "lifecycle.publishDraft": "Công bố và mở đăng ký",
+  "lifecycle.published": "Đã công bố giải và mở nhận đăng ký.",
+  "lifecycle.publishError": "Không thể công bố giải đấu.",
   "lifecycle.registration": "Nhận đăng ký",
   "lifecycle.enabled": "Đang bật",
   "lifecycle.disabled": "Đang tắt",
@@ -637,8 +733,10 @@ const extendedVi = {
   "lifecycle.openRegistration": "Mở đăng ký",
   "lifecycle.registrationStart": "Bắt đầu nhận",
   "lifecycle.registrationDeadline": "Hạn đăng ký",
-  "lifecycle.registrationRule": "Đăng ký chỉ có hiệu lực khi giải ở trạng thái “Đang đăng ký”, công tắc được bật và thời gian hiện tại nằm trong cửa sổ đăng ký của backend.",
-  "lifecycle.currentStatusClosed": "Trạng thái hiện tại không nhận đăng ký đội.",
+  "lifecycle.registrationRule":
+    "Đăng ký chỉ có hiệu lực khi giải ở trạng thái “Đang đăng ký”, công tắc được bật và thời gian hiện tại nằm trong cửa sổ đăng ký của backend.",
+  "lifecycle.currentStatusClosed":
+    "Trạng thái hiện tại không nhận đăng ký đội.",
   "registration.filter.all": "Tất cả",
   "registration.listLoadError": "Không tải được danh sách đăng ký.",
   "registration.detailLoadError": "Không tải được chi tiết đăng ký.",
@@ -684,7 +782,8 @@ const extendedVi = {
   "registration.staff": "Ban huấn luyện / quản lý",
   "registration.staffHint": "Các vai trò này không chiếm vị trí cầu thủ.",
   "registration.rejectionReason": "Lý do từ chối",
-  "registration.rejectionPlaceholder": "Bắt buộc khi từ chối, tối thiểu 5 ký tự",
+  "registration.rejectionPlaceholder":
+    "Bắt buộc khi từ chối, tối thiểu 5 ký tự",
   "registration.approving": "Đang duyệt...",
   "registration.approveTeam": "Duyệt đội",
   "registration.rejecting": "Đang từ chối...",
@@ -693,11 +792,13 @@ const extendedVi = {
   "admin.dashboard.loadError": "Không tải được dữ liệu quản trị.",
   "admin.dashboard.eyebrow": "Tổng quan nền tảng",
   "admin.dashboard.title": "Tổng quan hệ thống",
-  "admin.dashboard.description": "Số liệu vận hành hiện tại từ hệ thống quản trị. Không bao gồm phân tích xu hướng lịch sử.",
+  "admin.dashboard.description":
+    "Số liệu vận hành hiện tại từ hệ thống quản trị. Không bao gồm phân tích xu hướng lịch sử.",
   "admin.dashboard.refreshing": "Đang làm mới",
   "admin.dashboard.refresh": "Làm mới",
   "admin.dashboard.updated": "Cập nhật",
-  "admin.dashboard.stalePrefix": "Dữ liệu cũ vẫn được hiển thị. Làm mới thất bại:",
+  "admin.dashboard.stalePrefix":
+    "Dữ liệu cũ vẫn được hiển thị. Làm mới thất bại:",
   "admin.dashboard.metrics": "Chỉ số nền tảng",
   "admin.dashboard.users": "Người dùng",
   "admin.dashboard.usersHelp": "Tổng số tài khoản trên nền tảng",
@@ -706,7 +807,8 @@ const extendedVi = {
   "admin.dashboard.newTournaments": "Giải mới trong 7 ngày",
   "admin.dashboard.newTournamentsHelp": "Dựa trên thời điểm tạo giải",
   "admin.dashboard.reportedTournaments": "Giải có báo cáo chờ xử lý",
-  "admin.dashboard.reportedTournamentsHelp": "Số giải riêng biệt có báo cáo PENDING",
+  "admin.dashboard.reportedTournamentsHelp":
+    "Số giải riêng biệt có báo cáo PENDING",
   "admin.dashboard.hiddenTournaments": "Giải bị ẩn",
   "admin.dashboard.hiddenTournamentsHelp": "Giải đang HIDDEN_BY_ADMIN",
   "admin.dashboard.lockedAccounts": "Tài khoản bị khóa",
@@ -719,7 +821,8 @@ const extendedVi = {
   "admin.dashboard.accountSummary": "Tài khoản nền tảng",
   "admin.dashboard.totalAccounts": "Tổng tài khoản",
   "admin.dashboard.lockedAccountsRow": "Tài khoản đang khóa",
-  "admin.dashboard.organizerOwnership": "Ban tổ chức được xác định qua quyền sở hữu giải đấu, không phải một vai trò tài khoản riêng.",
+  "admin.dashboard.organizerOwnership":
+    "Ban tổ chức được xác định qua quyền sở hữu giải đấu, không phải một vai trò tài khoản riêng.",
   "admin.role.ADMIN": "Quản trị viên",
   "admin.role.SIGNED_UP_USER": "Người dùng",
   "admin.users.loadError": "Không tải được danh sách người dùng.",
@@ -730,7 +833,8 @@ const extendedVi = {
   "admin.users.unlockedPrefix": "Đã mở khóa tài khoản",
   "admin.users.updateError": "Không thể cập nhật trạng thái tài khoản.",
   "admin.users.title": "Quản lý người dùng",
-  "admin.users.description": "Tra cứu tài khoản, xem vai trò thực tế và quản lý trạng thái khóa theo quyền ADMIN hiện có.",
+  "admin.users.description":
+    "Tra cứu tài khoản, xem vai trò thực tế và quản lý trạng thái khóa theo quyền ADMIN hiện có.",
   "admin.users.empty": "Không tìm thấy người dùng",
   "admin.users.emptyHint": "Hãy thay đổi từ khóa hoặc bộ lọc hiện tại.",
   "admin.users.pagination": "Phân trang người dùng",
@@ -747,8 +851,10 @@ const extendedVi = {
   "admin.users.createdAt": "Ngày tạo",
   "admin.users.updatedAt": "Cập nhật gần nhất",
   "admin.users.security": "Trạng thái bảo mật",
-  "admin.users.lockHint": "Khóa tài khoản sẽ vô hiệu hóa token hiện tại theo hành vi backend.",
-  "admin.users.selfLockHint": "Backend không cho phép quản trị viên khóa chính tài khoản đang đăng nhập.",
+  "admin.users.lockHint":
+    "Khóa tài khoản sẽ vô hiệu hóa token hiện tại theo hành vi backend.",
+  "admin.users.selfLockHint":
+    "Backend không cho phép quản trị viên khóa chính tài khoản đang đăng nhập.",
   "admin.users.updating": "Đang cập nhật...",
   "admin.users.unlock": "Mở khóa tài khoản",
   "admin.users.lock": "Khóa tài khoản",
@@ -763,14 +869,16 @@ const extendedVi = {
   "admin.users.clearFilters": "Xóa bộ lọc",
   "admin.users.eyebrow": "Quản trị tài khoản",
   "admin.tournaments.title": "Quản trị giải đấu",
-  "admin.tournaments.description": "Kiểm tra giải trên toàn nền tảng, quản lý nhãn xác minh và trạng thái ẩn kiểm duyệt. Các thao tác vận hành thi đấu vẫn thuộc khu vực Organizer.",
+  "admin.tournaments.description":
+    "Kiểm tra giải trên toàn nền tảng, quản lý nhãn xác minh và trạng thái ẩn kiểm duyệt. Các thao tác vận hành thi đấu vẫn thuộc khu vực Organizer.",
   "admin.tournaments.loadError": "Không tải được danh sách giải đấu.",
   "admin.tournaments.verifyConfirm": "Gắn nhãn xác minh cho",
   "admin.tournaments.unverifyConfirm": "Gỡ nhãn xác minh khỏi",
   "admin.tournaments.verifiedNotice": "Đã xác minh giải đấu.",
   "admin.tournaments.unverifiedNotice": "Đã gỡ nhãn xác minh.",
   "admin.tournaments.verificationError": "Không thể cập nhật xác minh.",
-  "admin.tournaments.hiddenNotice": "Đã ẩn giải khỏi nền tảng và gửi cảnh báo tới Organizer.",
+  "admin.tournaments.hiddenNotice":
+    "Đã ẩn giải khỏi nền tảng và gửi cảnh báo tới Organizer.",
   "admin.tournaments.hideError": "Không thể ẩn giải đấu.",
   "admin.tournaments.unhideConfirm": "Bỏ ẩn trên nền tảng",
   "admin.tournaments.unhiddenNotice": "Đã bỏ ẩn giải trên nền tảng.",
@@ -789,12 +897,15 @@ const extendedVi = {
   "admin.tournaments.allModeration": "Mọi trạng thái kiểm duyệt",
   "admin.tournaments.active": "Đang hiển thị trên nền tảng",
   "admin.tournaments.hidden": "Đã bị Admin ẩn",
-  "admin.tournaments.filterLimitation": "Backend hiện chỉ hỗ trợ lọc theo trạng thái kiểm duyệt; chưa có tìm kiếm hoặc phân trang cho danh sách này.",
+  "admin.tournaments.filterLimitation":
+    "Backend hiện chỉ hỗ trợ lọc theo trạng thái kiểm duyệt; chưa có tìm kiếm hoặc phân trang cho danh sách này.",
   "admin.tournaments.hideTitle": "Ẩn giải khỏi nền tảng?",
-  "admin.tournaments.hideDescriptionPrefix": "sẽ bị ẩn bởi cơ chế kiểm duyệt nền tảng. Thao tác này không thay đổi PUBLIC/PRIVATE hay vòng đời giải.",
+  "admin.tournaments.hideDescriptionPrefix":
+    "sẽ bị ẩn bởi cơ chế kiểm duyệt nền tảng. Thao tác này không thay đổi PUBLIC/PRIVATE hay vòng đời giải.",
   "admin.tournaments.moderationReason": "Lý do kiểm duyệt",
   "admin.tournaments.reasonPlaceholder": "Nhập lý do từ 3–500 ký tự",
-  "admin.tournaments.reasonHint": "Lý do được backend gửi tới Organizer trong cảnh báo.",
+  "admin.tournaments.reasonHint":
+    "Lý do được backend gửi tới Organizer trong cảnh báo.",
   "admin.tournaments.hiding": "Đang ẩn...",
   "admin.tournaments.confirmHide": "Xác nhận ẩn",
   "admin.tournaments.organizer": "Ban tổ chức",
@@ -813,8 +924,10 @@ const extendedVi = {
   "admin.tournaments.unverified": "Chưa xác minh",
   "admin.tournaments.platformVisibility": "Hiển thị nền tảng",
   "admin.tournaments.activeState": "Đang hoạt động",
-  "admin.tournaments.separationHint": "Trạng thái riêng tư/công khai do Organizer cấu hình và trạng thái Admin ẩn là hai khái niệm độc lập.",
-  "admin.tournaments.hiddenVerifyHint": "Backend không cho xác minh giải đang bị ẩn",
+  "admin.tournaments.separationHint":
+    "Trạng thái riêng tư/công khai do Organizer cấu hình và trạng thái Admin ẩn là hai khái niệm độc lập.",
+  "admin.tournaments.hiddenVerifyHint":
+    "Backend không cho xác minh giải đang bị ẩn",
   "admin.tournaments.updating": "Đang cập nhật...",
   "admin.tournaments.unverify": "Gỡ xác minh",
   "admin.tournaments.verify": "Xác minh giải",
@@ -847,11 +960,13 @@ const extendedVi = {
   "admin.reports.target": "Đối tượng được báo cáo",
   "admin.reports.viewTournament": "Xem giải đấu",
   "admin.reports.openAdminTournament": "Mở quản trị giải đấu",
-  "admin.reports.workflowHint": "Xử lý báo cáo chỉ cập nhật workflow của báo cáo. Backend không tự ẩn hoặc thay đổi giải đấu.",
+  "admin.reports.workflowHint":
+    "Xử lý báo cáo chỉ cập nhật workflow của báo cáo. Backend không tự ẩn hoặc thay đổi giải đấu.",
   "admin.reports.processing": "Đang xử lý...",
   "admin.reports.markReviewed": "Đánh dấu đã xem xét",
   "admin.reports.dismiss": "Bỏ qua báo cáo",
-  "admin.reports.readOnlyHint": "Backend chỉ cho phép xử lý báo cáo đang ở trạng thái PENDING; báo cáo này hiện chỉ đọc.",
+  "admin.reports.readOnlyHint":
+    "Backend chỉ cho phép xử lý báo cáo đang ở trạng thái PENDING; báo cáo này hiện chỉ đọc.",
   "admin.reports.loadError": "Không tải được báo cáo.",
   "admin.reports.reviewAction": "đánh dấu đã xem xét",
   "admin.reports.dismissAction": "bỏ qua",
@@ -861,26 +976,31 @@ const extendedVi = {
   "admin.reports.dismissedNotice": "Đã bỏ qua báo cáo.",
   "admin.reports.updateError": "Không thể xử lý báo cáo.",
   "admin.reports.title": "Báo cáo vi phạm",
-  "admin.reports.description": "Xem báo cáo giải đấu và xử lý workflow theo đúng trạng thái backend. Việc kiểm duyệt giải là thao tác riêng.",
+  "admin.reports.description":
+    "Xem báo cáo giải đấu và xử lý workflow theo đúng trạng thái backend. Việc kiểm duyệt giải là thao tác riêng.",
   "admin.reports.filterAria": "Trạng thái báo cáo",
   "admin.reports.allStatuses": "Mọi trạng thái báo cáo",
-  "admin.reports.filterLimitation": "Backend hỗ trợ lọc theo trạng thái; chưa có phân trang hoặc bộ lọc loại đối tượng.",
+  "admin.reports.filterLimitation":
+    "Backend hỗ trợ lọc theo trạng thái; chưa có phân trang hoặc bộ lọc loại đối tượng.",
   "admin.reports.empty": "Không có báo cáo phù hợp",
   "admin.reports.unit": "báo cáo",
   "admin.reports.newestFirst": "mới nhất trước",
   "admin.moderation.title": "Kiểm duyệt nội dung",
-  "admin.moderation.description": "Quản lý trạng thái hiển thị bình luận và danh sách từ khóa mà bộ lọc backend đang áp dụng.",
+  "admin.moderation.description":
+    "Quản lý trạng thái hiển thị bình luận và danh sách từ khóa mà bộ lọc backend đang áp dụng.",
   "admin.comments.loadError": "Không tải được bình luận.",
   "admin.comments.hideConfirm": "Ẩn bình luận này nhưng vẫn giữ dữ liệu?",
   "admin.comments.unhideConfirm": "Khôi phục hiển thị bình luận này?",
   "admin.comments.hiddenNotice": "Đã ẩn bình luận.",
   "admin.comments.unhiddenNotice": "Đã khôi phục bình luận.",
   "admin.comments.updateError": "Không thể cập nhật bình luận.",
-  "admin.comments.deleteConfirm": "Xóa vĩnh viễn bình luận này? Dữ liệu sẽ không thể khôi phục.",
+  "admin.comments.deleteConfirm":
+    "Xóa vĩnh viễn bình luận này? Dữ liệu sẽ không thể khôi phục.",
   "admin.comments.deletedNotice": "Đã xóa vĩnh viễn bình luận.",
   "admin.comments.deleteError": "Không thể xóa bình luận.",
   "admin.comments.title": "Kiểm duyệt bình luận",
-  "admin.comments.description": "Ẩn/khôi phục giữ nguyên dữ liệu; xóa là thao tác vĩnh viễn.",
+  "admin.comments.description":
+    "Ẩn/khôi phục giữ nguyên dữ liệu; xóa là thao tác vĩnh viễn.",
   "admin.comments.searchAria": "Tìm nội dung bình luận",
   "admin.comments.searchPlaceholder": "Tìm trong nội dung",
   "admin.comments.visibilityAria": "Trạng thái hiển thị",
@@ -899,21 +1019,26 @@ const extendedVi = {
   "admin.keyword.category.PROFANITY": "Ngôn từ không phù hợp",
   "admin.keyword.category.MALICIOUS_LINK": "Liên kết độc hại",
   "admin.keywords.loadError": "Không tải được từ khóa cấm.",
-  "admin.keywords.createdNotice": "Đã thêm từ khóa và làm mới bộ lọc nội dung backend.",
+  "admin.keywords.createdNotice":
+    "Đã thêm từ khóa và làm mới bộ lọc nội dung backend.",
   "admin.keywords.createError": "Không thể thêm từ khóa.",
-  "admin.keywords.updatedNotice": "Đã cập nhật từ khóa và làm mới bộ lọc nội dung backend.",
+  "admin.keywords.updatedNotice":
+    "Đã cập nhật từ khóa và làm mới bộ lọc nội dung backend.",
   "admin.keywords.updateError": "Không thể cập nhật từ khóa.",
   "admin.keywords.deleteConfirm": "Xóa vĩnh viễn từ khóa",
-  "admin.keywords.deletedNotice": "Đã xóa từ khóa và làm mới bộ lọc nội dung backend.",
+  "admin.keywords.deletedNotice":
+    "Đã xóa từ khóa và làm mới bộ lọc nội dung backend.",
   "admin.keywords.deleteError": "Không thể xóa từ khóa.",
   "admin.keywords.title": "Từ khóa cấm",
-  "admin.keywords.description": "Danh sách này được backend áp dụng cho nội dung giải đấu, đội và bình luận.",
+  "admin.keywords.description":
+    "Danh sách này được backend áp dụng cho nội dung giải đấu, đội và bình luận.",
   "admin.keywords.newAria": "Từ khóa mới",
   "admin.keywords.placeholder": "Nhập từ khóa",
   "admin.keywords.categoryAria": "Phân loại từ khóa",
   "admin.keywords.adding": "Đang thêm...",
   "admin.keywords.add": "Thêm từ khóa",
-  "admin.keywords.validationHint": "1–100 ký tự. Backend trim giá trị và kiểm tra trùng lặp khi cập nhật.",
+  "admin.keywords.validationHint":
+    "1–100 ký tự. Backend trim giá trị và kiểm tra trùng lặp khi cập nhật.",
   "admin.keywords.empty": "Chưa có từ khóa cấm.",
   "admin.keywords.cancelEdit": "Hủy sửa",
   "admin.keywords.edit": "Sửa",
@@ -946,13 +1071,16 @@ const extendedVi = {
   "game.structure.teamSizeInvalid": "Vui lòng chọn số người thi đấu hợp lệ.",
   "game.structure.customNameRequired": "Tên trò chơi tùy chỉnh là bắt buộc.",
   "game.structure.catalogLoadError": "Không tải được danh mục trò chơi.",
-  "game.structure.updateError": "Không thể cập nhật cấu hình trò chơi của giải.",
+  "game.structure.updateError":
+    "Không thể cập nhật cấu hình trò chơi của giải.",
   "game.structure.editorTitle": "Trò chơi và cấu trúc đội hình",
   "game.structure.saving": "Đang lưu...",
   "team.register.activeCountRequired": "Đội hình chính phải có đúng",
-  "team.register.rosterTooLarge": "Tổng số người chơi vượt quá giới hạn của giải.",
+  "team.register.rosterTooLarge":
+    "Tổng số người chơi vượt quá giới hạn của giải.",
   "team.register.captainCountRequired": "Đội hình phải có đúng một đội trưởng.",
-  "team.register.activePositionsUnique": "Các thành viên chính phải đảm nhận các vị trí bắt buộc khác nhau.",
+  "team.register.activePositionsUnique":
+    "Các thành viên chính phải đảm nhận các vị trí bắt buộc khác nhau.",
   "match.seed": "Hạt giống",
   "comments.eyebrow": "Thảo luận cộng đồng",
   "comments.title": "Bình luận",
@@ -1003,29 +1131,37 @@ const extendedVi = {
   "report.reasonLabel": "Tại sao bạn báo cáo giải đấu này?",
   "report.reasonPlaceholder": "Chọn lý do",
   "report.reason.MINOR_SAFETY": "Vấn đề liên quan đến người dưới 18 tuổi",
-  "report.reason.HARASSMENT_OR_HATE": "Bắt nạt, quấy rối, lăng mạ hoặc thù ghét",
+  "report.reason.HARASSMENT_OR_HATE":
+    "Bắt nạt, quấy rối, lăng mạ hoặc thù ghét",
   "report.reason.VIOLENCE_OR_SELF_HARM": "Bạo lực, đe dọa hoặc tự gây hại",
   "report.reason.GAMBLING": "Cá cược hoặc quảng bá cờ bạc",
-  "report.reason.RESTRICTED_GOODS": "Bán hoặc quảng bá hàng hóa, dịch vụ bị hạn chế",
-  "report.reason.ADULT_CONTENT": "Nội dung người lớn hoặc không phù hợp với độ tuổi",
+  "report.reason.RESTRICTED_GOODS":
+    "Bán hoặc quảng bá hàng hóa, dịch vụ bị hạn chế",
+  "report.reason.ADULT_CONTENT":
+    "Nội dung người lớn hoặc không phù hợp với độ tuổi",
   "report.reason.SCAM": "Thông tin sai sự thật, lừa đảo hoặc gian lận",
   "report.reason.INTELLECTUAL_PROPERTY": "Vi phạm quyền sở hữu trí tuệ",
   "report.reason.SPAM_OR_MALICIOUS_LINKS": "Spam hoặc liên kết độc hại",
-  "report.reason.INAPPROPRIATE_CONTENT": "Nội dung không phù hợp hoặc gây phiền toái",
+  "report.reason.INAPPROPRIATE_CONTENT":
+    "Nội dung không phù hợp hoặc gây phiền toái",
   "report.reason.OTHER": "Vấn đề khác",
   "report.descriptionLabel": "Mô tả",
-  "report.descriptionPlaceholder": "Cung cấp thêm thông tin để chúng tôi xem xét",
+  "report.descriptionPlaceholder":
+    "Cung cấp thêm thông tin để chúng tôi xem xét",
   "report.descriptionHint": "Nếu có mô tả, hãy nhập từ 5 đến 2.000 ký tự.",
   "report.submit": "Gửi báo cáo",
   "report.submitting": "Đang gửi…",
   "report.successTitle": "Đã gửi báo cáo.",
-  "report.successDescription": "Cảm ơn bạn đã giúp chúng tôi duy trì cộng đồng an toàn.",
+  "report.successDescription":
+    "Cảm ơn bạn đã giúp chúng tôi duy trì cộng đồng an toàn.",
   "report.error.reasonRequired": "Vui lòng chọn lý do báo cáo.",
   "report.error.descriptionTooShort": "Mô tả phải có ít nhất 5 ký tự.",
   "report.error.descriptionTooLong": "Mô tả không được vượt quá 2.000 ký tự.",
-  "report.error.validation": "Thông tin báo cáo chưa hợp lệ. Vui lòng kiểm tra lại.",
+  "report.error.validation":
+    "Thông tin báo cáo chưa hợp lệ. Vui lòng kiểm tra lại.",
   "report.error.duplicate": "Bạn đã báo cáo giải đấu này trước đó.",
-  "report.error.rateLimit": "Bạn đã gửi quá nhiều báo cáo. Vui lòng thử lại sau.",
+  "report.error.rateLimit":
+    "Bạn đã gửi quá nhiều báo cáo. Vui lòng thử lại sau.",
   "report.error.notFound": "Không tìm thấy giải đấu này.",
   "report.error.generic": "Không thể gửi báo cáo. Vui lòng thử lại.",
   "pageTitle.default": "Quản lý giải đấu thể thao điện tử",

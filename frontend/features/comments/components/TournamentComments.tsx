@@ -16,6 +16,11 @@ import type {
 import { useLocale } from "@/features/locale/store";
 import { useTournamentRealtime } from "@/features/realtime/provider";
 import { ApiError } from "@/lib/api/client";
+import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
+import {
+  hasVerifiedEmail,
+  isEmailNotVerifiedError,
+} from "@/features/auth/email-verification";
 
 const PAGE_SIZE = 20;
 
@@ -68,6 +73,7 @@ export default function TournamentComments({
   organizerId?: string;
 }) {
   const { user } = useAuth();
+  const verifiedUser = hasVerifiedEmail(user) ? user : null;
   const { t } = useLocale();
   const [threads, setThreads] = useState<TournamentCommentThread[]>([]);
   const [page, setPage] = useState(1);
@@ -232,6 +238,9 @@ export default function TournamentComments({
       return true;
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 401) clearSession();
+      if (isEmailNotVerifiedError(reason)) {
+        throw new Error(t("emailVerification.required"));
+      }
       throw reason;
     }
   };
@@ -355,8 +364,10 @@ export default function TournamentComments({
             )}`}
       </h2>
 
-      {user ? (
-        <CommentComposer user={user} onSubmit={createComment} />
+      {verifiedUser ? (
+        <CommentComposer user={verifiedUser} onSubmit={createComment} />
+      ) : user ? (
+        <EmailVerificationNotice email={user.email} className="mt-7" />
       ) : (
         <div className="mt-7 flex items-center gap-3 border-b border-line pb-5 text-sm text-ink-muted">
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-sub text-ink-faint">
@@ -427,7 +438,7 @@ export default function TournamentComments({
               <CommentThread
                 key={thread.id}
                 thread={thread}
-                user={user}
+                user={verifiedUser}
                 organizerId={organizerId}
                 expanded={expandedThreadIds.has(thread.id)}
                 activeReplyTarget={activeReplyTarget}

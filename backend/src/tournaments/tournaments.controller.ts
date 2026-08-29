@@ -25,6 +25,7 @@ import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
 import { VisibilityResource } from '../common/decorators/visibility.decorator';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { TournamentsService } from './tournaments.service';
@@ -175,7 +176,7 @@ export class TournamentsController {
    * POST /api/tournaments
    * Tạo giải đấu mới (UC-U04) — cần đăng nhập
    */
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   @Post()
   create(
     @CurrentUser() user: AuthenticatedUser,
@@ -188,7 +189,7 @@ export class TournamentsController {
    * PATCH /api/tournaments/:tournamentId
    * Cập nhật giải đấu (UC-U09) — chỉ BTC
    */
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('tournamentId')
   @Patch(':tournamentId')
   update(
@@ -202,7 +203,7 @@ export class TournamentsController {
    * DELETE /api/tournaments/:tournamentId
    * Xóa giải đấu (UC-U10) — chỉ BTC
    */
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('tournamentId')
   @Delete(':tournamentId')
   remove(@Param('tournamentId') tournamentId: string) {
@@ -213,7 +214,7 @@ export class TournamentsController {
    * POST /api/tournaments/:tournamentId/rounds
    * Thêm Round vào giải (UC-U05) — chỉ BTC
    */
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('slug:slug')
   @Post(':slug/rounds')
   addRound(@Param('slug') slug: string, @Body() dto: CreateRoundDto) {

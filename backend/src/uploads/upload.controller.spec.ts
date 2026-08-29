@@ -4,6 +4,7 @@ import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OWNERSHIP_PARAM_KEY } from '../common/decorators/ownership.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import {
   TEAM_ACCESS_KEY,
   TeamAccessGuard,
@@ -29,6 +30,7 @@ describe('UploadController authorization contract', () => {
       UploadController.prototype.memberAvatar,
     ]) {
       expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
+        EmailVerifiedGuard,
         TeamAccessGuard,
       ]);
       expect(Reflect.getMetadata(TEAM_ACCESS_KEY, method)).toBe(
@@ -40,6 +42,7 @@ describe('UploadController authorization contract', () => {
   it('restricts tournament banners to the tournament owner', () => {
     const method = UploadController.prototype.banner;
     expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
+      EmailVerifiedGuard,
       OwnershipGuard,
     ]);
     expect(Reflect.getMetadata(OWNERSHIP_PARAM_KEY, method)).toBe(

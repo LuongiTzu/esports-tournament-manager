@@ -2,6 +2,7 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { NotificationController } from './notification.controller';
 
 describe('NotificationController security', () => {
@@ -11,6 +12,6 @@ describe('NotificationController security', () => {
         GUARDS_METADATA,
         NotificationController.prototype.createForTournament,
       ),
-    ).toEqual([JwtAuthGuard, OwnershipGuard]);
+    ).toEqual([JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard]);
   });
 });

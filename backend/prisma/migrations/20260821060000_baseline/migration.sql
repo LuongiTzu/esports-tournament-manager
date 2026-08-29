@@ -86,6 +86,12 @@ CREATE TABLE "users" (
     "token_version" INTEGER NOT NULL DEFAULT 0,
     "reset_password_token" TEXT,
     "reset_password_expires" TIMESTAMP(3),
+    "email_verified_at" TIMESTAMP(3),
+    "email_verification_token_hash" TEXT,
+    "email_verification_expires_at" TIMESTAMP(3),
+    "pending_email" TEXT,
+    "email_change_token_hash" TEXT,
+    "email_change_expires_at" TIMESTAMP(3),
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -356,6 +362,18 @@ CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_google_subject_key" ON "users"("google_subject");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_reset_password_token_key" ON "users"("reset_password_token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_email_verification_token_hash_key" ON "users"("email_verification_token_hash");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_pending_email_key" ON "users"("pending_email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_email_change_token_hash_key" ON "users"("email_change_token_hash");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "games_code_key" ON "games"("code");

@@ -126,7 +126,6 @@ export default function TournamentDiscovery() {
     label: string;
   }> = [
     { value: "", label: t("tournaments.discovery.allStatuses") },
-    { value: "DRAFT", label: t("tournaments.discovery.draft") },
     {
       value: "REGISTRATION",
       label: t("tournaments.discovery.registration"),
@@ -200,11 +199,18 @@ export default function TournamentDiscovery() {
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(18rem,1.4fr)_minmax(11rem,0.7fr)_minmax(11rem,0.7fr)_minmax(11rem,0.7fr)]">
             <div>
-              <label htmlFor="tournament-search" className="mb-1.5 block text-xs font-semibold text-ink-muted">
+              <label
+                htmlFor="tournament-search"
+                className="mb-1.5 block text-xs font-semibold text-ink-muted"
+              >
                 {t("tournaments.discovery.searchLabel")}
               </label>
               <div className="relative">
-                <MagnifyingGlassIcon aria-hidden size={19} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
+                <MagnifyingGlassIcon
+                  aria-hidden
+                  size={19}
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
+                />
                 <input
                   id="tournament-search"
                   type="search"
@@ -216,7 +222,10 @@ export default function TournamentDiscovery() {
               </div>
             </div>
             <div>
-              <label htmlFor="tournament-game" className="mb-1.5 block text-xs font-semibold text-ink-muted">
+              <label
+                htmlFor="tournament-game"
+                className="mb-1.5 block text-xs font-semibold text-ink-muted"
+              >
                 {t("tournaments.discovery.gameLabel")}
               </label>
               <select
@@ -237,7 +246,10 @@ export default function TournamentDiscovery() {
               </select>
             </div>
             <div>
-              <label htmlFor="tournament-status" className="mb-1.5 block text-xs font-semibold text-ink-muted">
+              <label
+                htmlFor="tournament-status"
+                className="mb-1.5 block text-xs font-semibold text-ink-muted"
+              >
                 {t("tournaments.discovery.statusLabel")}
               </label>
               <select
@@ -257,7 +269,10 @@ export default function TournamentDiscovery() {
               </select>
             </div>
             <div>
-              <label htmlFor="tournament-sort" className="mb-1.5 block text-xs font-semibold text-ink-muted">
+              <label
+                htmlFor="tournament-sort"
+                className="mb-1.5 block text-xs font-semibold text-ink-muted"
+              >
                 {t("tournaments.discovery.sortLabel")}
               </label>
               <select
@@ -290,7 +305,12 @@ export default function TournamentDiscovery() {
           )}
         </div>
 
-        <div id="tournament-results" className="mt-9" aria-live="polite" aria-busy={loading}>
+        <div
+          id="tournament-results"
+          className="mt-9"
+          aria-live="polite"
+          aria-busy={loading}
+        >
           <div className="mb-5 flex min-h-10 flex-wrap items-center justify-between gap-3">
             {!loading && !error && pagination ? (
               <div>
@@ -298,7 +318,9 @@ export default function TournamentDiscovery() {
                   {t("tournaments.discovery.title")}
                 </h2>
                 <p className="mt-0.5 text-sm text-ink-muted">
-                  <span className="font-semibold text-ink">{pagination.total}</span>{" "}
+                  <span className="font-semibold text-ink">
+                    {pagination.total}
+                  </span>{" "}
                   {t("tournaments.discovery.resultCount")}
                 </p>
               </div>
@@ -354,12 +376,16 @@ export default function TournamentDiscovery() {
           {loading ? (
             <>
               <TournamentGridSkeleton count={6} view={view} />
-              <span className="sr-only">{t("tournaments.discovery.loading")}</span>
+              <span className="sr-only">
+                {t("tournaments.discovery.loading")}
+              </span>
             </>
           ) : error ? (
             <div className="rounded-2xl border border-rejected/40 bg-rejected/10 px-6 py-12 text-center">
               <p className="font-medium text-rejected">{error}</p>
-              <p className="mt-2 text-sm text-ink-muted">{t("tournaments.discovery.retryHelp")}</p>
+              <p className="mt-2 text-sm text-ink-muted">
+                {t("tournaments.discovery.retryHelp")}
+              </p>
               <button
                 type="button"
                 onClick={() => setRetryCount((count) => count + 1)}
@@ -414,7 +440,8 @@ export default function TournamentDiscovery() {
                 {t("tournaments.discovery.previous")}
               </button>
               <span className="text-sm text-ink-muted">
-                {t("tournaments.discovery.page")} {pagination.page} / {pagination.totalPages}
+                {t("tournaments.discovery.page")} {pagination.page} /{" "}
+                {pagination.totalPages}
               </span>
               <button
                 type="button"

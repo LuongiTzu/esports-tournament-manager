@@ -1,14 +1,27 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  ACTIVITY_EMAIL_PUBLISHER,
+  ActivityEmailPublisher,
+  NOOP_ACTIVITY_EMAIL_PUBLISHER,
+} from '../common/ports/activity-email-publisher';
 
 @Injectable()
 export class UserAdministrationService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(UserAdministrationService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(ACTIVITY_EMAIL_PUBLISHER)
+    private readonly activityEmails: ActivityEmailPublisher = NOOP_ACTIVITY_EMAIL_PUBLISHER,
+  ) {}
 
   async listUsers(
     page = 1,
@@ -70,7 +83,7 @@ export class UserAdministrationService {
       throw new BadRequestException('Không thể khóa tài khoản của chính mình');
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('Không tìm thấy người dùng');
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: { isLocked, ...(isLocked && { tokenVersion: { increment: 1 } }) },
       select: {
@@ -82,5 +95,16 @@ export class UserAdministrationService {
         updatedAt: true,
       },
     });
+    if (user.isLocked !== isLocked) {
+      void this.activityEmails
+        .publish({ kind: 'ACCOUNT_LOCK_CHANGED', userId, isLocked })
+        .catch((error: unknown) => {
+          this.logger.error(
+            `Account ${userId} lock state changed but email publishing failed`,
+            error instanceof Error ? error.stack : String(error),
+          );
+        });
+    }
+    return updated;
   }
 }

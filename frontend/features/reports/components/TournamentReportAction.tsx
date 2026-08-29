@@ -13,6 +13,10 @@ import {
   type TournamentReportReason,
 } from "@/features/reports/types";
 import { ApiError } from "@/lib/api/client";
+import Link from "next/link";
+import { useAuth } from "@/features/auth/store";
+import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
+import { isEmailNotVerifiedError } from "@/features/auth/email-verification";
 
 const DESCRIPTION_MIN_LENGTH = 5;
 const DESCRIPTION_MAX_LENGTH = 2000;
@@ -42,6 +46,7 @@ export default function TournamentReportAction({
   tournamentName: string;
 }) {
   const { t } = useLocale();
+  const { user, ready } = useAuth();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<TournamentReportReason | "">("");
@@ -81,6 +86,9 @@ export default function TournamentReportAction({
   };
 
   const getErrorMessage = (requestError: unknown) => {
+    if (isEmailNotVerifiedError(requestError)) {
+      return t("emailVerification.required");
+    }
     if (!(requestError instanceof ApiError)) return t("report.error.generic");
     if (requestError.status === 409) return t("report.error.duplicate");
     if (requestError.status === 429) return t("report.error.rateLimit");
@@ -125,6 +133,22 @@ export default function TournamentReportAction({
       setSubmitting(false);
     }
   };
+
+  if (ready && !user) {
+    return (
+      <Link
+        href="/login"
+        className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-md bg-brand-secondary px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-brand transition hover:brightness-110"
+      >
+        <FlagIcon size={19} weight="fill" aria-hidden />
+        {t("emailVerification.signIn")}
+      </Link>
+    );
+  }
+
+  if (user?.emailVerifiedAt === null) {
+    return <EmailVerificationNotice email={user.email} />;
+  }
 
   return (
     <>

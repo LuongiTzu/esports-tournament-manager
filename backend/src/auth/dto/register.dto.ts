@@ -10,9 +10,13 @@ import {
   Validate,
 } from 'class-validator';
 import { Gender } from '@prisma/client';
+import { Transform } from 'class-transformer';
 import { IsPastDateConstraint } from '../validators/is-past-date.validator';
 
 export class RegisterDto {
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   @IsEmail({}, { message: 'Email không hợp lệ' })
   email!: string;
 

@@ -9,6 +9,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { VISIBILITY_RESOURCE_KEY } from '../common/decorators/visibility.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
 import { BracketOperationsService } from './bracket-operations.service';
 import { BracketsController } from './brackets.controller';
@@ -38,6 +39,7 @@ describe('BracketsController', () => {
     const method = BracketsController.prototype.generate;
     expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
       JwtAuthGuard,
+      EmailVerifiedGuard,
       OwnershipGuard,
     ]);
   });
@@ -74,6 +76,7 @@ describe('BracketsController', () => {
     );
     expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
       JwtAuthGuard,
+      EmailVerifiedGuard,
       OwnershipGuard,
     ]);
   });

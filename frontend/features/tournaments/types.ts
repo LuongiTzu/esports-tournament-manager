@@ -382,7 +382,8 @@ export interface AdvanceRoundResult {
 }
 
 export interface UpdateTournamentLifecycleRequest {
-  registrationOpen: boolean;
+  status?: Tournament["status"];
+  registrationOpen?: boolean;
 }
 
 export interface CreateTournamentRequest {

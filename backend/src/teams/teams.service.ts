@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -35,6 +36,11 @@ import { TeamQueryService } from './team-query.service';
 import { TeamReviewService } from './team-review.service';
 import { resolveTournamentGameDisplayName } from '../tournaments/domain/tournament-game-display';
 import { TeamReviewPolicy } from './domain/team-review.policy';
+import {
+  ACTIVITY_EMAIL_PUBLISHER,
+  ActivityEmailPublisher,
+  NOOP_ACTIVITY_EMAIL_PUBLISHER,
+} from '../common/ports/activity-email-publisher';
 
 const CAPTAIN_SELECT = {
   id: true,
@@ -44,6 +50,8 @@ const CAPTAIN_SELECT = {
 
 @Injectable()
 export class TeamsService {
+  private readonly logger = new Logger(TeamsService.name);
+
   constructor(
     private prisma: PrismaService,
     private validator: RegistrationValidatorService,
@@ -52,6 +60,8 @@ export class TeamsService {
     private readonly contentFilter: ContentFilterService,
     @Inject(TOURNAMENT_EVENT_PUBLISHER)
     private readonly events: TournamentEventPublisher,
+    @Inject(ACTIVITY_EMAIL_PUBLISHER)
+    private readonly activityEmails: ActivityEmailPublisher = NOOP_ACTIVITY_EMAIL_PUBLISHER,
     private readonly reviewPolicy: TeamReviewPolicy = new TeamReviewPolicy(),
     private readonly queries: TeamQueryService = new TeamQueryService(prisma),
     private readonly reviews: TeamReviewService = new TeamReviewService(
@@ -74,13 +84,30 @@ export class TeamsService {
     const reason = await this.resolveBlockingReason(tournament, userId);
     if (reason) throw new BadRequestException(reason);
 
-    return this.createTeam(tournament, userId, dto, {
+    const team = await this.createTeam(tournament, userId, dto, {
       status: tournament.autoApproveTeams
         ? RegistrationStatus.APPROVED
         : RegistrationStatus.PENDING,
       notifyOrganizer: true,
       validateRegistrant: true,
     });
+    if (team) {
+      void this.activityEmails
+        .publish({
+          kind: 'TEAM_REGISTRATION_SUCCEEDED',
+          userId,
+          tournamentId: tournament.id,
+          teamName: team.name,
+          status: team.status,
+        })
+        .catch((error: unknown) => {
+          this.logger.error(
+            `Team ${team.id} was registered but email publishing failed`,
+            error instanceof Error ? error.stack : String(error),
+          );
+        });
+    }
+    return team;
   }
 
   /**

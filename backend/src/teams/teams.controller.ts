@@ -15,6 +15,7 @@ import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
 import { VisibilityResource } from '../common/decorators/visibility.decorator';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { TeamsService } from './teams.service';
@@ -50,7 +51,7 @@ export class TeamsController {
    * POST /api/tournaments/:slug/register
    * Đăng ký đội tham gia giải (UC-U11) — cần đăng nhập
    */
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
   @Post('tournaments/:slug/register')
   register(
     @CurrentUser() user: AuthenticatedUser,
@@ -79,7 +80,7 @@ export class TeamsController {
    * POST /api/tournaments/:slug/teams
    * BTC thêm đội thủ công (UC-U06) — chỉ BTC, đội vào thẳng APPROVED
    */
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('slug:slug')
   @Post('tournaments/:slug/teams')
   addManual(
@@ -118,7 +119,7 @@ export class TeamsController {
    * PATCH /api/teams/:id
    * Sửa hồ sơ đội (UC-U12) — đội trưởng hoặc BTC
    */
-  @UseGuards(JwtAuthGuard, TeamAccessGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, TeamAccessGuard)
   @TeamAccess('CAPTAIN_OR_ORGANIZER')
   @Patch('teams/:id')
   update(@Param('id') id: string, @Body() dto: UpdateTeamDto) {
@@ -129,7 +130,7 @@ export class TeamsController {
    * POST /api/teams/:id/members
    * Thêm thành viên vào roster — chạy lại validator trên toàn đội
    */
-  @UseGuards(JwtAuthGuard, TeamAccessGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, TeamAccessGuard)
   @TeamAccess('CAPTAIN_OR_ORGANIZER')
   @Post('teams/:id/members')
   addMember(@Param('id') id: string, @Body() dto: TeamMemberInputDto) {
@@ -140,7 +141,7 @@ export class TeamsController {
    * PATCH /api/teams/:id/members/:memberId
    * Sửa thông tin 1 thành viên — chạy lại validator trên toàn đội
    */
-  @UseGuards(JwtAuthGuard, TeamAccessGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, TeamAccessGuard)
   @TeamAccess('CAPTAIN_OR_ORGANIZER')
   @Patch('teams/:id/members/:memberId')
   updateMember(
@@ -155,7 +156,7 @@ export class TeamsController {
    * DELETE /api/teams/:id/members/:memberId
    * Xóa thành viên khỏi roster — chạy lại validator trên toàn đội
    */
-  @UseGuards(JwtAuthGuard, TeamAccessGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, TeamAccessGuard)
   @TeamAccess('CAPTAIN_OR_ORGANIZER')
   @Delete('teams/:id/members/:memberId')
   removeMember(@Param('id') id: string, @Param('memberId') memberId: string) {
@@ -166,7 +167,7 @@ export class TeamsController {
    * PATCH /api/teams/:id/status
    * BTC duyệt / từ chối đội (UC-U08)
    */
-  @UseGuards(JwtAuthGuard, TeamAccessGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, TeamAccessGuard)
   @TeamAccess('ORGANIZER')
   @Patch('teams/:id/status')
   updateStatus(@Param('id') id: string, @Body() dto: UpdateTeamStatusDto) {
@@ -177,7 +178,7 @@ export class TeamsController {
    * DELETE /api/teams/:id
    * Đội trưởng tự rút đăng ký (chỉ khi PENDING) hoặc BTC xóa đội
    */
-  @UseGuards(JwtAuthGuard, TeamAccessGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, TeamAccessGuard)
   @TeamAccess('CAPTAIN_OR_ORGANIZER')
   @Delete('teams/:id')
   remove(@CurrentUser('id') userId: string, @Param('id') id: string) {

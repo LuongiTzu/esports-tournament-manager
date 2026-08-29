@@ -5,9 +5,10 @@ import { NotificationEventsService } from './notification-events.service';
 import { NotificationService } from './notification.service';
 import { NOTIFICATION_PUBLISHER } from '../common/ports/notification-publisher';
 import { NotificationQueryService } from './notification-query.service';
+import { EmailModule } from '../email/email.module';
 
 @Module({
-  imports: [CommonModule],
+  imports: [CommonModule, EmailModule],
   controllers: [NotificationController],
   providers: [
     NotificationService,

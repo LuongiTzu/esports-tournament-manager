@@ -2,6 +2,7 @@ import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
@@ -22,6 +23,7 @@ describe('Admin banned keyword authorization', () => {
   it('protects banned keyword APIs with the existing admin guards', () => {
     expect(Reflect.getMetadata(GUARDS_METADATA, AdminController)).toEqual([
       JwtAuthGuard,
+      EmailVerifiedGuard,
       RolesGuard,
     ]);
     expect(Reflect.getMetadata(ROLES_KEY, AdminController)).toEqual([

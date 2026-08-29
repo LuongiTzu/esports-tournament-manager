@@ -54,6 +54,15 @@ export interface SeedSummary {
   teams: number;
   members: number;
   matches: number;
+  matchScores: number;
+  comments: number;
+  commentReplies: number;
+  notifications: number;
+  favorites: number;
+  reports: number;
+  bannedKeywords: number;
+  roundAssignments: number;
+  groupAssignments: number;
   completedMatches: number;
   ongoingMatches: number;
   pendingMatches: number;
@@ -92,6 +101,10 @@ export async function validateSeed(
       orderBy: { id: 'asc' },
     }),
   ]);
+  assert(
+    users.every((user) => user.emailVerifiedAt !== null),
+    'Every seed account must have a verified email',
+  );
 
   assert(
     users.length === 30,
@@ -397,6 +410,41 @@ export async function validateSeed(
   const allRounds = tournaments.flatMap((tournament) => tournament.rounds);
   const allGroups = allRounds.flatMap((round) => round.groups);
   const allMatches = allRounds.flatMap((round) => round.matches);
+  const [
+    matchScores,
+    comments,
+    commentReplies,
+    notifications,
+    favorites,
+    reports,
+    bannedKeywords,
+    roundAssignments,
+    groupAssignments,
+  ] = await Promise.all([
+    prisma.matchScore.count(),
+    prisma.comment.count(),
+    prisma.comment.count({ where: { parentId: { not: null } } }),
+    prisma.notification.count(),
+    prisma.tournamentFavorite.count(),
+    prisma.report.count(),
+    prisma.bannedKeyword.count(),
+    prisma.roundTeam.count(),
+    prisma.groupTeam.count(),
+  ]);
+  const completeTableCounts = {
+    matchScores,
+    comments,
+    commentReplies,
+    notifications,
+    favorites,
+    reports,
+    bannedKeywords,
+    roundAssignments,
+    groupAssignments,
+  };
+  for (const [table, count] of Object.entries(completeTableCounts)) {
+    assert(count > 0, `${table} must contain realistic development data`);
+  }
   const imageUrls = [
     ...users.map((user) => user.avatarUrl),
     ...tournaments.map((tournament) => tournament.bannerUrl),
@@ -422,6 +470,7 @@ export async function validateSeed(
     teams: allTeams.length,
     members: allMembers.length,
     matches: allMatches.length,
+    ...completeTableCounts,
     completedMatches: allMatches.filter(
       (match) => match.status === MatchStatus.COMPLETED,
     ).length,

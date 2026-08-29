@@ -10,12 +10,18 @@ import { TeamQueryService } from './team-query.service';
 import { TeamReviewService } from './team-review.service';
 import { TournamentRealtimeModule } from '../tournaments/tournament-realtime.module';
 import { NotificationModule } from '../notifications/notification.module';
+import { EmailModule } from '../email/email.module';
 
 /**
  * Module Team — đăng ký & quản lý hồ sơ đội (UC-U06, U07, U08, U11, U12, G06)
  */
 @Module({
-  imports: [CommonModule, TournamentRealtimeModule, NotificationModule],
+  imports: [
+    CommonModule,
+    TournamentRealtimeModule,
+    NotificationModule,
+    EmailModule,
+  ],
   controllers: [TeamsController],
   providers: [
     TeamsService,

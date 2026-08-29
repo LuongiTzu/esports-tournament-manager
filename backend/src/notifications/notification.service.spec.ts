@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationScope } from './dto/notification.dto';
 import { NotificationEventsService } from './notification-events.service';
 import { NotificationService } from './notification.service';
+import { ActivityEmailPublisher } from '../common/ports/activity-email-publisher';
 
 function harness() {
   let sequence = 0;
@@ -61,15 +62,40 @@ function harness() {
     ),
   } as unknown as PrismaService;
   const events = new NotificationEventsService();
+  const activityEmails = {
+    publish: jest.fn().mockResolvedValue(undefined),
+  } as unknown as ActivityEmailPublisher;
   return {
-    service: new NotificationService(prisma, events),
+    service: new NotificationService(prisma, events, undefined, activityEmails),
     prisma,
     notification,
     events,
+    activityEmails,
   };
 }
 
 describe('NotificationService', () => {
+  it('publishes an activity email only after a notification is emitted', async () => {
+    const { service, activityEmails } = harness();
+
+    await service.createNotification({
+      userId: 'user-1',
+      type: NotificationType.COMMENT_REPLY,
+      content: 'A reply was created',
+      data: { kind: 'COMMENT_REPLY' },
+      tournamentId: 't-1',
+    });
+
+    expect(activityEmails.publish).toHaveBeenCalledWith({
+      kind: 'NOTIFICATION_CREATED',
+      notification: expect.objectContaining({
+        userId: 'user-1',
+        type: NotificationType.COMMENT_REPLY,
+        tournamentId: 't-1',
+      }),
+    });
+  });
+
   it('creates a notification through the reusable persistence method', async () => {
     const { service, notification } = harness();
 

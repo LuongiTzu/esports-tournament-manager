@@ -25,7 +25,28 @@ export default function TournamentLifecycleControls({
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const canPublishDraft = tournament.status === "DRAFT";
   const registrationCanBeToggled = tournament.status === "REGISTRATION";
+
+  const publishDraft = async () => {
+    if (working || !canPublishDraft) return;
+    setWorking(true);
+    setError("");
+    setNotice("");
+    try {
+      await tournamentsApi.updateLifecycle(tournament.id, {
+        status: "REGISTRATION",
+      });
+      await onRefresh();
+      setNotice(t("lifecycle.published"));
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : t("lifecycle.publishError"),
+      );
+    } finally {
+      setWorking(false);
+    }
+  };
 
   const toggleRegistration = async () => {
     if (working || !registrationCanBeToggled) return;
@@ -41,9 +62,7 @@ export default function TournamentLifecycleControls({
       setNotice(nextOpen ? t("lifecycle.opened") : t("lifecycle.closed"));
     } catch (reason) {
       setError(
-        reason instanceof Error
-          ? reason.message
-          : t("lifecycle.updateError"),
+        reason instanceof Error ? reason.message : t("lifecycle.updateError"),
       );
     } finally {
       setWorking(false);
@@ -76,11 +95,26 @@ export default function TournamentLifecycleControls({
         <div className="rounded-xl border border-line bg-surface-sub/45 p-4">
           <div className="flex items-center gap-2">
             <LockKeyIcon className="text-brand" />
-            <h3 className="font-semibold text-ink">{t("lifecycle.transitionTitle")}</h3>
+            <h3 className="font-semibold text-ink">
+              {t("lifecycle.transitionTitle")}
+            </h3>
           </div>
           <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-            {t("lifecycle.transitionUnavailable")}
+            {canPublishDraft
+              ? t("lifecycle.draftDescription")
+              : t("lifecycle.transitionUnavailable")}
           </p>
+          {canPublishDraft && (
+            <button
+              type="button"
+              onClick={publishDraft}
+              disabled={working}
+              className={`${secondaryButtonClass} mt-4`}
+            >
+              {working && <CircleNotchIcon className="animate-spin" />}
+              {t("lifecycle.publishDraft")}
+            </button>
+          )}
         </div>
 
         <div className="rounded-xl border border-line bg-surface-sub/45 p-4">
@@ -88,10 +122,14 @@ export default function TournamentLifecycleControls({
             <div>
               <div className="flex items-center gap-2">
                 <CalendarBlankIcon className="text-brand" />
-                <h3 className="font-semibold text-ink">{t("lifecycle.registration")}</h3>
+                <h3 className="font-semibold text-ink">
+                  {t("lifecycle.registration")}
+                </h3>
               </div>
               <p className="mt-2 text-sm font-medium text-ink">
-                {tournament.registrationOpen ? t("lifecycle.enabled") : t("lifecycle.disabled")}
+                {tournament.registrationOpen
+                  ? t("lifecycle.enabled")
+                  : t("lifecycle.disabled")}
               </p>
             </div>
             {registrationCanBeToggled && (
@@ -102,21 +140,39 @@ export default function TournamentLifecycleControls({
                 className={secondaryButtonClass}
               >
                 {working && <CircleNotchIcon className="animate-spin" />}
-                {tournament.registrationOpen ? t("lifecycle.closeRegistration") : t("lifecycle.openRegistration")}
+                {tournament.registrationOpen
+                  ? t("lifecycle.closeRegistration")
+                  : t("lifecycle.openRegistration")}
               </button>
             )}
           </div>
           <dl className="mt-4 grid gap-2 text-xs text-ink-muted sm:grid-cols-2">
             <div>
-              <dt className="text-ink-faint">{t("lifecycle.registrationStart")}</dt>
+              <dt className="text-ink-faint">
+                {t("lifecycle.registrationStart")}
+              </dt>
               <dd className="mt-0.5">
-                {tournament.registrationStartDate ? formatLocalizedDate(tournament.registrationStartDate, locale, { dateStyle: "medium", timeStyle: "short" }) : t("common.unlimited")}
+                {tournament.registrationStartDate
+                  ? formatLocalizedDate(
+                      tournament.registrationStartDate,
+                      locale,
+                      { dateStyle: "medium", timeStyle: "short" },
+                    )
+                  : t("common.unlimited")}
               </dd>
             </div>
             <div>
-              <dt className="text-ink-faint">{t("lifecycle.registrationDeadline")}</dt>
+              <dt className="text-ink-faint">
+                {t("lifecycle.registrationDeadline")}
+              </dt>
               <dd className="mt-0.5">
-                {tournament.registrationDeadline ? formatLocalizedDate(tournament.registrationDeadline, locale, { dateStyle: "medium", timeStyle: "short" }) : t("common.unlimited")}
+                {tournament.registrationDeadline
+                  ? formatLocalizedDate(
+                      tournament.registrationDeadline,
+                      locale,
+                      { dateStyle: "medium", timeStyle: "short" },
+                    )
+                  : t("common.unlimited")}
               </dd>
             </div>
           </dl>
@@ -125,7 +181,8 @@ export default function TournamentLifecycleControls({
           </p>
           {!registrationCanBeToggled && (
             <p className="mt-3 flex items-start gap-2 text-xs text-pending">
-              <WarningCircleIcon className="mt-0.5 shrink-0" /> {t("lifecycle.currentStatusClosed")}
+              <WarningCircleIcon className="mt-0.5 shrink-0" />{" "}
+              {t("lifecycle.currentStatusClosed")}
             </p>
           )}
         </div>

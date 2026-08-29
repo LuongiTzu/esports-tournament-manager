@@ -9,7 +9,7 @@ import {
   Headers,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -21,6 +21,15 @@ import { GoogleLoginDto } from './dto/google-login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { AuthenticatedUser } from './strategies/jwt.strategy';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { RequestEmailChangeDto } from './dto/request-email-change.dto';
+import { ConfirmEmailChangeDto } from './dto/confirm-email-change.dto';
+
+const REGISTER_THROTTLE = {
+  limit: () => (process.env.NODE_ENV === 'production' ? 3 : 20),
+  ttl: () => (process.env.NODE_ENV === 'production' ? 60 * 60_000 : 60_000),
+};
 
 @ApiTags('auth')
 @Controller('auth')
@@ -32,9 +41,27 @@ export class AuthController {
    * Đăng ký tài khoản mới (mặc định role SIGNED_UP_USER)
    */
   @Post('register')
-  @Throttle({ default: { limit: 3, ttl: 60 * 60_000 } })
+  @Throttle({ default: REGISTER_THROTTLE })
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
+  }
+
+  @Post('verify-email')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Xác minh email bằng token một lần' })
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto);
+  }
+
+  @Post('resend-verification')
+  @Throttle({ default: { limit: 3, ttl: 15 * 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Gửi lại email xác minh với response chống dò email',
+  })
+  resendVerification(@Body() dto: ResendVerificationDto) {
+    return this.authService.resendVerification(dto);
   }
 
   /**
@@ -104,6 +131,7 @@ export class AuthController {
    * Đổi mật khẩu khi đã đăng nhập — vô hiệu mọi token cũ
    */
   @Post('change-password')
+  @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
   async changePassword(
@@ -118,6 +146,7 @@ export class AuthController {
    * Yêu cầu đặt lại mật khẩu (gửi email chứa reset token)
    */
   @Post('forgot-password')
+  @Throttle({ default: { limit: 3, ttl: 15 * 60_000 } })
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
@@ -128,8 +157,30 @@ export class AuthController {
    * Đặt lại mật khẩu bằng reset token nhận từ email
    */
   @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } })
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Post('request-email-change')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Throttle({ default: { limit: 3, ttl: 15 * 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Yêu cầu đổi email và gửi xác nhận tới email mới' })
+  requestEmailChange(
+    @CurrentUser('id') userId: string,
+    @Body() dto: RequestEmailChangeDto,
+  ) {
+    return this.authService.requestEmailChange(userId, dto);
+  }
+
+  @Post('confirm-email-change')
+  @Throttle({ default: { limit: 10, ttl: 15 * 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Xác nhận email mới bằng token một lần' })
+  confirmEmailChange(@Body() dto: ConfirmEmailChangeDto) {
+    return this.authService.confirmEmailChange(dto);
   }
 }

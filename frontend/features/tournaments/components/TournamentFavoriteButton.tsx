@@ -119,7 +119,6 @@ export default function TournamentFavoriteButton({
         aria-label={label}
         aria-pressed={state.isFavorited}
         aria-busy={pending}
-        title={label}
         disabled={pending || !ready}
         onClick={handleClick}
         className={`relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border font-semibold shadow-sm backdrop-blur-md transition-[color,background-color,border-color,transform,opacity] focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] motion-safe:active:scale-95 disabled:cursor-wait disabled:opacity-70 ${
@@ -134,14 +133,22 @@ export default function TournamentFavoriteButton({
           aria-hidden
           size={compact ? 19 : 20}
           weight={state.isFavorited ? "fill" : "bold"}
-          className={state.isFavorited ? "motion-safe:animate-[pulse_300ms_ease-out_1]" : ""}
+          className={
+            state.isFavorited
+              ? "motion-safe:animate-[pulse_300ms_ease-out_1]"
+              : ""
+          }
         />
         {showCount && <span>{state.favoriteCount}</span>}
       </button>
 
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-40 mb-2 hidden w-max max-w-64 -translate-x-1/2 rounded-md bg-ink px-3 py-2 text-center text-xs font-medium text-surface opacity-0 shadow-lg transition-opacity sm:block sm:group-hover/favorite:opacity-100 sm:group-focus-within/favorite:opacity-100"
+        className={`pointer-events-none absolute z-40 hidden w-max max-w-64 rounded-md bg-ink px-3 py-2 text-center text-xs font-medium text-surface opacity-0 shadow-lg transition-opacity sm:block sm:group-hover/favorite:opacity-100 sm:group-focus-within/favorite:opacity-100 ${
+          compact
+            ? "right-0 top-full mt-2"
+            : "bottom-full left-1/2 mb-2 -translate-x-1/2"
+        }`}
       >
         {label}
       </span>

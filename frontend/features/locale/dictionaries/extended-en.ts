@@ -1,6 +1,16 @@
 import type extendedVi from "@/features/locale/dictionaries/extended-vi";
 
 const extendedEn = {
+  "emailVerification.title": "Verify your email to continue",
+  "emailVerification.required":
+    "You need to verify your email before performing this action.",
+  "emailVerification.resend": "Resend verification email",
+  "emailVerification.sending": "Sending…",
+  "emailVerification.resendIn": "Resend in",
+  "emailVerification.resendSuccess": "The verification email was resent.",
+  "emailVerification.resendError":
+    "The verification email could not be resent.",
+  "emailVerification.signIn": "Sign in to continue",
   "common.loading": "Loading…",
   "common.retry": "Retry",
   "common.cancel": "Cancel",
@@ -38,7 +48,8 @@ const extendedEn = {
   "auth.google.orEmail": "Or use email",
   "auth.google.loading": "Loading Google…",
   "auth.google.unavailable": "Google Sign-In is unavailable",
-  "auth.google.fallbackError": "Unable to sign in with Google. Please try again.",
+  "auth.google.fallbackError":
+    "Unable to sign in with Google. Please try again.",
   "auth.login.showPassword": "Show password",
   "auth.login.hidePassword": "Hide password",
   "auth.login.submitting": "Logging in…",
@@ -153,7 +164,8 @@ const extendedEn = {
     "Your new password must contain 6–50 characters, including at least one letter and one number.",
   "profile.passwordMustDiffer":
     "Your new password must be different from your current password.",
-  "profile.passwordConfirmMismatch": "The new password confirmation does not match.",
+  "profile.passwordConfirmMismatch":
+    "The new password confirmation does not match.",
   "profile.passwordChanged":
     "Password changed successfully. You will be redirected to sign in.",
   "profile.passwordChangeError": "Your password could not be changed.",
@@ -171,13 +183,15 @@ const extendedEn = {
   "image.requirements": "JPEG, PNG, WebP, or GIF. Maximum 5 MiB.",
   "image.uploading": "Uploading image…",
   "image.cropTitle": "Crop tournament banner",
-  "image.cropHint": "Drag to reposition the image, then zoom or rotate until the banner fits the frame.",
+  "image.cropHint":
+    "Drag to reposition the image, then zoom or rotate until the banner fits the frame.",
   "image.zoom": "Zoom",
   "image.rotateLeft": "Rotate left",
   "image.rotateRight": "Rotate right",
   "image.cropConfirm": "Crop and use image",
   "image.cropProcessing": "Processing image…",
-  "image.cropError": "The image could not be cropped. Please choose another image.",
+  "image.cropError":
+    "The image could not be cropped. Please choose another image.",
   "team.status.PENDING": "Pending",
   "team.status.APPROVED": "Approved",
   "team.status.REJECTED": "Rejected",
@@ -492,7 +506,8 @@ const extendedEn = {
   "tournament.create.previewPrize": "Prize",
   "tournament.create.previewPrizeEmpty": "Prize details not added",
   "tournament.create.reviewReady": "Ready to create the tournament",
-  "tournament.create.reviewHint": "Check the preview and key information before finishing.",
+  "tournament.create.reviewHint":
+    "Check the preview and key information before finishing.",
   "tournament.create.section.info": "Tournament information",
   "tournament.create.section.infoDescription":
     "The first information participants see when discovering the tournament.",
@@ -727,6 +742,11 @@ const extendedEn = {
   "lifecycle.transitionTitle": "Tournament status transitions",
   "lifecycle.transitionUnavailable":
     "The system does not currently provide a validated status-transition contract. The management page therefore does not expose start, complete, cancel, or restore actions.",
+  "lifecycle.draftDescription":
+    "This draft is private and does not accept registrations. Publishing makes it public and opens team registration.",
+  "lifecycle.publishDraft": "Publish and open registration",
+  "lifecycle.published": "Tournament published and registration opened.",
+  "lifecycle.publishError": "Could not publish the tournament.",
   "lifecycle.registration": "Registration intake",
   "lifecycle.enabled": "Enabled",
   "lifecycle.disabled": "Disabled",
@@ -1135,14 +1155,16 @@ const extendedEn = {
   "comments.deletedTombstone": "[Comment deleted]",
   "report.action": "Report",
   "report.title": "Report",
-  "report.dialogDescription": "Choose the issue that best fits so we can review it.",
+  "report.dialogDescription":
+    "Choose the issue that best fits so we can review it.",
   "report.reasonLabel": "Why are you reporting this tournament?",
   "report.reasonPlaceholder": "Select a reason",
   "report.reason.MINOR_SAFETY": "Issues involving someone under 18",
   "report.reason.HARASSMENT_OR_HATE": "Bullying, harassment, abuse, or hate",
   "report.reason.VIOLENCE_OR_SELF_HARM": "Violence, threats, or self-harm",
   "report.reason.GAMBLING": "Gambling or betting promotion",
-  "report.reason.RESTRICTED_GOODS": "Sale or promotion of restricted goods or services",
+  "report.reason.RESTRICTED_GOODS":
+    "Sale or promotion of restricted goods or services",
   "report.reason.ADULT_CONTENT": "Adult or age-inappropriate content",
   "report.reason.SCAM": "False information, scams, or fraud",
   "report.reason.INTELLECTUAL_PROPERTY": "Intellectual property infringement",
@@ -1150,20 +1172,28 @@ const extendedEn = {
   "report.reason.INAPPROPRIATE_CONTENT": "Inappropriate or disturbing content",
   "report.reason.OTHER": "Another issue",
   "report.descriptionLabel": "Description",
-  "report.descriptionPlaceholder": "Add details that may help us review the report",
-  "report.descriptionHint": "If provided, the description must be 5 to 2,000 characters.",
+  "report.descriptionPlaceholder":
+    "Add details that may help us review the report",
+  "report.descriptionHint":
+    "If provided, the description must be 5 to 2,000 characters.",
   "report.submit": "Submit report",
   "report.submitting": "Submitting…",
   "report.successTitle": "Report submitted.",
-  "report.successDescription": "Thank you for helping us keep the community safe.",
+  "report.successDescription":
+    "Thank you for helping us keep the community safe.",
   "report.error.reasonRequired": "Select a report reason.",
-  "report.error.descriptionTooShort": "The description must be at least 5 characters.",
-  "report.error.descriptionTooLong": "The description cannot exceed 2,000 characters.",
-  "report.error.validation": "The report details are invalid. Check them and try again.",
+  "report.error.descriptionTooShort":
+    "The description must be at least 5 characters.",
+  "report.error.descriptionTooLong":
+    "The description cannot exceed 2,000 characters.",
+  "report.error.validation":
+    "The report details are invalid. Check them and try again.",
   "report.error.duplicate": "You have already reported this tournament.",
-  "report.error.rateLimit": "You have submitted too many reports. Please try again later.",
+  "report.error.rateLimit":
+    "You have submitted too many reports. Please try again later.",
   "report.error.notFound": "This tournament could not be found.",
-  "report.error.generic": "The report could not be submitted. Please try again.",
+  "report.error.generic":
+    "The report could not be submitted. Please try again.",
   "pageTitle.default": "Esports tournament management",
   "pageTitle.home": "Home",
   "pageTitle.login": "Sign in",

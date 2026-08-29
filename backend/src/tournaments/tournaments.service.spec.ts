@@ -7,6 +7,7 @@ import {
   TeamSizeMode,
   TournamentMode,
   TournamentStatus,
+  Visibility,
 } from '@prisma/client';
 import { RoundSettingsService } from '../brackets/round-settings.service';
 import { StandingsService } from '../brackets/standings.service';
@@ -81,6 +82,32 @@ function harness(total = 45) {
 }
 
 describe('TournamentsService public listing', () => {
+  it('excludes drafts from the public listing', async () => {
+    const { service, findMany } = harness();
+
+    await service.findAllPublic({});
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: { not: TournamentStatus.DRAFT },
+        }),
+      }),
+    );
+  });
+
+  it('returns an empty public result when filtering for drafts', async () => {
+    const { service, findMany } = harness();
+
+    await expect(
+      service.findAllPublic({ status: TournamentStatus.DRAFT }),
+    ).resolves.toEqual({
+      data: [],
+      pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    });
+    expect(findMany).not.toHaveBeenCalled();
+  });
+
   it('builds all supported filters including tournament/game search', async () => {
     const { service, findMany } = harness();
 
@@ -735,6 +762,29 @@ describe('TournamentsService roster snapshots', () => {
     },
   );
 
+  it('forces a new draft to stay private with registration closed', async () => {
+    const { service, tx } = creationHarness(5, 7);
+
+    await service.create('organizer-1', {
+      name: 'Private Draft Cup',
+      gameId: 'game-1',
+      status: TournamentStatus.DRAFT,
+      visibility: Visibility.PUBLIC,
+      registrationOpen: true,
+      maxTeamSize: 5,
+    });
+
+    expect(tx.tournament.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: TournamentStatus.DRAFT,
+          visibility: Visibility.PRIVATE,
+          registrationOpen: false,
+        }),
+      }),
+    );
+  });
+
   it.each([
     [5, 7, 4],
     [5, 7, 8],
@@ -862,6 +912,8 @@ describe('TournamentsService lifecycle updates', () => {
     const current = {
       id: 'tournament-1',
       status,
+      visibility: Visibility.PRIVATE,
+      registrationOpen: false,
       gameId: 'game-1',
       minTeamSize: 5,
       maxTeamSize: 7,
@@ -921,6 +973,42 @@ describe('TournamentsService lifecycle updates', () => {
           previousStatus: TournamentStatus.REGISTRATION,
           status: TournamentStatus.ONGOING,
         },
+      }),
+    );
+  });
+
+  it('publishes a draft by making it public and opening registration', async () => {
+    const { service, update } = updateHarness(TournamentStatus.DRAFT);
+
+    await service.update('tournament-1', {
+      status: TournamentStatus.REGISTRATION,
+    });
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: TournamentStatus.REGISTRATION,
+          visibility: Visibility.PUBLIC,
+          registrationOpen: true,
+        }),
+      }),
+    );
+  });
+
+  it('keeps a draft private and closed during ordinary edits', async () => {
+    const { service, update } = updateHarness(TournamentStatus.DRAFT);
+
+    await service.update('tournament-1', {
+      visibility: Visibility.PUBLIC,
+      registrationOpen: true,
+    });
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          visibility: Visibility.PRIVATE,
+          registrationOpen: false,
+        }),
       }),
     );
   });

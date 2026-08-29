@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   EyeIcon,
   EyeSlashIcon,
+  EnvelopeSimpleIcon,
   FloppyDiskIcon,
   LockKeyIcon,
   ShieldCheckIcon,
@@ -12,11 +13,7 @@ import {
 } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import ImageUploadPicker from "@/components/ImageUploadPicker";
-import {
-  alertErrorClass,
-  inputClass,
-  labelClass,
-} from "@/components/ui";
+import { alertErrorClass, inputClass, labelClass } from "@/components/ui";
 import { authApi } from "@/features/auth/api";
 import {
   clearSession,
@@ -26,6 +23,7 @@ import {
 import type { Gender, User } from "@/features/auth/types";
 import GamePosterGridBackground from "@/features/home/components/hero/GamePosterGridBackground";
 import { useLocale } from "@/features/locale/store";
+import { useCooldown } from "@/features/auth/hooks/useCooldown";
 
 interface ProfileFormState {
   displayName: string;
@@ -153,6 +151,13 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
+  const [emailChangeError, setEmailChangeError] = useState("");
+  const [emailChangeSuccess, setEmailChangeSuccess] = useState("");
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const emailChangeCooldown = useCooldown();
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -162,13 +167,17 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    if (!passwordModalOpen) return;
+    if (!passwordModalOpen && !emailModalOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !changingPassword) {
+      if (event.key !== "Escape") return;
+      if (passwordModalOpen && !changingPassword) {
         setPasswordModalOpen(false);
+      }
+      if (emailModalOpen && !emailChangeLoading) {
+        setEmailModalOpen(false);
       }
     };
     window.addEventListener("keydown", closeOnEscape);
@@ -176,7 +185,7 @@ export default function ProfilePage() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [changingPassword, passwordModalOpen]);
+  }, [changingPassword, emailChangeLoading, emailModalOpen, passwordModalOpen]);
 
   useEffect(() => {
     if (!ready) return;
@@ -249,7 +258,9 @@ export default function ProfilePage() {
       setFormSuccess(t("profile.detailsUpdated"));
     } catch (error) {
       setFormError(
-        error instanceof Error ? error.message : t("profile.detailsUpdateError"),
+        error instanceof Error
+          ? error.message
+          : t("profile.detailsUpdateError"),
       );
     } finally {
       setSaving(false);
@@ -271,9 +282,7 @@ export default function ProfilePage() {
       setAvatarSuccess(t("profile.avatarUpdated"));
     } catch (error) {
       setAvatarError(
-        error instanceof Error
-          ? error.message
-          : t("profile.avatarUpdateError"),
+        error instanceof Error ? error.message : t("profile.avatarUpdateError"),
       );
     } finally {
       setAvatarUploading(false);
@@ -303,6 +312,23 @@ export default function ProfilePage() {
     setPasswordForm(EMPTY_PASSWORD_FORM);
     setPasswordError("");
     setPasswordSuccess("");
+  };
+
+  const openEmailModal = () => {
+    setNewEmail("");
+    setEmailPassword("");
+    setEmailChangeError("");
+    setEmailChangeSuccess("");
+    setEmailModalOpen(true);
+  };
+
+  const closeEmailModal = () => {
+    if (emailChangeLoading) return;
+    setEmailModalOpen(false);
+    setNewEmail("");
+    setEmailPassword("");
+    setEmailChangeError("");
+    setEmailChangeSuccess("");
   };
 
   const handlePasswordSubmit = async (event: React.FormEvent) => {
@@ -352,6 +378,31 @@ export default function ProfilePage() {
     }
   };
 
+  const handleEmailChange = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (emailChangeLoading || emailChangeCooldown.seconds > 0) return;
+    setEmailChangeLoading(true);
+    setEmailChangeError("");
+    setEmailChangeSuccess("");
+    try {
+      const result = await authApi.requestEmailChange({
+        newEmail,
+        currentPassword: emailPassword,
+      });
+      setEmailPassword("");
+      setEmailChangeSuccess(result.message);
+      emailChangeCooldown.start(300);
+    } catch (error) {
+      setEmailChangeError(
+        error instanceof Error
+          ? error.message
+          : "Không thể gửi yêu cầu đổi email",
+      );
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
   if (!ready || (user && loadingProfile)) {
     return (
       <div className="relative isolate flex-1 overflow-hidden">
@@ -382,21 +433,21 @@ export default function ProfilePage() {
         <div className="overflow-hidden rounded-2xl border border-line bg-surface-card/92 shadow-[var(--shadow-elevated)] backdrop-blur-md">
           <section className="p-6 sm:p-8 lg:p-10">
             <div className="flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:items-center">
-            <ImageUploadPicker
-              label={t("profile.changeAvatar")}
-              file={avatarFile}
-              onFileChange={(file) => {
-                setAvatarError("");
-                setAvatarSuccess("");
-                void uploadAvatar(file);
-              }}
-              existingUrl={profile?.avatarUrl}
-              variant="avatar"
-              appearance="avatar-overlay"
-              uploading={avatarUploading}
-              uploadError={avatarError}
-              successMessage={avatarSuccess}
-            />
+              <ImageUploadPicker
+                label={t("profile.changeAvatar")}
+                file={avatarFile}
+                onFileChange={(file) => {
+                  setAvatarError("");
+                  setAvatarSuccess("");
+                  void uploadAvatar(file);
+                }}
+                existingUrl={profile?.avatarUrl}
+                variant="avatar"
+                appearance="avatar-overlay"
+                uploading={avatarUploading}
+                uploadError={avatarError}
+                successMessage={avatarSuccess}
+              />
               <div className="min-w-0">
                 <h2 className="text-xl font-bold text-ink">
                   {profile?.displayName ?? user.displayName}
@@ -408,16 +459,25 @@ export default function ProfilePage() {
                   {t("profile.avatarDescription")}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={openPasswordModal}
-                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md border border-line-strong bg-surface/65 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-brand/60 hover:bg-surface-hover focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] sm:ml-auto"
-              >
-                <LockKeyIcon size={18} weight="bold" />
-                {t("profile.changePassword")}
-              </button>
+              <div className="flex shrink-0 flex-col gap-3 sm:ml-auto sm:flex-row">
+                <button
+                  type="button"
+                  onClick={openEmailModal}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-line-strong bg-surface/65 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-brand/60 hover:bg-surface-hover focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+                >
+                  <EnvelopeSimpleIcon size={18} weight="bold" />
+                  Đổi email
+                </button>
+                <button
+                  type="button"
+                  onClick={openPasswordModal}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-line-strong bg-surface/65 px-4 py-2.5 text-sm font-bold text-ink transition hover:border-brand/60 hover:bg-surface-hover focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+                >
+                  <LockKeyIcon size={18} weight="bold" />
+                  {t("profile.changePassword")}
+                </button>
+              </div>
             </div>
-
             <div className="mt-7">
               <h2 className="text-lg font-semibold text-ink">
                 {t("profile.personalDetails")}
@@ -428,142 +488,275 @@ export default function ProfilePage() {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-7 space-y-5">
-            <div>
-              <label htmlFor="displayName" className={labelClass}>
-                {t("auth.register.displayName")} <span className="text-brand-secondary">*</span>
-              </label>
-              <input
-                id="displayName"
-                name="displayName"
-                required
-                minLength={2}
-                maxLength={50}
-                autoComplete="nickname"
-                value={form.displayName}
-                onChange={handleFieldChange}
-                className={inputClass}
-              />
-            </div>
-
-            <div className="grid gap-5 sm:grid-cols-2">
               <div>
-                <label htmlFor="phoneNumber" className={labelClass}>
-                  {t("auth.register.phone")}
+                <label htmlFor="displayName" className={labelClass}>
+                  {t("auth.register.displayName")}{" "}
+                  <span className="text-brand-secondary">*</span>
                 </label>
                 <input
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  type="tel"
-                  inputMode="tel"
-                  minLength={9}
-                  maxLength={15}
-                  autoComplete="tel"
-                  value={form.phoneNumber}
-                  onChange={handleFieldChange}
-                  className={inputClass}
-                  placeholder="09xxxxxxxx"
-                />
-              </div>
-              <div>
-                <label htmlFor="birthDate" className={labelClass}>
-                  {t("auth.register.birthDate")}
-                </label>
-                <input
-                  id="birthDate"
-                  name="birthDate"
-                  type="date"
-                  max={new Date().toISOString().slice(0, 10)}
-                  autoComplete="bday"
-                  value={form.birthDate}
+                  id="displayName"
+                  name="displayName"
+                  required
+                  minLength={2}
+                  maxLength={50}
+                  autoComplete="nickname"
+                  value={form.displayName}
                   onChange={handleFieldChange}
                   className={inputClass}
                 />
               </div>
-            </div>
 
-            <div className="grid gap-5 sm:grid-cols-[0.72fr_1.28fr]">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="phoneNumber" className={labelClass}>
+                    {t("auth.register.phone")}
+                  </label>
+                  <input
+                    id="phoneNumber"
+                    name="phoneNumber"
+                    type="tel"
+                    inputMode="tel"
+                    minLength={9}
+                    maxLength={15}
+                    autoComplete="tel"
+                    value={form.phoneNumber}
+                    onChange={handleFieldChange}
+                    className={inputClass}
+                    placeholder="09xxxxxxxx"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="birthDate" className={labelClass}>
+                    {t("auth.register.birthDate")}
+                  </label>
+                  <input
+                    id="birthDate"
+                    name="birthDate"
+                    type="date"
+                    max={new Date().toISOString().slice(0, 10)}
+                    autoComplete="bday"
+                    value={form.birthDate}
+                    onChange={handleFieldChange}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-[0.72fr_1.28fr]">
+                <div>
+                  <label htmlFor="gender" className={labelClass}>
+                    {t("auth.register.gender")}
+                  </label>
+                  <select
+                    id="gender"
+                    name="gender"
+                    value={form.gender}
+                    onChange={handleFieldChange}
+                    className={inputClass}
+                  >
+                    <option value="">{t("auth.register.gender.none")}</option>
+                    <option value="MALE">
+                      {t("auth.register.gender.male")}
+                    </option>
+                    <option value="FEMALE">
+                      {t("auth.register.gender.female")}
+                    </option>
+                    <option value="OTHER">
+                      {t("auth.register.gender.other")}
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="currentAddress" className={labelClass}>
+                    {t("auth.register.address")}
+                  </label>
+                  <input
+                    id="currentAddress"
+                    name="currentAddress"
+                    maxLength={200}
+                    autoComplete="street-address"
+                    value={form.currentAddress}
+                    onChange={handleFieldChange}
+                    className={inputClass}
+                    placeholder={t("auth.register.addressPlaceholder")}
+                  />
+                </div>
+              </div>
+
               <div>
-                <label htmlFor="gender" className={labelClass}>
-                  {t("auth.register.gender")}
+                <label htmlFor="bio" className={labelClass}>
+                  {t("profile.bio")}
                 </label>
-                <select
-                  id="gender"
-                  name="gender"
-                  value={form.gender}
+                <textarea
+                  id="bio"
+                  name="bio"
+                  rows={5}
+                  maxLength={500}
+                  value={form.bio}
                   onChange={handleFieldChange}
-                  className={inputClass}
+                  className={`${inputClass} resize-y`}
+                  placeholder={t("profile.bioPlaceholder")}
+                />
+                <p className="mt-1.5 text-right text-xs text-ink-faint">
+                  {form.bio.length}/500
+                </p>
+              </div>
+
+              {formError && (
+                <p role="alert" className={alertErrorClass}>
+                  {formError}
+                </p>
+              )}
+              {formSuccess && (
+                <p
+                  role="status"
+                  className="rounded-[var(--radius-control)] border border-approved/40 bg-approved/10 px-4 py-3 text-sm text-approved"
                 >
-                  <option value="">{t("auth.register.gender.none")}</option>
-                  <option value="MALE">{t("auth.register.gender.male")}</option>
-                  <option value="FEMALE">{t("auth.register.gender.female")}</option>
-                  <option value="OTHER">{t("auth.register.gender.other")}</option>
-                </select>
+                  {formSuccess}
+                </p>
+              )}
+
+              <div className="flex justify-end border-t border-line pt-5">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-md bg-brand-secondary px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-brand shadow-[0_12px_30px_-14px_var(--color-brand-secondary)] transition hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  <FloppyDiskIcon size={19} weight="fill" />
+                  {saving ? t("profile.saving") : t("profile.saveDetails")}
+                </button>
               </div>
-              <div>
-                <label htmlFor="currentAddress" className={labelClass}>
-                  {t("auth.register.address")}
-                </label>
-                <input
-                  id="currentAddress"
-                  name="currentAddress"
-                  maxLength={200}
-                  autoComplete="street-address"
-                  value={form.currentAddress}
-                  onChange={handleFieldChange}
-                  className={inputClass}
-                  placeholder={t("auth.register.addressPlaceholder")}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="bio" className={labelClass}>
-                {t("profile.bio")}
-              </label>
-              <textarea
-                id="bio"
-                name="bio"
-                rows={5}
-                maxLength={500}
-                value={form.bio}
-                onChange={handleFieldChange}
-                className={`${inputClass} resize-y`}
-                placeholder={t("profile.bioPlaceholder")}
-              />
-              <p className="mt-1.5 text-right text-xs text-ink-faint">
-                {form.bio.length}/500
-              </p>
-            </div>
-
-            {formError && (
-              <p role="alert" className={alertErrorClass}>
-                {formError}
-              </p>
-            )}
-            {formSuccess && (
-              <p
-                role="status"
-                className="rounded-[var(--radius-control)] border border-approved/40 bg-approved/10 px-4 py-3 text-sm text-approved"
-              >
-                {formSuccess}
-              </p>
-            )}
-
-            <div className="flex justify-end border-t border-line pt-5">
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex min-h-12 items-center justify-center gap-2.5 rounded-md bg-brand-secondary px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-brand shadow-[0_12px_30px_-14px_var(--color-brand-secondary)] transition hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55"
-              >
-                <FloppyDiskIcon size={19} weight="fill" />
-                {saving ? t("profile.saving") : t("profile.saveDetails")}
-              </button>
-            </div>
             </form>
           </section>
-
         </div>
       </div>
+
+      {emailModalOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeEmailModal();
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="change-email-title"
+            className="max-h-[calc(100svh-2rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-line-strong bg-surface-card shadow-[var(--shadow-elevated)]"
+          >
+            <header className="flex items-start justify-between gap-4 border-b border-line px-5 py-5 sm:px-6">
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand">
+                  <EnvelopeSimpleIcon size={22} weight="duotone" />
+                </span>
+                <div>
+                  <h2
+                    id="change-email-title"
+                    className="text-lg font-bold text-ink"
+                  >
+                    Thay đổi email đăng nhập
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-ink-muted">
+                    Email chỉ được thay đổi sau khi bạn xác nhận liên kết gửi
+                    tới địa chỉ mới. Mọi phiên đăng nhập cũ sẽ hết hiệu lực.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={emailChangeLoading}
+                onClick={closeEmailModal}
+                aria-label="Đóng cửa sổ đổi email"
+                className="grid size-10 shrink-0 place-items-center rounded-lg text-ink-faint transition hover:bg-surface-hover hover:text-ink focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] disabled:opacity-50"
+              >
+                <XIcon size={20} weight="bold" />
+              </button>
+            </header>
+
+            <form onSubmit={handleEmailChange} className="space-y-5 p-5 sm:p-6">
+              <div>
+                <label htmlFor="new-account-email" className={labelClass}>
+                  Email mới
+                </label>
+                <input
+                  id="new-account-email"
+                  type="email"
+                  required
+                  autoFocus
+                  autoComplete="email"
+                  value={newEmail}
+                  onChange={(event) => {
+                    setNewEmail(event.target.value);
+                    setEmailChangeError("");
+                    setEmailChangeSuccess("");
+                  }}
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="email-change-password" className={labelClass}>
+                  Mật khẩu hiện tại
+                </label>
+                <input
+                  id="email-change-password"
+                  type="password"
+                  required
+                  minLength={6}
+                  maxLength={50}
+                  autoComplete="current-password"
+                  value={emailPassword}
+                  onChange={(event) => {
+                    setEmailPassword(event.target.value);
+                    setEmailChangeError("");
+                    setEmailChangeSuccess("");
+                  }}
+                  className={inputClass}
+                />
+              </div>
+
+              {emailChangeError && (
+                <p role="alert" className={alertErrorClass}>
+                  {emailChangeError}
+                </p>
+              )}
+              {emailChangeSuccess && (
+                <p
+                  role="status"
+                  className="rounded-lg border border-approved/40 bg-approved/10 px-4 py-3 text-sm text-approved"
+                >
+                  {emailChangeSuccess}
+                </p>
+              )}
+
+              <div className="flex flex-col-reverse gap-3 border-t border-line pt-5 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  disabled={emailChangeLoading}
+                  onClick={closeEmailModal}
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-line-strong px-5 py-2.5 text-sm font-bold text-ink-muted transition hover:bg-surface-hover hover:text-ink disabled:opacity-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    emailChangeLoading || emailChangeCooldown.seconds > 0
+                  }
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-brand-secondary px-5 py-2.5 text-xs font-black uppercase tracking-wide text-on-brand transition hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-55"
+                >
+                  <EnvelopeSimpleIcon size={18} weight="bold" />
+                  {emailChangeLoading
+                    ? "Đang gửi…"
+                    : emailChangeCooldown.seconds > 0
+                      ? `Gửi lại sau ${emailChangeCooldown.seconds}s`
+                      : "Xác nhận email mới"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
 
       {passwordModalOpen && (
         <div
@@ -584,7 +777,10 @@ export default function ProfilePage() {
                   <ShieldCheckIcon size={22} weight="duotone" />
                 </span>
                 <div>
-                  <h2 id="change-password-title" className="text-lg font-bold text-ink">
+                  <h2
+                    id="change-password-title"
+                    className="text-lg font-bold text-ink"
+                  >
                     {t("profile.passwordTitle")}
                   </h2>
                   <p className="mt-1 text-sm leading-6 text-ink-muted">
@@ -603,14 +799,19 @@ export default function ProfilePage() {
               </button>
             </header>
 
-            <form onSubmit={handlePasswordSubmit} className="space-y-5 p-5 sm:p-6">
+            <form
+              onSubmit={handlePasswordSubmit}
+              className="space-y-5 p-5 sm:p-6"
+            >
               <PasswordField
                 id="currentPassword"
                 label={t("profile.currentPassword")}
                 value={passwordForm.currentPassword}
                 visible={visiblePasswords.current}
                 autoComplete="current-password"
-                onChange={(value) => updatePasswordField("currentPassword", value)}
+                onChange={(value) =>
+                  updatePasswordField("currentPassword", value)
+                }
                 onToggleVisibility={() =>
                   setVisiblePasswords((current) => ({
                     ...current,

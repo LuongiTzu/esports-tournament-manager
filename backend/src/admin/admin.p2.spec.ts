@@ -14,6 +14,7 @@ import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import {
   AdminDashboardQueryService,
@@ -41,6 +42,7 @@ describe('AdminService P2 workflows', () => {
   it('keeps all new admin workflows behind JWT and ADMIN role guards', () => {
     expect(Reflect.getMetadata(GUARDS_METADATA, AdminController)).toEqual([
       JwtAuthGuard,
+      EmailVerifiedGuard,
       RolesGuard,
     ]);
     expect(Reflect.getMetadata(ROLES_KEY, AdminController)).toEqual([

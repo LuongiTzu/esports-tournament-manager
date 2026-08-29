@@ -14,6 +14,7 @@ import { Ownership } from '../common/decorators/ownership.decorator';
 import { VisibilityResource } from '../common/decorators/visibility.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
+import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import {
   BulkScheduleDto,
   CreateManualMatchDto,
@@ -33,28 +34,28 @@ export class MatchesController {
     return this.matches.findOne(id);
   }
 
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('matches:body')
   @Patch('matches/bulk-schedule')
   bulkSchedule(@Body() dto: BulkScheduleDto) {
     return this.matches.bulkSchedule(dto);
   }
 
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('match:id')
   @Patch('matches/:id')
   update(@Param('id') id: string, @Body() dto: UpdateMatchDto) {
     return this.matches.update(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('match:id')
   @Put('matches/:id/scores')
   putScores(@Param('id') id: string, @Body() dto: PutMatchScoresDto) {
     return this.matches.putScores(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
   @Post('rounds/:id/matches')
   createManual(@Param('id') id: string, @Body() dto: CreateManualMatchDto) {

@@ -25,6 +25,8 @@ import {
   secondaryButtonClass,
 } from "@/components/ui";
 import { useAuth } from "@/features/auth/store";
+import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
+import { isEmailNotVerifiedError } from "@/features/auth/email-verification";
 import { accentVars } from "@/features/games/game-accent";
 import { gamePositionLabel } from "@/features/games/position-labels";
 import { formatLocalizedDate } from "@/features/locale/format";
@@ -312,6 +314,10 @@ export default function RegisterTeamPage({
 
       router.push(`/tournaments/${slug}`);
     } catch (reason: unknown) {
+      if (isEmailNotVerifiedError(reason)) {
+        setError(t("emailVerification.required"));
+        return;
+      }
       setError(
         reason instanceof ApiError && reason.errors?.length
           ? reason.errors.map((item) => item.message).join("; ")
@@ -323,6 +329,14 @@ export default function RegisterTeamPage({
       setSubmitting(false);
     }
   };
+
+  if (ready && user?.emailVerifiedAt === null) {
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-1 items-center px-4 py-16">
+        <EmailVerificationNotice email={user.email} className="w-full" />
+      </div>
+    );
+  }
 
   if (loading) {
     return (

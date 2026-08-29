@@ -51,17 +51,21 @@ export class TournamentQueryService {
     const limit = Math.min(50, query.limit ?? 20);
     const skip = (page - 1) * limit;
 
+    if (query.status === TournamentStatus.DRAFT) {
+      return {
+        data: [],
+        pagination: { page, limit, total: 0, totalPages: 0 },
+      };
+    }
+
     const where: Prisma.TournamentWhereInput = {
       visibility: Visibility.PUBLIC,
       moderationStatus: ModerationStatus.ACTIVE,
+      status: query.status ?? { not: TournamentStatus.DRAFT },
     };
 
     if (query.gameId) {
       where.gameId = query.gameId;
-    }
-
-    if (query.status) {
-      where.status = query.status;
     }
 
     if (query.mode) {
