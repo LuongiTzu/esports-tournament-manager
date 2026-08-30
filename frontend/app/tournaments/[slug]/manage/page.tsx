@@ -103,56 +103,58 @@ export default function ManagePage({
   return (
     <div
       style={accentVars(tournament.game?.name)}
-      className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 sm:py-10"
+      className="tournament-detail-page w-full flex-1"
     >
-      <Link
-        href={`/tournaments/${slug}`}
-        className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-ink"
-      >
-        <ArrowLeftIcon size={16} />
-        {tournament.name}
-      </Link>
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+        <Link
+          href={`/tournaments/${slug}`}
+          className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition hover:text-ink"
+        >
+          <ArrowLeftIcon size={16} />
+          {tournament.name}
+        </Link>
 
-      <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-            {t("manage.eyebrow")}
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-            {t("manage.title")} {tournament.name}
-          </h1>
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
+              {t("manage.eyebrow")}
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+              {t("manage.title")} {tournament.name}
+            </h1>
+          </div>
+          <span className="rounded-full border border-line bg-surface-card px-3 py-1.5 text-xs font-medium text-ink-muted">
+            {t(`tournament.status.${tournament.status}` as TranslationKey)}
+          </span>
         </div>
-        <span className="rounded-full border border-line bg-surface-card px-3 py-1.5 text-xs font-medium text-ink-muted">
-          {t(`tournament.status.${tournament.status}` as TranslationKey)}
-        </span>
-      </div>
 
-      <div className="mt-8">
-        <TournamentGameEditor
-          tournament={tournament}
-          onUpdated={setTournament}
-        />
-      </div>
+        <div className="mt-8">
+          <TournamentGameEditor
+            tournament={tournament}
+            onUpdated={setTournament}
+          />
+        </div>
 
-      <div className="mt-6">
-        <TournamentLifecycleControls
-          tournament={tournament}
-          onRefresh={refreshTournament}
-        />
-      </div>
+        <div className="mt-6">
+          <TournamentLifecycleControls
+            tournament={tournament}
+            onRefresh={refreshTournament}
+          />
+        </div>
 
-      <div className="mt-6">
-        <CompetitionManager
-          tournament={tournament}
-          onTournamentRefresh={refreshTournament}
-        />
-      </div>
+        <div className="mt-6">
+          <CompetitionManager
+            tournament={tournament}
+            onTournamentRefresh={refreshTournament}
+          />
+        </div>
 
-      <div className="mt-12 border-t border-line pt-10">
-        <RegistrationManagement
-          tournament={tournament}
-          onTournamentRefresh={refreshTournament}
-        />
+        <div className="mt-12 border-t border-line pt-10">
+          <RegistrationManagement
+            tournament={tournament}
+            onTournamentRefresh={refreshTournament}
+          />
+        </div>
       </div>
     </div>
   );

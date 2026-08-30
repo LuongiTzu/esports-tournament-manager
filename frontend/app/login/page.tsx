@@ -14,6 +14,10 @@ import { useLocale } from "@/features/locale/store";
 import { authApi } from "@/features/auth/api";
 import { ApiError } from "@/lib/api/client";
 import { useCooldown } from "@/features/auth/hooks/useCooldown";
+import {
+  PENDING_AUTH_RETURN_TO_KEY,
+  useAuthParams,
+} from "@/features/auth/return-to";
 
 const subscribeToLocation = () => () => {};
 const getPasswordChangedSnapshot = () =>
@@ -32,6 +36,7 @@ export default function LoginPage() {
   const [verificationRequired, setVerificationRequired] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const { returnTo } = useAuthParams();
   const resendCooldown = useCooldown();
   const passwordChanged = useSyncExternalStore(
     subscribeToLocation,
@@ -47,7 +52,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push("/");
+      sessionStorage.removeItem(PENDING_AUTH_RETURN_TO_KEY);
+      router.push(returnTo ?? "/");
     } catch (err) {
       setVerificationRequired(
         err instanceof ApiError && err.code === "EMAIL_NOT_VERIFIED",
@@ -83,7 +89,8 @@ export default function LoginPage() {
       setGoogleLoading(true);
       try {
         await loginWithGoogle(credential);
-        router.push("/");
+        sessionStorage.removeItem(PENDING_AUTH_RETURN_TO_KEY);
+        router.push(returnTo ?? "/");
       } catch (err) {
         setError(
           err instanceof Error ? err.message : t("auth.google.fallbackError"),
@@ -92,7 +99,7 @@ export default function LoginPage() {
         setGoogleLoading(false);
       }
     },
-    [router, t],
+    [returnTo, router, t],
   );
 
   const handleGoogleError = useCallback(() => {
@@ -109,7 +116,11 @@ export default function LoginPage() {
         <>
           {t("auth.login.noAccount")}{" "}
           <Link
-            href="/register"
+            href={
+              returnTo
+                ? `/register?returnTo=${encodeURIComponent(returnTo)}`
+                : "/register"
+            }
             className="font-medium text-brand hover:underline"
           >
             {t("auth.login.registerNow")}

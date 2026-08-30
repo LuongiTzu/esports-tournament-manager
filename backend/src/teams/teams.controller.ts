@@ -22,6 +22,12 @@ import { TeamsService } from './teams.service';
 import { TeamAccess, TeamAccessGuard } from './guards/team-access.guard';
 import { RegisterTeamDto, TeamMemberInputDto } from './dto/register-team.dto';
 import {
+  AcceptAccountLinkInvitationDto,
+  AcceptTeamInvitationDto,
+  CreateTeamInvitationDto,
+} from './dto/team-invitation.dto';
+import { TeamInvitationService } from './team-invitation.service';
+import {
   UpdateTeamDto,
   UpdateTeamMemberDto,
   UpdateTeamStatusDto,
@@ -32,13 +38,17 @@ import {
  */
 @Controller()
 export class TeamsController {
-  constructor(private teamsService: TeamsService) {}
+  constructor(
+    private teamsService: TeamsService,
+    private teamInvitations: TeamInvitationService,
+  ) {}
 
   /**
    * GET /api/tournaments/:slug/registration-form
    * Cấu hình + prefill form đăng ký (GĐ 4.1) — cần đăng nhập
    */
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, VisibilityGuard)
+  @VisibilityResource('slug:slug')
   @Get('tournaments/:slug/registration-form')
   getRegistrationForm(
     @CurrentUser() user: AuthenticatedUser,
@@ -51,7 +61,8 @@ export class TeamsController {
    * POST /api/tournaments/:slug/register
    * Đăng ký đội tham gia giải (UC-U11) — cần đăng nhập
    */
-  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, VisibilityGuard)
+  @VisibilityResource('slug:slug')
   @Post('tournaments/:slug/register')
   register(
     @CurrentUser() user: AuthenticatedUser,
@@ -89,6 +100,82 @@ export class TeamsController {
     @Body() dto: RegisterTeamDto,
   ) {
     return this.teamsService.addManual(user.id, slug, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('slug:slug')
+  @Get('tournaments/:slug/manual-team-form')
+  getManualTeamForm(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('slug') slug: string,
+  ) {
+    return this.teamsService.getManualRegistrationForm(slug, user);
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('slug:slug')
+  @Get('tournaments/:slug/team-invitations')
+  listInvitations(
+    @CurrentUser('id') userId: string,
+    @Param('slug') slug: string,
+  ) {
+    return this.teamInvitations.listForTournament(userId, slug);
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('slug:slug')
+  @Post('tournaments/:slug/team-invitations')
+  inviteTeam(
+    @CurrentUser('id') userId: string,
+    @Param('slug') slug: string,
+    @Body() dto: CreateTeamInvitationDto,
+  ) {
+    return this.teamInvitations.inviteTeam(userId, slug, dto.email);
+  }
+
+  @Get('team-invitations/preview')
+  previewInvitation(@Query('token') token: string) {
+    return this.teamInvitations.preview(token);
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
+  @Get('team-invitations/registration-form')
+  invitationRegistrationForm(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('token') token: string,
+  ) {
+    return this.teamInvitations.getRegistrationForm(token, user);
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
+  @Post('team-invitations/accept')
+  acceptTeamInvitation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: AcceptTeamInvitationDto,
+  ) {
+    return this.teamInvitations.acceptTeamRegistration(
+      dto.token,
+      user,
+      dto.team,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
+  @Post('team-invitations/accept-account-link')
+  acceptAccountLinkInvitation(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: AcceptAccountLinkInvitationDto,
+  ) {
+    return this.teamInvitations.acceptAccountLink(dto.token, user);
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
+  @Delete('team-invitations/:id')
+  revokeInvitation(
+    @CurrentUser('id') userId: string,
+    @Param('id') invitationId: string,
+  ) {
+    return this.teamInvitations.revoke(userId, invitationId);
   }
 
   /**
@@ -135,6 +222,17 @@ export class TeamsController {
   @Post('teams/:id/members')
   addMember(@Param('id') id: string, @Body() dto: TeamMemberInputDto) {
     return this.teamsService.addMember(id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, TeamAccessGuard)
+  @TeamAccess('CAPTAIN_OR_ORGANIZER')
+  @Post('teams/:id/members/:memberId/invitation')
+  inviteMember(
+    @CurrentUser('id') userId: string,
+    @Param('id') teamId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.teamInvitations.inviteMember(userId, teamId, memberId);
   }
 
   /**

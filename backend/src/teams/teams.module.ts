@@ -11,6 +11,8 @@ import { TeamReviewService } from './team-review.service';
 import { TournamentRealtimeModule } from '../tournaments/tournament-realtime.module';
 import { NotificationModule } from '../notifications/notification.module';
 import { EmailModule } from '../email/email.module';
+import { TeamInvitationService } from './team-invitation.service';
+import { TeamInvitationTokenService } from './team-invitation-token.service';
 
 /**
  * Module Team — đăng ký & quản lý hồ sơ đội (UC-U06, U07, U08, U11, U12, G06)
@@ -31,6 +33,8 @@ import { EmailModule } from '../email/email.module';
     RegistrationRosterPolicy,
     TeamQueryService,
     TeamReviewService,
+    TeamInvitationService,
+    TeamInvitationTokenService,
   ],
   exports: [TeamsService, TeamQueryService, TeamReviewService],
 })

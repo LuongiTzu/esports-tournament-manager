@@ -104,6 +104,19 @@ enum RegistrationStatus {
   REJECTED
 }
 
+enum TeamInvitationPurpose {
+  TEAM_REGISTRATION
+  TEAM_CLAIM
+  MEMBER_LINK
+}
+
+enum TeamInvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
 /// Vai trò của thành viên trong đội
 enum MemberRole {
   CAPTAIN /// Đội trưởng — đúng 1 người mỗi đội
@@ -221,15 +234,17 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  organizedTournaments Tournament[]         @relation("OrganizerTournaments")
-  captainedTeams       Team[]               @relation("CaptainedTeams")
-  teamMembers          TeamMember[]
-  comments             Comment[]            @relation("CommentAuthor")
-  commentReplyTargets  Comment[]            @relation("CommentReplyTarget")
-  notifications        Notification[]
-  tournamentFavorites  TournamentFavorite[]
-  reportedReports      Report[]             @relation("ReporterReports")
-  reviewedReports      Report[]             @relation("ReviewedReports")
+  organizedTournaments    Tournament[]         @relation("OrganizerTournaments")
+  captainedTeams          Team[]               @relation("CaptainedTeams")
+  teamMembers             TeamMember[]
+  comments                Comment[]            @relation("CommentAuthor")
+  commentReplyTargets     Comment[]            @relation("CommentReplyTarget")
+  notifications           Notification[]
+  tournamentFavorites     TournamentFavorite[]
+  reportedReports         Report[]             @relation("ReporterReports")
+  reviewedReports         Report[]             @relation("ReviewedReports")
+  sentTeamInvitations     TeamInvitation[]     @relation("SentTeamInvitations")
+  acceptedTeamInvitations TeamInvitation[]     @relation("AcceptedTeamInvitations")
 
   @@map("users")
 }
@@ -309,12 +324,13 @@ model Tournament {
   organizerId String @map("organizer_id")
   organizer   User   @relation("OrganizerTournaments", fields: [organizerId], references: [id])
 
-  rounds        Round[]
-  teams         Team[]
-  comments      Comment[]
-  reports       Report[]
-  notifications Notification[]
-  favorites     TournamentFavorite[]
+  rounds          Round[]
+  teams           Team[]
+  comments        Comment[]
+  reports         Report[]
+  notifications   Notification[]
+  favorites       TournamentFavorite[]
+  teamInvitations TeamInvitation[]
 
   @@index([gameId, visibility, moderationStatus])
   @@index([status, startDate])
@@ -440,7 +456,8 @@ model Team {
   captainId String @map("captain_id") /// Người đăng ký/đại diện đội
   captain   User   @relation("CaptainedTeams", fields: [captainId], references: [id])
 
-  members TeamMember[]
+  members     TeamMember[]
+  invitations TeamInvitation[]
 
   // Matches
   matchesAsTeamA Match[] @relation("TeamAMatches")
@@ -482,9 +499,46 @@ model TeamMember {
   teamId String @map("team_id")
   team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
+  invitations TeamInvitation[]
+
   @@unique([teamId, ign])
   @@index([teamId])
   @@map("team_members")
+}
+
+/// Lời mời tham gia giải riêng tư, nhận quyền đội hoặc liên kết tài khoản thành viên.
+model TeamInvitation {
+  id         String                @id @default(cuid())
+  purpose    TeamInvitationPurpose
+  status     TeamInvitationStatus  @default(PENDING)
+  email      String
+  tokenHash  String                @unique @map("token_hash")
+  expiresAt  DateTime              @map("expires_at")
+  acceptedAt DateTime?             @map("accepted_at")
+  revokedAt  DateTime?             @map("revoked_at")
+  createdAt  DateTime              @default(now()) @map("created_at")
+  updatedAt  DateTime              @updatedAt @map("updated_at")
+
+  tournamentId String     @map("tournament_id")
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  teamId String? @map("team_id")
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  memberId String?     @map("member_id")
+  member   TeamMember? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  invitedById String @map("invited_by_id")
+  invitedBy   User   @relation("SentTeamInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  acceptedById String? @map("accepted_by_id")
+  acceptedBy   User?   @relation("AcceptedTeamInvitations", fields: [acceptedById], references: [id], onDelete: SetNull)
+
+  @@index([tournamentId, status, expiresAt])
+  @@index([email, status])
+  @@index([teamId])
+  @@index([memberId])
+  @@map("team_invitations")
 }
 
 /// Trận đấu giữa 2 đội

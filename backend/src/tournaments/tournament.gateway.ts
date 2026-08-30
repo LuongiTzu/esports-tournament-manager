@@ -9,7 +9,12 @@ import {
   WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
-import { ModerationStatus, Role, Visibility } from '@prisma/client';
+import {
+  ModerationStatus,
+  RegistrationStatus,
+  Role,
+  Visibility,
+} from '@prisma/client';
 import { Server, Socket } from 'socket.io';
 import { Subscription } from 'rxjs';
 import { OnModuleDestroy } from '@nestjs/common';
@@ -120,6 +125,9 @@ export class TournamentGateway
       const team = await this.prisma.team.findFirst({
         where: {
           tournamentId,
+          status: {
+            in: [RegistrationStatus.PENDING, RegistrationStatus.APPROVED],
+          },
           OR: [
             { captainId: user.id },
             { members: { some: { userId: user.id } } },

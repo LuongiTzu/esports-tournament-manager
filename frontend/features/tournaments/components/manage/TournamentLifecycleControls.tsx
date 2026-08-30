@@ -5,6 +5,7 @@ import {
   CalendarBlankIcon,
   CheckCircleIcon,
   CircleNotchIcon,
+  EyeIcon,
   LockKeyIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
@@ -25,6 +26,10 @@ export default function TournamentLifecycleControls({
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [publishVisibility, setPublishVisibility] = useState<
+    "PUBLIC" | "PRIVATE"
+  >("PRIVATE");
+  const [publishRegistrationOpen, setPublishRegistrationOpen] = useState(false);
   const canPublishDraft = tournament.status === "DRAFT";
   const registrationCanBeToggled = tournament.status === "REGISTRATION";
 
@@ -36,12 +41,45 @@ export default function TournamentLifecycleControls({
     try {
       await tournamentsApi.updateLifecycle(tournament.id, {
         status: "REGISTRATION",
+        visibility: publishVisibility,
+        registrationOpen: publishRegistrationOpen,
       });
       await onRefresh();
       setNotice(t("lifecycle.published"));
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : t("lifecycle.publishError"),
+      );
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const toggleVisibility = async () => {
+    if (working || tournament.status === "DRAFT") return;
+    const nextVisibility =
+      tournament.visibility === "PUBLIC" ? "PRIVATE" : "PUBLIC";
+    if (
+      !window.confirm(
+        t(`lifecycle.visibilityConfirm.${nextVisibility}` as TranslationKey),
+      )
+    ) {
+      return;
+    }
+    setWorking(true);
+    setError("");
+    setNotice("");
+    try {
+      await tournamentsApi.updateLifecycle(tournament.id, {
+        visibility: nextVisibility,
+      });
+      await onRefresh();
+      setNotice(t("lifecycle.visibilityUpdated"));
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : t("lifecycle.visibilityUpdateError"),
       );
     } finally {
       setWorking(false);
@@ -105,16 +143,82 @@ export default function TournamentLifecycleControls({
               : t("lifecycle.transitionUnavailable")}
           </p>
           {canPublishDraft && (
-            <button
-              type="button"
-              onClick={publishDraft}
-              disabled={working}
-              className={`${secondaryButtonClass} mt-4`}
-            >
-              {working && <CircleNotchIcon className="animate-spin" />}
-              {t("lifecycle.publishDraft")}
-            </button>
+            <div className="mt-4 space-y-3">
+              <label className="block text-xs font-medium text-ink-muted">
+                {t("lifecycle.publishVisibility")}
+                <select
+                  value={publishVisibility}
+                  onChange={(event) =>
+                    setPublishVisibility(
+                      event.target.value as "PUBLIC" | "PRIVATE",
+                    )
+                  }
+                  className="mt-1 block w-full rounded-lg border border-line bg-surface-card px-3 py-2 text-sm text-ink"
+                >
+                  <option value="PRIVATE">
+                    {t("tournament.visibility.PRIVATE")}
+                  </option>
+                  <option value="PUBLIC">
+                    {t("tournament.visibility.PUBLIC")}
+                  </option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-xs text-ink-muted">
+                <input
+                  type="checkbox"
+                  checked={publishRegistrationOpen}
+                  onChange={(event) =>
+                    setPublishRegistrationOpen(event.target.checked)
+                  }
+                  className="accent-[var(--color-brand)]"
+                />
+                {t("lifecycle.publishRegistrationOpen")}
+              </label>
+              <button
+                type="button"
+                onClick={publishDraft}
+                disabled={working}
+                className={secondaryButtonClass}
+              >
+                {working && <CircleNotchIcon className="animate-spin" />}
+                {t("lifecycle.publishDraft")}
+              </button>
+            </div>
           )}
+        </div>
+
+        <div className="rounded-xl border border-line bg-surface-sub/45 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <EyeIcon className="text-brand" />
+                <h3 className="font-semibold text-ink">
+                  {t("lifecycle.visibility")}
+                </h3>
+              </div>
+              <p className="mt-2 text-sm font-medium text-ink">
+                {t(
+                  `tournament.visibility.${tournament.visibility}` as TranslationKey,
+                )}
+              </p>
+            </div>
+            {tournament.status !== "DRAFT" && (
+              <button
+                type="button"
+                onClick={toggleVisibility}
+                disabled={working}
+                className={secondaryButtonClass}
+              >
+                {working && <CircleNotchIcon className="animate-spin" />}
+                {tournament.visibility === "PUBLIC"
+                  ? t("lifecycle.makePrivate")
+                  : t("lifecycle.makePublic")}
+              </button>
+            )}
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-ink-faint">
+            {t("lifecycle.visibilityRule")}
+          </p>
         </div>
 
         <div className="rounded-xl border border-line bg-surface-sub/45 p-4">

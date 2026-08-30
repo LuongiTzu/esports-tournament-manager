@@ -27,6 +27,31 @@ describe('TeamsController visibility', () => {
     },
   );
 
+  it('protects the public registration form with authenticated tournament visibility', () => {
+    const method = TeamsController.prototype.getRegistrationForm;
+
+    expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
+      JwtAuthGuard,
+      VisibilityGuard,
+    ]);
+    expect(Reflect.getMetadata(VISIBILITY_RESOURCE_KEY, method)).toBe(
+      'slug:slug',
+    );
+  });
+
+  it('protects direct registration with verified authentication and tournament visibility', () => {
+    const method = TeamsController.prototype.register;
+
+    expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
+      JwtAuthGuard,
+      EmailVerifiedGuard,
+      VisibilityGuard,
+    ]);
+    expect(Reflect.getMetadata(VISIBILITY_RESOURCE_KEY, method)).toBe(
+      'slug:slug',
+    );
+  });
+
   it.each(['update', 'addMember', 'updateMember', 'removeMember'] as const)(
     'protects %s with JWT and captain-or-organizer access',
     (methodName) => {

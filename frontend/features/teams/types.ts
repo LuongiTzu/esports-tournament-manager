@@ -44,6 +44,7 @@ export interface TeamMember {
   memberRole: MemberRole;
   avatarUrl: string | null;
   orderIndex: number;
+  userId?: string | null;
 }
 
 export interface TeamDetail extends TeamWithMembers {
@@ -163,3 +164,50 @@ export interface MyTeam extends TeamWithMembers {
 
 export type UpdateTeamStatusRequest =
   { status: "APPROVED" } | { status: "REJECTED"; rejectReason: string };
+
+export type TeamInvitationPurpose =
+  "TEAM_REGISTRATION" | "TEAM_CLAIM" | "MEMBER_LINK";
+
+export type TeamInvitationStatus =
+  "PENDING" | "ACCEPTED" | "REVOKED" | "EXPIRED";
+
+export interface TeamInvitation {
+  id: string;
+  purpose: TeamInvitationPurpose;
+  status: TeamInvitationStatus;
+  email: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+  team: { id: string; name: string } | null;
+  member: { id: string; realName: string; ign: string } | null;
+  acceptedBy: { id: string; displayName: string; email: string } | null;
+}
+
+export interface TeamInvitationPreview {
+  purpose: TeamInvitationPurpose;
+  email: string;
+  expiresAt: string;
+  tournament: {
+    id: string;
+    slug: string;
+    name: string;
+    description: string | null;
+    status: TournamentStatus;
+    mode: "ONLINE" | "OFFLINE" | "HYBRID";
+    registrationDeadline: string | null;
+    startDate: string | null;
+    minTeamSize: number;
+    maxTeamSize: number;
+    organizer: { id: string; displayName: string; avatarUrl: string | null };
+    game: { id: string; code: string; name: string; iconUrl: string | null };
+  };
+  team: { id: string; name: string; status: TeamStatus } | null;
+  member: {
+    id: string;
+    realName: string;
+    ign: string;
+    memberRole: MemberRole;
+  } | null;
+}

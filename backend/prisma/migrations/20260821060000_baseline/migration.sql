@@ -556,3 +556,60 @@ ALTER TABLE "reports" ADD CONSTRAINT "reports_reviewed_by_fkey" FOREIGN KEY ("re
 ALTER TABLE "tournaments"
 ADD CONSTRAINT "tournaments_roster_size_check"
 CHECK ("max_team_size" >= "min_team_size");
+
+-- CreateEnum
+CREATE TYPE "TeamInvitationPurpose" AS ENUM ('TEAM_REGISTRATION', 'TEAM_CLAIM', 'MEMBER_LINK');
+
+-- CreateEnum
+CREATE TYPE "TeamInvitationStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REVOKED', 'EXPIRED');
+
+-- CreateTable
+CREATE TABLE "team_invitations" (
+    "id" TEXT NOT NULL,
+    "purpose" "TeamInvitationPurpose" NOT NULL,
+    "status" "TeamInvitationStatus" NOT NULL DEFAULT 'PENDING',
+    "email" TEXT NOT NULL,
+    "token_hash" TEXT NOT NULL,
+    "expires_at" TIMESTAMP(3) NOT NULL,
+    "accepted_at" TIMESTAMP(3),
+    "revoked_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    "tournament_id" TEXT NOT NULL,
+    "team_id" TEXT,
+    "member_id" TEXT,
+    "invited_by_id" TEXT NOT NULL,
+    "accepted_by_id" TEXT,
+
+    CONSTRAINT "team_invitations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "team_invitations_token_hash_key" ON "team_invitations"("token_hash");
+
+-- CreateIndex
+CREATE INDEX "team_invitations_tournament_id_status_expires_at_idx" ON "team_invitations"("tournament_id", "status", "expires_at");
+
+-- CreateIndex
+CREATE INDEX "team_invitations_email_status_idx" ON "team_invitations"("email", "status");
+
+-- CreateIndex
+CREATE INDEX "team_invitations_team_id_idx" ON "team_invitations"("team_id");
+
+-- CreateIndex
+CREATE INDEX "team_invitations_member_id_idx" ON "team_invitations"("member_id");
+
+-- AddForeignKey
+ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_member_id_fkey" FOREIGN KEY ("member_id") REFERENCES "team_members"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_invited_by_id_fkey" FOREIGN KEY ("invited_by_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_accepted_by_id_fkey" FOREIGN KEY ("accepted_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;

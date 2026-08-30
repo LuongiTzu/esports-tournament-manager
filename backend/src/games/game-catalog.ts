@@ -1,5 +1,7 @@
 import { GameGenre, GamePositionMode, TeamSizeMode } from '@prisma/client';
 
+const STANDARD_ROSTER_CAP = 10;
+
 export interface GameCatalogEntry {
   code: string;
   name: string;
@@ -40,7 +42,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.FIXED,
     defaultTeamSize: 5,
     minTeamSize: 5,
-    maxTeamSize: 7,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   fixedGame({
     code: 'LIEN_QUAN_MOBILE',
@@ -50,7 +52,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.FIXED,
     defaultTeamSize: 5,
     minTeamSize: 5,
-    maxTeamSize: 7,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   fixedGame({
     code: 'VALORANT',
@@ -60,7 +62,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.OPTIONAL,
     defaultTeamSize: 5,
     minTeamSize: 5,
-    maxTeamSize: 7,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   fixedGame({
     code: 'COUNTER_STRIKE_2',
@@ -70,7 +72,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.NONE,
     defaultTeamSize: 5,
     minTeamSize: 5,
-    maxTeamSize: 7,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   fixedGame({
     code: 'DOTA_2',
@@ -86,7 +88,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.FIXED,
     defaultTeamSize: 5,
     minTeamSize: 5,
-    maxTeamSize: 7,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   fixedGame({
     code: 'ROCKET_LEAGUE',
@@ -96,7 +98,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.NONE,
     defaultTeamSize: 3,
     minTeamSize: 3,
-    maxTeamSize: 4,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   fixedGame({
     code: 'TEKKEN_8',
@@ -106,7 +108,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.NONE,
     defaultTeamSize: 1,
     minTeamSize: 1,
-    maxTeamSize: 1,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   fixedGame({
     code: 'STREET_FIGHTER_6',
@@ -116,7 +118,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.NONE,
     defaultTeamSize: 1,
     minTeamSize: 1,
-    maxTeamSize: 1,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   fixedGame({
     code: 'MLBB',
@@ -126,7 +128,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.FIXED,
     defaultTeamSize: 5,
     minTeamSize: 5,
-    maxTeamSize: 7,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   fixedGame({
     code: 'HONOR_OF_KINGS',
@@ -136,7 +138,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.FIXED,
     defaultTeamSize: 5,
     minTeamSize: 5,
-    maxTeamSize: 8,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   fixedGame({
     code: 'WILD_RIFT',
@@ -146,7 +148,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.FIXED,
     defaultTeamSize: 5,
     minTeamSize: 5,
-    maxTeamSize: 8,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   {
     code: 'FC_ONLINE',
@@ -157,7 +159,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     teamSizeMode: TeamSizeMode.PRESET,
     defaultTeamSize: 3,
     minTeamSize: 1,
-    maxTeamSize: 4,
+    maxTeamSize: STANDARD_ROSTER_CAP,
     allowedTeamSizes: [1, 3],
     minSelectableTeamSize: null,
     maxSelectableTeamSize: null,
@@ -170,7 +172,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.OPTIONAL,
     defaultTeamSize: 5,
     minTeamSize: 5,
-    maxTeamSize: 6,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   fixedGame({
     code: 'POKEMON_UNITE',
@@ -180,7 +182,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     positionMode: GamePositionMode.NONE,
     defaultTeamSize: 5,
     minTeamSize: 5,
-    maxTeamSize: 6,
+    maxTeamSize: STANDARD_ROSTER_CAP,
   }),
   {
     code: 'CUSTOM',

@@ -5,7 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ModerationStatus, Visibility } from '@prisma/client';
+import {
+  ModerationStatus,
+  RegistrationStatus,
+  Visibility,
+} from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/strategies/jwt.strategy';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VISIBILITY_RESOURCE_KEY } from '../decorators/visibility.decorator';
@@ -47,6 +51,9 @@ export class VisibilityGuard implements CanActivate {
     const belongsToTeam = await this.prisma.team.findFirst({
       where: {
         tournamentId: tournament.id,
+        status: {
+          in: [RegistrationStatus.PENDING, RegistrationStatus.APPROVED],
+        },
         OR: [
           { captainId: user.id },
           { members: { some: { userId: user.id } } },

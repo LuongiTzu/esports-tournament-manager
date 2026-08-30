@@ -10,6 +10,10 @@ import { alertErrorClass } from "@/components/ui";
 import { PENDING_VERIFICATION_EMAIL_KEY } from "@/features/auth/email-verification";
 import { useSensitiveToken } from "@/features/auth/hooks/useSensitiveToken";
 import { useCooldown } from "@/features/auth/hooks/useCooldown";
+import {
+  PENDING_AUTH_RETURN_TO_KEY,
+  safeReturnTo,
+} from "@/features/auth/return-to";
 
 export default function VerifyEmailPage() {
   const { ready, token, registered } = useSensitiveToken();
@@ -64,13 +68,19 @@ export default function VerifyEmailPage() {
   const pendingEmail = ready
     ? (sessionStorage.getItem(PENDING_VERIFICATION_EMAIL_KEY) ?? "")
     : "";
+  const pendingReturnTo = ready
+    ? safeReturnTo(sessionStorage.getItem(PENDING_AUTH_RETURN_TO_KEY))
+    : null;
+  const loginHref = pendingReturnTo
+    ? `/login?returnTo=${encodeURIComponent(pendingReturnTo)}`
+    : "/login";
   return (
     <AuthShell
       eyebrow="Bảo mật tài khoản"
       title="Xác minh email"
       subtitle="Xác minh email để có thể đăng nhập bằng email và mật khẩu. Liên kết chỉ dùng một lần và có hiệu lực 24 giờ."
       visual={<AuthVisualPanel mode="register" />}
-      footer={<Link href="/login">Đi tới đăng nhập</Link>}
+      footer={<Link href={loginHref}>Đi tới đăng nhập</Link>}
     >
       <div className="mt-7 space-y-4">
         {(!ready || status === "loading") && (
@@ -108,22 +118,22 @@ export default function VerifyEmailPage() {
         {(missingToken || status === "error") &&
           status !== "success" &&
           pendingEmail && (
-          <form
-            onSubmit={resend}
-            className="space-y-4 border-t border-line pt-5"
-          >
-            <button
-              type="submit"
-              disabled={resending || cooldown.seconds > 0}
-              className={styles.submitButton}
+            <form
+              onSubmit={resend}
+              className="space-y-4 border-t border-line pt-5"
             >
-              {resending
-                ? "Đang gửi…"
-                : cooldown.seconds > 0
-                  ? `Gửi lại sau ${cooldown.seconds}s`
-                  : "Gửi lại xác minh"}
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={resending || cooldown.seconds > 0}
+                className={styles.submitButton}
+              >
+                {resending
+                  ? "Đang gửi…"
+                  : cooldown.seconds > 0
+                    ? `Gửi lại sau ${cooldown.seconds}s`
+                    : "Gửi lại xác minh"}
+              </button>
+            </form>
           )}
       </div>
     </AuthShell>

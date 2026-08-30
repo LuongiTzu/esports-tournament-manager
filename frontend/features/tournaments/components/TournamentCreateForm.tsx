@@ -317,6 +317,7 @@ export default function TournamentCreateForm() {
   );
   const formRef = useRef<HTMLFormElement>(null);
   const wizardTopRef = useRef<HTMLDivElement>(null);
+  const contactDefaultsAppliedForUserRef = useRef<string | null>(null);
   const [createdTournament, setCreatedTournament] = useState<{
     id: string;
     slug: string;
@@ -345,6 +346,18 @@ export default function TournamentCreateForm() {
     };
   }, [router, ready, user]);
 
+  useEffect(() => {
+    if (!ready || !user) return;
+    if (contactDefaultsAppliedForUserRef.current === user.id) return;
+
+    contactDefaultsAppliedForUserRef.current = user.id;
+    setForm((current) => ({
+      ...current,
+      contactEmail: current.contactEmail || user.email,
+      contactPhone: current.contactPhone || user.phoneNumber?.trim() || "",
+    }));
+  }, [ready, user]);
+
   const selectedGame = games.find((game) => game.id === form.gameId);
   const minimumMembers = optionalNumber(form.teamSize);
   const maximumMembers = optionalNumber(form.maxTeamSize);
@@ -364,7 +377,10 @@ export default function TournamentCreateForm() {
     });
   };
 
-  const goToNextStep = () => {
+  const goToNextStep = (event?: React.SyntheticEvent) => {
+    // The next button becomes the submit button when entering the final step.
+    // Prevent the original click from submitting that reused DOM node.
+    event?.preventDefault();
     if (!formRef.current?.reportValidity()) return;
     showStep(Math.min(steps.length - 1, currentStep + 1));
   };
@@ -679,6 +695,13 @@ export default function TournamentCreateForm() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
+
+    // Native form submission (for example, pressing Enter) must not skip the
+    // remaining review step.
+    if (currentStep < steps.length - 1) {
+      goToNextStep();
+      return;
+    }
 
     const validationError = validateForm();
     if (validationError) {

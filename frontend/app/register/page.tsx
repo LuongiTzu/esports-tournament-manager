@@ -24,6 +24,10 @@ import type { Gender } from "@/features/auth/types";
 import { alertErrorClass } from "@/components/ui";
 import { PENDING_VERIFICATION_EMAIL_KEY } from "@/features/auth/email-verification";
 import { useLocale } from "@/features/locale/store";
+import {
+  PENDING_AUTH_RETURN_TO_KEY,
+  useAuthParams,
+} from "@/features/auth/return-to";
 
 interface RegisterForm {
   displayName: string;
@@ -53,6 +57,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const { returnTo, email: invitedEmail } = useAuthParams();
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -73,7 +78,7 @@ export default function RegisterPage() {
     try {
       const result = await authApi.register({
         displayName: form.displayName.trim(),
-        email: form.email,
+        email: invitedEmail || form.email,
         password: form.password,
         birthDate: form.birthDate || undefined,
         currentAddress: form.currentAddress.trim() || undefined,
@@ -81,6 +86,9 @@ export default function RegisterPage() {
         gender: form.gender || undefined,
       });
       sessionStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, result.user.email);
+      if (returnTo) {
+        sessionStorage.setItem(PENDING_AUTH_RETURN_TO_KEY, returnTo);
+      }
       router.push("/verify-email?registered=1");
     } catch (err) {
       setError(
@@ -97,7 +105,7 @@ export default function RegisterPage() {
       setGoogleLoading(true);
       try {
         await loginWithGoogle(credential);
-        router.push("/");
+        router.push(returnTo ?? "/");
       } catch (err) {
         setError(
           err instanceof Error ? err.message : t("auth.google.fallbackError"),
@@ -106,7 +114,7 @@ export default function RegisterPage() {
         setGoogleLoading(false);
       }
     },
-    [router, t],
+    [returnTo, router, t],
   );
 
   const handleGoogleError = useCallback(() => {
@@ -123,7 +131,11 @@ export default function RegisterPage() {
         <>
           {t("auth.register.hasAccount")}{" "}
           <Link
-            href="/login"
+            href={
+              returnTo
+                ? `/login?returnTo=${encodeURIComponent(returnTo)}`
+                : "/login"
+            }
             className="font-medium text-brand hover:underline"
           >
             {t("auth.login.submit")}
@@ -186,8 +198,9 @@ export default function RegisterPage() {
               name="email"
               required
               autoComplete="email"
-              value={form.email}
+              value={invitedEmail || form.email}
               onChange={handleChange}
+              readOnly={Boolean(invitedEmail)}
               className={`${styles.input} ${styles.registerInput}`}
               placeholder="ban@vidu.com"
             />

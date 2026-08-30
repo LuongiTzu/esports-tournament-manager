@@ -23,6 +23,7 @@ import type {
   TournamentDetail,
   TournamentStandingsResponse,
 } from "@/features/tournaments/types";
+
 import RoundCompetitionView from "./RoundCompetitionView";
 import MatchManagementPanel from "./MatchManagementPanel";
 import RoundProgressionSummary from "./RoundProgressionSummary";
@@ -30,6 +31,9 @@ import RoundStandingsView from "./RoundStandingsView";
 import RoundSettingsSummary from "../competition/RoundSettingsSummary";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { useCompetitionInvalidation } from "@/features/tournaments/realtime";
+
+const generateStructureButtonClass =
+  "inline-flex min-h-12 items-center justify-center gap-2.5 rounded-md bg-brand px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-brand shadow-[0_12px_30px_-14px_var(--color-brand)] transition hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50";
 
 export default function CompetitionManager({
   tournament,
@@ -371,7 +375,9 @@ export default function CompetitionManager({
                       onClick={generate}
                       disabled={Boolean(working)}
                       className={
-                        hasStructure ? secondaryButtonClass : primaryButtonClass
+                        hasStructure
+                          ? secondaryButtonClass
+                          : generateStructureButtonClass
                       }
                     >
                       {working === "generate" ? (

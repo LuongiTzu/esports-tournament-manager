@@ -2,7 +2,7 @@
 
 import { use, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeftIcon,
   CalendarBlankIcon,
@@ -142,8 +142,11 @@ export default function RegisterTeamPage({
 }) {
   const { slug } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, ready } = useAuth();
   const { locale, t } = useLocale();
+  const invitationToken = searchParams.get("invitation")?.trim() ?? "";
+  const manualMode = searchParams.get("mode") === "manual";
 
   const [config, setConfig] = useState<TeamRegistrationForm | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -167,13 +170,24 @@ export default function RegisterTeamPage({
   useEffect(() => {
     if (!ready) return;
     if (!user) {
-      router.push("/login");
+      const returnTo = `/tournaments/${slug}/register-team${
+        invitationToken
+          ? `?invitation=${encodeURIComponent(invitationToken)}`
+          : manualMode
+            ? "?mode=manual"
+            : ""
+      }`;
+      router.push(`/login?returnTo=${encodeURIComponent(returnTo)}`);
       return;
     }
 
     let cancelled = false;
-    teamsApi
-      .getRegistrationForm(slug)
+    const formRequest = invitationToken
+      ? teamsApi.getInvitationRegistrationForm(invitationToken)
+      : manualMode
+        ? teamsApi.getManualRegistrationForm(slug)
+        : teamsApi.getRegistrationForm(slug);
+    formRequest
       .then((data) => {
         if (cancelled) return;
         setConfig(data);
@@ -200,7 +214,7 @@ export default function RegisterTeamPage({
     return () => {
       cancelled = true;
     };
-  }, [slug, ready, user, router, t]);
+  }, [slug, invitationToken, manualMode, ready, user, router, t]);
 
   const updateMember = (
     index: number,
@@ -274,7 +288,7 @@ export default function RegisterTeamPage({
 
     setSubmitting(true);
     try {
-      const team = await teamsApi.register(slug, {
+      const registration = {
         name: name.trim(),
         logoUrl: logoUrl.trim() || undefined,
         contactName: contactName.trim(),
@@ -294,7 +308,12 @@ export default function RegisterTeamPage({
           memberRole: member.memberRole,
           orderIndex: index,
         })),
-      });
+      };
+      const team = invitationToken
+        ? await teamsApi.acceptTeamInvitation(invitationToken, registration)
+        : manualMode
+          ? await teamsApi.addManual(slug, registration)
+          : await teamsApi.register(slug, registration);
 
       if (logoFile) {
         try {
@@ -312,7 +331,11 @@ export default function RegisterTeamPage({
         }
       }
 
-      router.push(`/tournaments/${slug}`);
+      router.push(
+        manualMode
+          ? `/tournaments/${slug}/manage#registrations`
+          : `/tournaments/${slug}`,
+      );
     } catch (reason: unknown) {
       if (isEmailNotVerifiedError(reason)) {
         setError(t("emailVerification.required"));
@@ -397,7 +420,11 @@ export default function RegisterTeamPage({
     setSubmitting(true);
     try {
       await teamsApi.uploadLogo(registeredTeam.id, logoFile);
-      router.push(`/tournaments/${slug}`);
+      router.push(
+        manualMode
+          ? `/tournaments/${slug}/manage#registrations`
+          : `/tournaments/${slug}`,
+      );
     } catch (uploadError) {
       setRegisteredTeam((current) =>
         current
@@ -427,7 +454,8 @@ export default function RegisterTeamPage({
             {t("team.register.createdSuffix")}
           </h1>
           <p className="mt-2 text-sm leading-6 text-ink-muted">
-            {t("team.register.partialUploadPrefix")} {registeredTeam.uploadError}{" "}
+            {t("team.register.partialUploadPrefix")}{" "}
+            {registeredTeam.uploadError}{" "}
             {t("team.register.partialUploadSuffix")}
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
@@ -441,7 +469,10 @@ export default function RegisterTeamPage({
                 ? t("team.register.retryingLogo")
                 : t("team.register.retryLogo")}
             </button>
-            <Link href={`/tournaments/${slug}`} className={secondaryButtonClass}>
+            <Link
+              href={`/tournaments/${slug}`}
+              className={secondaryButtonClass}
+            >
               {t("team.register.goToTournament")}
             </Link>
           </div>
@@ -457,7 +488,11 @@ export default function RegisterTeamPage({
     >
       <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
         <Link
-          href={`/tournaments/${slug}`}
+          href={
+            manualMode
+              ? `/tournaments/${slug}/manage#registrations`
+              : `/tournaments/${slug}`
+          }
           className="inline-flex items-center gap-2 text-sm text-ink-muted transition hover:text-ink"
         >
           <ArrowLeftIcon size={16} />
@@ -480,7 +515,9 @@ export default function RegisterTeamPage({
                 <span className="grid size-10 place-items-center border border-white/15 bg-slate-950/50 backdrop-blur-md">
                   <GameControllerIcon size={22} weight="duotone" />
                 </span>
-                <span className="text-sm font-bold">{rules.displayGameName}</span>
+                <span className="text-sm font-bold">
+                  {rules.displayGameName}
+                </span>
               </div>
               <h1 className="mt-4 max-w-4xl text-2xl font-black leading-tight tracking-tight text-white drop-shadow-lg sm:text-4xl">
                 {rules.name}
@@ -494,7 +531,11 @@ export default function RegisterTeamPage({
                 {t("team.register.teamInfo")}
               </p>
               <h2 className="mt-2 text-2xl font-black text-ink sm:text-3xl">
-                {t("team.register.title")}
+                {manualMode
+                  ? t("team.register.manualTitle")
+                  : invitationToken
+                    ? t("team.register.invitedTitle")
+                    : t("team.register.title")}
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
                 {t("team.register.subtitle")}
@@ -533,7 +574,11 @@ export default function RegisterTeamPage({
 
       {!config.canRegister ? (
         <section className="mx-auto mt-8 w-[calc(100%_-_2rem)] max-w-3xl border border-line bg-surface-card px-6 py-12 text-center shadow-[0_14px_36px_rgb(0_0_0/0.1)]">
-          <ShieldCheckIcon size={34} weight="duotone" className="mx-auto text-ink-faint" />
+          <ShieldCheckIcon
+            size={34}
+            weight="duotone"
+            className="mx-auto text-ink-faint"
+          />
           <h2 className="mt-4 font-bold text-ink">
             {t("team.register.unavailable")}
           </h2>
@@ -577,7 +622,8 @@ export default function RegisterTeamPage({
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div>
                       <label htmlFor="contactName" className={labelClass}>
-                        {t("team.register.representative")} <span className="text-rejected">*</span>
+                        {t("team.register.representative")}{" "}
+                        <span className="text-rejected">*</span>
                       </label>
                       <input
                         id="contactName"
@@ -591,14 +637,17 @@ export default function RegisterTeamPage({
                     </div>
                     <div>
                       <label htmlFor="contactEmail" className={labelClass}>
-                        {t("team.register.representativeEmail")} <span className="text-rejected">*</span>
+                        {t("team.register.representativeEmail")}{" "}
+                        <span className="text-rejected">*</span>
                       </label>
                       <input
                         id="contactEmail"
                         type="email"
                         required
                         value={contactEmail}
-                        onChange={(event) => setContactEmail(event.target.value)}
+                        onChange={(event) =>
+                          setContactEmail(event.target.value)
+                        }
                         className={inputClass}
                       />
                     </div>
@@ -606,7 +655,8 @@ export default function RegisterTeamPage({
 
                   <div>
                     <label htmlFor="contactPhone" className={labelClass}>
-                      {t("team.register.representativePhone")} <span className="text-rejected">*</span>
+                      {t("team.register.representativePhone")}{" "}
+                      <span className="text-rejected">*</span>
                     </label>
                     <input
                       id="contactPhone"
@@ -658,7 +708,10 @@ export default function RegisterTeamPage({
                   <button
                     type="button"
                     onClick={() =>
-                      setMembers((current) => [...current, emptyMember("SUBSTITUTE")])
+                      setMembers((current) => [
+                        ...current,
+                        emptyMember("SUBSTITUTE"),
+                      ])
                     }
                     className={`${secondaryButtonClass} shrink-0 px-3 py-2 text-xs`}
                   >
@@ -667,14 +720,18 @@ export default function RegisterTeamPage({
                   </button>
                 ) : (
                   <span className="shrink-0 border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink-muted">
-                    {t("team.register.full")} {rules.maxTeamSize} {t("team.register.rosterRangeSuffix")}
+                    {t("team.register.full")} {rules.maxTeamSize}{" "}
+                    {t("team.register.rosterRangeSuffix")}
                   </span>
                 )
               }
             >
               <div className="space-y-4 p-5 sm:p-6">
                 {members.map((member, index) => (
-                  <article key={index} className="border border-line bg-surface-sub/55">
+                  <article
+                    key={index}
+                    className="border border-line bg-surface-sub/55"
+                  >
                     <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
                       <div className="flex min-w-0 items-center gap-3">
                         <span className="grid size-8 shrink-0 place-items-center bg-accent text-xs font-black text-on-accent">
@@ -682,7 +739,9 @@ export default function RegisterTeamPage({
                         </span>
                         <div className="min-w-0">
                           <h3 className="truncate text-sm font-bold text-ink">
-                            {index === 0 ? t("team.register.captain") : `${t("team.register.member")} ${index + 1}`}
+                            {index === 0
+                              ? t("team.register.captain")
+                              : `${t("team.register.member")} ${index + 1}`}
                           </h3>
                           <p className="mt-0.5 text-xs text-ink-faint">
                             {t("team.register.memberDetails")}
@@ -691,13 +750,19 @@ export default function RegisterTeamPage({
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="border border-line bg-surface px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
-                          {t(`registration.role.${member.memberRole}` as TranslationKey)}
+                          {t(
+                            `registration.role.${member.memberRole}` as TranslationKey,
+                          )}
                         </span>
                         {index > 0 && members.length > rules.minTeamSize && (
                           <button
                             type="button"
                             onClick={() =>
-                              setMembers((current) => current.filter((_, memberIndex) => memberIndex !== index))
+                              setMembers((current) =>
+                                current.filter(
+                                  (_, memberIndex) => memberIndex !== index,
+                                ),
+                              )
                             }
                             aria-label={`${t("team.register.removeMember")} ${index + 1}`}
                             className="p-2 text-ink-faint transition-colors hover:bg-rejected/10 hover:text-rejected focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
@@ -716,7 +781,9 @@ export default function RegisterTeamPage({
                           required
                           maxLength={100}
                           value={member.realName}
-                          onChange={(event) => updateMember(index, "realName", event.target.value)}
+                          onChange={(event) =>
+                            updateMember(index, "realName", event.target.value)
+                          }
                           className={`${inputClass} mt-1 bg-surface`}
                         />
                       </label>
@@ -727,7 +794,9 @@ export default function RegisterTeamPage({
                           required
                           maxLength={30}
                           value={member.ign}
-                          onChange={(event) => updateMember(index, "ign", event.target.value)}
+                          onChange={(event) =>
+                            updateMember(index, "ign", event.target.value)
+                          }
                           className={`${inputClass} mt-1 bg-surface`}
                         />
                       </label>
@@ -736,7 +805,9 @@ export default function RegisterTeamPage({
                         <input
                           type="email"
                           value={member.email}
-                          onChange={(event) => updateMember(index, "email", event.target.value)}
+                          onChange={(event) =>
+                            updateMember(index, "email", event.target.value)
+                          }
                           className={`${inputClass} mt-1 bg-surface`}
                         />
                       </label>
@@ -746,7 +817,13 @@ export default function RegisterTeamPage({
                           type="tel"
                           maxLength={20}
                           value={member.phoneNumber}
-                          onChange={(event) => updateMember(index, "phoneNumber", event.target.value)}
+                          onChange={(event) =>
+                            updateMember(
+                              index,
+                              "phoneNumber",
+                              event.target.value,
+                            )
+                          }
                           className={`${inputClass} mt-1 bg-surface`}
                         />
                       </label>
@@ -758,7 +835,13 @@ export default function RegisterTeamPage({
                             type="date"
                             required
                             value={member.birthDate}
-                            onChange={(event) => updateMember(index, "birthDate", event.target.value)}
+                            onChange={(event) =>
+                              updateMember(
+                                index,
+                                "birthDate",
+                                event.target.value,
+                              )
+                            }
                             className={`${inputClass} mt-1 bg-surface`}
                           />
                         </label>
@@ -770,13 +853,19 @@ export default function RegisterTeamPage({
                           <select
                             required
                             value={member.gender}
-                            onChange={(event) => updateMember(index, "gender", event.target.value)}
+                            onChange={(event) =>
+                              updateMember(index, "gender", event.target.value)
+                            }
                             className={`${inputClass} mt-1 bg-surface`}
                           >
-                            <option value="">{t("team.register.selectGender")}</option>
+                            <option value="">
+                              {t("team.register.selectGender")}
+                            </option>
                             {genderOptions.map((option) => (
                               <option key={option} value={option}>
-                                {t(`auth.register.gender.${option.toLowerCase()}` as TranslationKey)}
+                                {t(
+                                  `auth.register.gender.${option.toLowerCase()}` as TranslationKey,
+                                )}
                               </option>
                             ))}
                           </select>
@@ -787,13 +876,23 @@ export default function RegisterTeamPage({
                         <label className={labelClass}>
                           {t("team.register.positionAria")}
                           <select
-                            required={config.game.positionMode === "FIXED" && member.memberRole !== "SUBSTITUTE"}
+                            required={
+                              config.game.positionMode === "FIXED" &&
+                              member.memberRole !== "SUBSTITUTE"
+                            }
                             value={member.position}
-                            onChange={(event) => updateMember(index, "position", event.target.value)}
+                            onChange={(event) =>
+                              updateMember(
+                                index,
+                                "position",
+                                event.target.value,
+                              )
+                            }
                             className={`${inputClass} mt-1 bg-surface`}
                           >
                             <option value="">
-                              {config.game.positionMode === "FIXED" && member.memberRole !== "SUBSTITUTE"
+                              {config.game.positionMode === "FIXED" &&
+                              member.memberRole !== "SUBSTITUTE"
                                 ? t("team.register.selectPosition")
                                 : t("team.register.noPosition")}
                             </option>
@@ -839,15 +938,23 @@ export default function RegisterTeamPage({
                   <ShieldCheckIcon size={20} weight="duotone" />
                 </span>
                 <div>
-                  <h2 className="font-bold text-ink">{t("team.register.requirements")}</h2>
-                  <p className="mt-0.5 text-xs text-ink-faint">{t("team.register.requirementsHint")}</p>
+                  <h2 className="font-bold text-ink">
+                    {t("team.register.requirements")}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-ink-faint">
+                    {t("team.register.requirementsHint")}
+                  </p>
                 </div>
               </div>
 
               <div className="p-5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-ink-muted">{t("team.register.memberList")}</span>
-                  <span className="font-mono font-bold text-accent">{members.length}/{rules.maxTeamSize}</span>
+                  <span className="font-semibold text-ink-muted">
+                    {t("team.register.memberList")}
+                  </span>
+                  <span className="font-mono font-bold text-accent">
+                    {members.length}/{rules.maxTeamSize}
+                  </span>
                 </div>
                 <div className="mt-2 h-1.5 overflow-hidden bg-surface-sub">
                   <div
@@ -860,26 +967,49 @@ export default function RegisterTeamPage({
                   {rules.registrationDeadline && (
                     <Requirement
                       label={t("tournament.detail.registrationDeadline")}
-                      value={formatLocalizedDate(rules.registrationDeadline, locale, {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
+                      value={formatLocalizedDate(
+                        rules.registrationDeadline,
+                        locale,
+                        {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        },
+                      )}
                     />
                   )}
-                  <Requirement label={t("team.register.activePlayers")} value={`${rules.minTeamSize}v${rules.minTeamSize}`} />
-                  <Requirement label={t("team.register.rosterLimit")} value={`${rules.minTeamSize} - ${rules.maxTeamSize}`} />
-                  <Requirement label={t("team.register.availableSubstitutes")} value={rules.maxSubstitutes} />
+                  <Requirement
+                    label={t("team.register.activePlayers")}
+                    value={`${rules.minTeamSize}v${rules.minTeamSize}`}
+                  />
+                  <Requirement
+                    label={t("team.register.rosterLimit")}
+                    value={`${rules.minTeamSize} - ${rules.maxTeamSize}`}
+                  />
+                  <Requirement
+                    label={t("team.register.availableSubstitutes")}
+                    value={rules.maxSubstitutes}
+                  />
                   {rules.minAge !== null && (
-                    <Requirement label={t("tournament.create.minAge")} value={rules.minAge} />
+                    <Requirement
+                      label={t("tournament.create.minAge")}
+                      value={rules.minAge}
+                    />
                   )}
                   {rules.maxAge !== null && (
-                    <Requirement label={t("tournament.create.maxAge")} value={rules.maxAge} />
+                    <Requirement
+                      label={t("tournament.create.maxAge")}
+                      value={rules.maxAge}
+                    />
                   )}
                   {rules.allowedGenders?.length ? (
                     <Requirement
                       label={t("tournament.create.allowedGenders")}
                       value={rules.allowedGenders
-                        .map((gender) => t(`auth.register.gender.${gender.toLowerCase()}` as TranslationKey))
+                        .map((gender) =>
+                          t(
+                            `auth.register.gender.${gender.toLowerCase()}` as TranslationKey,
+                          ),
+                        )
                         .join(", ")}
                     />
                   ) : null}
@@ -892,13 +1022,21 @@ export default function RegisterTeamPage({
                 <div className="mt-5 space-y-2 border-t border-line pt-5 text-xs text-ink-muted">
                   {rules.registrationDeadline && (
                     <p className="flex items-center gap-2">
-                      <CalendarBlankIcon size={15} className="shrink-0 text-accent" />
-                      {formatLocalizedDate(rules.registrationDeadline, locale, { dateStyle: "medium" })}
+                      <CalendarBlankIcon
+                        size={15}
+                        className="shrink-0 text-accent"
+                      />
+                      {formatLocalizedDate(rules.registrationDeadline, locale, {
+                        dateStyle: "medium",
+                      })}
                     </p>
                   )}
                   {contactEmail && (
                     <p className="flex min-w-0 items-center gap-2">
-                      <EnvelopeSimpleIcon size={15} className="shrink-0 text-accent" />
+                      <EnvelopeSimpleIcon
+                        size={15}
+                        className="shrink-0 text-accent"
+                      />
                       <span className="truncate">{contactEmail}</span>
                     </p>
                   )}
@@ -912,7 +1050,11 @@ export default function RegisterTeamPage({
               </div>
             </section>
 
-            {error && <p role="alert" className={alertErrorClass}>{error}</p>}
+            {error && (
+              <p role="alert" className={alertErrorClass}>
+                {error}
+              </p>
+            )}
 
             <div className="grid gap-3 border border-line bg-surface-card/95 p-4 shadow-[var(--shadow-elevated)]">
               <button
@@ -920,9 +1062,20 @@ export default function RegisterTeamPage({
                 disabled={submitting}
                 className="inline-flex min-h-[var(--control-height)] items-center justify-center bg-accent px-6 py-3 text-sm font-bold text-on-accent transition-[transform,filter] hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {submitting ? t("team.register.submitting") : t("team.register.submit")}
+                {submitting
+                  ? t("team.register.submitting")
+                  : manualMode
+                    ? t("team.register.manualSubmit")
+                    : t("team.register.submit")}
               </button>
-              <Link href={`/tournaments/${slug}`} className={secondaryButtonClass}>
+              <Link
+                href={
+                  manualMode
+                    ? `/tournaments/${slug}/manage#registrations`
+                    : `/tournaments/${slug}`
+                }
+                className={secondaryButtonClass}
+              >
                 {t("common.cancel")}
               </Link>
             </div>

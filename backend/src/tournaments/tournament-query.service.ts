@@ -7,6 +7,7 @@ import {
   MatchStatus,
   ModerationStatus,
   Prisma,
+  RegistrationStatus,
   RoundFormat,
   RoundStatus,
   TournamentMode,
@@ -240,6 +241,11 @@ export class TournamentQueryService {
             favorites: viewerFavoriteSelection(userId),
             _count: { select: { teams: true, favorites: true } },
             teams: {
+              where: {
+                status: {
+                  in: [RegistrationStatus.PENDING, RegistrationStatus.APPROVED],
+                },
+              },
               select: {
                 captainId: true,
                 members: {
@@ -625,6 +631,9 @@ export class TournamentQueryService {
     const team = await this.prisma.team.findFirst({
       where: {
         tournamentId: tournament.id,
+        status: {
+          in: [RegistrationStatus.PENDING, RegistrationStatus.APPROVED],
+        },
         OR: [{ captainId: userId }, { members: { some: { userId } } }],
       },
       select: { id: true },

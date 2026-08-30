@@ -11,7 +11,9 @@ import {
   NotificationType,
   Prisma,
   RegistrationStatus,
+  TeamInvitationStatus,
   TournamentStatus,
+  Visibility,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
@@ -81,6 +83,9 @@ export class TeamsService {
    */
   async register(userId: string, slug: string, dto: RegisterTeamDto) {
     const tournament = await this.loadTournamentForRegistration(slug);
+    if (tournament.visibility === Visibility.PRIVATE) {
+      throw new NotFoundException('Không tìm thấy giải đấu');
+    }
     const reason = await this.resolveBlockingReason(tournament, userId);
     if (reason) throw new BadRequestException(reason);
 
@@ -103,6 +108,44 @@ export class TeamsService {
         .catch((error: unknown) => {
           this.logger.error(
             `Team ${team.id} was registered but email publishing failed`,
+            error instanceof Error ? error.stack : String(error),
+          );
+        });
+    }
+    return team;
+  }
+
+  async registerInvited(
+    userId: string,
+    slug: string,
+    dto: RegisterTeamDto,
+    invitationId: string,
+  ) {
+    const tournament = await this.loadTournamentForRegistration(slug);
+    const reason = await this.resolveBlockingReason(tournament, userId);
+    if (reason) throw new BadRequestException(reason);
+
+    const team = await this.createTeam(tournament, userId, dto, {
+      status: tournament.autoApproveTeams
+        ? RegistrationStatus.APPROVED
+        : RegistrationStatus.PENDING,
+      notifyOrganizer: true,
+      validateRegistrant: true,
+      invitationId,
+      acceptedById: userId,
+    });
+    if (team) {
+      void this.activityEmails
+        .publish({
+          kind: 'TEAM_REGISTRATION_SUCCEEDED',
+          userId,
+          tournamentId: tournament.id,
+          teamName: team.name,
+          status: team.status,
+        })
+        .catch((error: unknown) => {
+          this.logger.error(
+            `Invited team ${team.id} was registered but email publishing failed`,
             error instanceof Error ? error.stack : String(error),
           );
         });
@@ -307,8 +350,30 @@ export class TeamsService {
    */
   async getRegistrationForm(slug: string, user: AuthenticatedUser) {
     const tournament = await this.loadTournamentForRegistration(slug);
-    const { game } = tournament;
+    if (tournament.visibility === Visibility.PRIVATE) {
+      throw new NotFoundException('Không tìm thấy giải đấu');
+    }
+    return this.buildRegistrationForm(tournament, user);
+  }
 
+  async getInvitedRegistrationForm(slug: string, user: AuthenticatedUser) {
+    const tournament = await this.loadTournamentForRegistration(slug);
+    return this.buildRegistrationForm(tournament, user);
+  }
+
+  async getManualRegistrationForm(slug: string, user: AuthenticatedUser) {
+    const tournament = await this.loadTournamentForRegistration(slug);
+    const form = await this.buildRegistrationForm(tournament, user);
+    return { ...form, canRegister: true, reason: null };
+  }
+
+  private async buildRegistrationForm(
+    tournament: Awaited<
+      ReturnType<TeamsService['loadTournamentForRegistration']>
+    >,
+    user: AuthenticatedUser,
+  ) {
+    const { game } = tournament;
     const reason = await this.resolveBlockingReason(tournament, user.id);
 
     return {
@@ -369,6 +434,8 @@ export class TeamsService {
       status: RegistrationStatus;
       notifyOrganizer: boolean;
       validateRegistrant: boolean;
+      invitationId?: string;
+      acceptedById?: string;
     },
   ) {
     this.assertContentAllowed(dto.name, dto.description);
@@ -443,6 +510,26 @@ export class TeamsService {
           orderIndex: member.orderIndex ?? index,
         })),
       });
+
+      if (options.invitationId && options.acceptedById) {
+        const accepted = await tx.teamInvitation.updateMany({
+          where: {
+            id: options.invitationId,
+            tournamentId: lockedTournament.id,
+            status: TeamInvitationStatus.PENDING,
+            expiresAt: { gt: new Date() },
+          },
+          data: {
+            status: TeamInvitationStatus.ACCEPTED,
+            acceptedAt: new Date(),
+            acceptedById: options.acceptedById,
+            teamId: team.id,
+          },
+        });
+        if (accepted.count !== 1) {
+          throw new BadRequestException('Lời mời không còn hiệu lực');
+        }
+      }
 
       const notification = options.notifyOrganizer
         ? await this.notifications.createNotification(

@@ -20,11 +20,7 @@ export function initialStructureForGame(game: Game): GameStructureValue {
   return {
     gameId: game.id,
     teamSize: String(game.defaultTeamSize),
-    maxTeamSize: String(
-      game.teamSizeMode === "FIXED"
-        ? game.maxTeamSize
-        : game.defaultTeamSize,
-    ),
+    maxTeamSize: String(game.defaultTeamSize),
     customGameName: "",
   };
 }

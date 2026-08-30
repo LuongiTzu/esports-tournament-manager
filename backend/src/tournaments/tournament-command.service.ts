@@ -244,21 +244,12 @@ export class TournamentCommandService {
     this.validateMergedSettings(merged);
 
     const targetStatus = dto.status ?? current.status;
-    const publishingDraft =
-      current.status === TournamentStatus.DRAFT &&
-      targetStatus === TournamentStatus.REGISTRATION;
     const visibility =
       targetStatus === TournamentStatus.DRAFT
         ? Visibility.PRIVATE
-        : publishingDraft
-          ? Visibility.PUBLIC
-          : dto.visibility;
+        : dto.visibility;
     const registrationOpen =
-      targetStatus === TournamentStatus.DRAFT
-        ? false
-        : publishingDraft
-          ? true
-          : dto.registrationOpen;
+      targetStatus === TournamentStatus.DRAFT ? false : dto.registrationOpen;
 
     const updated = await this.prisma.tournament.update({
       where: { id: tournamentId },

@@ -162,16 +162,17 @@ export default function TournamentDetailPage({
     );
   }
 
-  const isOrganizer = Boolean(
-    user && tournament.organizer?.id === user.id,
-  );
+  const isOrganizer = Boolean(user && tournament.organizer?.id === user.id);
   const emailVerified = hasVerifiedEmail(user);
   const ownTeam = user ? myTeam : null;
   const canRegister = Boolean(
-    user && tournament.registrationOpen && !ownTeam,
+    user &&
+    !isOrganizer &&
+    tournament.visibility === "PUBLIC" &&
+    tournament.registrationOpen &&
+    !ownTeam,
   );
-  const displayGameName =
-    tournament.displayGameName ?? tournament.game.name;
+  const displayGameName = tournament.displayGameName ?? tournament.game.name;
   const bannerUrl = getTournamentBannerUrl(
     tournament.bannerUrl,
     tournament.game.name,
@@ -194,8 +195,8 @@ export default function TournamentDetailPage({
     : t("common.notSet");
   const hasContact = Boolean(
     tournament.contactEmail ||
-      tournament.contactPhone ||
-      tournament.contactLink,
+    tournament.contactPhone ||
+    tournament.contactLink,
   );
 
   return (
@@ -219,9 +220,7 @@ export default function TournamentDetailPage({
               <span
                 className={`border px-3 py-1.5 text-xs font-bold backdrop-blur-md ${statusTone[tournament.status]}`}
               >
-                {t(
-                  `tournament.status.${tournament.status}` as TranslationKey,
-                )}
+                {t(`tournament.status.${tournament.status}` as TranslationKey)}
               </span>
               {tournament.isVerified && (
                 <span className="inline-flex items-center gap-1.5 border border-approved/35 bg-slate-950/65 px-3 py-1.5 text-xs font-bold text-approved backdrop-blur-md">
@@ -259,9 +258,7 @@ export default function TournamentDetailPage({
                       className="text-accent"
                       size={17}
                     />
-                    {t(
-                      `tournament.mode.${tournament.mode}` as TranslationKey,
-                    )}
+                    {t(`tournament.mode.${tournament.mode}` as TranslationKey)}
                   </span>
                 </div>
               </div>
@@ -370,7 +367,10 @@ export default function TournamentDetailPage({
               icon={<ShieldCheckIcon size={19} weight="duotone" />}
             >
               <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                <Fact label={t("tournament.detail.game")} value={displayGameName} />
+                <Fact
+                  label={t("tournament.detail.game")}
+                  value={displayGameName}
+                />
                 <Fact
                   label={t("tournament.detail.mode")}
                   value={t(
@@ -621,8 +621,7 @@ export default function TournamentDetailPage({
               </h2>
             </div>
             <p className="text-sm text-ink-muted">
-              {tournament.teams.length}{" "}
-              {t("tournament.detail.teamsUnit")}
+              {tournament.teams.length} {t("tournament.detail.teamsUnit")}
             </p>
           </div>
 

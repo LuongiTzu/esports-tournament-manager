@@ -18,8 +18,14 @@ import type { TournamentDetail } from "@/features/tournaments/types";
 import TeamRegistrationCard from "./TeamRegistrationCard";
 import TeamRegistrationDetail from "./TeamRegistrationDetail";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
+import TeamInvitationManagement from "./TeamInvitationManagement";
 
-const FILTERS: Array<"ALL" | TeamStatus> = ["ALL", "PENDING", "APPROVED", "REJECTED"];
+const FILTERS: Array<"ALL" | TeamStatus> = [
+  "ALL",
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+];
 
 export default function RegistrationManagement({
   tournament,
@@ -36,10 +42,12 @@ export default function RegistrationManagement({
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [working, setWorking] = useState<"approve" | "reject" | null>(null);
+  const [invitingMemberId, setInvitingMemberId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [detailError, setDetailError] = useState("");
   const [notice, setNotice] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
+  const [invitationRefreshVersion, setInvitationRefreshVersion] = useState(0);
 
   const loadTeams = useCallback(async () => {
     const result = await teamsApi.findByTournament(tournament.slug, "ALL");
@@ -188,8 +196,33 @@ export default function RegistrationManagement({
     }
   };
 
+  const inviteMember = async (memberId: string) => {
+    if (!detail || working || invitingMemberId) return;
+    setDetailError("");
+    setNotice("");
+    setInvitingMemberId(memberId);
+    try {
+      await teamsApi.inviteMember(detail.id, memberId);
+      setInvitationRefreshVersion((current) => current + 1);
+      setNotice(t("invitation.sent"));
+    } catch (reason) {
+      setDetailError(
+        reason instanceof Error ? reason.message : t("invitation.sendError"),
+      );
+    } finally {
+      setInvitingMemberId(null);
+    }
+  };
+
   return (
-    <section aria-labelledby="registration-management-heading">
+    <section
+      id="registrations"
+      aria-labelledby="registration-management-heading"
+    >
+      <TeamInvitationManagement
+        tournamentSlug={tournament.slug}
+        refreshVersion={invitationRefreshVersion}
+      />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
@@ -203,7 +236,8 @@ export default function RegistrationManagement({
           </h2>
           <p className="mt-2 text-sm text-ink-muted">
             {t("registration.approved")}: {counts.APPROVED}
-            {tournament.maxTeams ? ` / ${tournament.maxTeams}` : ""} {t("registration.teamsUnit")}
+            {tournament.maxTeams ? ` / ${tournament.maxTeams}` : ""}{" "}
+            {t("registration.teamsUnit")}
           </p>
         </div>
         <span className="rounded-full border border-line bg-surface-card px-3 py-1.5 text-xs text-ink-muted">
@@ -225,10 +259,10 @@ export default function RegistrationManagement({
                   : "border-line bg-surface-card text-ink-muted hover:border-line-strong"
               }`}
             >
-              {item === "ALL" ? t("registration.filter.all") : t(`team.status.${item}` as TranslationKey)}{" "}
-              <span className="ml-1 font-mono text-xs">
-                {counts[item]}
-              </span>
+              {item === "ALL"
+                ? t("registration.filter.all")
+                : t(`team.status.${item}` as TranslationKey)}{" "}
+              <span className="ml-1 font-mono text-xs">{counts[item]}</span>
             </button>
           );
         })}
@@ -311,6 +345,8 @@ export default function RegistrationManagement({
                   onApprove={() => mutateStatus("APPROVED")}
                   onReject={() => mutateStatus("REJECTED")}
                   working={working}
+                  invitingMemberId={invitingMemberId}
+                  onInviteMember={inviteMember}
                 />
               </>
             ) : (

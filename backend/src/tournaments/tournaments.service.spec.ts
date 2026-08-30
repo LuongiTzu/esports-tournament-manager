@@ -977,18 +977,20 @@ describe('TournamentsService lifecycle updates', () => {
     );
   });
 
-  it('publishes a draft by making it public and opening registration', async () => {
+  it('publishes a draft with the explicitly selected visibility and registration state', async () => {
     const { service, update } = updateHarness(TournamentStatus.DRAFT);
 
     await service.update('tournament-1', {
       status: TournamentStatus.REGISTRATION,
+      visibility: Visibility.PRIVATE,
+      registrationOpen: true,
     });
 
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           status: TournamentStatus.REGISTRATION,
-          visibility: Visibility.PUBLIC,
+          visibility: Visibility.PRIVATE,
           registrationOpen: true,
         }),
       }),

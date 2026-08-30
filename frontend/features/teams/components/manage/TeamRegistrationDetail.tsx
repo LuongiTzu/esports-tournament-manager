@@ -17,9 +17,15 @@ const PLAYER_ROLES = new Set<MemberRole>(["CAPTAIN", "PLAYER", "SUBSTITUTE"]);
 function MemberCard({
   member,
   positionMode,
+  canInvite,
+  inviting,
+  onInvite,
 }: {
   member: TeamMember;
   positionMode: GamePositionMode;
+  canInvite: boolean;
+  inviting: boolean;
+  onInvite: () => void;
 }) {
   const { locale, t } = useLocale();
   const showPosition =
@@ -62,14 +68,22 @@ function MemberCard({
             )}
             {member.birthDate && (
               <div>
-                <dt className="text-ink-faint">{t("registration.birthDate")}</dt>
-                <dd className="mt-0.5">{formatLocalizedDate(member.birthDate, locale)}</dd>
+                <dt className="text-ink-faint">
+                  {t("registration.birthDate")}
+                </dt>
+                <dd className="mt-0.5">
+                  {formatLocalizedDate(member.birthDate, locale)}
+                </dd>
               </div>
             )}
             {member.gender && (
               <div>
                 <dt className="text-ink-faint">{t("registration.gender")}</dt>
-                <dd className="mt-0.5">{t(`auth.register.gender.${member.gender.toLowerCase()}` as TranslationKey)}</dd>
+                <dd className="mt-0.5">
+                  {t(
+                    `auth.register.gender.${member.gender.toLowerCase()}` as TranslationKey,
+                  )}
+                </dd>
               </div>
             )}
             {member.email && (
@@ -85,6 +99,16 @@ function MemberCard({
               </div>
             )}
           </dl>
+          {canInvite && (
+            <button
+              type="button"
+              onClick={onInvite}
+              disabled={inviting}
+              className="mt-3 text-xs font-semibold text-brand hover:underline disabled:cursor-wait disabled:opacity-50"
+            >
+              {t("invitation.linkMember")}
+            </button>
+          )}
         </div>
       </div>
     </li>
@@ -101,6 +125,8 @@ export default function TeamRegistrationDetail({
   onApprove,
   onReject,
   working,
+  invitingMemberId,
+  onInviteMember,
 }: {
   team: TeamDetail;
   positionMode: GamePositionMode;
@@ -111,6 +137,8 @@ export default function TeamRegistrationDetail({
   onApprove: () => void;
   onReject: () => void;
   working: "approve" | "reject" | null;
+  invitingMemberId: string | null;
+  onInviteMember: (memberId: string) => void;
 }) {
   const { t } = useLocale();
   const players = team.members.filter((member) =>
@@ -160,10 +188,14 @@ export default function TeamRegistrationDetail({
       </div>
 
       <section className="mt-5 rounded-xl border border-line bg-surface-sub/45 p-4">
-        <h4 className="text-sm font-semibold text-ink">{t("registration.representative")}</h4>
+        <h4 className="text-sm font-semibold text-ink">
+          {t("registration.representative")}
+        </h4>
         <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
           <div>
-            <dt className="text-xs text-ink-faint">{t("registration.fullName")}</dt>
+            <dt className="text-xs text-ink-faint">
+              {t("registration.fullName")}
+            </dt>
             <dd className="mt-0.5 break-words text-ink-muted">
               {team.contactName}
             </dd>
@@ -175,7 +207,9 @@ export default function TeamRegistrationDetail({
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-ink-faint">{t("registration.phone")}</dt>
+            <dt className="text-xs text-ink-faint">
+              {t("registration.phone")}
+            </dt>
             <dd className="mt-0.5 text-ink-muted">
               {team.contactPhone ?? "—"}
             </dd>
@@ -186,15 +220,19 @@ export default function TeamRegistrationDetail({
       <section className="mt-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h4 className="text-sm font-semibold text-ink">{t("registration.playerRoster")}</h4>
+            <h4 className="text-sm font-semibold text-ink">
+              {t("registration.playerRoster")}
+            </h4>
             <p className="mt-1 text-xs text-ink-muted">
               {activePlayers.length} {t("registration.starters")} ·{" "}
               {substitutes.length} {t("registration.substitutes")}
             </p>
           </div>
           <p className="text-xs text-ink-faint">
-            {minTeamSize}–{maxTeamSize} {t("registration.slots")} · {minTeamSize} {t("registration.starters")} ·{" "}
-            {t("registration.upTo")} {maxSubstitutes} {t("registration.substitutes")}
+            {minTeamSize}–{maxTeamSize} {t("registration.slots")} ·{" "}
+            {minTeamSize} {t("registration.starters")} ·{" "}
+            {t("registration.upTo")} {maxSubstitutes}{" "}
+            {t("registration.substitutes")}
           </p>
         </div>
         <ul className="mt-3 grid gap-3 xl:grid-cols-2">
@@ -203,6 +241,14 @@ export default function TeamRegistrationDetail({
               key={member.id}
               member={member}
               positionMode={positionMode}
+              canInvite={Boolean(
+                member.email &&
+                (!member.userId ||
+                  (member.memberRole === "CAPTAIN" &&
+                    team.captainId === team.tournament.organizerId)),
+              )}
+              inviting={invitingMemberId === member.id}
+              onInvite={() => onInviteMember(member.id)}
             />
           ))}
         </ul>
@@ -222,6 +268,9 @@ export default function TeamRegistrationDetail({
                 key={member.id}
                 member={member}
                 positionMode={positionMode}
+                canInvite={Boolean(member.email && !member.userId)}
+                inviting={invitingMemberId === member.id}
+                onInvite={() => onInviteMember(member.id)}
               />
             ))}
           </ul>
@@ -261,7 +310,9 @@ export default function TeamRegistrationDetail({
               disabled={working !== null}
               className="rounded-lg bg-approved px-4 py-2 text-sm font-semibold text-surface disabled:opacity-50"
             >
-              {working === "approve" ? t("registration.approving") : t("registration.approveTeam")}
+              {working === "approve"
+                ? t("registration.approving")
+                : t("registration.approveTeam")}
             </button>
             <button
               type="button"
@@ -269,7 +320,9 @@ export default function TeamRegistrationDetail({
               disabled={working !== null}
               className="rounded-lg border border-rejected/40 bg-rejected/10 px-4 py-2 text-sm font-semibold text-rejected disabled:opacity-50"
             >
-              {working === "reject" ? t("registration.rejecting") : t("registration.rejectTeam")}
+              {working === "reject"
+                ? t("registration.rejecting")
+                : t("registration.rejectTeam")}
             </button>
           </div>
         </section>
