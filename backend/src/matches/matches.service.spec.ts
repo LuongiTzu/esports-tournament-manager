@@ -7,6 +7,8 @@ import {
   MatchStatus,
   NotificationType,
   RoundFormat,
+  RoundStatus,
+  TournamentStatus,
 } from '@prisma/client';
 import { NotificationService } from '../notifications/notification.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,6 +17,7 @@ import { MatchQueryService } from './match-query.service';
 import { MatchResultService } from './match-result.service';
 import { MatchSchedulingService } from './match-scheduling.service';
 import { MatchesService } from './matches.service';
+import { RoundLifecycleService } from '../brackets/round-lifecycle.service';
 
 function match(overrides: Record<string, unknown> = {}) {
   return {
@@ -134,6 +137,10 @@ function harness(
       ),
     },
     round: { findUnique: jest.fn(), update: jest.fn() },
+    roundTeam: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
     tournament: { update: jest.fn() },
     team: {
       findMany: jest.fn(),
@@ -157,17 +164,35 @@ function harness(
       createdCount: 1,
       notifications: [],
     }),
+    createForTournamentEvent: jest.fn().mockResolvedValue(undefined),
   } as unknown as NotificationService;
+  const roundLifecycle = {
+    synchronize: jest.fn().mockResolvedValue({
+      roundId: initial.round.id,
+      previousStatus: RoundStatus.UPCOMING,
+      status: RoundStatus.ONGOING,
+      changed: true,
+      tournamentStarted: false,
+    }),
+  } as unknown as RoundLifecycleService;
   return {
     service: new MatchesService(
       new MatchQueryService(prisma),
       new MatchSchedulingService(prisma, events, notifications),
-      new MatchResultService(prisma, events, notifications),
+      new MatchResultService(
+        prisma,
+        events,
+        notifications,
+        undefined,
+        undefined,
+        roundLifecycle,
+      ),
     ),
     tx,
     rows,
     events,
     notifications,
+    roundLifecycle,
   };
 }
 
@@ -180,6 +205,67 @@ const games = (winners: Array<'A' | 'B'>) => ({
 });
 
 describe('MatchesService results', () => {
+  it('synchronizes Round lifecycle in the same result transaction', async () => {
+    const { service, roundLifecycle, tx } = harness();
+
+    await service.putScores('match-1', games(['A', 'A']));
+
+    expect(roundLifecycle.synchronize).toHaveBeenCalledWith(tx, 'round-1');
+  });
+
+  it('notifies followers when match progress starts the Tournament', async () => {
+    const { service, roundLifecycle, notifications } = harness();
+    jest.mocked(roundLifecycle.synchronize).mockResolvedValueOnce({
+      roundId: 'round-1',
+      previousStatus: RoundStatus.UPCOMING,
+      status: RoundStatus.ONGOING,
+      changed: true,
+      tournamentStarted: true,
+      completion: {} as never,
+    });
+
+    await service.putScores('match-1', games(['A']));
+
+    expect(notifications.createForTournamentEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tournamentId: 'tournament-1',
+        type: NotificationType.TOURNAMENT_STATUS,
+        data: {
+          kind: 'TOURNAMENT_STATUS',
+          previousStatus: TournamentStatus.REGISTRATION,
+          status: TournamentStatus.ONGOING,
+        },
+      }),
+    );
+  });
+
+  it('locks scoring results after final standings confirmation', async () => {
+    const { service, tx } = harness(
+      match({
+        round: {
+          id: 'round-final',
+          name: 'League',
+          format: RoundFormat.ROUND_ROBIN,
+          settings: { allowDraws: false },
+          status: RoundStatus.COMPLETED,
+          tournamentId: 'tournament-1',
+          tournament: { status: TournamentStatus.COMPLETED },
+        },
+      }),
+    );
+
+    await expect(
+      service.putScores('match-1', games(['A', 'A'])),
+    ).rejects.toMatchObject({
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      response: expect.objectContaining({
+        code: 'FINAL_STANDINGS_RESULT_LOCKED',
+      }),
+    });
+    expect(tx.matchScore.deleteMany).not.toHaveBeenCalled();
+    expect(tx.match.update).not.toHaveBeenCalled();
+  });
+
   it.each([
     [1, ['A'], 1, 0],
     [3, ['A', 'B', 'A'], 2, 1],
@@ -265,6 +351,66 @@ describe('MatchesService results', () => {
 
     expect(rows['match-1']).toEqual(
       expect.objectContaining({
+        winnerTeamId: null,
+        outcome: MatchOutcome.DRAW,
+        status: MatchStatus.COMPLETED,
+      }),
+    );
+  });
+
+  it('persists a raw POINT_SCORE result without applying a BO win cap', async () => {
+    const { service, rows } = harness(
+      match({
+        bestOf: 1,
+        round: {
+          id: 'fc-online-playoff',
+          name: 'FC Online Playoff',
+          format: RoundFormat.PLAYOFF,
+          settings: { scoringMode: 'POINT_SCORE' },
+          tournamentId: 'tournament-1',
+        },
+      }),
+    );
+
+    await service.update('match-1', {
+      scoreA: 5,
+      scoreB: 3,
+      status: MatchStatus.COMPLETED,
+    });
+
+    expect(rows['match-1']).toEqual(
+      expect.objectContaining({
+        scoreA: 5,
+        scoreB: 3,
+        winnerTeamId: 'team-a',
+        outcome: MatchOutcome.TEAM_A,
+        status: MatchStatus.COMPLETED,
+      }),
+    );
+  });
+
+  it('persists a detailed POINT_SCORE draw as its raw aggregate', async () => {
+    const { service, rows } = harness(
+      match({
+        bestOf: 1,
+        round: {
+          id: 'fc-online-group',
+          name: 'FC Online Group',
+          format: RoundFormat.GROUP_STAGE,
+          settings: { scoringMode: 'POINT_SCORE', allowDraws: true },
+          tournamentId: 'tournament-1',
+        },
+      }),
+    );
+
+    await service.putScores('match-1', {
+      scores: [{ setNumber: 1, teamAScore: 2, teamBScore: 2 }],
+    });
+
+    expect(rows['match-1']).toEqual(
+      expect.objectContaining({
+        scoreA: 2,
+        scoreB: 2,
         winnerTeamId: null,
         outcome: MatchOutcome.DRAW,
         status: MatchStatus.COMPLETED,
@@ -546,6 +692,117 @@ describe('MatchesService results', () => {
     await expect(
       service.putScores('match-1', games(['B', 'B'])),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('invalidates persisted inter-Round advancement when correcting a result before downstream generation', async () => {
+    const { service, tx, rows } = harness(
+      match({
+        scoreA: 2,
+        scoreB: 0,
+        status: MatchStatus.COMPLETED,
+        winnerTeamId: 'team-a',
+        outcome: MatchOutcome.TEAM_A,
+        round: {
+          id: 'league-round',
+          name: 'League stage',
+          format: RoundFormat.ROUND_ROBIN,
+          settings: { advanceCount: 2 },
+          tournamentId: 'tournament-1',
+        },
+      }),
+    );
+    tx.roundTeam.findMany.mockResolvedValue([{ roundId: 'playoff-round' }]);
+    tx.round.findUnique.mockResolvedValue({
+      id: 'playoff-round',
+      tournamentId: 'tournament-1',
+      _count: { groups: 0, matches: 0 },
+    });
+
+    await service.putScores('match-1', games(['B', 'B']));
+
+    expect(tx.roundTeam.deleteMany).toHaveBeenCalledWith({
+      where: { advancedFromRoundId: 'league-round' },
+    });
+    expect(rows['match-1']).toEqual(
+      expect.objectContaining({ winnerTeamId: 'team-b' }),
+    );
+  });
+
+  it('invalidates advancement when score difference changes without changing the winner', async () => {
+    const { service, tx } = harness(
+      match({
+        scoreA: 2,
+        scoreB: 0,
+        status: MatchStatus.COMPLETED,
+        winnerTeamId: 'team-a',
+        outcome: MatchOutcome.TEAM_A,
+        round: {
+          id: 'league-round',
+          name: 'League stage',
+          format: RoundFormat.ROUND_ROBIN,
+          settings: { advanceCount: 2 },
+          tournamentId: 'tournament-1',
+        },
+      }),
+    );
+    tx.roundTeam.findMany.mockResolvedValue([{ roundId: 'playoff-round' }]);
+    tx.round.findUnique.mockResolvedValue({
+      id: 'playoff-round',
+      tournamentId: 'tournament-1',
+      _count: { groups: 0, matches: 0 },
+    });
+
+    await service.update('match-1', {
+      scoreA: 2,
+      scoreB: 1,
+      status: MatchStatus.COMPLETED,
+    });
+
+    expect(tx.roundTeam.deleteMany).toHaveBeenCalledWith({
+      where: { advancedFromRoundId: 'league-round' },
+    });
+  });
+
+  it('blocks an upstream result correction after downstream structure generation', async () => {
+    const { service, tx, rows } = harness(
+      match({
+        scoreA: 2,
+        scoreB: 0,
+        status: MatchStatus.COMPLETED,
+        winnerTeamId: 'team-a',
+        outcome: MatchOutcome.TEAM_A,
+        round: {
+          id: 'league-round',
+          name: 'League stage',
+          format: RoundFormat.ROUND_ROBIN,
+          settings: { advanceCount: 2 },
+          tournamentId: 'tournament-1',
+        },
+      }),
+    );
+    tx.roundTeam.findMany.mockResolvedValue([{ roundId: 'playoff-round' }]);
+    tx.round.findUnique.mockResolvedValue({
+      id: 'playoff-round',
+      tournamentId: 'tournament-1',
+      _count: { groups: 0, matches: 1 },
+    });
+
+    try {
+      await service.putScores('match-1', games(['B', 'B']));
+      throw new Error('Expected result correction to reject');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toEqual(
+        expect.objectContaining({
+          code: 'UPSTREAM_RESULT_LOCKED_BY_DOWNSTREAM_STRUCTURE',
+        }),
+      );
+    }
+
+    expect(tx.roundTeam.deleteMany).not.toHaveBeenCalled();
+    expect(rows['match-1']).toEqual(
+      expect.objectContaining({ winnerTeamId: 'team-a' }),
+    );
   });
 
   it('persists and broadcasts a completed score update', async () => {
@@ -1024,5 +1281,25 @@ describe('MatchesService organizer operations', () => {
         discordLink: undefined,
       },
     });
+  });
+
+  it('rejects a BO override for a POINT_SCORE manual match', async () => {
+    const { service, tx } = harness();
+    tx.round.findUnique.mockResolvedValue({
+      id: 'round-1',
+      tournamentId: 't1',
+      bestOf: 1,
+      settings: { scoringMode: 'POINT_SCORE' },
+    });
+    tx.team.findMany.mockResolvedValue([{ id: 'team-a' }, { id: 'team-b' }]);
+
+    await expect(
+      service.createManual('round-1', {
+        teamAId: 'team-a',
+        teamBId: 'team-b',
+        bestOf: 3,
+      }),
+    ).rejects.toThrow('POINT_SCORE requires bestOf = 1');
+    expect(tx.match.create).not.toHaveBeenCalled();
   });
 });

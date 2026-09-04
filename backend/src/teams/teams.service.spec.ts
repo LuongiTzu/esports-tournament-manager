@@ -45,6 +45,10 @@ function harness(teamValue = team()) {
     findUnique: jest.fn().mockResolvedValue(teamValue),
     findFirst: jest.fn().mockResolvedValue(null),
     update: jest.fn().mockResolvedValue({ id: 'team-1' }),
+    delete: jest.fn().mockResolvedValue({ id: 'team-1' }),
+  };
+  const roundClient = {
+    findFirst: jest.fn().mockResolvedValue(null),
   };
   const teamMemberClient = {
     findMany: jest.fn().mockResolvedValue([]),
@@ -60,9 +64,15 @@ function harness(teamValue = team()) {
       (
         callback: (client: {
           team: typeof teamClient;
+          round: typeof roundClient;
           $queryRaw: jest.Mock;
         }) => unknown,
-      ) => callback({ team: teamClient, $queryRaw: jest.fn() }),
+      ) =>
+        callback({
+          team: teamClient,
+          round: roundClient,
+          $queryRaw: jest.fn(),
+        }),
     ),
   } as unknown as PrismaService;
   const validator = {
@@ -91,6 +101,7 @@ function harness(teamValue = team()) {
       activityEmails,
     ),
     teamClient,
+    roundClient,
     teamMemberClient,
     notifications,
     validator,
@@ -154,6 +165,84 @@ describe('TeamsService roster lifecycle', () => {
       [],
       expect.objectContaining({ excludeTeamId: 'team-1' }),
     );
+  });
+
+  it('blocks approval after the first Round participant set is frozen', async () => {
+    const { service, roundClient, teamClient, validator } = harness();
+    roundClient.findFirst.mockResolvedValueOnce({
+      id: 'round-1',
+      _count: { matches: 1, groups: 0 },
+    });
+
+    await expect(
+      service.updateStatus('team-1', {
+        status: RegistrationStatus.APPROVED,
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'TOURNAMENT_PARTICIPANTS_LOCKED',
+      }),
+    });
+    expect(jest.mocked(validator.validate)).not.toHaveBeenCalled();
+    expect(teamClient.update).not.toHaveBeenCalled();
+  });
+
+  it('still allows rejecting a pending team after participants are frozen', async () => {
+    const { service, roundClient, teamClient } = harness();
+    roundClient.findFirst.mockResolvedValueOnce({
+      id: 'round-1',
+      _count: { matches: 1, groups: 0 },
+    });
+
+    await expect(
+      service.updateStatus('team-1', {
+        status: RegistrationStatus.REJECTED,
+        rejectReason: 'Registration was not accepted',
+      }),
+    ).resolves.toEqual({ id: 'team-1' });
+    expect(roundClient.findFirst).not.toHaveBeenCalled();
+    expect(teamClient.update).toHaveBeenCalled();
+  });
+
+  it('blocks removing an approved participant after the first Round is generated', async () => {
+    const approvedTeam = team(
+      RegistrationStatus.APPROVED,
+      lifecycleTournament({ organizerId: 'organizer-1' }),
+    );
+    const { service, roundClient, teamClient } = harness(approvedTeam);
+    roundClient.findFirst.mockResolvedValueOnce({
+      id: 'round-1',
+      _count: { matches: 1, groups: 0 },
+    });
+
+    await expect(service.remove('team-1', 'organizer-1')).rejects.toMatchObject(
+      {
+        response: expect.objectContaining({
+          code: 'TOURNAMENT_PARTICIPANTS_LOCKED',
+        }),
+      },
+    );
+    expect(teamClient.delete).not.toHaveBeenCalled();
+  });
+
+  it('allows a pending team to withdraw after the approved participant set is frozen', async () => {
+    const pendingTeam = team(
+      RegistrationStatus.PENDING,
+      lifecycleTournament({ organizerId: 'organizer-1' }),
+    );
+    const { service, roundClient, teamClient } = harness(pendingTeam);
+    roundClient.findFirst.mockResolvedValueOnce({
+      id: 'round-1',
+      _count: { matches: 1, groups: 0 },
+    });
+
+    await expect(service.remove('team-1', 'captain-1')).resolves.toEqual({
+      message: 'Đã xóa đội thành công',
+    });
+    expect(roundClient.findFirst).not.toHaveBeenCalled();
+    expect(teamClient.delete).toHaveBeenCalledWith({
+      where: { id: 'team-1' },
+    });
   });
 
   it('rejects a second review without notifications or realtime', async () => {
@@ -353,7 +442,7 @@ describe('TeamsService public history', () => {
       {} as RegistrationValidatorService,
       {} as NotificationService,
       {} as ContentFilterService,
-      { publish: jest.fn() } as unknown as TournamentEventsService,
+      { publish: jest.fn() },
     );
 
     const result = await service.findOne('team-1');

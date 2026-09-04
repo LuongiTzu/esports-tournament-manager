@@ -22,6 +22,7 @@ const teamSizePolicy = new TournamentTeamSizePolicy();
 
 const CANONICAL_SETTING_KEYS: Record<RoundFormat, Set<string>> = {
   [RoundFormat.ROUND_ROBIN]: new Set([
+    'advancingTeamCount',
     'winPoints',
     'drawPoints',
     'lossPoints',

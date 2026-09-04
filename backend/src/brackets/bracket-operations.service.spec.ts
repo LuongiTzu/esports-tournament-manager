@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import {
   MatchActivationCondition,
   MatchStatus,
+  RegistrationStatus,
   RoundFormat,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -22,11 +23,15 @@ const PUBLIC_TEAM_SELECT_FOR_TEST = {
 function round(
   matches: unknown[] = [],
   format: RoundFormat = RoundFormat.PLAYOFF,
+  orderIndex = 1,
 ) {
   return {
     id: 'round-1',
+    name: 'Playoff',
     tournamentId: 'tournament-1',
+    orderIndex,
     format,
+    status: 'UPCOMING',
     settings: { thirdPlaceMatch: false },
     bestOf: 3,
     _count: { groups: 0 },
@@ -54,9 +59,52 @@ function harness(roundValue: ReturnType<typeof round>, teamCount = 4) {
     seed: index + 1,
     registeredAt: new Date(2026, 0, index + 1),
   }));
+  const previousRound = {
+    id: 'previous-round',
+    orderIndex: 1,
+    format: RoundFormat.ROUND_ROBIN,
+    settings: {
+      winPoints: 3,
+      drawPoints: 1,
+      lossPoints: 0,
+      allowDraws: false,
+      meetingsPerPair: 1,
+    },
+    participants: [],
+    groups: [],
+    matches: [
+      {
+        status: MatchStatus.COMPLETED,
+        isActive: true,
+        isBye: false,
+        bracketRound: 1,
+        bracketType: null,
+        matchNumber: 1,
+        groupId: null,
+        winnerTeamId: 'team-1',
+        teamAId: 'team-1',
+        teamBId: 'team-2',
+      },
+    ],
+  };
   const tx = {
     $queryRaw: jest.fn(),
-    round: { findUnique: jest.fn().mockResolvedValue(roundValue) },
+    tournament: {
+      findUnique: jest.fn().mockResolvedValue({
+        status: 'REGISTRATION',
+        registrationOpen: false,
+      }),
+    },
+    round: {
+      findUnique: jest
+        .fn()
+        .mockImplementation(({ where }) =>
+          Promise.resolve(
+            where.id === previousRound.id ? previousRound : roundValue,
+          ),
+        ),
+      findFirst: jest.fn().mockResolvedValue(previousRound),
+    },
     team: { findMany: jest.fn().mockResolvedValue(teams) },
     match: {
       deleteMany: jest.fn(),
@@ -81,10 +129,74 @@ function harness(roundValue: ReturnType<typeof round>, teamCount = 4) {
     {} as StandingsService,
     new RoundSettingsService(),
   );
-  return { service, tx, brackets, teams };
+  return { service, tx, brackets, teams, previousRound };
 }
 
 describe('BracketOperationsService generation', () => {
+  it('previews the canonical generated structure without persisting it', async () => {
+    const { service, tx, brackets } = harness(round());
+    brackets.generate = jest.fn().mockResolvedValue([
+      {
+        key: 'opening-1',
+        bracketRound: 1,
+        bracketType: null,
+        matchNumber: 1,
+        teamA: { teamId: 'team-1' },
+        teamB: { teamId: 'team-4' },
+        nextMatchKey: null,
+        nextMatchSlot: null,
+        loserNextMatchKey: null,
+        loserNextMatchSlot: null,
+        isBye: false,
+        bestOf: 3,
+      },
+    ] as never);
+
+    const preview = await service.previewGeneration('round-1');
+
+    expect(preview.previewToken).toHaveLength(64);
+    expect(preview.participantCount).toBe(4);
+    expect(preview.matchCount).toBe(1);
+    expect(preview.bracket.matches[0]).toEqual(
+      expect.objectContaining({
+        id: 'opening-1',
+        slots: {
+          A: expect.objectContaining({ id: 'team-1', seed: 1 }),
+          B: expect.objectContaining({ id: 'team-4', seed: 4 }),
+        },
+      }),
+    );
+    expect(tx.match.create).not.toHaveBeenCalled();
+    expect(tx.group.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects generation when the confirmed preview is stale', async () => {
+    const { service, tx } = harness(round());
+
+    await expect(
+      service.generate('round-1', false, 'stale-preview-token'),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'ROUND_PREVIEW_STALE' }),
+    });
+    expect(tx.match.create).not.toHaveBeenCalled();
+  });
+
+  it('accepts confirmation while the preview plan is unchanged', async () => {
+    const { service, tx } = harness(round());
+    const preview = await service.previewGeneration('round-1');
+
+    await expect(
+      service.generate('round-1', false, preview.previewToken),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        roundId: 'round-1',
+        approvedTeamCount: 4,
+        matchCount: 0,
+      }),
+    );
+    expect(tx.match.deleteMany).not.toHaveBeenCalled();
+  });
+
   it('rejects duplicate generation without force', async () => {
     const { service } = harness(round([pendingMatch()]));
 
@@ -128,10 +240,50 @@ describe('BracketOperationsService generation', () => {
         where: expect.objectContaining({ status: 'APPROVED' }),
       }),
     );
+    expect(tx.roundTeam.findMany).not.toHaveBeenCalled();
+  });
+
+  it('blocks first-Round generation while registration is open', async () => {
+    const { service, tx, brackets } = harness(round());
+    tx.tournament.findUnique.mockResolvedValue({
+      status: 'REGISTRATION',
+      registrationOpen: true,
+    });
+
+    await expect(service.generate('round-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(brackets.generate).not.toHaveBeenCalled();
+  });
+
+  it('blocks later-Round generation while the preceding Round is incomplete', async () => {
+    const { service, brackets, previousRound } = harness(
+      round([], RoundFormat.PLAYOFF, 2),
+    );
+    Object.assign(previousRound.matches[0], {
+      status: MatchStatus.PENDING,
+      winnerTeamId: null,
+    });
+
+    await expect(service.generate('round-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(brackets.generate).not.toHaveBeenCalled();
+  });
+
+  it('rejects a later Round without persisted participants', async () => {
+    const { service, tx } = harness(round([], RoundFormat.PLAYOFF, 2));
+
+    await expect(service.generate('round-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(tx.team.findMany).not.toHaveBeenCalled();
   });
 
   it('uses persisted round participants instead of all tournament teams', async () => {
-    const { service, tx, brackets, teams } = harness(round());
+    const { service, tx, brackets, teams } = harness(
+      round([], RoundFormat.PLAYOFF, 2),
+    );
     tx.roundTeam.findMany.mockResolvedValue([
       {
         team: {
@@ -296,6 +448,10 @@ describe('BracketOperationsService generation', () => {
           status: 'UPCOMING',
           bestOf: 3,
           settings: { thirdPlaceMatch: false },
+          participants: [
+            { teamId: 'team-1', seed: 4 },
+            { teamId: 'team-2', seed: 1 },
+          ],
           groups: [],
           matches: [
             {
@@ -358,14 +514,14 @@ describe('BracketOperationsService generation', () => {
                 name: 'Team One',
                 shortName: 'ONE',
                 logoUrl: null,
-                seed: 1,
+                seed: 4,
               },
               B: {
                 id: 'team-2',
                 name: 'Team Two',
                 shortName: null,
                 logoUrl: null,
-                seed: 2,
+                seed: 1,
               },
             },
             status: MatchStatus.PENDING,
@@ -420,6 +576,7 @@ describe('BracketOperationsService generation', () => {
             pointsLoss: 0,
             tiebreakers: ['BUCHHOLZ'],
           },
+          participants: [],
           groups: [],
           matches: [],
         }),
@@ -436,7 +593,11 @@ describe('BracketOperationsService generation', () => {
       expect.objectContaining({
         round: expect.objectContaining({
           format: RoundFormat.SWISS,
-          settings: { numberOfRounds: 5, advancingTeamCount: 4 },
+          settings: {
+            scoringMode: 'SERIES_SCORE',
+            numberOfRounds: 5,
+            advancingTeamCount: 4,
+          },
         }),
       }),
     );
@@ -475,26 +636,19 @@ describe('BracketOperationsService group advancement', () => {
       roundId: string;
       teamId: string;
       advancedFromRoundId: string;
+      seed: number;
     }> = [];
     const nextRound = {
       id: 'round-2',
       name: 'Playoff',
       format: RoundFormat.PLAYOFF,
+      settings: { thirdPlaceMatch: false },
+      _count: { groups: 0, matches: 0 },
     };
     const tx = {
       $queryRaw: jest.fn().mockResolvedValue([{ id: 'round-1' }]),
       round: {
-        findUnique: jest.fn().mockImplementation(() =>
-          Promise.resolve({
-            id: roundValue.id,
-            tournamentId: roundValue.tournamentId,
-            orderIndex: roundValue.orderIndex,
-            format: roundValue.format,
-            matches: roundValue.matches.map((match: any) => ({
-              status: match.status,
-            })),
-          }),
-        ),
+        findUnique: jest.fn().mockResolvedValue(roundValue),
         findFirst: jest.fn().mockResolvedValue(nextRound),
       },
       roundTeam: {
@@ -546,6 +700,9 @@ describe('BracketOperationsService group advancement', () => {
               orderIndex: index + 1,
               standings: Array.from({ length: 4 }, (_, teamIndex) => ({
                 id: `${String.fromCharCode(97 + index)}${teamIndex + 1}`,
+                points: 4 - teamIndex,
+                wins: 4 - teamIndex,
+                scoreDifference: 4 - teamIndex,
               })),
             })),
           },
@@ -562,6 +719,8 @@ describe('BracketOperationsService group advancement', () => {
       roundValue,
       participants,
       tx,
+      nextRound,
+      standings,
     };
   }
 
@@ -572,7 +731,7 @@ describe('BracketOperationsService group advancement', () => {
 
     expect(result.advanceCount).toBe(4);
     expect(result.advanceCountPerGroup).toBe(2);
-    expect(result.teamIds).toEqual(['a1', 'a2', 'b1', 'b2']);
+    expect(result.teamIds).toEqual(['a1', 'b1', 'a2', 'b2']);
     expect(result.groups).toEqual([
       expect.objectContaining({ groupId: 'group-a', teamIds: ['a1', 'a2'] }),
       expect.objectContaining({ groupId: 'group-b', teamIds: ['b1', 'b2'] }),
@@ -580,6 +739,7 @@ describe('BracketOperationsService group advancement', () => {
     expect(result.persisted).toBe(true);
     expect(participants).toHaveLength(4);
     expect(new Set(participants.map((item) => item.teamId)).size).toBe(4);
+    expect(participants.map((item) => item.seed)).toEqual([1, 2, 3, 4]);
   });
 
   it('qualifies two teams from each of four groups', async () => {
@@ -590,12 +750,12 @@ describe('BracketOperationsService group advancement', () => {
     expect(result.advanceCount).toBe(8);
     expect(result.teamIds).toEqual([
       'a1',
-      'a2',
       'b1',
-      'b2',
       'c1',
-      'c2',
       'd1',
+      'a2',
+      'b2',
+      'c2',
       'd2',
     ]);
   });
@@ -608,6 +768,63 @@ describe('BracketOperationsService group advancement', () => {
     expect(result.advanceCount).toBe(2);
     expect(result.advanceCountPerGroup).toBe(1);
     expect(result.teamIds).toEqual(['a1', 'b1']);
+  });
+
+  it('requires and validates a decision only for the tied group boundary', async () => {
+    const { service, standings, participants } = advanceHarness(2, 1);
+    jest.mocked(standings.forTournament).mockResolvedValue({
+      tournamentId: 'tournament-1',
+      rounds: [
+        {
+          roundId: 'round-1',
+          format: RoundFormat.GROUP_STAGE,
+          standings: [
+            {
+              groupId: 'group-a',
+              name: 'Group A',
+              orderIndex: 1,
+              standings: [
+                { id: 'a1', points: 4, wins: 4, scoreDifference: 4 },
+                { id: 'a2', points: 3, wins: 3, scoreDifference: 3 },
+                { id: 'a3', points: 2, wins: 2, scoreDifference: 2 },
+                { id: 'a4', points: 1, wins: 1, scoreDifference: 1 },
+              ],
+            },
+            {
+              groupId: 'group-b',
+              name: 'Group B',
+              orderIndex: 2,
+              standings: [
+                { id: 'b1', points: 4, wins: 4, scoreDifference: 4 },
+                { id: 'b2', points: 4, wins: 4, scoreDifference: 4 },
+                { id: 'b3', points: 2, wins: 2, scoreDifference: 2 },
+                { id: 'b4', points: 1, wins: 1, scoreDifference: 1 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    await expect(service.advance('round-1')).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'ROUND_TIE_BREAK_REQUIRED',
+        details: expect.objectContaining({
+          fixedQualifiedTeams: [expect.objectContaining({ teamId: 'a1' })],
+          tieBreaks: [
+            expect.objectContaining({
+              groupId: 'group-b',
+              requiredSelections: 1,
+            }),
+          ],
+        }),
+      }),
+    });
+
+    await expect(service.advance('round-1', ['a1', 'b2'])).resolves.toEqual(
+      expect.objectContaining({ persisted: true, teamIds: ['a1', 'b2'] }),
+    );
+    expect(participants.map((item) => item.teamId)).toEqual(['a1', 'b2']);
   });
 
   it('blocks advancement when any group match is incomplete', async () => {
@@ -659,13 +876,43 @@ describe('BracketOperationsService group advancement', () => {
     );
     expect(participants).toEqual([]);
   });
+
+  it('rejects advancement after the next Round structure is generated', async () => {
+    const { service, tx, nextRound } = advanceHarness();
+    nextRound._count.matches = 1;
+
+    await expect(service.advance('round-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(tx.roundTeam.createMany).not.toHaveBeenCalled();
+  });
+
+  it('calculates standings through the locked transaction client', async () => {
+    const { service, tx, standings } = advanceHarness();
+
+    await service.advance('round-1');
+
+    expect(standings.forTournament).toHaveBeenCalledWith(
+      'tournament-1',
+      expect.any(Array),
+      tx,
+    );
+  });
 });
 
 describe('BracketOperationsService format-specific advancement', () => {
   function harnessFor(
     format: RoundFormat,
     settings: Record<string, unknown>,
-    standingsRows: Array<{ id?: string; teamId?: string }>,
+    standingsRows: Array<{
+      id?: string;
+      teamId?: string;
+      points?: number;
+      wins?: number;
+      buchholz?: number;
+      buchholzCut1?: number;
+      scoreDifference?: number;
+    }>,
     bracketRound = 1,
   ) {
     const matches: Array<{
@@ -693,6 +940,8 @@ describe('BracketOperationsService format-specific advancement', () => {
       id: 'round-2',
       name: 'Next Round',
       format: RoundFormat.PLAYOFF,
+      settings: { thirdPlaceMatch: false },
+      _count: { groups: 0, matches: 0 },
     };
     const participants: string[] = [];
     const tx = {
@@ -732,7 +981,18 @@ describe('BracketOperationsService format-specific advancement', () => {
     } as unknown as PrismaService;
     const standings = {
       forTournament: jest.fn().mockResolvedValue({
-        rounds: [{ standings: standingsRows }],
+        rounds: [
+          {
+            standings: standingsRows.map((row, index) => ({
+              points: standingsRows.length - index,
+              wins: standingsRows.length - index,
+              buchholz: standingsRows.length - index,
+              buchholzCut1: standingsRows.length - index,
+              scoreDifference: standingsRows.length - index,
+              ...row,
+            })),
+          },
+        ],
       }),
     } as unknown as StandingsService;
     return {
@@ -750,7 +1010,14 @@ describe('BracketOperationsService format-specific advancement', () => {
   it('persists configured Round Robin qualifiers', async () => {
     const { service, participants } = harnessFor(
       RoundFormat.ROUND_ROBIN,
-      { advanceCount: 2, pointsWin: 3, pointsDraw: 1, pointsLoss: 0 },
+      {
+        advancingTeamCount: 2,
+        winPoints: 3,
+        drawPoints: 1,
+        lossPoints: 0,
+        allowDraws: false,
+        meetingsPerPair: 1,
+      },
       [{ id: 'rr-1' }, { id: 'rr-2' }, { id: 'rr-3' }],
     );
 
@@ -758,6 +1025,91 @@ describe('BracketOperationsService format-specific advancement', () => {
 
     expect(result.persisted).toBe(true);
     expect(participants).toEqual(['rr-1', 'rr-2']);
+  });
+
+  it('keeps legacy Round Robin advanceCount readable', async () => {
+    const { service, participants } = harnessFor(
+      RoundFormat.ROUND_ROBIN,
+      { advanceCount: 2 },
+      [{ id: 'rr-1' }, { id: 'rr-2' }, { id: 'rr-3' }],
+    );
+
+    await expect(service.advance('round-1')).resolves.toEqual(
+      expect.objectContaining({ persisted: true, advanceCount: 2 }),
+    );
+    expect(participants).toEqual(['rr-1', 'rr-2']);
+  });
+
+  it('requires an organizer decision for a tie crossing the final slot', async () => {
+    const { service, participants } = harnessFor(
+      RoundFormat.ROUND_ROBIN,
+      { advancingTeamCount: 2 },
+      [
+        { id: 'rr-1', points: 9, wins: 3, scoreDifference: 5 },
+        { id: 'rr-2', points: 6, wins: 2, scoreDifference: 1 },
+        { id: 'rr-3', points: 6, wins: 2, scoreDifference: 1 },
+        { id: 'rr-4', points: 3, wins: 1, scoreDifference: -2 },
+      ],
+    );
+
+    await expect(service.advance('round-1')).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'ROUND_TIE_BREAK_REQUIRED',
+        details: expect.objectContaining({
+          advanceCount: 2,
+          fixedQualifiedTeams: [expect.objectContaining({ teamId: 'rr-1' })],
+          tieBreaks: [
+            expect.objectContaining({
+              requiredSelections: 1,
+              candidates: [
+                expect.objectContaining({ teamId: 'rr-2' }),
+                expect.objectContaining({ teamId: 'rr-3' }),
+              ],
+            }),
+          ],
+        }),
+      }),
+    });
+    expect(participants).toEqual([]);
+  });
+
+  it('persists a valid organizer tie-break selection', async () => {
+    const { service, participants } = harnessFor(
+      RoundFormat.ROUND_ROBIN,
+      { advancingTeamCount: 2 },
+      [
+        { id: 'rr-1', points: 9, wins: 3, scoreDifference: 5 },
+        { id: 'rr-2', points: 6, wins: 2, scoreDifference: 1 },
+        { id: 'rr-3', points: 6, wins: 2, scoreDifference: 1 },
+        { id: 'rr-4', points: 3, wins: 1, scoreDifference: -2 },
+      ],
+    );
+
+    await expect(service.advance('round-1', ['rr-1', 'rr-3'])).resolves.toEqual(
+      expect.objectContaining({ persisted: true, teamIds: ['rr-1', 'rr-3'] }),
+    );
+    expect(participants).toEqual(['rr-1', 'rr-3']);
+  });
+
+  it('rejects a manual choice below the qualification tie band', async () => {
+    const { service } = harnessFor(
+      RoundFormat.ROUND_ROBIN,
+      { advancingTeamCount: 2 },
+      [
+        { id: 'rr-1', points: 9, wins: 3, scoreDifference: 5 },
+        { id: 'rr-2', points: 6, wins: 2, scoreDifference: 1 },
+        { id: 'rr-3', points: 6, wins: 2, scoreDifference: 1 },
+        { id: 'rr-4', points: 3, wins: 1, scoreDifference: -2 },
+      ],
+    );
+
+    await expect(
+      service.advance('round-1', ['rr-1', 'rr-4']),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'ROUND_TIE_BREAK_SELECTION_INVALID',
+      }),
+    });
   });
 
   it('persists Swiss qualifiers only after the final configured Swiss round', async () => {
@@ -832,5 +1184,169 @@ describe('BracketOperationsService format-specific advancement', () => {
     await expect(service.advance('round-1')).resolves.toEqual(
       expect.objectContaining({ progressionMode: 'MATCH_LINKAGE' }),
     );
+  });
+});
+
+describe('BracketOperationsService seed mutations', () => {
+  function seedHarness(
+    options: {
+      orderIndex?: number;
+      matches?: number;
+      groups?: number;
+      roundParticipants?: Array<{
+        id: string;
+        seed: number | null;
+      }>;
+    } = {},
+  ) {
+    const roundRecord = {
+      id: 'round-1',
+      tournamentId: 'tournament-1',
+      orderIndex: options.orderIndex ?? 1,
+      _count: {
+        matches: options.matches ?? 0,
+        groups: options.groups ?? 0,
+      },
+    };
+    const approvedTeams = [
+      {
+        id: 'team-1',
+        name: 'Team 1',
+        seed: 1,
+        registeredAt: new Date('2026-01-01T00:00:00.000Z'),
+      },
+      {
+        id: 'team-2',
+        name: 'Team 2',
+        seed: 2,
+        registeredAt: new Date('2026-01-02T00:00:00.000Z'),
+      },
+      {
+        id: 'team-3',
+        name: 'Team 3',
+        seed: 3,
+        registeredAt: new Date('2026-01-03T00:00:00.000Z'),
+      },
+    ];
+    const roundParticipants = (options.roundParticipants ?? []).map(
+      (participant) => ({
+        team: {
+          ...approvedTeams.find((team) => team.id === participant.id)!,
+          seed: participant.seed,
+          tournamentId: 'tournament-1',
+          status: RegistrationStatus.APPROVED,
+        },
+      }),
+    );
+    const tx = {
+      $queryRaw: jest.fn(),
+      round: { findUnique: jest.fn().mockResolvedValue(roundRecord) },
+      team: {
+        findMany: jest.fn().mockResolvedValue(approvedTeams),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      roundTeam: {
+        findMany: jest.fn().mockResolvedValue(roundParticipants),
+        updateMany: jest
+          .fn()
+          .mockImplementation(({ where }) =>
+            Promise.resolve({ count: where.teamId.in.length }),
+          ),
+        update: jest.fn().mockResolvedValue({}),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (client: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as PrismaService;
+    const service = new BracketOperationsService(
+      prisma,
+      {} as BracketsService,
+      {} as StandingsService,
+      new RoundSettingsService(),
+    );
+    return { service, tx };
+  }
+
+  it('locks seed changes after the target Round structure is generated', async () => {
+    const { service, tx } = seedHarness({ matches: 1 });
+
+    await expect(
+      service.updateSeeds('round-1', {
+        seeds: [{ teamId: 'team-1', seed: 2 }],
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'ROUND_SEEDS_LOCKED' }),
+    });
+    expect(tx.team.update).not.toHaveBeenCalled();
+    expect(tx.roundTeam.update).not.toHaveBeenCalled();
+  });
+
+  it('uses persisted RoundTeam participants for seeding a later Round', async () => {
+    const { service, tx } = seedHarness({
+      orderIndex: 2,
+      roundParticipants: [
+        { id: 'team-1', seed: 1 },
+        { id: 'team-2', seed: 2 },
+      ],
+    });
+
+    await expect(
+      service.updateSeeds('round-1', {
+        seeds: [{ teamId: 'team-3', seed: 1 }],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(tx.roundTeam.findMany).toHaveBeenCalled();
+    expect(tx.team.findMany).not.toHaveBeenCalled();
+    expect(tx.team.update).not.toHaveBeenCalled();
+  });
+
+  it('updates seeds for eligible participants before generation', async () => {
+    const { service, tx } = seedHarness({
+      orderIndex: 2,
+      roundParticipants: [
+        { id: 'team-1', seed: 1 },
+        { id: 'team-2', seed: 2 },
+      ],
+    });
+
+    await expect(
+      service.updateSeeds('round-1', {
+        seeds: [
+          { teamId: 'team-1', seed: 2 },
+          { teamId: 'team-2', seed: 1 },
+        ],
+      }),
+    ).resolves.toEqual({
+      roundId: 'round-1',
+      seeds: [
+        { teamId: 'team-1', seed: 2 },
+        { teamId: 'team-2', seed: 1 },
+      ],
+    });
+    expect(tx.team.update).not.toHaveBeenCalled();
+    expect(tx.roundTeam.updateMany).toHaveBeenCalledWith({
+      where: {
+        roundId: 'round-1',
+        teamId: { in: ['team-1', 'team-2'] },
+      },
+      data: { seed: null },
+    });
+    expect(tx.roundTeam.update).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps Tournament-level seeds only for the first Round', async () => {
+    const { service, tx } = seedHarness();
+
+    await service.updateSeeds('round-1', {
+      seeds: [{ teamId: 'team-1', seed: 4 }],
+    });
+
+    expect(tx.team.update).toHaveBeenCalledWith({
+      where: { id: 'team-1' },
+      data: { seed: 4 },
+    });
+    expect(tx.roundTeam.update).not.toHaveBeenCalled();
   });
 });

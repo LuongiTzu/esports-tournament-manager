@@ -12,7 +12,6 @@ describe('TournamentLifecyclePolicy', () => {
     [TournamentStatus.DRAFT, TournamentStatus.CANCELLED],
     [TournamentStatus.REGISTRATION, TournamentStatus.ONGOING],
     [TournamentStatus.REGISTRATION, TournamentStatus.CANCELLED],
-    [TournamentStatus.ONGOING, TournamentStatus.COMPLETED],
     [TournamentStatus.ONGOING, TournamentStatus.CANCELLED],
   ])('allows %s -> %s', (currentStatus, targetStatus) => {
     expect(() =>
@@ -31,6 +30,7 @@ describe('TournamentLifecyclePolicy', () => {
     [TournamentStatus.DRAFT, TournamentStatus.ONGOING],
     [TournamentStatus.REGISTRATION, TournamentStatus.DRAFT],
     [TournamentStatus.ONGOING, TournamentStatus.REGISTRATION],
+    [TournamentStatus.ONGOING, TournamentStatus.COMPLETED],
     [TournamentStatus.COMPLETED, TournamentStatus.ONGOING],
     [TournamentStatus.CANCELLED, TournamentStatus.DRAFT],
   ])('rejects %s -> %s', (currentStatus, targetStatus) => {

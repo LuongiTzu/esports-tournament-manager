@@ -13,6 +13,7 @@ import {
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -28,8 +29,14 @@ import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
 import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { BracketOperationsService } from './bracket-operations.service';
-import { UpdateSeedsDto } from './dto/bracket-operations.dto';
+import {
+  AdvanceRoundDto,
+  GenerateRoundDto,
+  ResetDownstreamDto,
+  UpdateSeedsDto,
+} from './dto/bracket-operations.dto';
 import { SwissService } from './swiss.service';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('brackets')
 @Controller('rounds')
@@ -45,22 +52,68 @@ export class BracketsController {
   generate(
     @Param('id') id: string,
     @Query('force', new ParseBoolPipe({ optional: true })) force = false,
+    @Body() dto?: GenerateRoundDto,
+    @CurrentUser('id') actorId?: string,
   ) {
-    return this.operations.generate(id, force);
+    return this.operations.generate(id, force, dto?.previewToken, actorId);
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('round:id')
+  @Post(':id/generate-preview')
+  previewGeneration(
+    @Param('id') id: string,
+    @Query('force', new ParseBoolPipe({ optional: true })) force = false,
+  ) {
+    return this.operations.previewGeneration(id, force);
   }
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
   @Patch(':id/seeds')
-  updateSeeds(@Param('id') id: string, @Body() dto: UpdateSeedsDto) {
-    return this.operations.updateSeeds(id, dto);
+  updateSeeds(
+    @Param('id') id: string,
+    @Body() dto: UpdateSeedsDto,
+    @CurrentUser('id') actorId?: string,
+  ) {
+    return this.operations.updateSeeds(id, dto, actorId);
   }
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @ApiConflictResponse({
+    description:
+      'A manual organizer decision is required at a qualification tie boundary',
+  })
   @Post(':id/advance')
-  advance(@Param('id') id: string) {
-    return this.operations.advance(id);
+  advance(
+    @Param('id') id: string,
+    @Body() dto: AdvanceRoundDto,
+    @CurrentUser('id') actorId?: string,
+  ) {
+    return this.operations.advance(id, dto?.qualifiedTeamIds, actorId);
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('round:id')
+  @Post(':id/reset-downstream-preview')
+  previewDownstreamReset(@Param('id') id: string) {
+    return this.operations.previewDownstreamReset(id);
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('round:id')
+  @ApiConflictResponse({
+    description:
+      'The reset preview is stale, no downstream data exists, or the Tournament is locked',
+  })
+  @Post(':id/reset-downstream')
+  resetDownstream(
+    @Param('id') id: string,
+    @Body() dto: ResetDownstreamDto,
+    @CurrentUser('id') actorId?: string,
+  ) {
+    return this.operations.resetDownstream(id, dto.previewToken, actorId);
   }
 
   @ApiBearerAuth()
@@ -90,15 +143,22 @@ export class BracketsController {
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
   @Post(':id/swiss/generate-next')
-  generateNextSwissRound(@Param('id') id: string) {
-    return this.swiss.generateNextSwissRound(id);
+  generateNextSwissRound(
+    @Param('id') id: string,
+    @CurrentUser('id') actorId?: string,
+  ) {
+    return this.swiss.generateNextSwissRound(id, actorId);
   }
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @ApiConflictResponse({
+    description:
+      'Round is not the unused final Round, or its Tournament is no longer mutable',
+  })
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.operations.remove(id);
+  remove(@Param('id') id: string, @CurrentUser('id') actorId?: string) {
+    return this.operations.remove(id, actorId);
   }
 
   @Get(':id/bracket')

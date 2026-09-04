@@ -19,11 +19,11 @@ export class MatchesService {
   findOne(matchId: string) {
     return this.queries.findOne(matchId);
   }
-  update(matchId: string, dto: UpdateMatchDto) {
-    return this.results.update(matchId, dto);
+  update(matchId: string, dto: UpdateMatchDto, actorId?: string) {
+    return this.results.update(matchId, dto, actorId);
   }
-  putScores(matchId: string, dto: PutMatchScoresDto) {
-    return this.results.putScores(matchId, dto);
+  putScores(matchId: string, dto: PutMatchScoresDto, actorId?: string) {
+    return this.results.putScores(matchId, dto, actorId);
   }
   bulkSchedule(dto: BulkScheduleDto) {
     return this.scheduling.bulkSchedule(dto);

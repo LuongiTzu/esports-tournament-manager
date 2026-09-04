@@ -35,6 +35,9 @@ import {
 } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { TournamentListQueryDto } from './dto/tournament-list-query.dto';
+import { ConfirmFinalStandingsDto } from './dto/finalize-tournament.dto';
+import { CompetitionAuditQueryDto } from './dto/competition-audit-query.dto';
+import { CompetitionAuditService } from '../common/services/competition-audit.service';
 import {
   TournamentFavoriteMutationResultDto,
   TournamentFavoriteViewFieldsDto,
@@ -47,7 +50,10 @@ import {
 @ApiExtraModels(TournamentFavoriteViewFieldsDto)
 @Controller('tournaments')
 export class TournamentsController {
-  constructor(private tournamentsService: TournamentsService) {}
+  constructor(
+    private tournamentsService: TournamentsService,
+    private readonly competitionAudit: CompetitionAuditService,
+  ) {}
 
   /**
    * GET /api/tournaments
@@ -157,6 +163,18 @@ export class TournamentsController {
     return this.tournamentsService.getBracket(slug);
   }
 
+  @UseGuards(JwtAuthGuard, OwnershipGuard)
+  @Ownership('tournamentId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List organizer-visible competition audit history' })
+  @Get(':tournamentId/competition-audit')
+  competitionAuditHistory(
+    @Param('tournamentId') tournamentId: string,
+    @Query() query: CompetitionAuditQueryDto,
+  ) {
+    return this.competitionAudit.findForTournament(tournamentId, query);
+  }
+
   @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
   @VisibilityResource('slug:slug')
   @ApiOkResponse({
@@ -197,6 +215,27 @@ export class TournamentsController {
     @Body() dto: UpdateTournamentDto,
   ) {
     return this.tournamentsService.update(tournamentId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('tournamentId')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Confirm terminal standings, assign final ranks and complete the Tournament',
+  })
+  @HttpCode(HttpStatus.OK)
+  @Post(':tournamentId/finalize-standings')
+  confirmFinalStandings(
+    @Param('tournamentId') tournamentId: string,
+    @Body() dto: ConfirmFinalStandingsDto,
+    @CurrentUser('id') actorId?: string,
+  ) {
+    return this.tournamentsService.confirmFinalStandings(
+      tournamentId,
+      dto,
+      actorId,
+    );
   }
 
   /**

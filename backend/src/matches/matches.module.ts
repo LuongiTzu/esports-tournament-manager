@@ -9,9 +9,15 @@ import { MatchSchedulingService } from './match-scheduling.service';
 import { CompetitionProgressionService } from './competition-progression.service';
 import { NotificationModule } from '../notifications/notification.module';
 import { TournamentRealtimeModule } from '../tournaments/tournament-realtime.module';
+import { BracketsModule } from '../brackets/brackets.module';
 
 @Module({
-  imports: [CommonModule, NotificationModule, TournamentRealtimeModule],
+  imports: [
+    CommonModule,
+    NotificationModule,
+    TournamentRealtimeModule,
+    BracketsModule,
+  ],
   controllers: [MatchesController],
   providers: [
     MatchesService,

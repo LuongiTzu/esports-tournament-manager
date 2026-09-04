@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   Logger,
@@ -41,6 +42,7 @@ import {
   NOOP_NOTIFICATION_PUBLISHER,
   NotificationPublisher,
 } from '../common/ports/notification-publisher';
+import { TournamentFormatPolicy } from './domain/tournament-format.policy';
 
 const DELETABLE_TOURNAMENT_STATUSES: TournamentStatus[] = [
   TournamentStatus.DRAFT,
@@ -52,6 +54,7 @@ const CUSTOM_GAME_CODE = 'CUSTOM';
 @Injectable()
 export class TournamentCommandService {
   private readonly teamSizePolicy = new TournamentTeamSizePolicy();
+  private readonly formatPolicy = new TournamentFormatPolicy();
   private readonly logger = new Logger(TournamentCommandService.name);
 
   constructor(
@@ -227,6 +230,16 @@ export class TournamentCommandService {
     }
 
     if (dto.status !== undefined) {
+      if (
+        dto.status === TournamentStatus.COMPLETED &&
+        current.status !== TournamentStatus.COMPLETED
+      ) {
+        throw new ConflictException({
+          message:
+            'Tournament completion must be performed by the competition finalization workflow',
+          code: ApplicationErrorCode.TOURNAMENT_COMPLETION_REQUIRES_FINALIZATION,
+        });
+      }
       try {
         this.lifecyclePolicy.assertCanTransition(current.status, dto.status);
       } catch (error) {
@@ -392,6 +405,7 @@ export class TournamentCommandService {
       await this.roundSettingsService.normalizeForFormat(
         dto.format,
         dto.settings,
+        dto.bestOf ?? 1,
       );
 
     return this.prisma.$transaction(async (tx) => {
@@ -408,15 +422,22 @@ export class TournamentCommandService {
       const lastRound = await tx.round.findFirst({
         where: { tournamentId },
         orderBy: { orderIndex: 'desc' },
-        select: { orderIndex: true },
+        select: { orderIndex: true, format: true },
       });
+      const nextOrderIndex = (lastRound?.orderIndex ?? 0) + 1;
+      const violation = this.formatPolicy.validateAppend(
+        lastRound?.format ?? null,
+        dto.format,
+        nextOrderIndex,
+      );
+      if (violation) throw new ConflictException(violation);
       return tx.round.create({
         data: {
           name: dto.name,
           format: dto.format,
           bestOf: dto.bestOf ?? 1,
           settings: normalizedSettings as unknown as Prisma.InputJsonValue,
-          orderIndex: (lastRound?.orderIndex ?? 0) + 1,
+          orderIndex: nextOrderIndex,
           tournamentId,
         },
       });
@@ -588,11 +609,17 @@ export class TournamentCommandService {
     tournamentId: string,
     rounds: CreateRoundDto[],
   ) {
+    const violation = this.formatPolicy.validateSequence(
+      rounds.map(({ format }) => format),
+    );
+    if (violation) throw new BadRequestException(violation);
+
     for (let i = 0; i < rounds.length; i++) {
       const normalizedSettings =
         await this.roundSettingsService.normalizeForFormat(
           rounds[i].format,
           rounds[i].settings,
+          rounds[i].bestOf ?? 1,
         );
 
       await tx.round.create({

@@ -9,12 +9,19 @@ import { TournamentLifecyclePolicy } from './domain/tournament-lifecycle.policy'
 import { TournamentModerationService } from './tournament-moderation.service';
 import { NotificationModule } from '../notifications/notification.module';
 import { TournamentFavoriteService } from './tournament-favorite.service';
+import { TournamentFinalizationService } from './tournament-finalization.service';
+import { TournamentRealtimeModule } from './tournament-realtime.module';
 
 /**
  * Module Tournament — quản lý giải đấu (UC-U04, U05, U09, U10, U18)
  */
 @Module({
-  imports: [CommonModule, BracketsModule, NotificationModule],
+  imports: [
+    CommonModule,
+    BracketsModule,
+    NotificationModule,
+    TournamentRealtimeModule,
+  ],
   controllers: [TournamentsController],
   providers: [
     TournamentsService,
@@ -23,12 +30,14 @@ import { TournamentFavoriteService } from './tournament-favorite.service';
     TournamentLifecyclePolicy,
     TournamentModerationService,
     TournamentFavoriteService,
+    TournamentFinalizationService,
   ],
   exports: [
     TournamentsService,
     TournamentCommandService,
     TournamentQueryService,
     TournamentModerationService,
+    TournamentFinalizationService,
   ],
 })
 export class TournamentsModule {}

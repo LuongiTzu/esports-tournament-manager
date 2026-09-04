@@ -103,6 +103,7 @@ describe('BracketsService', () => {
     expect(settingsService.normalizeForFormat).toHaveBeenCalledWith(
       RoundFormat.GROUP_STAGE,
       { numGroups: 2 },
+      7,
     );
     expect(strategies[RoundFormat.GROUP_STAGE].generate).toHaveBeenCalledWith({
       format: RoundFormat.GROUP_STAGE,

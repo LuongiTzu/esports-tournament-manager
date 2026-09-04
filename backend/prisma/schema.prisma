@@ -200,6 +200,20 @@ enum BannedKeywordCategory {
   MALICIOUS_LINK
 }
 
+/// Organizer-visible history of competition structure and result mutations.
+enum CompetitionAuditAction {
+  ROUND_STRUCTURE_GENERATED
+  ROUND_STRUCTURE_REGENERATED
+  ROUND_SEEDS_UPDATED
+  ROUND_ADVANCEMENT_CONFIRMED
+  SWISS_ITERATION_GENERATED
+  MATCH_RESULT_RECORDED
+  MATCH_RESULT_CORRECTED
+  DOWNSTREAM_RESET
+  ROUND_DELETED
+  FINAL_STANDINGS_CONFIRMED
+}
+
 // ============================================================
 // MODELS
 // ============================================================
@@ -234,17 +248,18 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  organizedTournaments    Tournament[]         @relation("OrganizerTournaments")
-  captainedTeams          Team[]               @relation("CaptainedTeams")
+  organizedTournaments    Tournament[]          @relation("OrganizerTournaments")
+  captainedTeams          Team[]                @relation("CaptainedTeams")
   teamMembers             TeamMember[]
-  comments                Comment[]            @relation("CommentAuthor")
-  commentReplyTargets     Comment[]            @relation("CommentReplyTarget")
+  comments                Comment[]             @relation("CommentAuthor")
+  commentReplyTargets     Comment[]             @relation("CommentReplyTarget")
   notifications           Notification[]
   tournamentFavorites     TournamentFavorite[]
-  reportedReports         Report[]             @relation("ReporterReports")
-  reviewedReports         Report[]             @relation("ReviewedReports")
-  sentTeamInvitations     TeamInvitation[]     @relation("SentTeamInvitations")
-  acceptedTeamInvitations TeamInvitation[]     @relation("AcceptedTeamInvitations")
+  reportedReports         Report[]              @relation("ReporterReports")
+  reviewedReports         Report[]              @relation("ReviewedReports")
+  sentTeamInvitations     TeamInvitation[]      @relation("SentTeamInvitations")
+  acceptedTeamInvitations TeamInvitation[]      @relation("AcceptedTeamInvitations")
+  competitionAuditLogs    CompetitionAuditLog[] @relation("CompetitionAuditActor")
 
   @@map("users")
 }
@@ -324,13 +339,14 @@ model Tournament {
   organizerId String @map("organizer_id")
   organizer   User   @relation("OrganizerTournaments", fields: [organizerId], references: [id])
 
-  rounds          Round[]
-  teams           Team[]
-  comments        Comment[]
-  reports         Report[]
-  notifications   Notification[]
-  favorites       TournamentFavorite[]
-  teamInvitations TeamInvitation[]
+  rounds               Round[]
+  teams                Team[]
+  comments             Comment[]
+  reports              Report[]
+  notifications        Notification[]
+  favorites            TournamentFavorite[]
+  teamInvitations      TeamInvitation[]
+  competitionAuditLogs CompetitionAuditLog[]
 
   @@index([gameId, visibility, moderationStatus])
   @@index([status, startDate])
@@ -386,12 +402,16 @@ model RoundTeam {
   teamId String @map("team_id")
   team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
+  /// Seed local to this Round. Null is retained only for legacy snapshots created before per-Round seeding.
+  seed Int?
+
   advancedFromRoundId String @map("advanced_from_round_id")
   advancedFromRound   Round  @relation("RoundAdvancements", fields: [advancedFromRoundId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("created_at")
 
   @@id([roundId, teamId])
+  @@unique([roundId, seed])
   @@unique([advancedFromRoundId, teamId])
   @@index([advancedFromRoundId])
   @@index([teamId])
@@ -697,4 +717,24 @@ model BannedKeyword {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("banned_keywords")
+}
+
+/// Immutable competition history. Round and Match IDs are snapshots rather than
+/// foreign keys so destructive resets cannot erase the reason those records changed.
+model CompetitionAuditLog {
+  id        String                 @id @default(cuid())
+  action    CompetitionAuditAction
+  roundId   String?                @map("round_id")
+  matchId   String?                @map("match_id")
+  details   Json?
+  createdAt DateTime               @default(now()) @map("created_at")
+
+  tournamentId String     @map("tournament_id")
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  actorId      String?    @map("actor_id")
+  actor        User?      @relation("CompetitionAuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([tournamentId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("competition_audit_logs")
 }

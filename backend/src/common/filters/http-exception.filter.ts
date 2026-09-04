@@ -29,7 +29,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? rawMessage
         : [];
     const message =
-      status === HttpStatus.TOO_MANY_REQUESTS
+      status === 429
         ? RATE_LIMIT_MESSAGE
         : Array.isArray(rawMessage)
           ? 'Validation failed'
@@ -49,11 +49,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     if (typeof structuredBody?.code === 'string') {
       publicBody.code = structuredBody.code;
-    } else if (status === HttpStatus.TOO_MANY_REQUESTS) {
+    } else if (status === 429) {
       publicBody.code = ApplicationErrorCode.RATE_LIMITED;
     }
     if (Array.isArray(structuredBody?.matches)) {
       publicBody.matches = structuredBody.matches;
+    }
+    if (isRecord(structuredBody?.details)) {
+      publicBody.details = structuredBody.details;
     }
 
     response.status(status).json(publicBody);

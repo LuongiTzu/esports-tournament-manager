@@ -32,6 +32,7 @@ export class GroupStageGenerator implements IBracketGenerator<
           format: RoundFormat.ROUND_ROBIN,
           teams: group.teams,
           settings: {
+            advancingTeamCount: input.settings.advancingTeamsPerGroup,
             meetingsPerPair: input.settings.meetingsPerPair,
             winPoints: input.settings.winPoints,
             drawPoints: input.settings.drawPoints,

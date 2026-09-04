@@ -18,6 +18,11 @@ import { BracketQueryService } from './bracket-query.service';
 import { RoundAdvancementService } from './round-advancement.service';
 import { SwissStandingsQueryService } from './swiss-standings-query.service';
 import { TournamentRealtimeModule } from '../tournaments/tournament-realtime.module';
+import { RoundParticipantResolver } from './round-participant-resolver.service';
+import { RoundGenerationReadinessService } from './round-generation-readiness.service';
+import { RoundRemovalService } from './round-removal.service';
+import { RoundLifecycleService } from './round-lifecycle.service';
+import { DownstreamResetService } from './downstream-reset.service';
 
 /**
  * Module Bracket — chứa toàn bộ logic sinh bracket & chuẩn hóa settings.
@@ -48,6 +53,11 @@ import { TournamentRealtimeModule } from '../tournaments/tournament-realtime.mod
     BracketQueryService,
     RoundAdvancementService,
     SwissStandingsQueryService,
+    RoundParticipantResolver,
+    RoundGenerationReadinessService,
+    RoundRemovalService,
+    RoundLifecycleService,
+    DownstreamResetService,
   ],
   exports: [
     RoundSettingsService,
@@ -60,6 +70,11 @@ import { TournamentRealtimeModule } from '../tournaments/tournament-realtime.mod
     BracketQueryService,
     RoundAdvancementService,
     SwissStandingsQueryService,
+    RoundParticipantResolver,
+    RoundGenerationReadinessService,
+    RoundRemovalService,
+    RoundLifecycleService,
+    DownstreamResetService,
   ],
 })
 export class BracketsModule {}

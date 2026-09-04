@@ -96,6 +96,29 @@ describe('HttpExceptionFilter', () => {
     });
   });
 
+  it('preserves structured public decision details', () => {
+    const details = {
+      advanceCount: 2,
+      fixedQualifiedTeams: [{ teamId: 'team-1', name: 'Team One' }],
+      tieBreaks: [{ requiredSelections: 1, candidates: [] }],
+    };
+    const { json } = catchException(
+      new BadRequestException({
+        code: ApplicationErrorCode.ROUND_TIE_BREAK_REQUIRED,
+        message: 'Organizer decision required',
+        details,
+      }),
+    );
+
+    expect(json).toHaveBeenCalledWith({
+      statusCode: 400,
+      code: ApplicationErrorCode.ROUND_TIE_BREAK_REQUIRED,
+      message: 'Organizer decision required',
+      errors: [],
+      details,
+    });
+  });
+
   it('returns a friendly Vietnamese message for rate limiting', () => {
     const { status, json } = catchException(
       new HttpException('ThrottlerException: Too Many Requests', 429),

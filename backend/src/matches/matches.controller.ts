@@ -22,6 +22,7 @@ import {
   UpdateMatchDto,
 } from './dto/match.dto';
 import { MatchesService } from './matches.service';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller()
 export class MatchesController {
@@ -44,15 +45,23 @@ export class MatchesController {
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('match:id')
   @Patch('matches/:id')
-  update(@Param('id') id: string, @Body() dto: UpdateMatchDto) {
-    return this.matches.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateMatchDto,
+    @CurrentUser('id') actorId?: string,
+  ) {
+    return this.matches.update(id, dto, actorId);
   }
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('match:id')
   @Put('matches/:id/scores')
-  putScores(@Param('id') id: string, @Body() dto: PutMatchScoresDto) {
-    return this.matches.putScores(id, dto);
+  putScores(
+    @Param('id') id: string,
+    @Body() dto: PutMatchScoresDto,
+    @CurrentUser('id') actorId?: string,
+  ) {
+    return this.matches.putScores(id, dto, actorId);
   }
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)

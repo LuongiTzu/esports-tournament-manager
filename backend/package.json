@@ -26,6 +26,7 @@
     "prisma:migrate": "node_modules\\.bin\\prisma migrate dev",
     "prisma:studio": "node_modules\\.bin\\prisma studio",
     "prisma:generate": "node_modules\\.bin\\prisma generate",
+    "competition:audit": "ts-node scripts/audit-competition-progression.ts",
     "prisma:games:sync": "ts-node scripts/sync-game-catalog.ts",
     "prisma:reset": "ts-node scripts/reset-development-database.ts --execute",
     "prisma:reset:check": "ts-node scripts/reset-development-database.ts --check",

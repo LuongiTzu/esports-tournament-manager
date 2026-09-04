@@ -48,7 +48,10 @@ import {
   type RoundFormatValue,
 } from "@/features/tournaments/round-formats";
 import TournamentLivePreview from "@/features/tournaments/components/TournamentLivePreview";
-import type { CreateRoundRequest } from "@/features/tournaments/types";
+import type {
+  CreateRoundRequest,
+  MatchScoringMode,
+} from "@/features/tournaments/types";
 import { ApiError } from "@/lib/api/client";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 
@@ -56,7 +59,9 @@ interface RoundForm {
   name: string;
   format: RoundFormatValue;
   bestOf: string;
+  scoringMode: MatchScoringMode;
   roundRobin: {
+    advancingTeamCount: string;
     winPoints: string;
     drawPoints: string;
     lossPoints: string;
@@ -85,6 +90,7 @@ interface RoundForm {
 }
 
 const DEFAULT_ROUND_ROBIN_SETTINGS: RoundForm["roundRobin"] = {
+  advancingTeamCount: "2",
   winPoints: "3",
   drawPoints: "1",
   lossPoints: "0",
@@ -120,6 +126,7 @@ function createRoundForm(name: string, format: RoundFormatValue): RoundForm {
     name,
     format,
     bestOf: "1",
+    scoringMode: "SERIES_SCORE",
     roundRobin: { ...DEFAULT_ROUND_ROBIN_SETTINGS },
     groupStage: { ...DEFAULT_GROUP_STAGE_SETTINGS },
     swiss: { ...DEFAULT_SWISS_SETTINGS },
@@ -442,6 +449,20 @@ export default function TournamentCreateForm() {
     );
   };
 
+  const updateScoringMode = (index: number, scoringMode: MatchScoringMode) => {
+    setRounds((current) =>
+      current.map((round, roundIndex) =>
+        roundIndex === index
+          ? {
+              ...round,
+              scoringMode,
+              bestOf: scoringMode === "POINT_SCORE" ? "1" : round.bestOf,
+            }
+          : round,
+      ),
+    );
+  };
+
   const updateRoundRobinSettings = (
     index: number,
     field: keyof RoundForm["roundRobin"],
@@ -583,6 +604,14 @@ export default function TournamentCreateForm() {
     if (rounds.some((round) => !round.name.trim())) {
       return t("tournament.create.roundNameRequired");
     }
+    if (
+      rounds.some(
+        (round) =>
+          round.scoringMode === "POINT_SCORE" && Number(round.bestOf) !== 1,
+      )
+    ) {
+      return t("tournament.create.pointScoreRequiresBo1");
+    }
     for (const round of rounds) {
       if (round.format !== "SWISS") continue;
       const numberOfRounds = optionalNumber(round.swiss.numberOfRounds);
@@ -661,10 +690,18 @@ export default function TournamentCreateForm() {
     for (const round of rounds) {
       if (round.format !== "ROUND_ROBIN") continue;
       const values = round.roundRobin;
+      const advancingTeamCount = Number(values.advancingTeamCount);
       const winPoints = Number(values.winPoints);
       const drawPoints = Number(values.drawPoints);
       const lossPoints = Number(values.lossPoints);
       const meetingsPerPair = Number(values.meetingsPerPair);
+      if (
+        !Number.isInteger(advancingTeamCount) ||
+        advancingTeamCount < 1 ||
+        advancingTeamCount > 256
+      ) {
+        return t("tournament.create.roundRobinAdvanceInvalid");
+      }
       if (
         ![winPoints, drawPoints, lossPoints].every(
           (value) => Number.isInteger(value) && value >= 0 && value <= 100,
@@ -759,6 +796,7 @@ export default function TournamentCreateForm() {
               ...base,
               format: "PLAYOFF",
               settings: {
+                scoringMode: round.scoringMode,
                 thirdPlaceMatch: round.playoff.thirdPlaceMatch,
               },
             };
@@ -768,6 +806,7 @@ export default function TournamentCreateForm() {
               ...base,
               format: "DOUBLE_ELIM",
               settings: {
+                scoringMode: round.scoringMode,
                 grandFinalReset: round.doubleElim.grandFinalReset,
               },
             };
@@ -777,6 +816,7 @@ export default function TournamentCreateForm() {
               ...base,
               format: "SWISS",
               settings: {
+                scoringMode: round.scoringMode,
                 numberOfRounds:
                   optionalNumber(round.swiss.numberOfRounds) ?? null,
                 advancingTeamCount: Number(round.swiss.advancingTeamCount),
@@ -788,6 +828,7 @@ export default function TournamentCreateForm() {
               ...base,
               format: "GROUP_STAGE",
               settings: {
+                scoringMode: round.scoringMode,
                 numberOfGroups: Number(round.groupStage.numberOfGroups),
                 advancingTeamsPerGroup: Number(
                   round.groupStage.advancingTeamsPerGroup,
@@ -804,6 +845,8 @@ export default function TournamentCreateForm() {
             ...base,
             format: "ROUND_ROBIN",
             settings: {
+              scoringMode: round.scoringMode,
+              advancingTeamCount: Number(round.roundRobin.advancingTeamCount),
               winPoints: Number(round.roundRobin.winPoints),
               drawPoints: Number(round.roundRobin.drawPoints),
               lossPoints: Number(round.roundRobin.lossPoints),
@@ -1529,7 +1572,7 @@ export default function TournamentCreateForm() {
                       key={index}
                       className="rounded-xl border border-line bg-surface/55 p-4"
                     >
-                      <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_7rem_auto_auto] sm:items-end">
+                      <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)_10rem_7rem_auto_auto] sm:items-end">
                         <RoundFormatMark format={round.format} index={index} />
                         <label className={labelClass}>
                           {t("tournament.create.roundName")}
@@ -1548,13 +1591,34 @@ export default function TournamentCreateForm() {
                           />
                         </label>
                         <label className={labelClass}>
+                          {t("round.settings.scoringMode")}
+                          <select
+                            value={round.scoringMode}
+                            onChange={(event) =>
+                              updateScoringMode(
+                                index,
+                                event.target.value as MatchScoringMode,
+                              )
+                            }
+                            className={`${inputClass} mt-1 bg-surface`}
+                          >
+                            <option value="SERIES_SCORE">
+                              {t("round.settings.scoringMode.SERIES_SCORE")}
+                            </option>
+                            <option value="POINT_SCORE">
+                              {t("round.settings.scoringMode.POINT_SCORE")}
+                            </option>
+                          </select>
+                        </label>
+                        <label className={labelClass}>
                           {t("round.settings.bestOf")}
                           <select
                             value={round.bestOf}
+                            disabled={round.scoringMode === "POINT_SCORE"}
                             onChange={(event) =>
                               updateRound(index, "bestOf", event.target.value)
                             }
-                            className={`${inputClass} mt-1 bg-surface`}
+                            className={`${inputClass} mt-1 bg-surface disabled:cursor-not-allowed disabled:opacity-60`}
                           >
                             {[1, 3, 5, 7, 9].map((bestOf) => (
                               <option key={bestOf} value={bestOf}>
@@ -1633,6 +1697,27 @@ export default function TournamentCreateForm() {
                                 {t("tournament.create.roundRobinSettings")}
                               </p>
                               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                <label className={labelClass}>
+                                  {t("tournament.create.advancingTeams")}
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={256}
+                                    step={1}
+                                    value={round.roundRobin.advancingTeamCount}
+                                    onChange={(event) =>
+                                      updateRoundRobinSettings(
+                                        index,
+                                        "advancingTeamCount",
+                                        event.target.value,
+                                      )
+                                    }
+                                    className={`${inputClass} mt-1 bg-surface`}
+                                  />
+                                  <span className={`${hintClass} mt-1 block`}>
+                                    {t("tournament.create.advancingTeamsHint")}
+                                  </span>
+                                </label>
                                 <label className={labelClass}>
                                   {t("tournament.create.meetingsPerPair")}
                                   <input

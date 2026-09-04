@@ -273,6 +273,9 @@ const extendedVi = {
   "round.status.ONGOING": "Đang diễn ra",
   "round.status.COMPLETED": "Hoàn tất",
   "round.settings.bestOf": "Best of",
+  "round.settings.scoringMode": "Cách ghi tỷ số",
+  "round.settings.scoringMode.SERIES_SCORE": "Số ván thắng",
+  "round.settings.scoringMode.POINT_SCORE": "Bàn thắng / điểm",
   "round.settings.meetings": "Số lượt gặp",
   "round.settings.pointsWdl": "Điểm W/D/L",
   "round.settings.draws": "Kết quả hòa",
@@ -329,6 +332,20 @@ const extendedVi = {
   "progress.thisStageHas": "Giai đoạn này có",
   "progress.assigned": "được gán",
   "progress.fromPrevious": "từ kết quả giai đoạn trước.",
+  "progress.qualifiedFrom": "đi tiếp từ",
+  "swiss.iterationProgress": "Lượt Swiss",
+  "swiss.readyNext": "Đã đủ điều kiện tạo lượt Swiss tiếp theo.",
+  "swiss.blocked.NOT_GENERATED": "Hãy tạo cấu trúc Swiss đầu tiên trước.",
+  "swiss.blocked.TOURNAMENT_NOT_MUTABLE":
+    "Giải đấu hiện không cho phép tạo thêm lượt Swiss.",
+  "swiss.blocked.ROUND_NOT_MUTABLE":
+    "Giai đoạn Swiss hiện không cho phép tạo thêm lượt.",
+  "swiss.blocked.CURRENT_ITERATION_INCOMPLETE":
+    "Cần hoàn tất tất cả trận của lượt Swiss hiện tại trước.",
+  "swiss.blocked.ALL_ITERATIONS_COMPLETE":
+    "Tất cả lượt Swiss đã được hoàn tất.",
+  "swiss.blocked.STRUCTURE_INVALID":
+    "Cấu trúc Swiss đang không nhất quán và cần được kiểm tra.",
   "competition.noMatches": "Chưa có trận đấu được tạo.",
   "competition.iteration": "Lượt",
   "competition.noGroups": "Chưa có bảng đấu được tạo.",
@@ -453,6 +470,8 @@ const extendedVi = {
   "tournament.create.endsAt": "Thời điểm kết thúc",
   "tournament.create.mustBeAfter": "phải sau",
   "tournament.create.roundNameRequired": "Tên vòng đấu không được để trống.",
+  "tournament.create.pointScoreRequiresBo1":
+    "Cách ghi bàn thắng / điểm hiện chỉ hỗ trợ BO1.",
   "tournament.create.swissRoundsInvalid":
     "Số vòng Swiss phải là số nguyên từ 1 đến 20, hoặc để trống để tự động tính.",
   "tournament.create.swissAdvanceInvalid":
@@ -473,6 +492,8 @@ const extendedVi = {
     "Số đội đi tiếp mỗi bảng phải ít hơn số đội dự kiến trong bảng.",
   "tournament.create.roundRobinPointsInvalid":
     "Điểm Round Robin phải là số nguyên từ 0 đến 100.",
+  "tournament.create.roundRobinAdvanceInvalid":
+    "Số đội đi tiếp của Round Robin phải là số nguyên từ 1 đến 256.",
   "tournament.create.bannerUploadError": "Không thể tải banner lên.",
   "tournament.create.sessionExpired":
     "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
@@ -638,6 +659,8 @@ const extendedVi = {
   "match.manage.scheduleUpdated": "Đã cập nhật lịch thi đấu.",
   "match.manage.scheduleUpdateError": "Không thể cập nhật lịch",
   "match.manage.seriesScoreInvalid": "Tỷ số series phải là số nguyên không âm.",
+  "match.manage.pointScoreInvalid":
+    "Bàn thắng hoặc điểm số phải là số nguyên không âm.",
   "match.manage.scoreBestOfInvalid": "Tỷ số không hợp lệ với",
   "match.manage.decisiveRequired": "Thể thức này yêu cầu một đội thắng.",
   "match.manage.winnerRequiredPrefix": "Đội thắng phải đạt",
@@ -648,9 +671,19 @@ const extendedVi = {
     "Sửa kết quả đã hoàn thành có thể rollback và cập nhật các slot downstream. Backend sẽ từ chối nếu downstream đã hoàn tất. Tiếp tục?",
   "match.manage.resultUpdated": "Đã cập nhật kết quả từ backend.",
   "match.manage.resultUpdateError": "Không thể cập nhật kết quả",
+  "match.manage.error.TOURNAMENT_NOT_MUTABLE":
+    "Không thể sửa kết quả sau khi giải đã hoàn tất hoặc bị hủy.",
+  "match.manage.error.ROUND_NOT_MUTABLE":
+    "Không thể sửa kết quả trong giai đoạn này nữa.",
+  "match.manage.error.UPSTREAM_RESULT_LOCKED_BY_DOWNSTREAM_STRUCTURE":
+    "Kết quả này đã bị khóa vì cấu trúc phía sau đang phụ thuộc vào nó.",
+  "match.manage.error.FINAL_STANDINGS_RESULT_LOCKED":
+    "Kết quả này đã bị khóa vì bảng xếp hạng chung cuộc đã được xác nhận.",
   "match.manage.gameScoreRequired": "Cần ít nhất một game score.",
   "match.manage.gameScoreInvalid":
     "Điểm từng game phải là số nguyên không âm và không được hòa.",
+  "match.manage.pointDetailedScoreInvalid":
+    "Điểm chi tiết phải là số nguyên không âm; chỉ được hòa khi vòng đấu cho phép.",
   "match.manage.correctGameScoresConfirm":
     "Sửa game scores đã hoàn thành có thể rollback và cập nhật các slot downstream. Tiếp tục?",
   "match.manage.gameScoresUpdated": "Đã cập nhật game scores từ backend.",
@@ -666,6 +699,10 @@ const extendedVi = {
   "match.manage.roomLink": "Link phòng đấu",
   "match.manage.saveSchedule": "Lưu lịch thi đấu",
   "match.manage.result": "Kết quả",
+  "match.manage.seriesScoreHint":
+    "Tỷ số tổng là số game hoặc map mỗi đội đã thắng trong series.",
+  "match.manage.pointScoreHint":
+    "Tỷ số tổng là số bàn thắng hoặc điểm thực tế hai đội ghi được.",
   "match.manage.drawAllowed": "Round này cho phép kết quả hòa.",
   "match.manage.decisiveOnly": "Round này yêu cầu kết quả phân thắng bại.",
   "match.manage.enterSeries": "Nhập tỷ số series",
@@ -690,12 +727,62 @@ const extendedVi = {
   "competition.manage.fromApproved": "trận từ",
   "competition.manage.approvedTeams": "đội được duyệt",
   "competition.manage.generateError": "Không thể tạo cấu trúc thi đấu",
+  "competition.preview.eyebrow": "Xem trước cấu trúc",
+  "competition.preview.title": "Kiểm tra trước khi tạo",
+  "competition.preview.participants": "đội tham gia",
+  "competition.preview.matches": "trận đấu",
+  "competition.preview.previewGeneration": "Xem trước cấu trúc",
+  "competition.preview.previewRegeneration": "Xem trước cấu trúc tạo lại",
+  "competition.preview.confirmGenerate": "Xác nhận tạo cấu trúc",
+  "competition.preview.confirmRegenerate": "Xác nhận tạo lại",
+  "competition.preview.regenerationWarning":
+    "Khi xác nhận, cấu trúc hiện tại chưa có tỷ số sẽ bị thay thế.",
+  "competition.preview.loadError": "Không thể chuẩn bị bản xem trước cấu trúc.",
+  "generation.blocked.TOURNAMENT_NOT_MUTABLE":
+    "Cần công bố giải trước khi tạo cấu trúc. Giải đã hoàn tất hoặc đã hủy không thể thay đổi.",
+  "generation.blocked.REGISTRATION_MUST_BE_CLOSED":
+    "Cần đóng đăng ký trước khi tạo giai đoạn đầu tiên.",
+  "generation.blocked.PREVIOUS_ROUND_NOT_COMPLETE":
+    "Cần hoàn tất giai đoạn trước trước khi tạo cấu trúc này.",
+  "generation.blocked.ROUND_PARTICIPANTS_NOT_READY":
+    "Cần xác nhận và lưu các đội đi tiếp từ giai đoạn trước.",
+  "generation.blocked.ROUND_PARTICIPANTS_INELIGIBLE":
+    "Có đội được gán không còn đủ điều kiện tham gia.",
+  "generation.blocked.ROUND_SEQUENCE_INVALID":
+    "Chuỗi giai đoạn đang được cấu hình không hợp lệ.",
+  "generation.blocked.ELIMINATION_MUST_BE_TERMINAL":
+    "Giai đoạn loại trực tiếp phải là giai đoạn cuối cùng của giải.",
+  "generation.blocked.ROUND_PREVIEW_STALE":
+    "Danh sách đội, seed hoặc cấu hình đã thay đổi. Hãy xem lại bản preview mới trước khi tạo.",
   "competition.manage.swissGenerated": "Đã tạo lượt Swiss",
   "competition.manage.swissGenerateError": "Không thể tạo lượt Swiss tiếp theo",
   "competition.manage.advancedPrefix": "Đã đưa",
   "competition.manage.advancedInto": "đội vào",
   "competition.manage.nextRoundFallback": "vòng tiếp theo",
   "competition.manage.advanceError": "Không thể chuyển đội vào vòng tiếp theo",
+  "advancement.error.TOURNAMENT_NOT_MUTABLE":
+    "Giải đấu hiện không còn cho phép thay đổi đội đi tiếp.",
+  "advancement.error.ROUND_NOT_MUTABLE":
+    "Giai đoạn hiện không còn cho phép thay đổi đội đi tiếp.",
+  "advancement.error.PREVIOUS_ROUND_NOT_COMPLETE":
+    "Cần hoàn tất giai đoạn hiện tại trước khi đưa đội đi tiếp.",
+  "advancement.error.ROUND_ADVANCEMENT_SNAPSHOT_CHANGED":
+    "Bảng xếp hạng đã thay đổi trong lúc xác nhận. Hãy xem lại dữ liệu mới nhất và thử lại.",
+  "advancement.error.ROUND_ADVANCEMENT_ALREADY_PERSISTED":
+    "Danh sách đội đi tiếp đã được xác nhận trước đó.",
+  "advancement.error.NEXT_ROUND_ALREADY_GENERATED":
+    "Cấu trúc giai đoạn tiếp theo đã được tạo nên không thể thay đổi danh sách tham dự.",
+  "advancement.error.ROUND_ADVANCEMENT_TARGET_INVALID":
+    "Giai đoạn tiếp theo không thể nhận danh sách đội đi tiếp này.",
+  "advancement.error.ROUND_TIE_BREAK_SELECTION_INVALID":
+    "Lựa chọn phân định đồng hạng không còn hợp lệ. Hãy kiểm tra lại các đội và thử lại.",
+  "competition.manage.tieBreakTitle": "Cần quyết định đội đi tiếp",
+  "competition.manage.tieBreakDescription":
+    "Các đội dưới đây đang bằng nhau tại ranh giới suất đi tiếp. Ban tổ chức cần chọn thủ công trước khi tiếp tục.",
+  "competition.manage.fixedQualified": "Đội đã chắc suất",
+  "competition.manage.overallStandings": "Bảng xếp hạng chung",
+  "competition.manage.selectTieTeams": "Số đội cần chọn",
+  "competition.manage.confirmTieBreak": "Xác nhận đội đi tiếp",
   "competition.manage.noStages": "Chưa có giai đoạn thi đấu",
   "competition.manage.noStagesHint":
     "Tournament này chưa cấu hình round nào để tạo cấu trúc.",
@@ -710,6 +797,71 @@ const extendedVi = {
   "competition.manage.regenerate": "Tạo lại cấu trúc",
   "competition.manage.generate": "Tạo cấu trúc",
   "competition.manage.advance": "Đưa đội vào vòng tiếp theo",
+  "competition.manage.finalizeStandings": "Xác nhận kết quả chung cuộc",
+  "competition.manage.finalizeConfirm":
+    "Xác nhận bảng xếp hạng hiện tại là kết quả chung cuộc? Sau khi hoàn tất, kết quả trận sẽ bị khóa.",
+  "competition.manage.finalizedPrefix": "Đã hoàn tất giải. Nhà vô địch:",
+  "competition.manage.finalizeError": "Không thể xác nhận kết quả chung cuộc.",
+  "competition.audit.eyebrow": "Nhật ký vận hành",
+  "competition.audit.title": "Lịch sử thay đổi thi đấu",
+  "competition.audit.description":
+    "Các thay đổi cấu trúc, kết quả và chuyển vòng được lưu cùng giao dịch thực hiện.",
+  "competition.audit.refresh": "Làm mới",
+  "competition.audit.loadMore": "Xem thêm",
+  "competition.audit.empty": "Chưa có thay đổi thi đấu nào được ghi nhận.",
+  "competition.audit.loadError": "Không thể tải lịch sử thay đổi thi đấu.",
+  "competition.audit.system": "Hệ thống",
+  "competition.audit.action.ROUND_STRUCTURE_GENERATED": "Đã tạo cấu trúc vòng đấu",
+  "competition.audit.action.ROUND_STRUCTURE_REGENERATED": "Đã tạo lại cấu trúc vòng đấu",
+  "competition.audit.action.ROUND_SEEDS_UPDATED": "Đã cập nhật seed của vòng",
+  "competition.audit.action.ROUND_ADVANCEMENT_CONFIRMED": "Đã xác nhận đội đi tiếp",
+  "competition.audit.action.SWISS_ITERATION_GENERATED": "Đã tạo lượt Swiss tiếp theo",
+  "competition.audit.action.MATCH_RESULT_RECORDED": "Đã ghi nhận kết quả trận",
+  "competition.audit.action.MATCH_RESULT_CORRECTED": "Đã sửa kết quả trận",
+  "competition.audit.action.DOWNSTREAM_RESET": "Đã reset các vòng phía sau",
+  "competition.audit.action.ROUND_DELETED": "Đã xóa vòng đấu",
+  "competition.audit.action.FINAL_STANDINGS_CONFIRMED": "Đã xác nhận kết quả chung cuộc",
+  "finalization.error.TOURNAMENT_NOT_MUTABLE":
+    "Giải đấu hiện không còn cho phép thay đổi kết quả chung cuộc.",
+  "finalization.error.TOURNAMENT_FINALIZATION_NOT_READY":
+    "Cần hoàn tất toàn bộ trận bắt buộc trước khi xác nhận kết quả chung cuộc.",
+  "finalization.error.TOURNAMENT_FINALIZATION_UNSUPPORTED_FORMAT":
+    "Thể thức của giai đoạn cuối không thể xác định một nhà vô địch chung cuộc.",
+  "finalization.error.TOURNAMENT_FINALIZATION_STANDINGS_INVALID":
+    "Bảng xếp hạng cuối không khớp với danh sách đội của giai đoạn. Hãy tải lại và kiểm tra dữ liệu.",
+  "finalization.error.TOURNAMENT_CHAMPION_SELECTION_INVALID":
+    "Đội được chọn không thuộc nhóm đồng hạng nhất đủ điều kiện vô địch.",
+  "competition.reset.eyebrow": "Thao tác xóa dữ liệu",
+  "competition.reset.title": "Reset toàn bộ giai đoạn phía sau",
+  "competition.reset.afterRound": "Phạm vi reset bắt đầu sau",
+  "competition.reset.warning":
+    "Thao tác này xóa vĩnh viễn cấu trúc, lịch, tỷ số, danh sách đội đi tiếp và thứ hạng chung cuộc của các giai đoạn phía sau. Kết quả của giai đoạn đang chọn được giữ nguyên.",
+  "competition.reset.rounds": "giai đoạn",
+  "competition.reset.matches": "trận đấu",
+  "competition.reset.progressedMatches": "trận đã có tiến độ",
+  "competition.reset.participantAssignments": "lượt gán đội",
+  "competition.reset.affectedRounds": "Giai đoạn bị ảnh hưởng",
+  "competition.reset.confirm": "Reset dữ liệu phía sau",
+  "competition.reset.previewAction": "Reset các vòng phía sau",
+  "competition.reset.loadError": "Không thể chuẩn bị bản xem trước reset.",
+  "competition.reset.errorFallback": "Không thể reset các giai đoạn phía sau.",
+  "competition.reset.successPrefix": "Đã reset thành công",
+  "competition.reset.error.DOWNSTREAM_RESET_NOT_AVAILABLE":
+    "Không có dữ liệu thi đấu phía sau để reset.",
+  "competition.reset.error.DOWNSTREAM_RESET_TOURNAMENT_LOCKED":
+    "Không thể reset dữ liệu của giải đang ở trạng thái nháp hoặc đã hủy.",
+  "competition.reset.error.DOWNSTREAM_RESET_PREVIEW_STALE":
+    "Dữ liệu phía sau đã thay đổi sau khi xem trước. Hãy kiểm tra lại phạm vi ảnh hưởng rồi xác nhận lại.",
+  "competition.manage.championTieTitle": "Cần chọn nhà vô địch",
+  "competition.manage.championTieDescription":
+    "Các đội đang bằng toàn bộ chỉ số chuyên môn ở vị trí đầu. Ban tổ chức cần xác nhận đội vô địch; hệ thống không dùng seed để tự quyết định.",
+  "competition.manage.confirmChampion": "Xác nhận nhà vô địch",
+  "competition.finalization.NOT_READY":
+    "Cần hoàn tất toàn bộ trận bắt buộc và đủ số lượt Swiss trước khi xác nhận kết quả chung cuộc.",
+  "competition.finalization.AUTOMATIC":
+    "Giải loại trực tiếp sẽ tự hoàn tất từ kết quả trận chung kết.",
+  "competition.finalization.UNSUPPORTED":
+    "Vòng bảng cuối chỉ có xếp hạng riêng từng bảng nên không thể tự xác định một nhà vô địch. Hãy thêm một vòng tiếp theo.",
   "competition.manage.loadingStructure": "Đang tải cấu trúc",
   "competition.manage.noStructure": "Không có dữ liệu cấu trúc để hiển thị.",
   "competition.manage.standingsEyebrow": "Xếp hạng & chuyển vòng",

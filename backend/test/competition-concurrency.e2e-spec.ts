@@ -80,6 +80,7 @@ describeDatabase('competition workflows and concurrency (database E2E)', () => {
         minTeamSize: 1,
         maxTeamSize: 1,
         status: TournamentStatus.ONGOING,
+        registrationOpen: false,
       },
     });
     tournamentIds.push(tournament.id);
@@ -144,7 +145,7 @@ describeDatabase('competition workflows and concurrency (database E2E)', () => {
       data: {
         name: 'Existing',
         orderIndex: 1,
-        format: RoundFormat.PLAYOFF,
+        format: RoundFormat.ROUND_ROBIN,
         bestOf: 1,
         tournamentId: tournament.id,
       },
@@ -152,15 +153,15 @@ describeDatabase('competition workflows and concurrency (database E2E)', () => {
     const results = await Promise.all([
       tournaments.addRound(tournament.id, {
         name: 'Second',
-        format: RoundFormat.PLAYOFF,
+        format: RoundFormat.ROUND_ROBIN,
         bestOf: 1,
-        settings: { thirdPlaceMatch: false },
+        settings: { advancingTeamCount: 2 },
       }),
       tournaments.addRound(tournament.id, {
         name: 'Third',
-        format: RoundFormat.PLAYOFF,
+        format: RoundFormat.ROUND_ROBIN,
         bestOf: 1,
-        settings: { thirdPlaceMatch: false },
+        settings: { advancingTeamCount: 2 },
       }),
     ]);
     expect(results.map((round) => round.orderIndex).sort()).toEqual([2, 3]);
@@ -326,5 +327,111 @@ describeDatabase('competition workflows and concurrency (database E2E)', () => {
         where: { roundId: round.id, bracketRound: 2 },
       }),
     ).toBe(3);
+  });
+
+  it('serializes a destructive downstream reset and clears every derived result', async () => {
+    const { tournament, teams } = await tournamentFixture('DownstreamReset');
+    const sourceRound = await prisma.round.create({
+      data: {
+        name: 'Qualification',
+        orderIndex: 1,
+        format: RoundFormat.ROUND_ROBIN,
+        bestOf: 1,
+        status: 'COMPLETED',
+        tournamentId: tournament.id,
+        settings: { advancingTeamCount: 2 },
+      },
+    });
+    const finalRound = await prisma.round.create({
+      data: {
+        name: 'Final',
+        orderIndex: 2,
+        format: RoundFormat.PLAYOFF,
+        bestOf: 1,
+        status: 'COMPLETED',
+        tournamentId: tournament.id,
+        settings: { thirdPlaceMatch: false },
+      },
+    });
+    await prisma.roundTeam.createMany({
+      data: teams.slice(0, 2).map((team, index) => ({
+        roundId: finalRound.id,
+        teamId: team.id,
+        seed: index + 1,
+        advancedFromRoundId: sourceRound.id,
+      })),
+    });
+    const finalMatch = await prisma.match.create({
+      data: {
+        roundId: finalRound.id,
+        teamAId: teams[0].id,
+        teamBId: teams[1].id,
+        status: MatchStatus.COMPLETED,
+        outcome: MatchOutcome.TEAM_A,
+        winnerTeamId: teams[0].id,
+        scoreA: 1,
+        scoreB: 0,
+        bestOf: 1,
+      },
+    });
+    await prisma.matchScore.create({
+      data: {
+        matchId: finalMatch.id,
+        setNumber: 1,
+        teamAScore: 1,
+        teamBScore: 0,
+      },
+    });
+    await prisma.team.update({
+      where: { id: teams[0].id },
+      data: { finalRank: 1 },
+    });
+    await prisma.tournament.update({
+      where: { id: tournament.id },
+      data: { status: TournamentStatus.COMPLETED },
+    });
+
+    const preview = await brackets.previewDownstreamReset(sourceRound.id);
+    expect(preview.impact).toEqual(
+      expect.objectContaining({
+        roundCount: 1,
+        matchCount: 1,
+        completedMatchCount: 1,
+        participantAssignmentCount: 2,
+        finalRankedTeamCount: 1,
+      }),
+    );
+    const attempts = await Promise.allSettled([
+      brackets.resetDownstream(sourceRound.id, preview.previewToken),
+      brackets.resetDownstream(sourceRound.id, preview.previewToken),
+    ]);
+    expect(
+      attempts.filter((attempt) => attempt.status === 'fulfilled'),
+    ).toHaveLength(1);
+    expect(
+      attempts.filter((attempt) => attempt.status === 'rejected'),
+    ).toHaveLength(1);
+    expect(
+      await prisma.match.count({ where: { roundId: finalRound.id } }),
+    ).toBe(0);
+    expect(
+      await prisma.matchScore.count({ where: { matchId: finalMatch.id } }),
+    ).toBe(0);
+    expect(
+      await prisma.roundTeam.count({ where: { roundId: finalRound.id } }),
+    ).toBe(0);
+    expect(
+      await prisma.round.findUniqueOrThrow({ where: { id: finalRound.id } }),
+    ).toEqual(expect.objectContaining({ status: 'UPCOMING' }));
+    expect(
+      await prisma.tournament.findUniqueOrThrow({
+        where: { id: tournament.id },
+      }),
+    ).toEqual(expect.objectContaining({ status: TournamentStatus.ONGOING }));
+    expect(
+      await prisma.team.count({
+        where: { tournamentId: tournament.id, finalRank: { not: null } },
+      }),
+    ).toBe(0);
   });
 });

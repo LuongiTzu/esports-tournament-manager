@@ -158,7 +158,7 @@ export class MatchSchedulingService {
     return this.prisma.$transaction(async (tx) => {
       const round = await tx.round.findUnique({
         where: { id: roundId },
-        select: { id: true, tournamentId: true, bestOf: true },
+        select: { id: true, tournamentId: true, bestOf: true, settings: true },
       });
       if (!round) throw new NotFoundException('Round not found');
       if (dto.teamAId === dto.teamBId) {
@@ -185,6 +185,7 @@ export class MatchSchedulingService {
       }
       const bestOf = dto.bestOf ?? round.bestOf;
       this.validateBestOf(bestOf);
+      this.validateScoringCompatibility(bestOf, round.settings);
       return tx.match.create({
         data: {
           roundId,
@@ -202,6 +203,17 @@ export class MatchSchedulingService {
   private validateBestOf(bestOf: number) {
     try {
       this.resultPolicy.assertBestOf(bestOf);
+    } catch (error) {
+      if (error instanceof MatchResultRuleError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  private validateScoringCompatibility(bestOf: number, settings: unknown) {
+    try {
+      this.resultPolicy.assertScoringCompatibility(bestOf, settings);
     } catch (error) {
       if (error instanceof MatchResultRuleError) {
         throw new BadRequestException(error.message);

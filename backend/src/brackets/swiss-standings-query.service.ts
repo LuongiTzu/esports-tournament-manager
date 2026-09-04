@@ -9,6 +9,7 @@ import { SwissGenerator } from './generators/swiss.generator';
 import { RoundSettingsService } from './round-settings.service';
 import { SwissSettings } from './types/round-settings';
 import { SwissMatchSnapshot } from './types/swiss';
+import type { StandingsClient } from './standings.service';
 
 @Injectable()
 export class SwissStandingsQueryService {
@@ -19,7 +20,11 @@ export class SwissStandingsQueryService {
   ) {}
 
   async calculate(roundId: string) {
-    const round = await this.prisma.round.findUnique({
+    return this.calculateWithClient(this.prisma, roundId);
+  }
+
+  async calculateWithClient(client: StandingsClient, roundId: string) {
+    const round = await client.round.findUnique({
       where: { id: roundId },
       select: {
         format: true,
@@ -42,10 +47,11 @@ export class SwissStandingsQueryService {
     if (round.format !== RoundFormat.SWISS) {
       throw new BadRequestException('Round format must be SWISS');
     }
-    const assignments = await this.prisma.roundTeam.findMany({
+    const assignments = await client.roundTeam.findMany({
       where: { roundId },
       orderBy: { createdAt: 'asc' },
       select: {
+        seed: true,
         team: {
           select: {
             id: true,
@@ -60,7 +66,10 @@ export class SwissStandingsQueryService {
     });
     const teams = assignments.length
       ? assignments
-          .map((assignment) => assignment.team)
+          .map((assignment) => ({
+            ...assignment.team,
+            seed: assignment.seed ?? assignment.team.seed,
+          }))
           .filter(
             (team) =>
               team.tournamentId === round.tournamentId &&
@@ -72,7 +81,7 @@ export class SwissStandingsQueryService {
             seed: team.seed,
             registeredAt: team.registeredAt,
           }))
-      : await this.prisma.team.findMany({
+      : await client.team.findMany({
           where: {
             tournamentId: round.tournamentId,
             status: RegistrationStatus.APPROVED,

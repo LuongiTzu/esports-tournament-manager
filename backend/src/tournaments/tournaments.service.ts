@@ -8,6 +8,8 @@ import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { TournamentCommandService } from './tournament-command.service';
 import { TournamentQueryService } from './tournament-query.service';
 import { TournamentFavoriteService } from './tournament-favorite.service';
+import { TournamentFinalizationService } from './tournament-finalization.service';
+import { ConfirmFinalStandingsDto } from './dto/finalize-tournament.dto';
 
 @Injectable()
 export class TournamentsService {
@@ -15,6 +17,7 @@ export class TournamentsService {
     private readonly commands: TournamentCommandService,
     private readonly queries: TournamentQueryService,
     private readonly favorites: TournamentFavoriteService,
+    private readonly finalization: TournamentFinalizationService = {} as TournamentFinalizationService,
   ) {}
   create(userId: string, dto: CreateTournamentDto) {
     return this.commands.create(userId, dto);
@@ -38,6 +41,17 @@ export class TournamentsService {
   }
   update(tournamentId: string, dto: UpdateTournamentDto) {
     return this.commands.update(tournamentId, dto);
+  }
+  confirmFinalStandings(
+    tournamentId: string,
+    dto: ConfirmFinalStandingsDto,
+    actorId?: string,
+  ) {
+    return this.finalization.confirmFinalStandings(
+      tournamentId,
+      dto.championTeamId,
+      actorId,
+    );
   }
   remove(tournamentId: string) {
     return this.commands.remove(tournamentId);

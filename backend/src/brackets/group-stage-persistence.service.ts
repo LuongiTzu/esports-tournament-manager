@@ -3,11 +3,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, RegistrationStatus, RoundFormat } from '@prisma/client';
+import { Prisma, RoundFormat } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroupStageGenerator } from './generators/group-stage.generator';
 import { RoundSettingsService } from './round-settings.service';
 import { GroupStageSettings } from './types/round-settings';
+import { RoundParticipantResolver } from './round-participant-resolver.service';
+import { RoundGenerationReadinessService } from './round-generation-readiness.service';
 
 /** Atomic database boundary for GROUP_STAGE generation. */
 @Injectable()
@@ -16,10 +18,18 @@ export class GroupStagePersistenceService {
     private readonly prisma: PrismaService,
     private readonly settingsService: RoundSettingsService,
     private readonly generator: GroupStageGenerator,
+    private readonly participants: RoundParticipantResolver = new RoundParticipantResolver(),
+    private readonly readiness: RoundGenerationReadinessService = new RoundGenerationReadinessService(),
   ) {}
 
   async generate(roundId: string) {
     return this.prisma.$transaction(async (tx) => {
+      const target = await tx.round.findUnique({
+        where: { id: roundId },
+        select: { id: true, tournamentId: true, orderIndex: true },
+      });
+      if (!target) throw new NotFoundException('Round not found');
+      await this.readiness.assertCanGenerate(tx, target);
       await tx.$queryRaw(
         Prisma.sql`SELECT "id" FROM "rounds" WHERE "id" = ${roundId} FOR UPDATE`,
       );
@@ -31,6 +41,7 @@ export class GroupStagePersistenceService {
           settings: true,
           bestOf: true,
           tournamentId: true,
+          orderIndex: true,
         },
       });
       if (!round) throw new NotFoundException('Round not found');
@@ -38,54 +49,17 @@ export class GroupStagePersistenceService {
         throw new BadRequestException('Round format must be GROUP_STAGE');
       }
 
-      const [groupCount, matchCount, participantAssignments] =
-        await Promise.all([
-          tx.group.count({ where: { roundId } }),
-          tx.match.count({ where: { roundId } }),
-          tx.roundTeam.findMany({
-            where: { roundId },
-            orderBy: { createdAt: 'asc' },
-            select: {
-              team: {
-                select: {
-                  id: true,
-                  name: true,
-                  seed: true,
-                  registeredAt: true,
-                  tournamentId: true,
-                  status: true,
-                },
-              },
-            },
-          }),
-        ]);
+      const [groupCount, matchCount] = await Promise.all([
+        tx.group.count({ where: { roundId } }),
+        tx.match.count({ where: { roundId } }),
+      ]);
       if (groupCount > 0 || matchCount > 0) {
         throw new BadRequestException(
           'Round already contains groups or matches',
         );
       }
 
-      const teams = participantAssignments.length
-        ? participantAssignments
-            .map((assignment) => assignment.team)
-            .filter(
-              (team) =>
-                team.tournamentId === round.tournamentId &&
-                team.status === RegistrationStatus.APPROVED,
-            )
-            .map((team) => ({
-              id: team.id,
-              name: team.name,
-              seed: team.seed,
-              registeredAt: team.registeredAt,
-            }))
-        : await tx.team.findMany({
-            where: {
-              tournamentId: round.tournamentId,
-              status: RegistrationStatus.APPROVED,
-            },
-            select: { id: true, name: true, seed: true, registeredAt: true },
-          });
+      const { teams } = await this.participants.resolveForGeneration(tx, round);
 
       const settings = (await this.settingsService.normalizeForFormat(
         RoundFormat.GROUP_STAGE,

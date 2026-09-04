@@ -283,6 +283,9 @@ const extendedEn = {
   "round.status.ONGOING": "Ongoing",
   "round.status.COMPLETED": "Completed",
   "round.settings.bestOf": "Best of",
+  "round.settings.scoringMode": "Score model",
+  "round.settings.scoringMode.SERIES_SCORE": "Series wins",
+  "round.settings.scoringMode.POINT_SCORE": "Goals / points",
   "round.settings.meetings": "Meetings",
   "round.settings.pointsWdl": "W/D/L points",
   "round.settings.draws": "Draws",
@@ -339,6 +342,20 @@ const extendedEn = {
   "progress.thisStageHas": "This stage has",
   "progress.assigned": "assigned",
   "progress.fromPrevious": "from the previous stage's results.",
+  "progress.qualifiedFrom": "qualified from",
+  "swiss.iterationProgress": "Swiss iteration",
+  "swiss.readyNext": "The next Swiss iteration is ready to generate.",
+  "swiss.blocked.NOT_GENERATED": "Generate the initial Swiss structure first.",
+  "swiss.blocked.TOURNAMENT_NOT_MUTABLE":
+    "This Tournament no longer allows Swiss generation.",
+  "swiss.blocked.ROUND_NOT_MUTABLE":
+    "This Swiss stage no longer allows another iteration.",
+  "swiss.blocked.CURRENT_ITERATION_INCOMPLETE":
+    "Complete every match in the current Swiss iteration first.",
+  "swiss.blocked.ALL_ITERATIONS_COMPLETE":
+    "All resolved Swiss iterations are complete.",
+  "swiss.blocked.STRUCTURE_INVALID":
+    "The Swiss structure is inconsistent and must be reviewed.",
   "competition.noMatches": "No matches have been generated.",
   "competition.iteration": "Cycle",
   "competition.noGroups": "No groups have been generated.",
@@ -465,6 +482,8 @@ const extendedEn = {
   "tournament.create.endsAt": "End time",
   "tournament.create.mustBeAfter": "must be after",
   "tournament.create.roundNameRequired": "Round name is required.",
+  "tournament.create.pointScoreRequiresBo1":
+    "Goals / points scoring is supported only with BO1.",
   "tournament.create.swissRoundsInvalid":
     "Swiss rounds must be an integer from 1 to 20, or left blank for automatic calculation.",
   "tournament.create.swissAdvanceInvalid":
@@ -487,6 +506,8 @@ const extendedEn = {
     "Advancing teams per group must be less than the estimated group size.",
   "tournament.create.roundRobinPointsInvalid":
     "Round Robin points must be integers from 0 to 100.",
+  "tournament.create.roundRobinAdvanceInvalid":
+    "Round Robin advancing teams must be an integer from 1 to 256.",
   "tournament.create.bannerUploadError": "Could not upload the banner.",
   "tournament.create.sessionExpired":
     "Your session has expired. Please log in again.",
@@ -657,6 +678,8 @@ const extendedEn = {
   "match.manage.scheduleUpdateError": "Could not update the schedule",
   "match.manage.seriesScoreInvalid":
     "Series scores must be non-negative integers.",
+  "match.manage.pointScoreInvalid":
+    "Goals or points must be non-negative integers.",
   "match.manage.scoreBestOfInvalid": "The score is invalid for",
   "match.manage.decisiveRequired": "This format requires a winning team.",
   "match.manage.winnerRequiredPrefix": "The winner must reach",
@@ -667,9 +690,19 @@ const extendedEn = {
     "Correcting a completed result may roll back and update downstream slots. The backend will reject it if downstream matches are complete. Continue?",
   "match.manage.resultUpdated": "Result updated from the backend.",
   "match.manage.resultUpdateError": "Could not update the result",
+  "match.manage.error.TOURNAMENT_NOT_MUTABLE":
+    "Results cannot be changed after the tournament is completed or cancelled.",
+  "match.manage.error.ROUND_NOT_MUTABLE":
+    "Results in this stage can no longer be changed.",
+  "match.manage.error.UPSTREAM_RESULT_LOCKED_BY_DOWNSTREAM_STRUCTURE":
+    "This result is locked because a downstream structure already depends on it.",
+  "match.manage.error.FINAL_STANDINGS_RESULT_LOCKED":
+    "This result is locked because the final standings have already been confirmed.",
   "match.manage.gameScoreRequired": "At least one game score is required.",
   "match.manage.gameScoreInvalid":
     "Each game score must use non-negative integers and cannot be tied.",
+  "match.manage.pointDetailedScoreInvalid":
+    "The detailed point score must use non-negative integers; a tie is allowed only when enabled for this round.",
   "match.manage.correctGameScoresConfirm":
     "Correcting completed game scores may roll back and update downstream slots. Continue?",
   "match.manage.gameScoresUpdated": "Game scores updated from the backend.",
@@ -685,6 +718,10 @@ const extendedEn = {
   "match.manage.roomLink": "Match-room link",
   "match.manage.saveSchedule": "Save schedule",
   "match.manage.result": "Result",
+  "match.manage.seriesScoreHint":
+    "The aggregate score counts games or maps won in the series.",
+  "match.manage.pointScoreHint":
+    "The aggregate score stores the actual goals or points scored.",
   "match.manage.drawAllowed": "This round allows draws.",
   "match.manage.decisiveOnly": "This round requires a decisive result.",
   "match.manage.enterSeries": "Enter series score",
@@ -709,6 +746,33 @@ const extendedEn = {
   "competition.manage.approvedTeams": "approved teams",
   "competition.manage.generateError":
     "Could not generate competition structure",
+  "competition.preview.eyebrow": "Structure preview",
+  "competition.preview.title": "Review before generation",
+  "competition.preview.participants": "participants",
+  "competition.preview.matches": "matches",
+  "competition.preview.previewGeneration": "Preview structure",
+  "competition.preview.previewRegeneration": "Preview regeneration",
+  "competition.preview.confirmGenerate": "Confirm generation",
+  "competition.preview.confirmRegenerate": "Confirm regeneration",
+  "competition.preview.regenerationWarning":
+    "Confirming will replace the current scoreless structure.",
+  "competition.preview.loadError": "Could not prepare the structure preview.",
+  "generation.blocked.TOURNAMENT_NOT_MUTABLE":
+    "Publish the tournament before generation. Completed or cancelled tournaments cannot be changed.",
+  "generation.blocked.REGISTRATION_MUST_BE_CLOSED":
+    "Close registration before generating the first stage.",
+  "generation.blocked.PREVIOUS_ROUND_NOT_COMPLETE":
+    "Complete the previous stage before generating this structure.",
+  "generation.blocked.ROUND_PARTICIPANTS_NOT_READY":
+    "Persist the qualified teams from the previous stage first.",
+  "generation.blocked.ROUND_PARTICIPANTS_INELIGIBLE":
+    "One or more assigned participants are no longer eligible.",
+  "generation.blocked.ROUND_SEQUENCE_INVALID":
+    "The configured stage sequence is invalid.",
+  "generation.blocked.ELIMINATION_MUST_BE_TERMINAL":
+    "An elimination stage must remain the final stage of the tournament.",
+  "generation.blocked.ROUND_PREVIEW_STALE":
+    "The teams, seeds, or settings changed. Review a fresh preview before generating.",
   "competition.manage.swissGenerated": "Generated Swiss round",
   "competition.manage.swissGenerateError":
     "Could not generate the next Swiss round",
@@ -717,6 +781,29 @@ const extendedEn = {
   "competition.manage.nextRoundFallback": "the next stage",
   "competition.manage.advanceError":
     "Could not advance teams to the next stage",
+  "advancement.error.TOURNAMENT_NOT_MUTABLE":
+    "This tournament no longer allows advancement changes.",
+  "advancement.error.ROUND_NOT_MUTABLE":
+    "This stage no longer allows advancement changes.",
+  "advancement.error.PREVIOUS_ROUND_NOT_COMPLETE":
+    "Complete the current stage before advancing teams.",
+  "advancement.error.ROUND_ADVANCEMENT_SNAPSHOT_CHANGED":
+    "The standings changed while advancement was being confirmed. Review the latest standings and try again.",
+  "advancement.error.ROUND_ADVANCEMENT_ALREADY_PERSISTED":
+    "The advancing teams have already been confirmed.",
+  "advancement.error.NEXT_ROUND_ALREADY_GENERATED":
+    "The next stage structure already exists, so its participant list can no longer change.",
+  "advancement.error.ROUND_ADVANCEMENT_TARGET_INVALID":
+    "The next stage cannot accept this set of advancing teams.",
+  "advancement.error.ROUND_TIE_BREAK_SELECTION_INVALID":
+    "The tie-break selection is no longer valid. Review the tied teams and try again.",
+  "competition.manage.tieBreakTitle": "Qualification decision required",
+  "competition.manage.tieBreakDescription":
+    "These teams are tied at the qualification boundary. The organizer must select the advancing teams before continuing.",
+  "competition.manage.fixedQualified": "Already qualified",
+  "competition.manage.overallStandings": "Overall standings",
+  "competition.manage.selectTieTeams": "Teams to select",
+  "competition.manage.confirmTieBreak": "Confirm advancing teams",
   "competition.manage.noStages": "No competition stages",
   "competition.manage.noStagesHint":
     "This tournament has no configured rounds to generate.",
@@ -731,6 +818,72 @@ const extendedEn = {
   "competition.manage.regenerate": "Regenerate structure",
   "competition.manage.generate": "Generate structure",
   "competition.manage.advance": "Advance teams to next stage",
+  "competition.manage.finalizeStandings": "Confirm final standings",
+  "competition.manage.finalizeConfirm":
+    "Confirm the current standings as the final result? Match results will be locked after completion.",
+  "competition.manage.finalizedPrefix": "Tournament completed. Champion:",
+  "competition.manage.finalizeError": "Could not confirm the final standings.",
+  "competition.audit.eyebrow": "Operations log",
+  "competition.audit.title": "Competition change history",
+  "competition.audit.description":
+    "Structure, result, and progression changes are recorded with the transaction that applied them.",
+  "competition.audit.refresh": "Refresh",
+  "competition.audit.loadMore": "Load more",
+  "competition.audit.empty": "No competition changes have been recorded yet.",
+  "competition.audit.loadError": "Could not load competition change history.",
+  "competition.audit.system": "System",
+  "competition.audit.action.ROUND_STRUCTURE_GENERATED": "Round structure generated",
+  "competition.audit.action.ROUND_STRUCTURE_REGENERATED": "Round structure regenerated",
+  "competition.audit.action.ROUND_SEEDS_UPDATED": "Round seeds updated",
+  "competition.audit.action.ROUND_ADVANCEMENT_CONFIRMED": "Advancing teams confirmed",
+  "competition.audit.action.SWISS_ITERATION_GENERATED": "Next Swiss iteration generated",
+  "competition.audit.action.MATCH_RESULT_RECORDED": "Match result recorded",
+  "competition.audit.action.MATCH_RESULT_CORRECTED": "Match result corrected",
+  "competition.audit.action.DOWNSTREAM_RESET": "Downstream stages reset",
+  "competition.audit.action.ROUND_DELETED": "Round deleted",
+  "competition.audit.action.FINAL_STANDINGS_CONFIRMED": "Final standings confirmed",
+  "finalization.error.TOURNAMENT_NOT_MUTABLE":
+    "This tournament no longer allows finalization changes.",
+  "finalization.error.TOURNAMENT_FINALIZATION_NOT_READY":
+    "Complete every required match before confirming the final standings.",
+  "finalization.error.TOURNAMENT_FINALIZATION_UNSUPPORTED_FORMAT":
+    "This final-stage format cannot determine one overall champion.",
+  "finalization.error.TOURNAMENT_FINALIZATION_STANDINGS_INVALID":
+    "The final standings do not match the stage participants. Reload and review the competition data.",
+  "finalization.error.TOURNAMENT_CHAMPION_SELECTION_INVALID":
+    "The selected champion is not an eligible first-place tied team.",
+  "competition.reset.eyebrow": "Destructive reset",
+  "competition.reset.title": "Reset all downstream stages",
+  "competition.reset.afterRound": "The reset starts after",
+  "competition.reset.warning":
+    "This permanently removes downstream brackets, schedules, scores, qualification assignments, and final rankings. The selected source-stage results remain unchanged.",
+  "competition.reset.rounds": "stages",
+  "competition.reset.matches": "matches",
+  "competition.reset.progressedMatches": "progressed matches",
+  "competition.reset.participantAssignments": "participant assignments",
+  "competition.reset.affectedRounds": "Affected stages",
+  "competition.reset.confirm": "Reset downstream data",
+  "competition.reset.previewAction": "Reset later stages",
+  "competition.reset.loadError":
+    "Could not prepare the downstream reset preview.",
+  "competition.reset.errorFallback": "Could not reset downstream stages.",
+  "competition.reset.successPrefix": "Reset completed for",
+  "competition.reset.error.DOWNSTREAM_RESET_NOT_AVAILABLE":
+    "There is no downstream competition data to reset.",
+  "competition.reset.error.DOWNSTREAM_RESET_TOURNAMENT_LOCKED":
+    "A draft or cancelled tournament does not allow downstream reset.",
+  "competition.reset.error.DOWNSTREAM_RESET_PREVIEW_STALE":
+    "Downstream data changed after the preview. Review the latest reset impact before confirming again.",
+  "competition.manage.championTieTitle": "Champion decision required",
+  "competition.manage.championTieDescription":
+    "These teams are tied on every competitive metric for first place. Confirm the champion; the system will not decide by seed.",
+  "competition.manage.confirmChampion": "Confirm champion",
+  "competition.finalization.NOT_READY":
+    "Complete every required match and all configured Swiss iterations before confirming the final standings.",
+  "competition.finalization.AUTOMATIC":
+    "Elimination tournaments complete automatically from the final match result.",
+  "competition.finalization.UNSUPPORTED":
+    "A terminal Group Stage has separate group tables and cannot determine one champion. Add a following stage.",
   "competition.manage.loadingStructure": "Loading structure",
   "competition.manage.noStructure": "No competition structure data to display.",
   "competition.manage.standingsEyebrow": "Standings & progression",

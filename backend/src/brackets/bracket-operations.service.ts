@@ -6,15 +6,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  CompetitionAuditAction,
   MatchStatus,
   Prisma,
-  RegistrationStatus,
   RoundFormat,
 } from '@prisma/client';
+import { createHash } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { BracketsService } from './brackets.service';
 import { UpdateSeedsDto } from './dto/bracket-operations.dto';
-import { MatchDraft } from './types/bracket-generator';
+import { BracketTeam, MatchDraft } from './types/bracket-generator';
 import { StandingsService } from './standings.service';
 import {
   NOOP_TOURNAMENT_EVENT_PUBLISHER,
@@ -24,6 +25,17 @@ import {
 import { RoundSettingsService } from './round-settings.service';
 import { BracketQueryService } from './bracket-query.service';
 import { RoundAdvancementService } from './round-advancement.service';
+import { RoundParticipantResolver } from './round-participant-resolver.service';
+import { RoundGenerationReadinessService } from './round-generation-readiness.service';
+import { RoundRemovalService } from './round-removal.service';
+import { CompetitionMutationGuardService } from '../common/services/competition-mutation-guard.service';
+import { ApplicationErrorCode } from '../common/errors/application-error-code';
+import { DownstreamResetService } from './downstream-reset.service';
+import {
+  COMPETITION_AUDIT_WRITER,
+  CompetitionAuditWriter,
+  NOOP_COMPETITION_AUDIT_WRITER,
+} from '../common/ports/competition-audit-writer';
 
 @Injectable()
 export class BracketGenerationService {
@@ -32,70 +44,75 @@ export class BracketGenerationService {
     private readonly brackets: BracketsService,
     @Inject(TOURNAMENT_EVENT_PUBLISHER)
     private readonly events: TournamentEventPublisher = NOOP_TOURNAMENT_EVENT_PUBLISHER,
+    private readonly participants: RoundParticipantResolver = new RoundParticipantResolver(),
+    private readonly readiness: RoundGenerationReadinessService = new RoundGenerationReadinessService(),
+    private readonly settings: RoundSettingsService = new RoundSettingsService(),
+    @Inject(COMPETITION_AUDIT_WRITER)
+    private readonly audit: CompetitionAuditWriter = NOOP_COMPETITION_AUDIT_WRITER,
   ) {}
 
-  async generate(roundId: string, force = false) {
+  async preview(roundId: string, force = false) {
+    const plan = await this.prisma.$transaction((tx) =>
+      this.plan(tx, roundId, force),
+    );
+    return {
+      previewToken: plan.previewToken,
+      force,
+      participantCount: plan.teams.length,
+      matchCount: plan.drafts.length,
+      bracket: buildPreviewBracket(
+        plan.round,
+        plan.teams,
+        plan.drafts,
+        this.settings,
+      ),
+    };
+  }
+
+  async generate(
+    roundId: string,
+    force = false,
+    expectedPreviewToken?: string,
+    actorId?: string,
+  ) {
     const result = await this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw(
-        Prisma.sql`SELECT "id" FROM "rounds" WHERE "id" = ${roundId} FOR UPDATE`,
-      );
-      const round = await tx.round.findUnique({
-        where: { id: roundId },
-        select: {
-          id: true,
-          tournamentId: true,
-          format: true,
-          settings: true,
-          bestOf: true,
-          _count: { select: { groups: true } },
-          matches: {
-            select: {
-              id: true,
-              status: true,
-              scoreA: true,
-              scoreB: true,
-              winnerTeamId: true,
-              playedAt: true,
-              _count: { select: { scores: true } },
-            },
-          },
-        },
-      });
-      if (!round) throw new NotFoundException('Không tìm thấy vòng đấu');
-      if (round.matches.length || round._count.groups > 0) {
-        if (!force)
-          throw new ConflictException('Round already has generated matches');
-        const protectedData = round.matches.some(
-          (match) =>
-            match.status !== MatchStatus.PENDING ||
-            match.scoreA !== 0 ||
-            match.scoreB !== 0 ||
-            match.winnerTeamId !== null ||
-            match.playedAt !== null ||
-            match._count.scores > 0,
-        );
-        if (protectedData) {
-          throw new ConflictException(
-            'Cannot force regenerate: existing matches contain scores or progress',
-          );
-        }
+      const plan = await this.plan(tx, roundId, force);
+      if (expectedPreviewToken && expectedPreviewToken !== plan.previewToken) {
+        throw new ConflictException({
+          code: ApplicationErrorCode.ROUND_PREVIEW_STALE,
+          message:
+            'Round configuration or participants changed after the preview',
+        });
+      }
+      if (plan.hasExistingStructure) {
         await tx.match.deleteMany({ where: { roundId } });
         await tx.group.deleteMany({ where: { roundId } });
       }
-      const teams = await loadEligibleTeams(tx, round.id, round.tournamentId);
-      validateTeamCount(round.format, teams.length, round.settings);
-      const drafts = await this.brackets.generate({
-        format: round.format,
-        teams,
-        settings: asRecord(round.settings),
-        bestOf: round.bestOf,
-      });
-      const persisted = await persistDrafts(tx, roundId, teams, drafts);
-      return {
-        tournamentId: round.tournamentId,
+      const persisted = await persistDrafts(
+        tx,
         roundId,
-        format: round.format,
-        approvedTeamCount: teams.length,
+        plan.teams,
+        plan.drafts,
+      );
+      await this.audit.record(tx, {
+        tournamentId: plan.round.tournamentId,
+        actorId,
+        action: plan.hasExistingStructure
+          ? CompetitionAuditAction.ROUND_STRUCTURE_REGENERATED
+          : CompetitionAuditAction.ROUND_STRUCTURE_GENERATED,
+        roundId,
+        details: {
+          format: plan.round.format,
+          participantCount: plan.teams.length,
+          matchCount: persisted.length,
+          force,
+        },
+      });
+      return {
+        tournamentId: plan.round.tournamentId,
+        roundId,
+        format: plan.round.format,
+        approvedTeamCount: plan.teams.length,
         matchCount: persisted.length,
         force,
         matches: persisted,
@@ -104,6 +121,85 @@ export class BracketGenerationService {
     const { tournamentId, ...payload } = result;
     this.events.publish({ tournamentId, event: 'bracketGenerated', payload });
     return payload;
+  }
+
+  private async plan(
+    tx: Prisma.TransactionClient,
+    roundId: string,
+    force: boolean,
+  ) {
+    const target = await tx.round.findUnique({
+      where: { id: roundId },
+      select: { id: true, tournamentId: true, orderIndex: true },
+    });
+    if (!target) throw new NotFoundException('Không tìm thấy vòng đấu');
+    await this.readiness.assertCanGenerate(tx, target);
+    await tx.$queryRaw(
+      Prisma.sql`SELECT "id" FROM "rounds" WHERE "id" = ${roundId} FOR UPDATE`,
+    );
+    const round = await tx.round.findUnique({
+      where: { id: roundId },
+      select: {
+        id: true,
+        name: true,
+        tournamentId: true,
+        orderIndex: true,
+        format: true,
+        settings: true,
+        bestOf: true,
+        status: true,
+        _count: { select: { groups: true } },
+        matches: {
+          orderBy: { id: 'asc' },
+          select: {
+            id: true,
+            status: true,
+            scoreA: true,
+            scoreB: true,
+            winnerTeamId: true,
+            playedAt: true,
+            _count: { select: { scores: true } },
+          },
+        },
+      },
+    });
+    if (!round) throw new NotFoundException('Không tìm thấy vòng đấu');
+    const hasExistingStructure =
+      round.matches.length > 0 || round._count.groups > 0;
+    if (hasExistingStructure) {
+      if (!force) {
+        throw new ConflictException('Round already has generated matches');
+      }
+      const protectedData = round.matches.some(
+        (match) =>
+          match.status !== MatchStatus.PENDING ||
+          match.scoreA !== 0 ||
+          match.scoreB !== 0 ||
+          match.winnerTeamId !== null ||
+          match.playedAt !== null ||
+          match._count.scores > 0,
+      );
+      if (protectedData) {
+        throw new ConflictException(
+          'Cannot force regenerate: existing matches contain scores or progress',
+        );
+      }
+    }
+    const { teams } = await this.participants.resolveForGeneration(tx, round);
+    validateTeamCount(round.format, teams.length, round.settings);
+    const drafts = await this.brackets.generate({
+      format: round.format,
+      teams,
+      settings: asRecord(round.settings),
+      bestOf: round.bestOf,
+    });
+    const previewToken = generationPreviewToken({
+      round,
+      teams,
+      drafts,
+      force,
+    });
+    return { round, teams, drafts, previewToken, hasExistingStructure };
   }
 }
 
@@ -130,12 +226,31 @@ export class BracketOperationsService {
       standings,
       settingsService,
     ),
+    private readonly removal: RoundRemovalService = new RoundRemovalService(
+      prisma,
+    ),
+    private readonly competitionGuard: CompetitionMutationGuardService = new CompetitionMutationGuardService(),
+    private readonly participants: RoundParticipantResolver = new RoundParticipantResolver(),
+    private readonly downstreamReset: DownstreamResetService = new DownstreamResetService(
+      prisma,
+      events,
+    ),
+    @Inject(COMPETITION_AUDIT_WRITER)
+    private readonly audit: CompetitionAuditWriter = NOOP_COMPETITION_AUDIT_WRITER,
   ) {}
 
-  generate(roundId: string, force = false) {
-    return this.generation.generate(roundId, force);
+  previewGeneration(roundId: string, force = false) {
+    return this.generation.preview(roundId, force);
   }
-  async updateSeeds(roundId: string, dto: UpdateSeedsDto) {
+  generate(
+    roundId: string,
+    force = false,
+    previewToken?: string,
+    actorId?: string,
+  ) {
+    return this.generation.generate(roundId, force, previewToken, actorId);
+  }
+  async updateSeeds(roundId: string, dto: UpdateSeedsDto, actorId?: string) {
     const seeds = dto.seeds.map((item) => item.seed);
     const teamIds = dto.seeds.map((item) => item.teamId);
     if (new Set(seeds).size !== seeds.length) {
@@ -145,18 +260,29 @@ export class BracketOperationsService {
       throw new BadRequestException('Teams must not be duplicated');
     }
     return this.prisma.$transaction(async (tx) => {
+      const reference = await tx.round.findUnique({
+        where: { id: roundId },
+        select: { id: true, tournamentId: true, orderIndex: true },
+      });
+      if (!reference) throw new NotFoundException('Không tìm thấy vòng đấu');
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "tournaments" WHERE "id" = ${reference.tournamentId} FOR UPDATE`,
+      );
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "rounds" WHERE "id" = ${roundId} FOR UPDATE`,
+      );
       const round = await tx.round.findUnique({
         where: { id: roundId },
-        select: { tournamentId: true },
+        select: { id: true, tournamentId: true, orderIndex: true },
       });
-      if (!round) throw new NotFoundException('Không tìm thấy vòng đấu');
-      const eligible = await tx.team.findMany({
-        where: {
-          tournamentId: round.tournamentId,
-          status: RegistrationStatus.APPROVED,
-        },
-        select: { id: true, seed: true },
-      });
+      if (!round || round.tournamentId !== reference.tournamentId) {
+        throw new NotFoundException('Không tìm thấy vòng đấu');
+      }
+      await this.competitionGuard.assertRoundSeedsMutable(tx, roundId);
+      const { teams: eligible } = await this.participants.resolveForGeneration(
+        tx,
+        round,
+      );
       const eligibleIds = new Set(eligible.map((team) => team.id));
       if (teamIds.some((teamId) => !eligibleIds.has(teamId))) {
         throw new BadRequestException(
@@ -174,32 +300,247 @@ export class BracketOperationsService {
           'Seed value is already assigned to another approved team',
         );
       }
-      for (const assignment of dto.seeds) {
-        await tx.team.update({
-          where: { id: assignment.teamId },
-          data: { seed: assignment.seed },
+      if (round.orderIndex === 1) {
+        for (const assignment of dto.seeds) {
+          await tx.team.update({
+            where: { id: assignment.teamId },
+            data: { seed: assignment.seed },
+          });
+        }
+      } else {
+        const cleared = await tx.roundTeam.updateMany({
+          where: { roundId, teamId: { in: teamIds } },
+          data: { seed: null },
         });
+        if (cleared.count !== teamIds.length) {
+          throw new ConflictException({
+            code: ApplicationErrorCode.ROUND_SEEDS_LOCKED,
+            message: 'Round participants changed while seeds were updated',
+          });
+        }
+        for (const assignment of dto.seeds) {
+          await tx.roundTeam.update({
+            where: {
+              roundId_teamId: { roundId, teamId: assignment.teamId },
+            },
+            data: { seed: assignment.seed },
+          });
+        }
       }
+      await this.audit.record(tx, {
+        tournamentId: round.tournamentId,
+        actorId,
+        action: CompetitionAuditAction.ROUND_SEEDS_UPDATED,
+        roundId,
+        details: {
+          assignments: dto.seeds.map(({ teamId, seed }) => ({ teamId, seed })),
+        },
+      });
       return { roundId, seeds: dto.seeds };
     });
   }
 
-  advance(roundId: string) {
-    return this.advancement.advance(roundId);
+  advance(roundId: string, qualifiedTeamIds?: string[], actorId?: string) {
+    return this.advancement.advance(roundId, qualifiedTeamIds, actorId);
   }
-  async remove(roundId: string) {
-    const round = await this.prisma.round.findUnique({
-      where: { id: roundId },
-      select: { id: true },
-    });
-    if (!round) throw new NotFoundException('Không tìm thấy vòng đấu');
-    await this.prisma.round.delete({ where: { id: roundId } });
-    return { message: 'Đã xóa vòng đấu thành công', roundId };
+  remove(roundId: string, actorId?: string) {
+    return this.removal.remove(roundId, actorId);
+  }
+  previewDownstreamReset(roundId: string) {
+    return this.downstreamReset.preview(roundId);
+  }
+  resetDownstream(roundId: string, previewToken: string, actorId?: string) {
+    return this.downstreamReset.reset(roundId, previewToken, actorId);
   }
 
   async getBracket(roundId: string) {
     return this.query.getBracket(roundId);
   }
+}
+
+function generationPreviewToken(input: {
+  round: {
+    id: string;
+    format: RoundFormat;
+    settings: unknown;
+    bestOf: number;
+    matches: unknown[];
+    _count: { groups: number };
+  };
+  teams: BracketTeam[];
+  drafts: MatchDraft[];
+  force: boolean;
+}): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify({
+        roundId: input.round.id,
+        format: input.round.format,
+        settings: input.round.settings,
+        bestOf: input.round.bestOf,
+        force: input.force,
+        existingGroups: input.round._count.groups,
+        existingMatches: input.round.matches,
+        teams: input.teams.map((team) => ({
+          id: team.id,
+          seed: team.seed,
+          registeredAt: team.registeredAt.toISOString(),
+        })),
+        drafts: input.drafts,
+      }),
+    )
+    .digest('hex');
+}
+
+function buildPreviewBracket(
+  round: {
+    id: string;
+    name: string;
+    orderIndex: number;
+    format: RoundFormat;
+    settings: unknown;
+    bestOf: number;
+    status: string;
+  },
+  teams: BracketTeam[],
+  drafts: MatchDraft[],
+  settingsService: RoundSettingsService,
+) {
+  const publicTeams = new Map(
+    teams.map((team) => [
+      team.id,
+      {
+        id: team.id,
+        name: team.name,
+        shortName: null,
+        logoUrl: null,
+        seed: team.seed,
+      },
+    ]),
+  );
+  const slotStates = resolvePreviewSlots(drafts);
+  const groups = uniqueGroups(drafts).map((group) => {
+    const teamIds = new Set(
+      drafts
+        .filter((draft) => draft.group?.key === group.key)
+        .flatMap((draft) => [draft.teamA.teamId, draft.teamB.teamId])
+        .filter((teamId): teamId is string => teamId !== null),
+    );
+    return {
+      id: group.key,
+      name: group.name,
+      orderIndex: group.orderIndex,
+      teams: teams
+        .filter((team) => teamIds.has(team.id))
+        .map((team) => publicTeams.get(team.id)!),
+    };
+  });
+  return {
+    round: {
+      id: round.id,
+      name: round.name,
+      orderIndex: round.orderIndex,
+      format: round.format,
+      bestOf: round.bestOf,
+      status: round.status,
+      settings: settingsService.getEffectiveSettings(
+        round.format,
+        round.settings,
+      ),
+    },
+    groups,
+    matches: drafts.map((draft) => {
+      const slots = slotStates.get(draft.key)!;
+      const hasPotentialParticipant = Boolean(
+        slots.teamAId ||
+        draft.teamA.sourceMatchKey ||
+        slots.teamBId ||
+        draft.teamB.sourceMatchKey,
+      );
+      const resolvedBye =
+        draft.isBye &&
+        (slots.winnerTeamId !== null || !hasPotentialParticipant);
+      const outcome =
+        slots.winnerTeamId === null
+          ? null
+          : slots.winnerTeamId === slots.teamAId
+            ? 'TEAM_A'
+            : 'TEAM_B';
+      return {
+        id: draft.key,
+        groupId: draft.group?.key ?? null,
+        bracketRound: draft.bracketRound,
+        bracketType: draft.bracketType,
+        matchNumber: draft.matchNumber,
+        status: resolvedBye ? 'COMPLETED' : 'PENDING',
+        outcome,
+        isActive: !draft.activationCondition,
+        activationCondition: draft.activationCondition ?? null,
+        isBye: draft.isBye,
+        bestOf: draft.bestOf,
+        scheduledAt: null,
+        slots: {
+          A: slots.teamAId ? (publicTeams.get(slots.teamAId) ?? null) : null,
+          B: slots.teamBId ? (publicTeams.get(slots.teamBId) ?? null) : null,
+        },
+        score: {
+          A: outcome === 'TEAM_A' ? 1 : 0,
+          B: outcome === 'TEAM_B' ? 1 : 0,
+        },
+        winner: slots.winnerTeamId
+          ? (publicTeams.get(slots.winnerTeamId) ?? null)
+          : null,
+        nextMatch: {
+          id: draft.nextMatchKey,
+          slot: draft.nextMatchSlot,
+        },
+        loserNextMatch: {
+          id: draft.loserNextMatchKey,
+          slot: draft.loserNextMatchSlot,
+        },
+      };
+    }),
+  };
+}
+
+function resolvePreviewSlots(drafts: MatchDraft[]) {
+  const draftsByKey = new Map(drafts.map((draft) => [draft.key, draft]));
+  const states = new Map(
+    drafts.map((draft) => [
+      draft.key,
+      {
+        teamAId: draft.teamA.teamId,
+        teamBId: draft.teamB.teamId,
+        winnerTeamId: null as string | null,
+      },
+    ]),
+  );
+  const queue = drafts.filter((draft) => draft.isBye);
+  const processed = new Set<string>();
+  while (queue.length > 0) {
+    const draft = queue.shift()!;
+    if (processed.has(draft.key)) continue;
+    const state = states.get(draft.key)!;
+    const candidates = [state.teamAId, state.teamBId].filter(
+      (teamId): teamId is string => teamId !== null,
+    );
+    if (candidates.length !== 1) continue;
+    processed.add(draft.key);
+    state.winnerTeamId = candidates[0];
+    if (!draft.nextMatchKey || !draft.nextMatchSlot) continue;
+    const target = draftsByKey.get(draft.nextMatchKey);
+    const targetState = states.get(draft.nextMatchKey);
+    if (!target || !targetState) {
+      throw new Error('Generated bye progression target is missing');
+    }
+    if (draft.nextMatchSlot === 'A') {
+      targetState.teamAId = candidates[0];
+    } else {
+      targetState.teamBId = candidates[0];
+    }
+    if (target.isBye) queue.push(target);
+  }
+  return states;
 }
 
 function validateTeamCount(format: RoundFormat, count: number, raw: unknown) {
@@ -233,48 +574,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object'
     ? (value as Record<string, unknown>)
     : null;
-}
-
-async function loadEligibleTeams(
-  tx: Prisma.TransactionClient,
-  roundId: string,
-  tournamentId: string,
-) {
-  const assignments = await tx.roundTeam.findMany({
-    where: { roundId },
-    orderBy: { createdAt: 'asc' },
-    select: {
-      team: {
-        select: {
-          id: true,
-          name: true,
-          seed: true,
-          registeredAt: true,
-          tournamentId: true,
-          status: true,
-        },
-      },
-    },
-  });
-  if (assignments.length) {
-    return assignments
-      .map((assignment) => assignment.team)
-      .filter(
-        (team) =>
-          team.tournamentId === tournamentId &&
-          team.status === RegistrationStatus.APPROVED,
-      )
-      .map((team) => ({
-        id: team.id,
-        name: team.name,
-        seed: team.seed,
-        registeredAt: team.registeredAt,
-      }));
-  }
-  return tx.team.findMany({
-    where: { tournamentId, status: RegistrationStatus.APPROVED },
-    select: { id: true, name: true, seed: true, registeredAt: true },
-  });
 }
 
 async function persistDrafts(

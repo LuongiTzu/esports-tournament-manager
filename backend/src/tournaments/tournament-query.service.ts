@@ -16,10 +16,8 @@ import {
 } from '@prisma/client';
 import { RoundSettingsService } from '../brackets/round-settings.service';
 import { StandingsService } from '../brackets/standings.service';
-import {
-  resolveSwissNumberOfRounds,
-  SwissSettings,
-} from '../brackets/types/round-settings';
+import { resolveSwissProgress } from '../brackets/domain/swiss-progress';
+import { SwissSettings } from '../brackets/types/round-settings';
 import { tournamentVisibilityPolicy } from '../common/policies/tournament-visibility.policy';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -27,6 +25,7 @@ import {
   TOURNAMENT_GAME_SELECT,
 } from './tournament-prisma.select';
 import { withTournamentGameDisplayName } from './domain/tournament-game-display';
+import { resolveTournamentFinalizationMode } from './domain/tournament-finalization.policy';
 
 @Injectable()
 export class TournamentQueryService {
@@ -309,12 +308,22 @@ export class TournamentQueryService {
             status: true,
             settings: true,
             matches: {
-              select: { status: true, isActive: true, bracketRound: true },
+              select: {
+                status: true,
+                isActive: true,
+                isBye: true,
+                bracketRound: true,
+                bracketType: true,
+                matchNumber: true,
+                groupId: true,
+                winnerTeamId: true,
+              },
             },
             participants: {
               orderBy: { createdAt: 'asc' },
               select: {
                 createdAt: true,
+                seed: true,
                 team: { select: PUBLIC_TOURNAMENT_TEAM_SELECT },
                 advancedFromRound: {
                   select: {
@@ -330,6 +339,7 @@ export class TournamentQueryService {
               orderBy: { createdAt: 'asc' },
               select: {
                 createdAt: true,
+                seed: true,
                 team: { select: PUBLIC_TOURNAMENT_TEAM_SELECT },
                 round: {
                   select: {
@@ -377,31 +387,24 @@ export class TournamentQueryService {
           requiredMatches.length > 0 &&
           completedRequiredMatches === requiredMatches.length;
         const advancementSupported =
+          round.format === RoundFormat.ROUND_ROBIN ||
           round.format === RoundFormat.GROUP_STAGE ||
           round.format === RoundFormat.SWISS;
-        const currentSwissIteration =
+        const swissProgress =
           round.format === RoundFormat.SWISS
-            ? Math.max(
-                0,
-                ...round.matches.map((match) => match.bracketRound ?? 0),
-              )
-            : null;
-        const requiredSwissIterations =
-          round.format === RoundFormat.SWISS
-            ? resolveSwissNumberOfRounds(
-                roundStandings.length,
-                (
-                  this.roundSettingsService.getEffectiveSettings(
-                    RoundFormat.SWISS,
-                    round.settings,
-                  ) as SwissSettings
-                ).numberOfRounds,
-              )
+            ? resolveSwissProgress({
+                participantCount: roundStandings.length,
+                settings: this.roundSettingsService.getEffectiveSettings(
+                  RoundFormat.SWISS,
+                  round.settings,
+                ) as SwissSettings,
+                matches: round.matches,
+                roundStatus: round.status,
+                tournamentStatus: tournament.status,
+              })
             : null;
         const swissFinalIterationReached =
-          currentSwissIteration === null ||
-          requiredSwissIterations === null ||
-          currentSwissIteration === requiredSwissIterations;
+          swissProgress?.allIterationsComplete ?? true;
         const progressionState = !round.matches.length
           ? 'NOT_GENERATED'
           : !allRequiredMatchesCompleted
@@ -419,12 +422,37 @@ export class TournamentQueryService {
                       : nextRound.status === RoundStatus.COMPLETED
                         ? 'NEXT_STAGE_COMPLETED'
                         : 'NEXT_STAGE_GENERATED';
+        const finalizationMode = resolveTournamentFinalizationMode(
+          round.format,
+        );
+        const finalizationState = nextRound
+          ? 'NOT_APPLICABLE'
+          : tournament.status === TournamentStatus.COMPLETED
+            ? 'COMPLETED'
+            : finalizationMode === 'MANUAL_STANDINGS'
+              ? progressionState === 'TERMINAL_COMPLETE'
+                ? 'READY'
+                : 'NOT_READY'
+              : finalizationMode === 'AUTOMATIC_ELIMINATION'
+                ? 'AUTOMATIC'
+                : 'UNSUPPORTED';
+        const finalizationReason = nextRound
+          ? null
+          : finalizationState === 'READY'
+            ? 'The final standings are ready for organizer confirmation.'
+            : finalizationState === 'NOT_READY'
+              ? 'Every required match and Swiss iteration must be completed first.'
+              : finalizationState === 'AUTOMATIC'
+                ? 'The Tournament is completed automatically from the final elimination match.'
+                : finalizationState === 'UNSUPPORTED'
+                  ? 'A terminal Group Stage has separate tables and cannot infer one overall champion.'
+                  : null;
         const readinessReason = !round.matches.length
           ? 'Giai đoạn chưa được tạo.'
           : !allRequiredMatchesCompleted
             ? `Còn ${requiredMatches.length - completedRequiredMatches} trận bắt buộc chưa hoàn tất.`
             : !swissFinalIterationReached
-              ? `Swiss mới hoàn tất ${currentSwissIteration}/${requiredSwissIterations} lượt ghép cặp.`
+              ? `Swiss mới hoàn tất ${swissProgress?.currentIteration ?? 0}/${swissProgress?.resolvedNumberOfRounds ?? 0} lượt ghép cặp.`
               : progressionState === 'AWAITING_ADVANCEMENT'
                 ? 'Giai đoạn đã hoàn tất và đủ điều kiện để hệ thống xác định đội đi tiếp.'
                 : progressionState === 'READY_FOR_GENERATION'
@@ -453,7 +481,14 @@ export class TournamentQueryService {
             completedRequiredMatches,
             allRequiredMatchesCompleted,
           },
-          participants: round.participants,
+          swissProgress,
+          participants: round.participants.map(
+            ({ seed, team, ...assignment }) => ({
+              ...assignment,
+              seed,
+              team: { ...team, seed: seed ?? team.seed },
+            }),
+          ),
           advancement: {
             supported: advancementSupported,
             state: progressionState,
@@ -470,10 +505,19 @@ export class TournamentQueryService {
                 }
               : null,
             qualifiedTeams: round.advancedTeams.map((assignment) => ({
-              team: assignment.team,
+              team: {
+                ...assignment.team,
+                seed: assignment.seed ?? assignment.team.seed,
+              },
+              seed: assignment.seed,
               targetRound: assignment.round,
               advancedAt: assignment.createdAt,
             })),
+          },
+          finalization: {
+            mode: finalizationMode,
+            state: finalizationState,
+            readinessReason: finalizationReason,
           },
         };
       }),

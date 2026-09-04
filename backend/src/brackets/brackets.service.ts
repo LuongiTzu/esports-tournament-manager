@@ -55,6 +55,7 @@ export class BracketsService {
     const settings = await this.roundSettingsService.normalizeForFormat(
       input.format,
       input.settings,
+      input.bestOf,
     );
 
     return generator.generate({

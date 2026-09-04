@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   MatchStatus,
   RoundFormat,
@@ -262,6 +266,8 @@ describe('TournamentsService round settings', () => {
         format: RoundFormat.ROUND_ROBIN,
         bestOf: 3,
         settings: {
+          scoringMode: 'SERIES_SCORE',
+          advancingTeamCount: 2,
           winPoints: 3,
           drawPoints: 1,
           lossPoints: 0,
@@ -274,7 +280,7 @@ describe('TournamentsService round settings', () => {
       data: expect.objectContaining({
         format: RoundFormat.PLAYOFF,
         bestOf: 5,
-        settings: { thirdPlaceMatch: false },
+        settings: { scoringMode: 'SERIES_SCORE', thirdPlaceMatch: false },
       }),
     });
   });
@@ -296,6 +302,8 @@ describe('TournamentsService round settings', () => {
       {} as ContentFilterService,
     );
     const settings = {
+      scoringMode: 'SERIES_SCORE',
+      advancingTeamCount: 2,
       winPoints: 3,
       drawPoints: 1,
       lossPoints: 0,
@@ -321,6 +329,37 @@ describe('TournamentsService round settings', () => {
       },
     });
     expect(result).toEqual(expect.objectContaining({ settings }));
+  });
+
+  it('rejects appending a Round after an elimination final', async () => {
+    const round = {
+      findFirst: jest.fn().mockResolvedValue({
+        orderIndex: 2,
+        format: RoundFormat.PLAYOFF,
+      }),
+      create: jest.fn(),
+    };
+    const service = createTournamentsService(
+      addRoundPrisma(round),
+      new RoundSettingsService(),
+      {} as StandingsService,
+      {} as ContentFilterService,
+    );
+
+    try {
+      await service.addRound('tournament-1', {
+        name: 'Invalid extra stage',
+        format: RoundFormat.ROUND_ROBIN,
+        settings: {},
+      });
+      throw new Error('Expected addRound to reject');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as ConflictException).getResponse()).toEqual(
+        expect.objectContaining({ code: 'ELIMINATION_MUST_BE_TERMINAL' }),
+      );
+    }
+    expect(round.create).not.toHaveBeenCalled();
   });
 
   it('normalizes and persists canonical Group Stage settings through add-round', async () => {
@@ -352,6 +391,7 @@ describe('TournamentsService round settings', () => {
     });
 
     const settings = {
+      scoringMode: 'SERIES_SCORE',
       numberOfGroups: 4,
       advancingTeamsPerGroup: 2,
       winPoints: 3,
@@ -398,10 +438,21 @@ describe('TournamentsService round settings', () => {
         settings: { seeding: 'STANDARD', ...settings },
       });
 
+      const canonicalSettings = {
+        scoringMode: 'SERIES_SCORE',
+        ...settings,
+      };
+
       expect(round.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({ format, bestOf: 5, settings }),
+        data: expect.objectContaining({
+          format,
+          bestOf: 5,
+          settings: canonicalSettings,
+        }),
       });
-      expect(result).toEqual(expect.objectContaining({ settings }));
+      expect(result).toEqual(
+        expect.objectContaining({ settings: canonicalSettings }),
+      );
     },
   );
 
@@ -457,7 +508,11 @@ describe('TournamentsService round settings', () => {
       data: expect.objectContaining({
         format: RoundFormat.SWISS,
         bestOf: 3,
-        settings: { numberOfRounds: null, advancingTeamCount: 4 },
+        settings: {
+          scoringMode: 'SERIES_SCORE',
+          numberOfRounds: null,
+          advancingTeamCount: 4,
+        },
       }),
     });
   });
@@ -484,7 +539,11 @@ describe('TournamentsService round settings', () => {
       settings: { numRounds: 5, advanceCount: 4 },
     });
 
-    const settings = { numberOfRounds: 5, advancingTeamCount: 4 };
+    const settings = {
+      scoringMode: 'SERIES_SCORE',
+      numberOfRounds: 5,
+      advancingTeamCount: 4,
+    };
     expect(round.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         format: RoundFormat.SWISS,
@@ -496,17 +555,10 @@ describe('TournamentsService round settings', () => {
 });
 
 describe('TournamentsService standings read model', () => {
-  it('exposes persisted qualification and next-stage assignments without deriving them', async () => {
-    const qualifiedTeam = {
-      id: 'team-1',
-      name: 'Team One',
-      shortName: 'ONE',
-      logoUrl: null,
-      seed: 1,
-    };
+  it('marks a completed terminal Round Robin table ready for confirmation', async () => {
     const tournament = {
       id: 'tournament-1',
-      name: 'Integration Cup',
+      name: 'League Cup',
       status: TournamentStatus.ONGOING,
       organizerId: 'organizer-1',
       visibility: 'PUBLIC',
@@ -514,11 +566,11 @@ describe('TournamentsService standings read model', () => {
       teams: [],
       rounds: [
         {
-          id: 'groups',
-          name: 'Group Stage',
-          orderIndex: 0,
-          format: RoundFormat.GROUP_STAGE,
-          status: RoundStatus.COMPLETED,
+          id: 'league',
+          name: 'League',
+          orderIndex: 1,
+          format: RoundFormat.ROUND_ROBIN,
+          status: RoundStatus.ONGOING,
           settings: {},
           matches: [
             {
@@ -526,47 +578,8 @@ describe('TournamentsService standings read model', () => {
               isActive: true,
               bracketRound: 1,
             },
-            {
-              status: MatchStatus.COMPLETED,
-              isActive: true,
-              bracketRound: 1,
-            },
           ],
           participants: [],
-          advancedTeams: [
-            {
-              createdAt: new Date('2026-01-01T00:00:00.000Z'),
-              team: qualifiedTeam,
-              round: {
-                id: 'playoff',
-                name: 'Playoff',
-                orderIndex: 1,
-                format: RoundFormat.PLAYOFF,
-                status: RoundStatus.UPCOMING,
-              },
-            },
-          ],
-        },
-        {
-          id: 'playoff',
-          name: 'Playoff',
-          orderIndex: 1,
-          format: RoundFormat.PLAYOFF,
-          status: RoundStatus.UPCOMING,
-          settings: {},
-          matches: [],
-          participants: [
-            {
-              createdAt: new Date('2026-01-01T00:00:00.000Z'),
-              team: qualifiedTeam,
-              advancedFromRound: {
-                id: 'groups',
-                name: 'Group Stage',
-                orderIndex: 0,
-                format: RoundFormat.GROUP_STAGE,
-              },
-            },
-          ],
           advancedTeams: [],
         },
       ],
@@ -577,10 +590,7 @@ describe('TournamentsService standings read model', () => {
     const standingsService = {
       forTournament: jest.fn().mockResolvedValue({
         tournamentId: tournament.id,
-        rounds: [
-          { roundId: 'groups', standings: [] },
-          { roundId: 'playoff', standings: [] },
-        ],
+        rounds: [{ roundId: 'league', standings: [] }],
       }),
     } as unknown as StandingsService;
     const service = createTournamentsService(
@@ -590,30 +600,144 @@ describe('TournamentsService standings read model', () => {
       {} as ContentFilterService,
     );
 
-    const result = await service.getStandings('integration-cup');
+    const result = await service.getStandings('league-cup');
 
-    expect(result.rounds[0]).toEqual(
-      expect.objectContaining({
-        progress: expect.objectContaining({
-          completedMatches: 2,
-          allRequiredMatchesCompleted: true,
-        }),
-        advancement: expect.objectContaining({
-          state: 'READY_FOR_GENERATION',
-          nextRound: expect.objectContaining({ participantCount: 1 }),
-          qualifiedTeams: [expect.objectContaining({ team: qualifiedTeam })],
-        }),
-      }),
-    );
-    expect(result.rounds[1].participants).toHaveLength(1);
+    expect(result.rounds[0].finalization).toEqual({
+      mode: 'MANUAL_STANDINGS',
+      state: 'READY',
+      readinessReason:
+        'The final standings are ready for organizer confirmation.',
+    });
   });
 
+  it.each([RoundFormat.GROUP_STAGE, RoundFormat.ROUND_ROBIN])(
+    'exposes persisted %s qualification and next-stage assignments without deriving them',
+    async (scoringFormat) => {
+      const qualifiedTeam = {
+        id: 'team-1',
+        name: 'Team One',
+        shortName: 'ONE',
+        logoUrl: null,
+        seed: 1,
+      };
+      const tournament = {
+        id: 'tournament-1',
+        name: 'Integration Cup',
+        status: TournamentStatus.ONGOING,
+        organizerId: 'organizer-1',
+        visibility: 'PUBLIC',
+        moderationStatus: 'ACTIVE',
+        teams: [],
+        rounds: [
+          {
+            id: 'scoring-round',
+            name: 'Scoring Stage',
+            orderIndex: 0,
+            format: scoringFormat,
+            status: RoundStatus.COMPLETED,
+            settings: {},
+            matches: [
+              {
+                status: MatchStatus.COMPLETED,
+                isActive: true,
+                bracketRound: 1,
+              },
+              {
+                status: MatchStatus.COMPLETED,
+                isActive: true,
+                bracketRound: 1,
+              },
+            ],
+            participants: [],
+            advancedTeams: [
+              {
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                team: qualifiedTeam,
+                round: {
+                  id: 'playoff',
+                  name: 'Playoff',
+                  orderIndex: 1,
+                  format: RoundFormat.PLAYOFF,
+                  status: RoundStatus.UPCOMING,
+                },
+              },
+            ],
+          },
+          {
+            id: 'playoff',
+            name: 'Playoff',
+            orderIndex: 1,
+            format: RoundFormat.PLAYOFF,
+            status: RoundStatus.UPCOMING,
+            settings: {},
+            matches: [],
+            participants: [
+              {
+                createdAt: new Date('2026-01-01T00:00:00.000Z'),
+                team: qualifiedTeam,
+                advancedFromRound: {
+                  id: 'scoring-round',
+                  name: 'Scoring Stage',
+                  orderIndex: 0,
+                  format: scoringFormat,
+                },
+              },
+            ],
+            advancedTeams: [],
+          },
+        ],
+      };
+      const prisma = {
+        tournament: { findUnique: jest.fn().mockResolvedValue(tournament) },
+      } as unknown as PrismaService;
+      const standingsService = {
+        forTournament: jest.fn().mockResolvedValue({
+          tournamentId: tournament.id,
+          rounds: [
+            { roundId: 'scoring-round', standings: [] },
+            { roundId: 'playoff', standings: [] },
+          ],
+        }),
+      } as unknown as StandingsService;
+      const service = createTournamentsService(
+        prisma,
+        {} as RoundSettingsService,
+        standingsService,
+        {} as ContentFilterService,
+      );
+
+      const result = await service.getStandings('integration-cup');
+
+      expect(result.rounds[0]).toEqual(
+        expect.objectContaining({
+          progress: expect.objectContaining({
+            completedMatches: 2,
+            allRequiredMatchesCompleted: true,
+          }),
+          advancement: expect.objectContaining({
+            state: 'READY_FOR_GENERATION',
+            nextRound: expect.objectContaining({ participantCount: 1 }),
+            qualifiedTeams: [expect.objectContaining({ team: qualifiedTeam })],
+          }),
+        }),
+      );
+      expect(result.rounds[1].participants).toHaveLength(1);
+    },
+  );
+
   it('does not offer Swiss advancement before the final configured iteration', async () => {
-    const swissMatch = {
-      status: MatchStatus.COMPLETED,
-      isActive: true,
-      bracketRound: 2,
-    };
+    const swissIteration = (bracketRound: number) =>
+      Array.from({ length: 4 }, (_, index) => ({
+        status: MatchStatus.COMPLETED,
+        isActive: true,
+        isBye: false,
+        bracketRound,
+        bracketType: null,
+        matchNumber: index + 1,
+        groupId: null,
+        winnerTeamId: `team-${index * 2 + 1}`,
+      }));
+    const swissMatches = [...swissIteration(1), ...swissIteration(2)];
     const tournament = {
       id: 'tournament-1',
       name: 'Swiss Cup',
@@ -630,7 +754,7 @@ describe('TournamentsService standings read model', () => {
           format: RoundFormat.SWISS,
           status: RoundStatus.ONGOING,
           settings: { numberOfRounds: 3, advancingTeamCount: 4 },
-          matches: [swissMatch],
+          matches: swissMatches,
           participants: [],
           advancedTeams: [],
         },
@@ -678,12 +802,28 @@ describe('TournamentsService standings read model', () => {
         readinessReason: 'Swiss mới hoàn tất 2/3 lượt ghép cặp.',
       }),
     );
+    expect(beforeFinal.rounds[0].swissProgress).toEqual({
+      resolvedNumberOfRounds: 3,
+      currentIteration: 2,
+      currentIterationComplete: true,
+      allIterationsComplete: false,
+      canGenerateNext: true,
+      blockedReason: null,
+    });
 
-    swissMatch.bracketRound = 3;
+    swissMatches.push(...swissIteration(3));
     const afterFinal = await service.getStandings('swiss-cup');
     expect(afterFinal.rounds[0].advancement).toEqual(
       expect.objectContaining({
         state: 'AWAITING_ADVANCEMENT',
+      }),
+    );
+    expect(afterFinal.rounds[0].swissProgress).toEqual(
+      expect.objectContaining({
+        currentIteration: 3,
+        allIterationsComplete: true,
+        canGenerateNext: false,
+        blockedReason: 'ALL_ITERATIONS_COMPLETE',
       }),
     );
   });
@@ -740,12 +880,12 @@ describe('TournamentsService roster snapshots', () => {
   ])(
     'snapshots the active roster for %s with maximum %i',
     async (_, min, gameMax, requestedMax) => {
-      const { service, tx } = creationHarness(min as number, gameMax as number);
+      const { service, tx } = creationHarness(min, gameMax);
 
       await service.create('organizer-1', {
         name: 'Roster Cup',
         gameId: 'game-1',
-        maxTeamSize: requestedMax as number,
+        maxTeamSize: requestedMax,
       });
 
       expect(tx.tournament.create).toHaveBeenCalledWith(
@@ -756,9 +896,10 @@ describe('TournamentsService roster snapshots', () => {
           }),
         }),
       );
-      expect(tx.tournament.create.mock.calls[0][0].data).not.toHaveProperty(
-        'maxSubstitutes',
-      );
+      const createCalls = tx.tournament.create.mock.calls as Array<
+        Array<{ data: Record<string, unknown> }>
+      >;
+      expect(createCalls[0]?.[0]?.data).not.toHaveProperty('maxSubstitutes');
     },
   );
 
@@ -896,6 +1037,7 @@ describe('TournamentsService roster snapshots', () => {
       }),
     );
     expect(result.rounds[0].settings).toEqual({
+      scoringMode: 'SERIES_SCORE',
       numberOfGroups: 2,
       advancingTeamsPerGroup: 1,
       winPoints: 2,
@@ -1024,6 +1166,20 @@ describe('TournamentsService lifecycle updates', () => {
     ).rejects.toMatchObject({
       response: expect.objectContaining({
         code: 'INVALID_TOURNAMENT_STATUS_TRANSITION',
+      }),
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('requires the finalization command instead of directly setting COMPLETED', async () => {
+    const { service, update } = updateHarness(TournamentStatus.ONGOING);
+    await expect(
+      service.update('tournament-1', {
+        status: TournamentStatus.COMPLETED,
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        code: 'TOURNAMENT_COMPLETION_REQUIRES_FINALIZATION',
       }),
     });
     expect(update).not.toHaveBeenCalled();

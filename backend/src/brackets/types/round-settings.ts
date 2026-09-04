@@ -1,4 +1,10 @@
 import { RoundFormat } from '@prisma/client';
+import { MatchScoringMode } from '../../common/domain/match-scoring';
+
+export interface MatchScoringSettings {
+  /** SERIES_SCORE counts games/maps won; POINT_SCORE stores raw goals/points. */
+  scoringMode?: MatchScoringMode;
+}
 
 /**
  * Cấu hình (settings) cho từng thể thức thi đấu.
@@ -19,7 +25,9 @@ import { RoundFormat } from '@prisma/client';
  * Vòng tròn tính điểm (ROUND_ROBIN)
  * VD: mỗi đội gặp mọi đội khác đúng 1 lượt, tính điểm 3-1-0.
  */
-export interface RoundRobinSettings {
+export interface RoundRobinSettings extends MatchScoringSettings {
+  /** Number of highest-ranked teams passed to the next Tournament Round. */
+  advancingTeamCount: number;
   winPoints: number;
   drawPoints: number;
   lossPoints: number;
@@ -32,7 +40,7 @@ export interface RoundRobinSettings {
  * Vòng bảng (GROUP_STAGE)
  * Chia đội thực tế thành các bảng bằng nhau; số đội mỗi bảng luôn được suy ra.
  */
-export interface GroupStageSettings {
+export interface GroupStageSettings extends MatchScoringSettings {
   /** Số bảng đấu */
   numberOfGroups: number;
   /** Số đội đứng đầu mỗi bảng đi tiếp */
@@ -53,7 +61,7 @@ export interface GroupStageSettings {
  * Thụy Sĩ (SWISS)
  * Không sinh hết bracket một lần — mỗi vòng sinh sau khi vòng trước kết thúc.
  */
-export interface SwissSettings {
+export interface SwissSettings extends MatchScoringSettings {
   /** Null means derive ceil(log2(actual participating teams)) at generation. */
   numberOfRounds: number | null;
   /** Number of highest-ranked teams passed to the next Tournament Round. */
@@ -61,13 +69,13 @@ export interface SwissSettings {
 }
 
 /** Playoff — Single Elimination (PLAYOFF) */
-export interface PlayoffSettings {
+export interface PlayoffSettings extends MatchScoringSettings {
   /** Có trận tranh hạng 3 hay không */
   thirdPlaceMatch: boolean;
 }
 
 /** Nhánh thắng - thua — Double Elimination (DOUBLE_ELIM) */
-export interface DoubleElimSettings {
+export interface DoubleElimSettings extends MatchScoringSettings {
   /** Có Grand Final Reset (nếu đội nhánh thua thắng ván 1) */
   grandFinalReset: boolean;
 }
@@ -93,6 +101,8 @@ export type RoundSettingsFor<F extends RoundFormat> = RoundSettingsMap[F];
  */
 export const DEFAULT_ROUND_SETTINGS: RoundSettingsMap = {
   [RoundFormat.ROUND_ROBIN]: {
+    scoringMode: 'SERIES_SCORE',
+    advancingTeamCount: 2,
     winPoints: 3,
     drawPoints: 1,
     lossPoints: 0,
@@ -100,6 +110,7 @@ export const DEFAULT_ROUND_SETTINGS: RoundSettingsMap = {
     meetingsPerPair: 1,
   },
   [RoundFormat.GROUP_STAGE]: {
+    scoringMode: 'SERIES_SCORE',
     numberOfGroups: 2,
     advancingTeamsPerGroup: 2,
     winPoints: 3,
@@ -109,13 +120,16 @@ export const DEFAULT_ROUND_SETTINGS: RoundSettingsMap = {
     meetingsPerPair: 1,
   },
   [RoundFormat.SWISS]: {
+    scoringMode: 'SERIES_SCORE',
     numberOfRounds: null,
     advancingTeamCount: 8,
   },
   [RoundFormat.PLAYOFF]: {
+    scoringMode: 'SERIES_SCORE',
     thirdPlaceMatch: true,
   },
   [RoundFormat.DOUBLE_ELIM]: {
+    scoringMode: 'SERIES_SCORE',
     grandFinalReset: true,
   },
 };

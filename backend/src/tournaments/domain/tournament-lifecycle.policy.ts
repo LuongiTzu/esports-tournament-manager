@@ -12,10 +12,7 @@ const ALLOWED_TRANSITIONS: Readonly<
     TournamentStatus.ONGOING,
     TournamentStatus.CANCELLED,
   ],
-  [TournamentStatus.ONGOING]: [
-    TournamentStatus.COMPLETED,
-    TournamentStatus.CANCELLED,
-  ],
+  [TournamentStatus.ONGOING]: [TournamentStatus.CANCELLED],
   [TournamentStatus.COMPLETED]: [],
   [TournamentStatus.CANCELLED]: [],
 };

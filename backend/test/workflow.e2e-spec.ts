@@ -1,8 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { EmailService } from '../src/email/email.service';
 import { configureApp } from '../src/main';
 import { PrismaService } from '../src/prisma/prisma.service';
 
@@ -15,9 +16,10 @@ describeDatabase('main tournament workflow (database E2E)', () => {
   const stamp = Date.now();
   const organizerEmail = `e2e-organizer-${stamp}@example.com`;
   const participantEmail = `e2e-participant-${stamp}@example.com`;
+  const outsiderEmail = `e2e-outsider-${stamp}@example.com`;
   let organizerToken: string;
   let participantToken: string;
-  let seededParticipantToken: string;
+  let outsiderToken: string;
   let gameId: string;
   let tournamentId: string;
   let slug: string;
@@ -26,9 +28,19 @@ describeDatabase('main tournament workflow (database E2E)', () => {
   let matchId: string;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+    const emailStub = {
+      sendVerification: jest.fn().mockResolvedValue(undefined),
+      sendPasswordReset: jest.fn().mockResolvedValue(undefined),
+      sendPasswordChanged: jest.fn().mockResolvedValue(undefined),
+      sendEmailChangeConfirmation: jest.fn().mockResolvedValue(undefined),
+      sendEmailChangeRequestedNotice: jest.fn().mockResolvedValue(undefined),
+      sendEmailChanged: jest.fn().mockResolvedValue(undefined),
+      sendActivity: jest.fn().mockResolvedValue(undefined),
+    };
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(EmailService)
+      .useValue(emailStub)
+      .compile();
     app = moduleRef.createNestApplication();
     prisma = moduleRef.get(PrismaService);
     configureApp(app);
@@ -42,7 +54,9 @@ describeDatabase('main tournament workflow (database E2E)', () => {
         await prisma.tournament.deleteMany({ where: { id: tournamentId } });
       }
       await prisma.user.deleteMany({
-        where: { email: { in: [organizerEmail, participantEmail] } },
+        where: {
+          email: { in: [organizerEmail, participantEmail, outsiderEmail] },
+        },
       });
     }
     if (app) await app.close();
@@ -57,6 +71,10 @@ describeDatabase('main tournament workflow (database E2E)', () => {
         displayName: 'E2E Organizer',
       })
       .expect(201);
+    await prisma.user.update({
+      where: { email: organizerEmail },
+      data: { emailVerifiedAt: new Date() },
+    });
     const login = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({
@@ -75,6 +93,10 @@ describeDatabase('main tournament workflow (database E2E)', () => {
         displayName: 'E2E Participant',
       })
       .expect(201);
+    await prisma.user.update({
+      where: { email: participantEmail },
+      data: { emailVerifiedAt: new Date() },
+    });
     const participantLogin = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({
@@ -86,16 +108,28 @@ describeDatabase('main tournament workflow (database E2E)', () => {
       participantLogin.body.data.accessToken ??
       participantLogin.body.data.access_token;
 
-    const seededParticipantLogin = await request(app.getHttpServer())
+    await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send({
+        email: outsiderEmail,
+        password: 'E2ePass123!',
+        displayName: 'E2E Outsider',
+      })
+      .expect(201);
+    await prisma.user.update({
+      where: { email: outsiderEmail },
+      data: { emailVerifiedAt: new Date() },
+    });
+    const outsiderLogin = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({
-        email: 'kai.tran@seed.esports.test',
-        password: '12345678',
+        email: outsiderEmail,
+        password: 'E2ePass123!',
       })
       .expect(200);
-    seededParticipantToken =
-      seededParticipantLogin.body.data.accessToken ??
-      seededParticipantLogin.body.data.access_token;
+    outsiderToken =
+      outsiderLogin.body.data.accessToken ??
+      outsiderLogin.body.data.access_token;
 
     const games = await request(app.getHttpServer())
       .get('/api/games')
@@ -186,6 +220,11 @@ describeDatabase('main tournament workflow (database E2E)', () => {
       .expect(201);
     roundId = round.body.data.id;
     await request(app.getHttpServer())
+      .patch(`/api/tournaments/${tournamentId}`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .send({ registrationOpen: false })
+      .expect(200);
+    await request(app.getHttpServer())
       .post(`/api/rounds/${roundId}/generate`)
       .set('Authorization', `Bearer ${organizerToken}`)
       .expect(201);
@@ -200,9 +239,42 @@ describeDatabase('main tournament workflow (database E2E)', () => {
       .expect(200);
     expect(completed.body.data.status).toBe('COMPLETED');
     expect(completed.body.data.winnerTeamId).toBeTruthy();
+
+    const audit = await request(app.getHttpServer())
+      .get(`/api/tournaments/${tournamentId}/competition-audit`)
+      .set('Authorization', `Bearer ${organizerToken}`)
+      .expect(200);
+    expect(
+      audit.body.data.data.map((entry: { action: string }) => entry.action),
+    ).toEqual(
+      expect.arrayContaining([
+        'ROUND_STRUCTURE_GENERATED',
+        'MATCH_RESULT_RECORDED',
+      ]),
+    );
+    expect(
+      audit.body.data.data.every(
+        (entry: { actor: { email: string } | null }) =>
+          entry.actor?.email === organizerEmail,
+      ),
+    ).toBe(true);
   });
 
   it('rejects unauthorized mutation and protects private tournament reads', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/rounds/${roundId}/reset-downstream-preview`)
+      .expect(401);
+    await request(app.getHttpServer())
+      .post(`/api/rounds/${roundId}/reset-downstream-preview`)
+      .set('Authorization', `Bearer ${participantToken}`)
+      .expect(403);
+    await request(app.getHttpServer())
+      .get(`/api/tournaments/${tournamentId}/competition-audit`)
+      .expect(401);
+    await request(app.getHttpServer())
+      .get(`/api/tournaments/${tournamentId}/competition-audit`)
+      .set('Authorization', `Bearer ${participantToken}`)
+      .expect(403);
     await request(app.getHttpServer())
       .patch(`/api/tournaments/${tournamentId}`)
       .send({ name: 'Denied' })
@@ -218,7 +290,7 @@ describeDatabase('main tournament workflow (database E2E)', () => {
       .expect(200);
     await request(app.getHttpServer())
       .get(`/api/tournaments/${slug}`)
-      .set('Authorization', `Bearer ${seededParticipantToken}`)
+      .set('Authorization', `Bearer ${outsiderToken}`)
       .expect(404);
     await request(app.getHttpServer())
       .get(`/api/tournaments/${slug}`)

@@ -36,6 +36,14 @@ function fakePrisma(failOnGroup?: number) {
         const working: FakeState = structuredClone(state);
         const tx = {
           $queryRaw: jest.fn(),
+          tournament: {
+            findUnique: jest.fn(() =>
+              Promise.resolve({
+                status: 'REGISTRATION',
+                registrationOpen: false,
+              }),
+            ),
+          },
           round: {
             findUnique: jest.fn(() =>
               Promise.resolve({
@@ -49,6 +57,7 @@ function fakePrisma(failOnGroup?: number) {
                 },
                 bestOf: 3,
                 tournamentId: 'tournament-1',
+                orderIndex: 1,
               }),
             ),
           },

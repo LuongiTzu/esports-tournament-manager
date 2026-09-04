@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { MatchStatus, RegistrationStatus, RoundFormat } from '@prisma/client';
+import {
+  MatchStatus,
+  Prisma,
+  RegistrationStatus,
+  RoundFormat,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RoundSettingsService } from './round-settings.service';
 import { SwissService } from './swiss.service';
@@ -8,6 +13,11 @@ import {
   calculateStandingsRows,
   resolvePointSettings,
 } from './domain/standings-calculator';
+
+export type StandingsClient = Pick<
+  Prisma.TransactionClient,
+  'group' | 'match' | 'round' | 'roundTeam' | 'team'
+>;
 
 @Injectable()
 export class StandingsService {
@@ -20,6 +30,7 @@ export class StandingsService {
   async forTournament(
     tournamentId: string,
     rounds: Array<{ id: string; format: RoundFormat; settings?: unknown }>,
+    client: StandingsClient = this.prisma,
   ) {
     const data: Array<{
       roundId: string;
@@ -29,24 +40,42 @@ export class StandingsService {
     for (const round of rounds) {
       let standings: unknown[];
       if (round.format === RoundFormat.SWISS) {
-        const rows = await this.swiss.calculateSwissStandings(round.id);
-        const teams = await this.prisma.team.findMany({
-          where: { id: { in: rows.map((row) => row.teamId) } },
-          select: {
-            id: true,
-            name: true,
-            shortName: true,
-            logoUrl: true,
-            seed: true,
-          },
-        });
-        const teamsById = new Map(teams.map((team) => [team.id, team]));
+        const rows = await this.swiss.calculateSwissStandings(round.id, client);
+        const [teams, assignments] = await Promise.all([
+          client.team.findMany({
+            where: { id: { in: rows.map((row) => row.teamId) } },
+            select: {
+              id: true,
+              name: true,
+              shortName: true,
+              logoUrl: true,
+              seed: true,
+            },
+          }),
+          client.roundTeam.findMany({
+            where: { roundId: round.id },
+            select: { teamId: true, seed: true },
+          }),
+        ]);
+        const roundSeeds = new Map(
+          assignments.map((assignment) => [assignment.teamId, assignment.seed]),
+        );
+        const teamsById = new Map(
+          teams.map((team) => [
+            team.id,
+            { ...team, seed: roundSeeds.get(team.id) ?? team.seed },
+          ]),
+        );
         standings = rows.map((row) => ({
           ...row,
           team: teamsById.get(row.teamId) ?? null,
         }));
       } else if (round.format === RoundFormat.GROUP_STAGE) {
-        standings = await this.calculateGroups(round.id, round.settings);
+        standings = await this.calculateGroups(
+          client,
+          round.id,
+          round.settings,
+        );
       } else if (
         round.format === RoundFormat.PLAYOFF ||
         round.format === RoundFormat.DOUBLE_ELIM
@@ -54,6 +83,7 @@ export class StandingsService {
         standings = [];
       } else {
         standings = await this.calculateBasic(
+          client,
           round.id,
           tournamentId,
           round.format,
@@ -66,16 +96,18 @@ export class StandingsService {
   }
 
   private async calculateBasic(
+    client: StandingsClient,
     roundId: string,
     tournamentId: string,
     format: RoundFormat,
     rawSettings?: unknown,
   ) {
     const [assignments, matches] = await Promise.all([
-      this.prisma.roundTeam.findMany({
+      client.roundTeam.findMany({
         where: { roundId },
         orderBy: { createdAt: 'asc' },
         select: {
+          seed: true,
           team: {
             select: {
               id: true,
@@ -87,21 +119,24 @@ export class StandingsService {
           },
         },
       }),
-      this.prisma.match.findMany({
+      client.match.findMany({
         where: { roundId, status: MatchStatus.COMPLETED },
         select: matchSelect,
       }),
     ]);
     const teams = assignments.length
       ? assignments
-          .map((assignment) => assignment.team)
+          .map((assignment) => ({
+            ...assignment.team,
+            seed: assignment.seed ?? assignment.team.seed,
+          }))
           .filter(
             (team) =>
               team.tournamentId === tournamentId &&
               team.status === RegistrationStatus.APPROVED,
           )
           .map((team) => ({ id: team.id, name: team.name, seed: team.seed }))
-      : await this.prisma.team.findMany({
+      : await client.team.findMany({
           where: { tournamentId, status: RegistrationStatus.APPROVED },
           select: { id: true, name: true, seed: true },
         });
@@ -116,9 +151,13 @@ export class StandingsService {
     );
   }
 
-  private async calculateGroups(roundId: string, rawSettings?: unknown) {
-    const [groups, matches] = await Promise.all([
-      this.prisma.group.findMany({
+  private async calculateGroups(
+    client: StandingsClient,
+    roundId: string,
+    rawSettings?: unknown,
+  ) {
+    const [groups, matches, roundAssignments] = await Promise.all([
+      client.group.findMany({
         where: { roundId },
         orderBy: { orderIndex: 'asc' },
         select: {
@@ -133,7 +172,7 @@ export class StandingsService {
           },
         },
       }),
-      this.prisma.match.findMany({
+      client.match.findMany({
         where: {
           roundId,
           groupId: { not: null },
@@ -141,7 +180,17 @@ export class StandingsService {
         },
         select: { groupId: true, ...matchSelect },
       }),
+      client.roundTeam.findMany({
+        where: { roundId },
+        select: { teamId: true, seed: true },
+      }),
     ]);
+    const roundSeeds = new Map(
+      roundAssignments.map((assignment) => [
+        assignment.teamId,
+        assignment.seed,
+      ]),
+    );
     const settings = this.settingsService.getEffectiveSettings(
       RoundFormat.GROUP_STAGE,
       rawSettings,
@@ -152,9 +201,10 @@ export class StandingsService {
       name: group.name,
       orderIndex: group.orderIndex,
       standings: (() => {
-        const teams = group.teamAssignments.map(
-          (assignment) => assignment.team,
-        );
+        const teams = group.teamAssignments.map((assignment) => ({
+          ...assignment.team,
+          seed: roundSeeds.get(assignment.team.id) ?? assignment.team.seed,
+        }));
         const teamIds = new Set(teams.map((team) => team.id));
         return calculateStandingsRows(
           teams,

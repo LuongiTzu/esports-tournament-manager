@@ -29,6 +29,7 @@ export class BracketQueryService {
     const round = await this.prisma.round.findUnique({
       where: { id: roundId },
       include: {
+        participants: { select: { teamId: true, seed: true } },
         groups: {
           orderBy: { orderIndex: 'asc' },
           include: {
@@ -48,6 +49,12 @@ export class BracketQueryService {
       },
     });
     if (!round) throw new NotFoundException('Không tìm thấy vòng đấu');
+    const roundSeeds = new Map(
+      round.participants.map((participant) => [
+        participant.teamId,
+        participant.seed,
+      ]),
+    );
     return {
       round: {
         id: round.id,
@@ -65,7 +72,10 @@ export class BracketQueryService {
         name: group.name,
         orderIndex: group.orderIndex,
         teams: group.teamAssignments.map((assignment) =>
-          toPublicBracketTeam(assignment.team),
+          toPublicBracketTeam(
+            assignment.team,
+            roundSeeds.get(assignment.team.id),
+          ),
         ),
       })),
       matches: round.matches.map((match) => ({
@@ -82,11 +92,20 @@ export class BracketQueryService {
         bestOf: match.bestOf,
         scheduledAt: match.scheduledAt,
         slots: {
-          A: toPublicBracketTeam(match.teamA),
-          B: toPublicBracketTeam(match.teamB),
+          A: toPublicBracketTeam(
+            match.teamA,
+            match.teamA ? roundSeeds.get(match.teamA.id) : undefined,
+          ),
+          B: toPublicBracketTeam(
+            match.teamB,
+            match.teamB ? roundSeeds.get(match.teamB.id) : undefined,
+          ),
         },
         score: { A: match.scoreA, B: match.scoreB },
-        winner: toPublicBracketTeam(match.winner),
+        winner: toPublicBracketTeam(
+          match.winner,
+          match.winner ? roundSeeds.get(match.winner.id) : undefined,
+        ),
         nextMatch: { id: match.nextMatchId, slot: match.nextMatchSlot },
         loserNextMatch: {
           id: match.loserNextMatchId,
@@ -99,6 +118,7 @@ export class BracketQueryService {
 
 function toPublicBracketTeam(
   team: PublicBracketTeam | null,
+  roundSeed?: number | null,
 ): PublicBracketTeam | null {
   return team
     ? {
@@ -106,7 +126,7 @@ function toPublicBracketTeam(
         name: team.name,
         shortName: team.shortName,
         logoUrl: team.logoUrl,
-        seed: team.seed,
+        seed: roundSeed ?? team.seed,
       }
     : null;
 }

@@ -4,6 +4,7 @@ import {
   MatchOutcome,
   MatchSlot,
   MatchStatus,
+  Prisma,
   RoundFormat,
   RoundStatus,
   TournamentStatus,
@@ -12,6 +13,7 @@ import type {
   ResultMatch,
   MatchTransactionClient,
 } from './match-result.service';
+import { ApplicationErrorCode } from '../common/errors/application-error-code';
 
 /**
  * Competition-owned progression invoked inside the Match result transaction.
@@ -24,7 +26,10 @@ export class CompetitionProgressionService {
     match: ResultMatch,
     newWinnerTeamId: string | null,
     newStatus: MatchStatus,
+    resultChanged: boolean,
   ) {
+    if (!resultChanged) return;
+    await this.rollbackInterRoundAdvancement(tx, match);
     if (
       newStatus === MatchStatus.COMPLETED &&
       newWinnerTeamId === match.winnerTeamId
@@ -77,6 +82,63 @@ export class CompetitionProgressionService {
       target[field] = null;
     }
     await this.rollbackEliminationCompletion(tx, match, oldWinner);
+  }
+
+  private async rollbackInterRoundAdvancement(
+    tx: MatchTransactionClient,
+    match: ResultMatch,
+  ): Promise<void> {
+    const outgoing = await tx.roundTeam.findMany({
+      where: { advancedFromRoundId: match.round.id },
+      select: { roundId: true },
+    });
+    if (outgoing.length === 0) return;
+
+    const targetRoundIds = [
+      ...new Set(outgoing.map(({ roundId }) => roundId)),
+    ].sort();
+    for (const targetRoundId of targetRoundIds) {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "rounds" WHERE "id" = ${targetRoundId} FOR UPDATE`,
+      );
+    }
+    const targets = await Promise.all(
+      targetRoundIds.map((id) =>
+        tx.round.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            tournamentId: true,
+            _count: { select: { groups: true, matches: true } },
+          },
+        }),
+      ),
+    );
+    if (
+      targets.some(
+        (target) => !target || target.tournamentId !== match.round.tournamentId,
+      )
+    ) {
+      throw new ConflictException({
+        code: ApplicationErrorCode.ROUND_ADVANCEMENT_TARGET_INVALID,
+        message: 'Persisted Round advancement target is invalid',
+      });
+    }
+    if (
+      targets.some(
+        (target) => target!._count.groups > 0 || target!._count.matches > 0,
+      )
+    ) {
+      throw new ConflictException({
+        code: ApplicationErrorCode.UPSTREAM_RESULT_LOCKED_BY_DOWNSTREAM_STRUCTURE,
+        message:
+          'Cannot change this result after the next Round structure is generated',
+      });
+    }
+
+    await tx.roundTeam.deleteMany({
+      where: { advancedFromRoundId: match.round.id },
+    });
   }
 
   async advanceResult(
@@ -243,10 +305,6 @@ export class CompetitionProgressionService {
         (left, right) => (right.bracketRound ?? 0) - (left.bracketRound ?? 0),
       )[0];
     if (!championship?.winnerTeamId) return;
-    await tx.round.update({
-      where: { id: match.round.id },
-      data: { status: RoundStatus.COMPLETED },
-    });
     const winnerTeamId = championship.winnerTeamId;
     await tx.team.updateMany({
       where: {

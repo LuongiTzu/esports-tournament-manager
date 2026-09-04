@@ -7,12 +7,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  CompetitionAuditAction,
   MatchOutcome,
   MatchStatus,
   NotificationType,
   Prisma,
+  RoundFormat,
+  RoundStatus,
+  TournamentStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ApplicationErrorCode } from '../common/errors/application-error-code';
 import {
   NOTIFICATION_PUBLISHER,
   NOOP_NOTIFICATION_PUBLISHER,
@@ -29,6 +34,12 @@ import {
   MatchResultRuleError,
 } from './domain/match-result.policy';
 import { CompetitionProgressionService } from './competition-progression.service';
+import { RoundLifecycleService } from '../brackets/round-lifecycle.service';
+import {
+  COMPETITION_AUDIT_WRITER,
+  CompetitionAuditWriter,
+  NOOP_COMPETITION_AUDIT_WRITER,
+} from '../common/ports/competition-audit-writer';
 
 const matchResultSelect = {
   id: true,
@@ -59,7 +70,9 @@ const matchResultSelect = {
       name: true,
       format: true,
       settings: true,
+      status: true,
       tournamentId: true,
+      tournament: { select: { status: true } },
     },
   },
   scores: {
@@ -87,14 +100,22 @@ export class MatchResultService {
     private readonly notifications: NotificationPublisher = NOOP_NOTIFICATION_PUBLISHER,
     private readonly resultPolicy: MatchResultPolicy = new MatchResultPolicy(),
     private readonly progression: CompetitionProgressionService = new CompetitionProgressionService(),
+    private readonly roundLifecycle: RoundLifecycleService = new RoundLifecycleService(),
+    @Inject(COMPETITION_AUDIT_WRITER)
+    private readonly audit: CompetitionAuditWriter = NOOP_COMPETITION_AUDIT_WRITER,
   ) {}
 
-  async update(matchId: string, dto: UpdateMatchDto) {
+  async update(matchId: string, dto: UpdateMatchDto, actorId?: string) {
     const result = await this.prisma.$transaction(async (tx) => {
       await this.lockMatch(tx, matchId);
       const match = await this.findResultMatch(tx, matchId);
       this.assertActive(match);
       const changesScore = dto.scoreA !== undefined || dto.scoreB !== undefined;
+      const resultTouched =
+        dto.scoreA !== undefined ||
+        dto.scoreB !== undefined ||
+        dto.status !== undefined;
+      if (resultTouched) this.assertFinalStandingsMutable(match);
       if (changesScore && match._count.scores > 0) {
         throw new ConflictException(
           'Match has per-game scores; use PUT /matches/:id/scores',
@@ -109,10 +130,6 @@ export class MatchResultService {
       const scheduleChanged =
         dto.scheduledAt !== undefined &&
         !sameDate(match.scheduledAt, toNullableDate(dto.scheduledAt));
-      const resultTouched =
-        dto.scoreA !== undefined ||
-        dto.scoreB !== undefined ||
-        dto.status !== undefined;
       const resultChanged =
         scoreA !== match.scoreA ||
         scoreB !== match.scoreB ||
@@ -126,6 +143,7 @@ export class MatchResultService {
           match,
           winnerTeamId,
           status,
+          resultChanged,
         );
       }
 
@@ -155,12 +173,19 @@ export class MatchResultService {
         await this.progression.advanceResult(tx, match, winnerTeamId);
         await this.progression.completeEliminationIfReady(tx, match);
       }
+      const lifecycle = resultTouched
+        ? await this.roundLifecycle.synchronize(tx, match.round.id)
+        : null;
+      if (resultTouched && resultChanged) {
+        await this.recordResultAudit(tx, match, updated, actorId);
+      }
       const revision = updated.updatedAt.toISOString();
       return {
         updated,
         tournamentId: match.round.tournamentId,
         teamIds: [match.teamAId, match.teamBId],
         scheduleChanged,
+        tournamentStarted: lifecycle?.tournamentStarted ?? false,
         notifications: [
           ...(scheduleChanged
             ? [
@@ -203,15 +228,19 @@ export class MatchResultService {
       result.teamIds,
       result.notifications,
     );
+    if (result.tournamentStarted) {
+      await this.persistTournamentStartedNotification(result.tournamentId);
+    }
     return result.updated;
   }
 
-  async putScores(matchId: string, dto: PutMatchScoresDto) {
+  async putScores(matchId: string, dto: PutMatchScoresDto, actorId?: string) {
     const result = await this.prisma.$transaction(async (tx) => {
       await this.lockMatch(tx, matchId);
       const match = await this.findResultMatch(tx, matchId);
       this.assertActive(match);
-      const calculated = this.calculateSeries(dto, match.bestOf);
+      this.assertFinalStandingsMutable(match);
+      const calculated = this.calculateDetailedScores(dto, match);
       const status = calculated.completed
         ? MatchStatus.COMPLETED
         : MatchStatus.ONGOING;
@@ -236,6 +265,7 @@ export class MatchResultService {
           match,
           winnerTeamId,
           status,
+          resultChanged,
         );
       }
 
@@ -263,10 +293,18 @@ export class MatchResultService {
         await this.progression.advanceResult(tx, match, winnerTeamId);
         await this.progression.completeEliminationIfReady(tx, match);
       }
+      const lifecycle = await this.roundLifecycle.synchronize(
+        tx,
+        match.round.id,
+      );
+      if (resultChanged) {
+        await this.recordResultAudit(tx, match, updated, actorId);
+      }
       return {
         updated,
         tournamentId: match.round.tournamentId,
         teamIds: [match.teamAId, match.teamBId],
+        tournamentStarted: lifecycle.tournamentStarted,
         notifications:
           resultChanged &&
           (status === MatchStatus.COMPLETED ||
@@ -297,6 +335,9 @@ export class MatchResultService {
       result.teamIds,
       result.notifications,
     );
+    if (result.tournamentStarted) {
+      await this.persistTournamentStartedNotification(result.tournamentId);
+    }
     return result.updated;
   }
 
@@ -310,9 +351,63 @@ export class MatchResultService {
   }
 
   private async lockMatch(tx: Tx, matchId: string): Promise<void> {
+    const reference = await tx.match.findUnique({
+      where: { id: matchId },
+      select: {
+        id: true,
+        round: { select: { id: true, tournamentId: true } },
+      },
+    });
+    if (!reference) throw new NotFoundException('Match not found');
+    await tx.$queryRaw(
+      Prisma.sql`SELECT "id" FROM "tournaments" WHERE "id" = ${reference.round.tournamentId} FOR UPDATE`,
+    );
+    await tx.$queryRaw(
+      Prisma.sql`SELECT "id" FROM "rounds" WHERE "id" = ${reference.round.id} FOR UPDATE`,
+    );
     await tx.$queryRaw(
       Prisma.sql`SELECT "id" FROM "matches" WHERE "id" = ${matchId} FOR UPDATE`,
     );
+  }
+
+  private async recordResultAudit(
+    tx: Tx,
+    previous: ResultMatch,
+    current: {
+      scoreA: number;
+      scoreB: number;
+      status: MatchStatus;
+      winnerTeamId: string | null;
+      outcome: MatchOutcome | null;
+    },
+    actorId?: string,
+  ): Promise<void> {
+    await this.audit.record(tx, {
+      tournamentId: previous.round.tournamentId,
+      actorId,
+      action:
+        previous.status === MatchStatus.COMPLETED
+          ? CompetitionAuditAction.MATCH_RESULT_CORRECTED
+          : CompetitionAuditAction.MATCH_RESULT_RECORDED,
+      roundId: previous.round.id,
+      matchId: previous.id,
+      details: {
+        previous: {
+          scoreA: previous.scoreA,
+          scoreB: previous.scoreB,
+          status: previous.status,
+          winnerTeamId: previous.winnerTeamId,
+          outcome: previous.outcome,
+        },
+        current: {
+          scoreA: current.scoreA,
+          scoreB: current.scoreB,
+          status: current.status,
+          winnerTeamId: current.winnerTeamId,
+          outcome: current.outcome,
+        },
+      },
+    });
   }
 
   private publishMatchEvents(
@@ -366,6 +461,27 @@ export class MatchResultService {
     }
   }
 
+  private async persistTournamentStartedNotification(tournamentId: string) {
+    try {
+      await this.notifications.createForTournamentEvent({
+        tournamentId,
+        type: NotificationType.TOURNAMENT_STATUS,
+        content: 'Tournament started',
+        data: {
+          kind: 'TOURNAMENT_STATUS',
+          previousStatus: TournamentStatus.REGISTRATION,
+          status: TournamentStatus.ONGOING,
+        },
+        sourceKey: `tournament:${tournamentId}:status:${TournamentStatus.REGISTRATION}:${TournamentStatus.ONGOING}`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Round lifecycle committed but notification persistence failed for tournament ${tournamentId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
+
   private validateResult(
     match: ResultMatch,
     scoreA: number,
@@ -394,9 +510,32 @@ export class MatchResultService {
     }
   }
 
-  private calculateSeries(dto: PutMatchScoresDto, bestOf: number) {
+  private assertFinalStandingsMutable(match: ResultMatch) {
+    const isStandingsFormat =
+      match.round.format === RoundFormat.ROUND_ROBIN ||
+      match.round.format === RoundFormat.SWISS;
+    if (
+      isStandingsFormat &&
+      match.round.status === RoundStatus.COMPLETED &&
+      match.round.tournament.status === TournamentStatus.COMPLETED
+    ) {
+      throw new ConflictException({
+        code: ApplicationErrorCode.FINAL_STANDINGS_RESULT_LOCKED,
+        message:
+          'Match results are locked after the final standings have been confirmed',
+      });
+    }
+  }
+
+  private calculateDetailedScores(dto: PutMatchScoresDto, match: ResultMatch) {
     return this.applyResultPolicy(() =>
-      this.resultPolicy.evaluateSeries(dto.scores, bestOf),
+      this.resultPolicy.evaluateDetailedScores(dto.scores, {
+        bestOf: match.bestOf,
+        teamAId: match.teamAId,
+        teamBId: match.teamBId,
+        roundFormat: match.round.format,
+        roundSettings: match.round.settings,
+      }),
     );
   }
 

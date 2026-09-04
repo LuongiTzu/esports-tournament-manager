@@ -1,7 +1,14 @@
 /// <reference types="jest" />
 
 import { BadRequestException } from '@nestjs/common';
-import { MatchOutcome, MatchStatus, RoundFormat } from '@prisma/client';
+import {
+  BracketType,
+  MatchOutcome,
+  MatchStatus,
+  RoundFormat,
+  RoundStatus,
+  TournamentStatus,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SwissGenerator } from './generators/swiss.generator';
 import { RoundSettingsService } from './round-settings.service';
@@ -14,21 +21,35 @@ type StoredMatch = {
   scoreA: number;
   scoreB: number;
   bracketRound: number | null;
-  matchNumber?: number | null;
+  matchNumber: number | null;
   isBye: boolean;
+  isActive: boolean;
+  bracketType: BracketType | null;
+  groupId: string | null;
+  winnerTeamId: string | null;
   status: MatchStatus;
 };
 
-function completedMatch(round = 1): StoredMatch {
-  return {
-    teamAId: 'team-1',
-    teamBId: 'team-2',
-    scoreA: 1,
-    scoreB: 0,
-    bracketRound: round,
-    isBye: false,
-    status: MatchStatus.COMPLETED,
-  };
+function completedIteration(teamCount: number, round = 1): StoredMatch[] {
+  return Array.from({ length: Math.ceil(teamCount / 2) }, (_, index) => {
+    const teamAId = `team-${index * 2 + 1}`;
+    const teamBNumber = index * 2 + 2;
+    const isBye = teamBNumber > teamCount;
+    return {
+      teamAId,
+      teamBId: isBye ? null : `team-${teamBNumber}`,
+      scoreA: 1,
+      scoreB: 0,
+      bracketRound: round,
+      matchNumber: index + 1,
+      isBye,
+      isActive: true,
+      bracketType: null,
+      groupId: null,
+      winnerTeamId: teamAId,
+      status: MatchStatus.COMPLETED,
+    };
+  });
 }
 
 function harness(
@@ -39,10 +60,13 @@ function harness(
     teamCount?: number;
     matches?: StoredMatch[];
     persistError?: Error;
+    roundStatus?: RoundStatus;
+    tournamentStatus?: TournamentStatus;
   } = {},
 ) {
-  const storedMatches = [...(options.matches ?? [completedMatch()])];
-  const teams = Array.from({ length: options.teamCount ?? 4 }, (_, index) => ({
+  const teamCount = options.teamCount ?? 4;
+  const storedMatches = [...(options.matches ?? completedIteration(teamCount))];
+  const teams = Array.from({ length: teamCount }, (_, index) => ({
     id: `team-${index + 1}`,
     name: `Team ${index + 1}`,
     seed: index + 1,
@@ -73,6 +97,10 @@ function harness(
             bracketRound: item.bracketRound as number,
             matchNumber: item.matchNumber as number,
             isBye: item.isBye as boolean,
+            isActive: true,
+            bracketType: null,
+            groupId: null,
+            winnerTeamId: item.winnerTeamId as string | null,
             status: item.status as MatchStatus,
           })),
         );
@@ -93,6 +121,11 @@ function harness(
             },
         bestOf: 1,
         tournamentId: 'tournament-1',
+        orderIndex: 1,
+        status: options.roundStatus ?? RoundStatus.ONGOING,
+        tournament: {
+          status: options.tournamentStatus ?? TournamentStatus.ONGOING,
+        },
       }),
     },
     team: { findMany: jest.fn().mockResolvedValue(teams) },
@@ -131,10 +164,10 @@ describe('SwissService.generateNextSwissRound', () => {
     expect(result.bracketRound).toBe(2);
     expect(result.numberOfRounds).toBe(3);
     expect(result.matchCount).toBe(2);
-    expect(result.matchIds).toEqual(['generated-2', 'generated-3']);
+    expect(result.matchIds).toEqual(['generated-3', 'generated-4']);
     expect(result.bye).toBeNull();
     expect(result.warnings).toEqual([]);
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(tx.$queryRaw).toHaveBeenCalledTimes(3);
   });
 
   it('rejects a non-Swiss round', async () => {
@@ -150,11 +183,19 @@ describe('SwissService.generateNextSwissRound', () => {
 
   it('blocks generation while the current Swiss round is incomplete', async () => {
     const { service, createManyAndReturn } = harness({
-      matches: [{ ...completedMatch(), status: MatchStatus.PENDING }],
+      matches: completedIteration(4).map((match, index) =>
+        index === 0
+          ? {
+              ...match,
+              status: MatchStatus.PENDING,
+              winnerTeamId: null,
+            }
+          : match,
+      ),
     });
 
     await expect(service.generateNextSwissRound('round-1')).rejects.toThrow(
-      'Current Swiss round is not completed',
+      'The current Swiss iteration is not complete.',
     );
     expect(createManyAndReturn).not.toHaveBeenCalled();
   });
@@ -163,7 +204,7 @@ describe('SwissService.generateNextSwissRound', () => {
     const { service } = harness({ numRounds: 1 });
 
     await expect(service.generateNextSwissRound('round-1')).rejects.toThrow(
-      'All configured Swiss rounds are complete',
+      'All resolved Swiss iterations are complete.',
     );
   });
 
@@ -212,7 +253,7 @@ describe('SwissService.generateNextSwissRound', () => {
     await expect(service.generateNextSwissRound('round-1')).rejects.toThrow(
       'simulated persistence failure',
     );
-    expect(storedMatches).toHaveLength(1);
+    expect(storedMatches).toHaveLength(2);
   });
 
   it('rejects a duplicate request without creating duplicate matches', async () => {
@@ -220,8 +261,19 @@ describe('SwissService.generateNextSwissRound', () => {
 
     await service.generateNextSwissRound('round-1');
     await expect(service.generateNextSwissRound('round-1')).rejects.toThrow(
-      'Current Swiss round is not completed',
+      'The current Swiss iteration is not complete.',
     );
     expect(createManyAndReturn).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects generation after the Tournament becomes immutable', async () => {
+    const { service, createManyAndReturn } = harness({
+      tournamentStatus: TournamentStatus.COMPLETED,
+    });
+
+    await expect(service.generateNextSwissRound('round-1')).rejects.toThrow(
+      'The Tournament does not allow Swiss generation.',
+    );
+    expect(createManyAndReturn).not.toHaveBeenCalled();
   });
 });

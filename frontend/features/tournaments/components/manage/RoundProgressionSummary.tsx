@@ -39,6 +39,22 @@ export default function RoundProgressionSummary({
             {advancement.readinessReason}
           </p>
         )}
+        {data.swissProgress && (
+          <div className="mt-3 border-t border-line pt-3">
+            <p className="text-sm font-semibold text-ink">
+              {t("swiss.iterationProgress")}{" "}
+              {data.swissProgress.currentIteration}/
+              {data.swissProgress.resolvedNumberOfRounds}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+              {data.swissProgress.blockedReason
+                ? t(
+                    `swiss.blocked.${data.swissProgress.blockedReason}` as TranslationKey,
+                  )
+                : t("swiss.readyNext")}
+            </p>
+          </div>
+        )}
       </div>
 
       {advancement.nextRound && (
@@ -58,8 +74,9 @@ export default function RoundProgressionSummary({
           </p>
           <p className="mt-1 text-sm text-ink-muted">
             {roundFormatLabel(advancement.nextRound.format, t)} ·{" "}
-            {advancement.nextRound.participantCount} {t("progress.teamsAssigned")} ·{" "}
-            {advancement.nextRound.matchCount} {t("progress.matches")}
+            {advancement.nextRound.participantCount}{" "}
+            {t("progress.teamsAssigned")} · {advancement.nextRound.matchCount}{" "}
+            {t("progress.matches")}
           </p>
         </div>
       ) : (
@@ -93,16 +110,46 @@ export default function RoundProgressionSummary({
       )}
 
       {data.participants.length > 0 && (
-        <div className="lg:col-span-3 flex items-start gap-3 rounded-xl border border-line px-4 py-3 text-sm text-ink-muted">
-          <UsersIcon className="mt-0.5 shrink-0 text-brand" />
-          <span>
-            {t("progress.thisStageHas")}{" "}
-            <strong className="text-ink">{data.participants.length} {t("standings.team").toLocaleLowerCase()}</strong>{" "}
-            {t("progress.assigned")}
-            {data.participants.some((item) => item.advancedFromRound)
-              ? ` ${t("progress.fromPrevious")}`
-              : "."}
-          </span>
+        <div className="lg:col-span-3 rounded-xl border border-line px-4 py-3 text-sm text-ink-muted">
+          <div className="flex items-start gap-3">
+            <UsersIcon className="mt-0.5 shrink-0 text-brand" />
+            <span>
+              {t("progress.thisStageHas")}{" "}
+              <strong className="text-ink">
+                {data.participants.length}{" "}
+                {t("standings.team").toLocaleLowerCase()}
+              </strong>{" "}
+              {t("progress.assigned")}
+              {data.participants.some((item) => item.advancedFromRound)
+                ? ` ${t("progress.fromPrevious")}`
+                : "."}
+            </span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[...data.participants]
+              .sort(
+                (left, right) =>
+                  (left.seed ?? left.team.seed ?? Number.MAX_SAFE_INTEGER) -
+                  (right.seed ?? right.team.seed ?? Number.MAX_SAFE_INTEGER),
+              )
+              .map((participant) => (
+                <span
+                  key={participant.team.id}
+                  className="rounded-lg border border-line bg-surface-sub px-3 py-2 text-xs text-ink-muted"
+                >
+                  <strong className="text-ink">
+                    #{participant.seed ?? participant.team.seed ?? "–"}{" "}
+                    {participant.team.name}
+                  </strong>
+                  {participant.advancedFromRound && (
+                    <span className="ml-1 text-ink-faint">
+                      · {t("progress.qualifiedFrom")}{" "}
+                      {participant.advancedFromRound.name}
+                    </span>
+                  )}
+                </span>
+              ))}
+          </div>
         </div>
       )}
     </div>

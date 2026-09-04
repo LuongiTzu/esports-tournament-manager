@@ -4,6 +4,7 @@ import { SwissMatchSnapshot } from '../types/swiss';
 import { SwissGenerator } from './swiss.generator';
 
 const settings: SwissSettings = {
+  scoringMode: 'SERIES_SCORE',
   numberOfRounds: 5,
   advancingTeamCount: 8,
 };

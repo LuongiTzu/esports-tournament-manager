@@ -27,6 +27,7 @@ import {
 } from './domain/team-review.policy';
 import { RegistrationMemberInput } from './types/registration-member-input';
 import { UpdateTeamStatusDto } from './dto/update-team.dto';
+import { CompetitionMutationGuardService } from '../common/services/competition-mutation-guard.service';
 
 const CAPTAIN_SELECT = {
   id: true,
@@ -44,6 +45,7 @@ export class TeamReviewService {
     private readonly reviewPolicy: TeamReviewPolicy,
     @Inject(TOURNAMENT_EVENT_PUBLISHER)
     private readonly events: TournamentEventPublisher,
+    private readonly competitionGuard: CompetitionMutationGuardService = new CompetitionMutationGuardService(),
   ) {}
 
   async updateStatus(teamId: string, dto: UpdateTeamStatusDto) {
@@ -95,6 +97,10 @@ export class TeamReviewService {
       }
 
       if (dto.status === RegistrationStatus.APPROVED) {
+        await this.competitionGuard.assertParticipantSetMutable(
+          tx,
+          team.tournamentId,
+        );
         const rules = this.validator.buildRules(team.tournament);
         await this.validator.validate(
           rules,

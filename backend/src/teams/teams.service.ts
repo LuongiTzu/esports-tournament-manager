@@ -43,6 +43,7 @@ import {
   ActivityEmailPublisher,
   NOOP_ACTIVITY_EMAIL_PUBLISHER,
 } from '../common/ports/activity-email-publisher';
+import { CompetitionMutationGuardService } from '../common/services/competition-mutation-guard.service';
 
 const CAPTAIN_SELECT = {
   id: true,
@@ -73,6 +74,7 @@ export class TeamsService {
       reviewPolicy,
       events,
     ),
+    private readonly competitionGuard: CompetitionMutationGuardService = new CompetitionMutationGuardService(),
   ) {}
 
   /**
@@ -317,28 +319,48 @@ export class TeamsService {
   }
 
   async remove(teamId: string, userId: string) {
-    const team = await this.prisma.team.findUnique({
+    const reference = await this.prisma.team.findUnique({
       where: { id: teamId },
-      select: {
-        id: true,
-        status: true,
-        captainId: true,
-        tournament: { select: { organizerId: true } },
-      },
+      select: { tournamentId: true },
     });
 
-    if (!team) {
+    if (!reference) {
       throw new NotFoundException('Không tìm thấy đội');
     }
 
-    const isOrganizer = team.tournament.organizerId === userId;
-    if (!isOrganizer && team.status !== RegistrationStatus.PENDING) {
-      throw new ForbiddenException(
-        'Đội đã được duyệt nên không thể tự rút đăng ký, vui lòng liên hệ ban tổ chức',
-      );
-    }
+    await this.prisma.$transaction(async (tx) => {
+      await this.lockTournament(tx, reference.tournamentId);
+      const team = await tx.team.findUnique({
+        where: { id: teamId },
+        select: {
+          id: true,
+          status: true,
+          captainId: true,
+          tournamentId: true,
+          tournament: { select: { organizerId: true } },
+        },
+      });
+      if (!team) {
+        throw new NotFoundException('Không tìm thấy đội');
+      }
 
-    await this.prisma.team.delete({ where: { id: teamId } });
+      const isOrganizer = team.tournament.organizerId === userId;
+      if (!isOrganizer && team.status !== RegistrationStatus.PENDING) {
+        throw new ForbiddenException(
+          'Đội đã được duyệt nên không thể tự rút đăng ký, vui lòng liên hệ ban tổ chức',
+        );
+      }
+
+      if (team.status === RegistrationStatus.APPROVED) {
+        await this.competitionGuard.assertParticipantSetMutable(
+          tx,
+          team.tournamentId,
+        );
+      }
+
+      await tx.team.delete({ where: { id: teamId } });
+    });
+
     return { message: 'Đã xóa đội thành công' };
   }
 
@@ -445,6 +467,10 @@ export class TeamsService {
       const lockedTournament = await this.loadTournamentForRegistration(
         tournament.slug,
         tx,
+      );
+      await this.competitionGuard.assertParticipantSetMutable(
+        tx,
+        lockedTournament.id,
       );
 
       if (options.validateRegistrant) {

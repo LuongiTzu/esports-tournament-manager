@@ -24,6 +24,8 @@ describe('RoundSettingsService', () => {
     [
       RoundFormat.ROUND_ROBIN,
       {
+        scoringMode: 'SERIES_SCORE',
+        advancingTeamCount: 4,
         winPoints: 5,
         drawPoints: 2,
         lossPoints: 1,
@@ -34,6 +36,7 @@ describe('RoundSettingsService', () => {
     [
       RoundFormat.GROUP_STAGE,
       {
+        scoringMode: 'SERIES_SCORE',
         numberOfGroups: 8,
         advancingTeamsPerGroup: 1,
         winPoints: 3,
@@ -46,12 +49,19 @@ describe('RoundSettingsService', () => {
     [
       RoundFormat.SWISS,
       {
+        scoringMode: 'SERIES_SCORE',
         numberOfRounds: 7,
         advancingTeamCount: 16,
       },
     ],
-    [RoundFormat.PLAYOFF, { thirdPlaceMatch: false }],
-    [RoundFormat.DOUBLE_ELIM, { grandFinalReset: false }],
+    [
+      RoundFormat.PLAYOFF,
+      { scoringMode: 'SERIES_SCORE', thirdPlaceMatch: false },
+    ],
+    [
+      RoundFormat.DOUBLE_ELIM,
+      { scoringMode: 'SERIES_SCORE', grandFinalReset: false },
+    ],
   ] as const)(
     'accepts valid custom settings for %s',
     async (format, settings) => {
@@ -67,6 +77,7 @@ describe('RoundSettingsService', () => {
         numberOfGroups: 4,
       }),
     ).resolves.toEqual({
+      scoringMode: 'SERIES_SCORE',
       numberOfGroups: 4,
       advancingTeamsPerGroup: 2,
       winPoints: 3,
@@ -84,6 +95,8 @@ describe('RoundSettingsService', () => {
         meetingsPerPair: 2,
       }),
     ).resolves.toEqual({
+      scoringMode: 'SERIES_SCORE',
+      advancingTeamCount: 2,
       winPoints: 3,
       drawPoints: 1,
       lossPoints: 0,
@@ -103,10 +116,53 @@ describe('RoundSettingsService', () => {
   it('supports automatic Swiss round-count derivation through null', async () => {
     await expect(
       service.normalizeForFormat(RoundFormat.SWISS),
-    ).resolves.toEqual({ numberOfRounds: null, advancingTeamCount: 8 });
+    ).resolves.toEqual({
+      scoringMode: 'SERIES_SCORE',
+      numberOfRounds: null,
+      advancingTeamCount: 8,
+    });
+  });
+
+  it('accepts POINT_SCORE only with BO1', async () => {
+    await expect(
+      service.normalizeForFormat(
+        RoundFormat.PLAYOFF,
+        { scoringMode: 'POINT_SCORE', thirdPlaceMatch: false },
+        1,
+      ),
+    ).resolves.toEqual({
+      scoringMode: 'POINT_SCORE',
+      thirdPlaceMatch: false,
+    });
+    await expect(
+      service.normalizeForFormat(
+        RoundFormat.PLAYOFF,
+        { scoringMode: 'POINT_SCORE', thirdPlaceMatch: false },
+        3,
+      ),
+    ).rejects.toThrow('POINT_SCORE requires bestOf = 1');
+  });
+
+  it('rejects an unknown scoring mode', async () => {
+    await expect(
+      service.normalizeForFormat(RoundFormat.PLAYOFF, {
+        scoringMode: 'GOALS',
+        thirdPlaceMatch: false,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('falls back safely when legacy JSON contains an unknown scoring mode', () => {
+    expect(
+      service.getEffectiveSettings(RoundFormat.PLAYOFF, {
+        scoringMode: 'GOALS',
+        thirdPlaceMatch: false,
+      }),
+    ).toEqual({ scoringMode: 'SERIES_SCORE', thirdPlaceMatch: false });
   });
 
   it.each([
+    [RoundFormat.ROUND_ROBIN, { advancingTeamCount: 0 }],
     [RoundFormat.ROUND_ROBIN, { lossPoints: -1 }],
     [RoundFormat.ROUND_ROBIN, { winPoints: 0, lossPoints: 0 }],
     [RoundFormat.ROUND_ROBIN, { meetingsPerPair: 0 }],
@@ -152,8 +208,8 @@ describe('RoundSettingsService', () => {
     (format, stored) => {
       expect(service.getEffectiveSettings(format, stored)).toEqual(
         format === RoundFormat.PLAYOFF
-          ? { thirdPlaceMatch: false }
-          : { grandFinalReset: false },
+          ? { scoringMode: 'SERIES_SCORE', thirdPlaceMatch: false }
+          : { scoringMode: 'SERIES_SCORE', grandFinalReset: false },
       );
     },
   );
@@ -167,11 +223,29 @@ describe('RoundSettingsService', () => {
         pointsLoss: 0,
       }),
     ).toEqual({
+      scoringMode: 'SERIES_SCORE',
+      advancingTeamCount: 2,
       winPoints: 2,
       drawPoints: 1,
       lossPoints: 0,
       allowDraws: false,
       meetingsPerPair: 2,
+    });
+  });
+
+  it('normalizes legacy Round Robin advanceCount', () => {
+    expect(
+      service.getEffectiveSettings(RoundFormat.ROUND_ROBIN, {
+        advanceCount: 4,
+      }),
+    ).toEqual({
+      scoringMode: 'SERIES_SCORE',
+      advancingTeamCount: 4,
+      winPoints: 3,
+      drawPoints: 1,
+      lossPoints: 0,
+      allowDraws: false,
+      meetingsPerPair: 1,
     });
   });
 
@@ -187,6 +261,7 @@ describe('RoundSettingsService', () => {
         pointsLoss: 0,
       }),
     ).toEqual({
+      scoringMode: 'SERIES_SCORE',
       numberOfGroups: 4,
       advancingTeamsPerGroup: 2,
       winPoints: 2,
@@ -215,6 +290,10 @@ describe('RoundSettingsService', () => {
         pointsLoss: 0,
         tiebreakers: ['SCORE_DIFF'],
       }),
-    ).toEqual({ numberOfRounds: 6, advancingTeamCount: 4 });
+    ).toEqual({
+      scoringMode: 'SERIES_SCORE',
+      numberOfRounds: 6,
+      advancingTeamCount: 4,
+    });
   });
 });

@@ -143,6 +143,7 @@ const rr = (
   drawPoints = 1,
   lossPoints = 0,
 ): RoundRobinSettings => ({
+  advancingTeamCount: 2,
   winPoints,
   drawPoints,
   lossPoints,

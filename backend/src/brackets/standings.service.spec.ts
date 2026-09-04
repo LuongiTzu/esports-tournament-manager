@@ -7,6 +7,7 @@ import { RoundSettingsService } from './round-settings.service';
 describe('StandingsService', () => {
   it('keeps group standings separate and applies configured points and tiebreaks', async () => {
     const prisma = {
+      roundTeam: { findMany: jest.fn().mockResolvedValue([]) },
       group: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -155,6 +156,7 @@ describe('StandingsService', () => {
 
   it('uses alternative Group Stage scoring instead of hardcoded 3/1/0', async () => {
     const prisma = {
+      roundTeam: { findMany: jest.fn().mockResolvedValue([]) },
       group: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -325,6 +327,9 @@ describe('StandingsService', () => {
       calculateSwissStandings: jest.fn().mockResolvedValue([{ teamId: 'a' }]),
     } as unknown as SwissService;
     const prisma = {
+      roundTeam: {
+        findMany: jest.fn().mockResolvedValue([{ teamId: 'a', seed: 7 }]),
+      },
       team: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -355,7 +360,7 @@ describe('StandingsService', () => {
           name: 'A',
           shortName: 'A',
           logoUrl: null,
-          seed: 1,
+          seed: 7,
         },
       },
     ]);

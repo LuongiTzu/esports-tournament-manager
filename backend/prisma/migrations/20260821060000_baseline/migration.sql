@@ -188,6 +188,7 @@ CREATE TABLE "rounds" (
 CREATE TABLE "round_teams" (
     "round_id" TEXT NOT NULL,
     "team_id" TEXT NOT NULL,
+    "seed" INTEGER,
     "advanced_from_round_id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -406,6 +407,9 @@ CREATE INDEX "round_teams_advanced_from_round_id_idx" ON "round_teams"("advanced
 CREATE INDEX "round_teams_team_id_idx" ON "round_teams"("team_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "round_teams_round_id_seed_key" ON "round_teams"("round_id", "seed");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "round_teams_advanced_from_round_id_team_id_key" ON "round_teams"("advanced_from_round_id", "team_id");
 
 -- CreateIndex
@@ -613,3 +617,32 @@ ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_invited_by_id_fk
 
 -- AddForeignKey
 ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_accepted_by_id_fkey" FOREIGN KEY ("accepted_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- CreateEnum
+CREATE TYPE "CompetitionAuditAction" AS ENUM ('ROUND_STRUCTURE_GENERATED', 'ROUND_STRUCTURE_REGENERATED', 'ROUND_SEEDS_UPDATED', 'ROUND_ADVANCEMENT_CONFIRMED', 'SWISS_ITERATION_GENERATED', 'MATCH_RESULT_RECORDED', 'MATCH_RESULT_CORRECTED', 'DOWNSTREAM_RESET', 'ROUND_DELETED', 'FINAL_STANDINGS_CONFIRMED');
+
+-- CreateTable
+CREATE TABLE "competition_audit_logs" (
+    "id" TEXT NOT NULL,
+    "action" "CompetitionAuditAction" NOT NULL,
+    "round_id" TEXT,
+    "match_id" TEXT,
+    "details" JSONB,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "tournament_id" TEXT NOT NULL,
+    "actor_id" TEXT,
+
+    CONSTRAINT "competition_audit_logs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "competition_audit_logs_tournament_id_created_at_idx" ON "competition_audit_logs"("tournament_id", "created_at");
+
+-- CreateIndex
+CREATE INDEX "competition_audit_logs_actor_id_created_at_idx" ON "competition_audit_logs"("actor_id", "created_at");
+
+-- AddForeignKey
+ALTER TABLE "competition_audit_logs" ADD CONSTRAINT "competition_audit_logs_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "competition_audit_logs" ADD CONSTRAINT "competition_audit_logs_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;

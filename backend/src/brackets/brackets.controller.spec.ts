@@ -18,6 +18,16 @@ import { SwissService } from './swiss.service';
 describe('BracketsController', () => {
   const operations = {
     generate: jest.fn().mockResolvedValue({ matchCount: 1 }),
+    previewGeneration: jest.fn().mockResolvedValue({
+      previewToken: 'preview-token',
+      matchCount: 1,
+    }),
+    previewDownstreamReset: jest.fn().mockResolvedValue({
+      previewToken: 'reset-preview-token',
+    }),
+    resetDownstream: jest.fn().mockResolvedValue({
+      tournamentStatus: 'ONGOING',
+    }),
   } as unknown as BracketOperationsService;
   const swiss = {
     generateNextSwissRound: jest.fn().mockResolvedValue({
@@ -32,7 +42,35 @@ describe('BracketsController', () => {
     await expect(controller.generate('round-1', true)).resolves.toEqual({
       matchCount: 1,
     });
-    expect(operations.generate).toHaveBeenCalledWith('round-1', true);
+    expect(operations.generate).toHaveBeenCalledWith(
+      'round-1',
+      true,
+      undefined,
+      undefined,
+    );
+  });
+
+  it('delegates protected generation preview without persisting', async () => {
+    await expect(
+      controller.previewGeneration('round-1', true),
+    ).resolves.toEqual({
+      previewToken: 'preview-token',
+      matchCount: 1,
+    });
+    expect(operations.previewGeneration).toHaveBeenCalledWith('round-1', true);
+
+    const method = BracketsController.prototype.previewGeneration;
+    expect(Reflect.getMetadata(PATH_METADATA, method)).toBe(
+      ':id/generate-preview',
+    );
+    expect(Reflect.getMetadata(METHOD_METADATA, method)).toBe(
+      RequestMethod.POST,
+    );
+    expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
+      JwtAuthGuard,
+      EmailVerifiedGuard,
+      OwnershipGuard,
+    ]);
   });
 
   it('protects mutation routes with existing auth and ownership guards', () => {
@@ -63,7 +101,10 @@ describe('BracketsController', () => {
     await expect(controller.generateNextSwissRound('round-1')).resolves.toEqual(
       expect.objectContaining({ bracketRound: 2, matchCount: 2 }),
     );
-    expect(swiss.generateNextSwissRound).toHaveBeenCalledWith('round-1');
+    expect(swiss.generateNextSwissRound).toHaveBeenCalledWith(
+      'round-1',
+      undefined,
+    );
   });
 
   it('registers and protects POST /rounds/:id/swiss/generate-next', () => {
@@ -79,6 +120,46 @@ describe('BracketsController', () => {
       EmailVerifiedGuard,
       OwnershipGuard,
     ]);
+  });
+
+  it('registers and protects downstream reset preview and confirmation', async () => {
+    await expect(controller.previewDownstreamReset('round-1')).resolves.toEqual(
+      { previewToken: 'reset-preview-token' },
+    );
+    await expect(
+      controller.resetDownstream('round-1', {
+        previewToken: 'reset-preview-token',
+      }),
+    ).resolves.toEqual({ tournamentStatus: 'ONGOING' });
+    expect(operations.previewDownstreamReset).toHaveBeenCalledWith('round-1');
+    expect(operations.resetDownstream).toHaveBeenCalledWith(
+      'round-1',
+      'reset-preview-token',
+      undefined,
+    );
+
+    for (const method of [
+      BracketsController.prototype.previewDownstreamReset,
+      BracketsController.prototype.resetDownstream,
+    ]) {
+      expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
+        JwtAuthGuard,
+        EmailVerifiedGuard,
+        OwnershipGuard,
+      ]);
+    }
+    expect(
+      Reflect.getMetadata(
+        PATH_METADATA,
+        BracketsController.prototype.previewDownstreamReset,
+      ),
+    ).toBe(':id/reset-downstream-preview');
+    expect(
+      Reflect.getMetadata(
+        PATH_METADATA,
+        BracketsController.prototype.resetDownstream,
+      ),
+    ).toBe(':id/reset-downstream');
   });
 
   it('uses optional authentication and tournament visibility resolution', () => {

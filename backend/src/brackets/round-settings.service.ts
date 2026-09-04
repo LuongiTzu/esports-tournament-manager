@@ -8,6 +8,7 @@ import {
   RoundSettingsMap,
 } from './types/round-settings';
 import { createSettingsDtoForFormat } from './dto/round-settings.dto';
+import { resolveMatchScoringMode } from '../common/domain/match-scoring';
 
 /**
  * Service chuẩn hóa & validate `Round.settings` theo từng thể thức.
@@ -30,6 +31,7 @@ export class RoundSettingsService {
   async normalizeForFormat(
     format: RoundFormat,
     settings?: Record<string, unknown> | null,
+    bestOf?: number,
   ): Promise<RoundSettingsMap[RoundFormat]> {
     const defaults = DEFAULT_ROUND_SETTINGS[format];
 
@@ -63,7 +65,7 @@ export class RoundSettingsService {
       throw new BadRequestException(messages);
     }
 
-    this.validateCombinations(format, merged);
+    this.validateCombinations(format, merged, bestOf);
 
     return cloneJson(merged);
   }
@@ -93,19 +95,31 @@ export class RoundSettingsService {
       ['numGroups', 'teamsPerGroup', 'advanceCount', 'doubleRound'].some(
         (key) => Object.prototype.hasOwnProperty.call(stored, key),
       );
-    return cloneJson({
+    const effective = {
       ...defaults,
       ...canonical,
       // Legacy Group Stage rounds historically accepted draws. New rounds are
       // persisted with the explicit default `allowDraws: false`.
       ...(isLegacyGroupStage ? { allowDraws: true } : {}),
+    };
+    return cloneJson({
+      ...effective,
+      scoringMode: resolveMatchScoringMode(effective),
     });
   }
 
   private validateCombinations(
     format: RoundFormat,
     settings: RoundSettingsMap[RoundFormat],
+    bestOf?: number,
   ): void {
+    if (
+      bestOf !== undefined &&
+      resolveMatchScoringMode(settings) === 'POINT_SCORE' &&
+      bestOf !== 1
+    ) {
+      throw new BadRequestException('POINT_SCORE requires bestOf = 1');
+    }
     if (format === RoundFormat.GROUP_STAGE) {
       const groupSettings = settings as GroupStageSettings;
       if (groupSettings.winPoints <= groupSettings.lossPoints) {
@@ -181,6 +195,13 @@ function canonicalizeSettings(
   }
 
   const canonical = { ...settings };
+  if (
+    format === RoundFormat.ROUND_ROBIN &&
+    canonical.advancingTeamCount === undefined &&
+    canonical.advanceCount !== undefined
+  ) {
+    canonical.advancingTeamCount = canonical.advanceCount;
+  }
   if (
     format === RoundFormat.GROUP_STAGE &&
     canonical.numberOfGroups === undefined &&

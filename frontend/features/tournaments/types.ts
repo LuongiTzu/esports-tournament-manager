@@ -7,8 +7,11 @@ export type { Paginated } from "@/shared/types/pagination";
 
 export type TournamentVisibility = "PUBLIC" | "PRIVATE";
 export type TournamentMode = "ONLINE" | "OFFLINE" | "HYBRID";
+export type MatchScoringMode = "SERIES_SCORE" | "POINT_SCORE";
 
 export interface RoundRobinSettings {
+  scoringMode?: MatchScoringMode;
+  advancingTeamCount: number;
   winPoints: number;
   drawPoints: number;
   lossPoints: number;
@@ -17,6 +20,7 @@ export interface RoundRobinSettings {
 }
 
 export interface GroupStageSettings {
+  scoringMode?: MatchScoringMode;
   numberOfGroups: number;
   advancingTeamsPerGroup: number;
   winPoints: number;
@@ -27,15 +31,18 @@ export interface GroupStageSettings {
 }
 
 export interface SwissSettings {
+  scoringMode?: MatchScoringMode;
   numberOfRounds: number | null;
   advancingTeamCount: number;
 }
 
 export interface PlayoffSettings {
+  scoringMode?: MatchScoringMode;
   thirdPlaceMatch: boolean;
 }
 
 export interface DoubleElimSettings {
+  scoringMode?: MatchScoringMode;
   grandFinalReset: boolean;
 }
 
@@ -261,8 +268,20 @@ export type RoundProgressionState =
   | "NEXT_STAGE_GENERATED"
   | "NEXT_STAGE_COMPLETED";
 
+export type TournamentFinalizationMode =
+  "MANUAL_STANDINGS" | "AUTOMATIC_ELIMINATION" | "UNSUPPORTED";
+
+export type TournamentFinalizationState =
+  | "NOT_APPLICABLE"
+  | "NOT_READY"
+  | "READY"
+  | "COMPLETED"
+  | "AUTOMATIC"
+  | "UNSUPPORTED";
+
 export interface RoundParticipantAssignment {
   createdAt: string;
+  seed: number | null;
   team: BracketTeam;
   advancedFromRound: Pick<
     TournamentRound,
@@ -272,11 +291,29 @@ export interface RoundParticipantAssignment {
 
 export interface QualifiedTeamAssignment {
   advancedAt: string;
+  seed: number | null;
   team: BracketTeam;
   targetRound: Pick<
     TournamentRound,
     "id" | "name" | "orderIndex" | "format" | "status"
   >;
+}
+
+export type SwissGenerationBlockedReason =
+  | "NOT_GENERATED"
+  | "TOURNAMENT_NOT_MUTABLE"
+  | "ROUND_NOT_MUTABLE"
+  | "CURRENT_ITERATION_INCOMPLETE"
+  | "ALL_ITERATIONS_COMPLETE"
+  | "STRUCTURE_INVALID";
+
+export interface SwissResolvedProgress {
+  resolvedNumberOfRounds: number;
+  currentIteration: number;
+  currentIterationComplete: boolean;
+  allIterationsComplete: boolean;
+  canGenerateNext: boolean;
+  blockedReason: SwissGenerationBlockedReason | null;
 }
 
 interface RoundStandingsBase {
@@ -292,6 +329,7 @@ interface RoundStandingsBase {
     completedRequiredMatches: number;
     allRequiredMatchesCompleted: boolean;
   };
+  swissProgress: SwissResolvedProgress | null;
   participants: RoundParticipantAssignment[];
   advancement: {
     supported: boolean;
@@ -307,6 +345,11 @@ interface RoundStandingsBase {
         })
       | null;
     qualifiedTeams: QualifiedTeamAssignment[];
+  };
+  finalization: {
+    mode: TournamentFinalizationMode;
+    state: TournamentFinalizationState;
+    readinessReason: string | null;
   };
 }
 
@@ -339,12 +382,88 @@ export interface TournamentStandingsResponse {
   rounds: RoundStandings[];
 }
 
+export interface FinalizeTournamentStandingsResult {
+  tournamentId: string;
+  round: Pick<TournamentRound, "id" | "name" | "format" | "status">;
+  champion: BracketTeam & { finalRank: number };
+  finalStandings: Array<BracketTeam & { finalRank: number }>;
+  status: "COMPLETED";
+}
+
+export interface DownstreamResetPreview {
+  previewToken: string;
+  sourceRound: Pick<TournamentRound, "id" | "name" | "orderIndex" | "status">;
+  downstreamRounds: Array<
+    Pick<TournamentRound, "id" | "name" | "orderIndex" | "status"> & {
+      matchCount: number;
+      groupCount: number;
+      participantAssignmentCount: number;
+      progressedMatchCount: number;
+    }
+  >;
+  impact: {
+    roundCount: number;
+    matchCount: number;
+    completedMatchCount: number;
+    progressedMatchCount: number;
+    groupCount: number;
+    participantAssignmentCount: number;
+    finalRankedTeamCount: number;
+  };
+}
+
+export interface DownstreamResetResult extends DownstreamResetPreview {
+  tournamentStatus: TournamentStatus;
+}
+
+export type CompetitionAuditAction =
+  | "ROUND_STRUCTURE_GENERATED"
+  | "ROUND_STRUCTURE_REGENERATED"
+  | "ROUND_SEEDS_UPDATED"
+  | "ROUND_ADVANCEMENT_CONFIRMED"
+  | "SWISS_ITERATION_GENERATED"
+  | "MATCH_RESULT_RECORDED"
+  | "MATCH_RESULT_CORRECTED"
+  | "DOWNSTREAM_RESET"
+  | "ROUND_DELETED"
+  | "FINAL_STANDINGS_CONFIRMED";
+
+export interface CompetitionAuditLog {
+  id: string;
+  action: CompetitionAuditAction;
+  roundId: string | null;
+  matchId: string | null;
+  details: Record<string, unknown> | null;
+  createdAt: string;
+  actor: {
+    id: string;
+    displayName: string;
+    email: string;
+  } | null;
+}
+
+export interface ChampionshipTieBreakDetails {
+  candidates: Array<{
+    teamId: string;
+    name: string;
+    seed: number | null;
+  }>;
+}
+
 export interface GenerateRoundResult {
   roundId: string;
   format: TournamentRound["format"];
   approvedTeamCount: number;
   matchCount: number;
   force: boolean;
+}
+
+export interface RoundGenerationPreview {
+  previewToken: string;
+  force: boolean;
+  participantCount: number;
+  matchCount: number;
+  bracket: RoundBracket;
 }
 
 export interface GenerateSwissIterationResult {
@@ -379,6 +498,26 @@ export interface AdvanceRoundResult {
   progressionMode: "ROUND_PARTICIPANTS" | "MATCH_LINKAGE";
   prepared: boolean;
   persisted: boolean;
+}
+
+export interface QualificationDecisionTeam {
+  teamId: string;
+  name: string;
+  seed: number | null;
+}
+
+export interface QualificationTieBreak {
+  scope: "ROUND" | "GROUP";
+  groupId: string | null;
+  groupName: string | null;
+  requiredSelections: number;
+  candidates: QualificationDecisionTeam[];
+}
+
+export interface QualificationTieBreakDetails {
+  advanceCount: number;
+  fixedQualifiedTeams: QualificationDecisionTeam[];
+  tieBreaks: QualificationTieBreak[];
 }
 
 export interface UpdateTournamentLifecycleRequest {

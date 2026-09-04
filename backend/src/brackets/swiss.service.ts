@@ -1,17 +1,26 @@
 import {
   BadRequestException,
+  ConflictException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
+  CompetitionAuditAction,
   MatchOutcome,
   MatchStatus,
   Prisma,
-  RegistrationStatus,
   RoundFormat,
+  RoundStatus,
+  TournamentStatus,
 } from '@prisma/client';
+import { ApplicationErrorCode } from '../common/errors/application-error-code';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  resolveSwissProgress,
+  SwissGenerationBlockedReason,
+} from './domain/swiss-progress';
 import { SwissGenerator } from './generators/swiss.generator';
 import { RoundSettingsService } from './round-settings.service';
 import {
@@ -20,6 +29,13 @@ import {
 } from './types/round-settings';
 import { SwissMatchSnapshot } from './types/swiss';
 import { SwissStandingsQueryService } from './swiss-standings-query.service';
+import type { StandingsClient } from './standings.service';
+import { RoundParticipantResolver } from './round-participant-resolver.service';
+import {
+  COMPETITION_AUDIT_WRITER,
+  CompetitionAuditWriter,
+  NOOP_COMPETITION_AUDIT_WRITER,
+} from '../common/ports/competition-audit-writer';
 
 @Injectable()
 export class SwissService {
@@ -34,14 +50,29 @@ export class SwissService {
       settingsService,
       generator,
     ),
+    private readonly participants: RoundParticipantResolver = new RoundParticipantResolver(),
+    @Inject(COMPETITION_AUDIT_WRITER)
+    private readonly audit: CompetitionAuditWriter = NOOP_COMPETITION_AUDIT_WRITER,
   ) {}
 
-  async generateNextSwissRound(roundId: string) {
+  async generateNextSwissRound(roundId: string, actorId?: string) {
     return this.prisma.$transaction(async (tx) => {
-      // Serialize generation for this logical Swiss round so concurrent calls
-      // cannot both observe the same last generated bracketRound.
+      const reference = await tx.round.findUnique({
+        where: { id: roundId },
+        select: { id: true, tournamentId: true },
+      });
+      if (!reference) throw new NotFoundException('Round not found');
+
+      // Keep the same lock order as match-result writes to avoid deadlocks and
+      // serialize two requests that observe the same Swiss iteration.
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "tournaments" WHERE "id" = ${reference.tournamentId} FOR UPDATE`,
+      );
       await tx.$queryRaw(
         Prisma.sql`SELECT "id" FROM "rounds" WHERE "id" = ${roundId} FOR UPDATE`,
+      );
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "matches" WHERE "round_id" = ${roundId} ORDER BY "id" FOR UPDATE`,
       );
       const round = await tx.round.findUnique({
         where: { id: roundId },
@@ -51,54 +82,21 @@ export class SwissService {
           settings: true,
           bestOf: true,
           tournamentId: true,
+          orderIndex: true,
+          status: true,
+          tournament: { select: { status: true } },
         },
       });
       if (!round) throw new NotFoundException('Round not found');
       if (round.format !== RoundFormat.SWISS) {
         throw new BadRequestException('Round format must be SWISS');
       }
+      assertSwissMutationAllowed(round.status, round.tournament.status);
 
       const [teams, matches] = await Promise.all([
-        (async () => {
-          const assignments = await tx.roundTeam.findMany({
-            where: { roundId },
-            orderBy: { createdAt: 'asc' },
-            select: {
-              team: {
-                select: {
-                  id: true,
-                  name: true,
-                  seed: true,
-                  registeredAt: true,
-                  tournamentId: true,
-                  status: true,
-                },
-              },
-            },
-          });
-          if (assignments.length) {
-            return assignments
-              .map((assignment) => assignment.team)
-              .filter(
-                (team) =>
-                  team.tournamentId === round.tournamentId &&
-                  team.status === RegistrationStatus.APPROVED,
-              )
-              .map((team) => ({
-                id: team.id,
-                name: team.name,
-                seed: team.seed,
-                registeredAt: team.registeredAt,
-              }));
-          }
-          return tx.team.findMany({
-            where: {
-              tournamentId: round.tournamentId,
-              status: RegistrationStatus.APPROVED,
-            },
-            select: { id: true, name: true, seed: true, registeredAt: true },
-          });
-        })(),
+        this.participants
+          .resolveForGeneration(tx, round)
+          .then(({ teams }) => teams),
         tx.match.findMany({
           where: { roundId },
           select: {
@@ -109,6 +107,11 @@ export class SwissService {
             bracketRound: true,
             isBye: true,
             status: true,
+            isActive: true,
+            bracketType: true,
+            matchNumber: true,
+            groupId: true,
+            winnerTeamId: true,
           },
           orderBy: [{ bracketRound: 'asc' }, { matchNumber: 'asc' }],
         }),
@@ -118,21 +121,6 @@ export class SwissService {
           'SWISS requires at least 2 approved teams',
         );
       }
-      const currentRound = Math.max(
-        0,
-        ...matches.map((match) => match.bracketRound ?? 0),
-      );
-      if (
-        currentRound > 0 &&
-        matches.some(
-          (match) =>
-            match.bracketRound === currentRound &&
-            match.status !== MatchStatus.COMPLETED,
-        )
-      ) {
-        throw new BadRequestException('Current Swiss round is not completed');
-      }
-
       const rawSettings = asRecord(round.settings);
       const settings = (await this.settingsService.normalizeForFormat(
         RoundFormat.SWISS,
@@ -142,12 +130,19 @@ export class SwissService {
         teams.length,
         settings.numberOfRounds,
       );
-      const nextRound = currentRound + 1;
-      if (nextRound > numberOfRounds) {
-        throw new BadRequestException(
-          'All configured Swiss rounds are complete',
-        );
+      const progress = resolveSwissProgress({
+        participantCount: teams.length,
+        settings,
+        matches,
+        roundStatus: round.status,
+        tournamentStatus: round.tournament.status,
+      });
+      if (matches.length > 0 && !progress.canGenerateNext) {
+        throw swissGenerationError(progress.blockedReason);
       }
+
+      const currentRound = progress.currentIteration;
+      const nextRound = currentRound + 1;
 
       const snapshots = toSnapshots(matches);
       const result = this.generator.generateNext({
@@ -183,6 +178,19 @@ export class SwissService {
         },
       });
       const bye = persistedMatches.find((match) => match.isBye) ?? null;
+      await this.audit.record(tx, {
+        tournamentId: round.tournamentId,
+        actorId,
+        action: CompetitionAuditAction.SWISS_ITERATION_GENERATED,
+        roundId,
+        details: {
+          bracketRound: nextRound,
+          numberOfRounds,
+          matchCount: persistedMatches.length,
+          matchIds: persistedMatches.map((match) => match.id),
+          byeTeamId: bye?.teamAId ?? null,
+        },
+      });
       return {
         roundId,
         bracketRound: nextRound,
@@ -196,8 +204,10 @@ export class SwissService {
     });
   }
 
-  async calculateSwissStandings(roundId: string) {
-    return this.standingsQuery.calculate(roundId);
+  async calculateSwissStandings(roundId: string, client?: StandingsClient) {
+    return client
+      ? this.standingsQuery.calculateWithClient(client, roundId)
+      : this.standingsQuery.calculate(roundId);
   }
 }
 
@@ -205,6 +215,62 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object'
     ? (value as Record<string, unknown>)
     : null;
+}
+
+function assertSwissMutationAllowed(
+  roundStatus: RoundStatus,
+  tournamentStatus: TournamentStatus,
+): void {
+  if (
+    tournamentStatus === TournamentStatus.DRAFT ||
+    tournamentStatus === TournamentStatus.COMPLETED ||
+    tournamentStatus === TournamentStatus.CANCELLED
+  ) {
+    throw new ConflictException({
+      code: ApplicationErrorCode.TOURNAMENT_NOT_MUTABLE,
+      message: 'The Tournament does not allow Swiss generation.',
+    });
+  }
+  if (roundStatus === RoundStatus.COMPLETED) {
+    throw new ConflictException({
+      code: ApplicationErrorCode.ROUND_NOT_MUTABLE,
+      message: 'The Swiss round is already completed.',
+    });
+  }
+}
+
+function swissGenerationError(
+  reason: SwissGenerationBlockedReason | null,
+): ConflictException {
+  switch (reason) {
+    case 'TOURNAMENT_NOT_MUTABLE':
+      return new ConflictException({
+        code: ApplicationErrorCode.TOURNAMENT_NOT_MUTABLE,
+        message: 'The Tournament does not allow Swiss generation.',
+      });
+    case 'ROUND_NOT_MUTABLE':
+      return new ConflictException({
+        code: ApplicationErrorCode.ROUND_NOT_MUTABLE,
+        message: 'The Swiss round does not allow further generation.',
+      });
+    case 'CURRENT_ITERATION_INCOMPLETE':
+      return new ConflictException({
+        code: ApplicationErrorCode.SWISS_ITERATION_NOT_COMPLETE,
+        message: 'The current Swiss iteration is not complete.',
+      });
+    case 'ALL_ITERATIONS_COMPLETE':
+      return new ConflictException({
+        code: ApplicationErrorCode.SWISS_ALL_ITERATIONS_COMPLETE,
+        message: 'All resolved Swiss iterations are complete.',
+      });
+    case 'NOT_GENERATED':
+    case 'STRUCTURE_INVALID':
+    case null:
+      return new ConflictException({
+        code: ApplicationErrorCode.SWISS_STRUCTURE_INVALID,
+        message: 'The persisted Swiss structure is invalid.',
+      });
+  }
 }
 
 function toSnapshots(

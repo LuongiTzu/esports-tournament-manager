@@ -20,6 +20,7 @@ import {
   secondaryButtonClass,
 } from "@/components/ui";
 import { matchesApi } from "@/features/matches/api";
+import { ApiError } from "@/lib/api/client";
 import type { MatchDetail } from "@/features/matches/types";
 import { roundFormatLabel } from "@/features/tournaments/round-formats";
 import type {
@@ -34,6 +35,15 @@ interface EditableGameScore {
   teamAScore: string;
   teamBScore: string;
 }
+
+const resultErrorTranslationByCode: Partial<Record<string, TranslationKey>> = {
+  TOURNAMENT_NOT_MUTABLE: "match.manage.error.TOURNAMENT_NOT_MUTABLE",
+  ROUND_NOT_MUTABLE: "match.manage.error.ROUND_NOT_MUTABLE",
+  UPSTREAM_RESULT_LOCKED_BY_DOWNSTREAM_STRUCTURE:
+    "match.manage.error.UPSTREAM_RESULT_LOCKED_BY_DOWNSTREAM_STRUCTURE",
+  FINAL_STANDINGS_RESULT_LOCKED:
+    "match.manage.error.FINAL_STANDINGS_RESULT_LOCKED",
+};
 
 function toLocalDateTime(value: string | null) {
   if (!value) return "";
@@ -63,7 +73,9 @@ function TeamHeading({ match, slot }: { match: MatchDetail; slot: "A" | "B" }) {
         {team?.name ?? t("match.awaitingTeam")}
       </p>
       {team?.seed != null && (
-        <p className="text-[11px] text-ink-faint">{t("match.seed")} #{team.seed}</p>
+        <p className="text-[11px] text-ink-faint">
+          {t("match.seed")} #{team.seed}
+        </p>
       )}
     </div>
   );
@@ -124,7 +136,9 @@ export default function MatchManagementPanel({
     try {
       populate(await matchesApi.findOne(matchId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("match.manage.loadError"));
+      setError(
+        err instanceof Error ? err.message : t("match.manage.loadError"),
+      );
     } finally {
       setLoading(false);
     }
@@ -173,6 +187,8 @@ export default function MatchManagementPanel({
             : null;
   const editable = editingReason === null;
   const drawAllowed = allowsDraws(round);
+  const scoringMode = round.settings.scoringMode ?? "SERIES_SCORE";
+  const pointScoring = scoringMode === "POINT_SCORE";
   const resultIsCorrection = match?.status === "COMPLETED";
 
   const refreshAfterMutation = async (message: string) => {
@@ -201,7 +217,11 @@ export default function MatchManagementPanel({
       });
       await refreshAfterMutation(t("match.manage.scheduleUpdated"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("match.manage.scheduleUpdateError"));
+      setError(
+        err instanceof Error
+          ? err.message
+          : t("match.manage.scheduleUpdateError"),
+      );
     } finally {
       setSaving(null);
     }
@@ -217,7 +237,17 @@ export default function MatchManagementPanel({
       parsedA < 0 ||
       parsedB < 0
     ) {
-      return t("match.manage.seriesScoreInvalid");
+      return t(
+        pointScoring
+          ? "match.manage.pointScoreInvalid"
+          : "match.manage.seriesScoreInvalid",
+      );
+    }
+    if (pointScoring) {
+      if (resultStatus === "COMPLETED" && parsedA === parsedB && !drawAllowed) {
+        return t("match.manage.decisiveRequired");
+      }
+      return { scoreA: parsedA, scoreB: parsedB };
     }
     const winsRequired = Math.floor(match.bestOf / 2) + 1;
     if (
@@ -254,9 +284,7 @@ export default function MatchManagementPanel({
     if (!validated) return;
     if (
       resultIsCorrection &&
-      !window.confirm(
-        t("match.manage.correctResultConfirm"),
-      )
+      !window.confirm(t("match.manage.correctResultConfirm"))
     ) {
       return;
     }
@@ -270,8 +298,16 @@ export default function MatchManagementPanel({
       });
       await refreshAfterMutation(t("match.manage.resultUpdated"));
     } catch (err) {
+      const localizedError =
+        err instanceof ApiError && err.code
+          ? resultErrorTranslationByCode[err.code]
+          : undefined;
       setError(
-        err instanceof Error ? err.message : t("match.manage.resultUpdateError"),
+        localizedError
+          ? t(localizedError)
+          : err instanceof Error
+            ? err.message
+            : t("match.manage.resultUpdateError"),
       );
     } finally {
       setSaving(null);
@@ -296,17 +332,22 @@ export default function MatchManagementPanel({
           !Number.isInteger(score.teamBScore) ||
           score.teamAScore < 0 ||
           score.teamBScore < 0 ||
-          score.teamAScore === score.teamBScore,
+          (score.teamAScore === score.teamBScore &&
+            (!pointScoring || !drawAllowed)),
       )
     ) {
-      setError(t("match.manage.gameScoreInvalid"));
+      setError(
+        t(
+          pointScoring
+            ? "match.manage.pointDetailedScoreInvalid"
+            : "match.manage.gameScoreInvalid",
+        ),
+      );
       return;
     }
     if (
       resultIsCorrection &&
-      !window.confirm(
-        t("match.manage.correctGameScoresConfirm"),
-      )
+      !window.confirm(t("match.manage.correctGameScoresConfirm"))
     ) {
       return;
     }
@@ -317,8 +358,16 @@ export default function MatchManagementPanel({
       await matchesApi.putScores(match.id, { scores: parsed });
       await refreshAfterMutation(t("match.manage.gameScoresUpdated"));
     } catch (err) {
+      const localizedError =
+        err instanceof ApiError && err.code
+          ? resultErrorTranslationByCode[err.code]
+          : undefined;
       setError(
-        err instanceof Error ? err.message : t("match.manage.gameScoresUpdateError"),
+        localizedError
+          ? t(localizedError)
+          : err instanceof Error
+            ? err.message
+            : t("match.manage.gameScoresUpdateError"),
       );
     } finally {
       setSaving(null);
@@ -327,7 +376,13 @@ export default function MatchManagementPanel({
 
   const chooseDraw = () => {
     if (!match || !drawAllowed || usePerGameScores) return;
-    const drawScore = Math.floor(match.bestOf / 2);
+    const currentA = Number(scoreA);
+    const currentB = Number(scoreB);
+    const drawScore = pointScoring
+      ? Number.isInteger(currentA) && currentA >= 0 && currentA === currentB
+        ? currentA
+        : 0
+      : Math.floor(match.bestOf / 2);
     setScoreA(String(drawScore));
     setScoreB(String(drawScore));
     setResultStatus("COMPLETED");
@@ -378,7 +433,9 @@ export default function MatchManagementPanel({
                   {match.scoreA} : {match.scoreB}
                 </p>
                 <p className="mt-1 text-[11px] text-ink-faint">
-                  BO{match.bestOf}
+                  {pointScoring
+                    ? t("round.settings.scoringMode.POINT_SCORE")
+                    : `BO${match.bestOf}`}
                 </p>
               </div>
               <TeamHeading match={match} slot="B" />
@@ -412,16 +469,23 @@ export default function MatchManagementPanel({
 
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
               <div className="rounded-xl border border-line p-3">
-                <dt className="text-xs text-ink-faint">{t("match.manage.roundIteration")}</dt>
+                <dt className="text-xs text-ink-faint">
+                  {t("match.manage.roundIteration")}
+                </dt>
                 <dd className="mt-1 font-medium text-ink">
                   {match.bracketRound ?? t("match.manage.notApplicable")}
                 </dd>
               </div>
               <div className="rounded-xl border border-line p-3">
-                <dt className="text-xs text-ink-faint">{t("match.manage.currentSchedule")}</dt>
+                <dt className="text-xs text-ink-faint">
+                  {t("match.manage.currentSchedule")}
+                </dt>
                 <dd className="mt-1 font-medium text-ink">
                   {match.scheduledAt
-                    ? formatLocalizedDate(match.scheduledAt, locale, { dateStyle: "medium", timeStyle: "short" })
+                    ? formatLocalizedDate(match.scheduledAt, locale, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })
                     : t("match.manage.unscheduled")}
                 </dd>
               </div>
@@ -463,7 +527,9 @@ export default function MatchManagementPanel({
                   </h3>
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <label>
-                      <span className={labelClass}>{t("match.manage.dateTime")}</span>
+                      <span className={labelClass}>
+                        {t("match.manage.dateTime")}
+                      </span>
                       <span className="relative block">
                         <CalendarBlankIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                         <input
@@ -477,7 +543,9 @@ export default function MatchManagementPanel({
                       </span>
                     </label>
                     <label>
-                      <span className={labelClass}>{t("match.manage.roomLink")}</span>
+                      <span className={labelClass}>
+                        {t("match.manage.roomLink")}
+                      </span>
                       <span className="relative block">
                         <LinkIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
                         <input
@@ -515,12 +583,17 @@ export default function MatchManagementPanel({
                         {t("match.manage.result")}
                       </h3>
                       <p className="mt-1 text-xs text-ink-faint">
+                        {t(
+                          pointScoring
+                            ? "match.manage.pointScoreHint"
+                            : "match.manage.seriesScoreHint",
+                        )}{" "}
                         {drawAllowed
                           ? t("match.manage.drawAllowed")
                           : t("match.manage.decisiveOnly")}
                       </p>
                     </div>
-                    {match.scores.length === 0 && (
+                    {!pointScoring && match.scores.length === 0 && (
                       <button
                         type="button"
                         onClick={() => {
@@ -659,7 +732,9 @@ export default function MatchManagementPanel({
                         </label>
                       </div>
                       <label className="mt-4 block">
-                        <span className={labelClass}>{t("match.manage.resultStatus")}</span>
+                        <span className={labelClass}>
+                          {t("match.manage.resultStatus")}
+                        </span>
                         <select
                           value={resultStatus}
                           onChange={(event) =>
@@ -667,9 +742,15 @@ export default function MatchManagementPanel({
                           }
                           className={inputClass}
                         >
-                          <option value="PENDING">{t("match.status.PENDING")}</option>
-                          <option value="ONGOING">{t("match.status.ONGOING")}</option>
-                          <option value="COMPLETED">{t("match.status.COMPLETED")}</option>
+                          <option value="PENDING">
+                            {t("match.status.PENDING")}
+                          </option>
+                          <option value="ONGOING">
+                            {t("match.status.ONGOING")}
+                          </option>
+                          <option value="COMPLETED">
+                            {t("match.status.COMPLETED")}
+                          </option>
                         </select>
                       </label>
                       <div className="mt-4 flex flex-wrap gap-2">

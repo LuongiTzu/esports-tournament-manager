@@ -21,13 +21,29 @@ export default function RoundSettingsSummary({
   round: TournamentRound;
 }) {
   const { t } = useLocale();
-  const common = <SettingPill label={t("round.settings.bestOf")} value={`BO${round.bestOf}`} />;
+  const scoringMode = round.settings.scoringMode ?? "SERIES_SCORE";
+  const common = (
+    <>
+      <SettingPill
+        label={t("round.settings.scoringMode")}
+        value={t(`round.settings.scoringMode.${scoringMode}`)}
+      />
+      <SettingPill
+        label={t("round.settings.bestOf")}
+        value={`BO${round.bestOf}`}
+      />
+    </>
+  );
 
   switch (round.format) {
     case "ROUND_ROBIN":
       return (
         <div className="flex flex-wrap gap-2">
           {common}
+          <SettingPill
+            label={t("round.settings.advancingTeams")}
+            value={round.settings.advancingTeamCount}
+          />
           <SettingPill
             label={t("round.settings.meetings")}
             value={round.settings.meetingsPerPair}
@@ -38,7 +54,11 @@ export default function RoundSettingsSummary({
           />
           <SettingPill
             label={t("round.settings.draws")}
-            value={round.settings.allowDraws ? t("round.settings.allowed") : t("common.no")}
+            value={
+              round.settings.allowDraws
+                ? t("round.settings.allowed")
+                : t("common.no")
+            }
           />
         </div>
       );
@@ -46,7 +66,10 @@ export default function RoundSettingsSummary({
       return (
         <div className="flex flex-wrap gap-2">
           {common}
-          <SettingPill label={t("round.settings.groups")} value={round.settings.numberOfGroups} />
+          <SettingPill
+            label={t("round.settings.groups")}
+            value={round.settings.numberOfGroups}
+          />
           <SettingPill
             label={t("round.settings.advancePerGroup")}
             value={round.settings.advancingTeamsPerGroup}
@@ -61,7 +84,11 @@ export default function RoundSettingsSummary({
           />
           <SettingPill
             label={t("round.settings.draws")}
-            value={round.settings.allowDraws ? t("round.settings.allowed") : t("common.no")}
+            value={
+              round.settings.allowDraws
+                ? t("round.settings.allowed")
+                : t("common.no")
+            }
           />
         </div>
       );
@@ -71,7 +98,9 @@ export default function RoundSettingsSummary({
           {common}
           <SettingPill
             label={t("round.settings.swissRounds")}
-            value={round.settings.numberOfRounds ?? t("round.settings.automatic")}
+            value={
+              round.settings.numberOfRounds ?? t("round.settings.automatic")
+            }
           />
           <SettingPill
             label={t("round.settings.advancingTeams")}
@@ -85,7 +114,9 @@ export default function RoundSettingsSummary({
           {common}
           <SettingPill
             label={t("round.settings.thirdPlace")}
-            value={round.settings.thirdPlaceMatch ? t("common.yes") : t("common.no")}
+            value={
+              round.settings.thirdPlaceMatch ? t("common.yes") : t("common.no")
+            }
           />
         </div>
       );
@@ -95,7 +126,9 @@ export default function RoundSettingsSummary({
           {common}
           <SettingPill
             label={t("round.settings.grandFinalReset")}
-            value={round.settings.grandFinalReset ? t("common.yes") : t("common.no")}
+            value={
+              round.settings.grandFinalReset ? t("common.yes") : t("common.no")
+            }
           />
         </div>
       );

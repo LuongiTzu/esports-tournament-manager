@@ -1,5 +1,9 @@
-import { IsBoolean, IsInt, IsOptional, Min, Max } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, Min, Max } from 'class-validator';
 import { RoundFormat } from '@prisma/client';
+import {
+  MATCH_SCORING_MODES,
+  MatchScoringMode,
+} from '../../common/domain/match-scoring';
 
 /**
  * DTO validate `Round.settings` theo từng thể thức.
@@ -11,7 +15,19 @@ import { RoundFormat } from '@prisma/client';
  */
 
 /** Vòng tròn tính điểm */
-export class RoundRobinSettingsDto {
+class MatchScoringSettingsDto {
+  @IsIn(MATCH_SCORING_MODES, {
+    message: 'scoringMode must be SERIES_SCORE or POINT_SCORE',
+  })
+  scoringMode!: MatchScoringMode;
+}
+
+export class RoundRobinSettingsDto extends MatchScoringSettingsDto {
+  @IsInt({ message: 'advancingTeamCount phải là số nguyên' })
+  @Min(1, { message: 'advancingTeamCount tối thiểu là 1' })
+  @Max(256, { message: 'advancingTeamCount tối đa là 256' })
+  advancingTeamCount!: number;
+
   @IsInt({ message: 'winPoints phải là số nguyên' })
   @Min(0, { message: 'winPoints không được âm' })
   @Max(100, { message: 'winPoints tối đa là 100' })
@@ -37,7 +53,7 @@ export class RoundRobinSettingsDto {
 }
 
 /** Vòng bảng */
-export class GroupStageSettingsDto {
+export class GroupStageSettingsDto extends MatchScoringSettingsDto {
   @IsInt({ message: 'numberOfGroups phải là số nguyên' })
   @Min(2, { message: 'numberOfGroups tối thiểu là 2' })
   @Max(16, { message: 'numberOfGroups tối đa là 16' })
@@ -72,7 +88,7 @@ export class GroupStageSettingsDto {
 }
 
 /** Thụy Sĩ */
-export class SwissSettingsDto {
+export class SwissSettingsDto extends MatchScoringSettingsDto {
   @IsOptional()
   @IsInt({ message: 'numberOfRounds phải là số nguyên' })
   @Min(1, { message: 'numberOfRounds tối thiểu là 1' })
@@ -86,13 +102,13 @@ export class SwissSettingsDto {
 }
 
 /** Playoff — Single Elimination */
-export class PlayoffSettingsDto {
+export class PlayoffSettingsDto extends MatchScoringSettingsDto {
   @IsBoolean({ message: 'thirdPlaceMatch phải là boolean' })
   thirdPlaceMatch!: boolean;
 }
 
 /** Double Elimination */
-export class DoubleElimSettingsDto {
+export class DoubleElimSettingsDto extends MatchScoringSettingsDto {
   @IsBoolean({ message: 'grandFinalReset phải là boolean' })
   grandFinalReset!: boolean;
 }

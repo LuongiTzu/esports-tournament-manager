@@ -38,6 +38,7 @@ function isApiSuccessEnvelope(
 export class ApiError extends Error {
   status: number;
   code?: string;
+  details?: Record<string, unknown>;
   errors?: Array<{
     field: string;
     memberIndex: number | null;
@@ -49,12 +50,14 @@ export class ApiError extends Error {
     status: number,
     details?: {
       code?: string;
+      details?: Record<string, unknown>;
       errors?: ApiError["errors"];
     },
   ) {
     super(message);
     this.status = status;
     this.code = details?.code;
+    this.details = details?.details;
     this.errors = details?.errors;
   }
 }
@@ -191,8 +194,13 @@ export async function request<T>(
       Array.isArray(message) ? message.join(", ") : message,
       res.status,
       {
-        code:
-          typeof errorBody?.code === "string" ? errorBody.code : undefined,
+        code: typeof errorBody?.code === "string" ? errorBody.code : undefined,
+        details:
+          typeof errorBody?.details === "object" &&
+          errorBody.details !== null &&
+          !Array.isArray(errorBody.details)
+            ? (errorBody.details as Record<string, unknown>)
+            : undefined,
         errors: validationErrors,
       },
     );
