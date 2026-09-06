@@ -1145,7 +1145,7 @@ const extendedEn = {
   "admin.tournaments.moderationReason": "Moderation reason",
   "admin.tournaments.reasonPlaceholder": "Enter a reason from 3–500 characters",
   "admin.tournaments.reasonHint":
-    "The backend sends this reason to the Organizer in a warning.",
+    "The reason will appear in the notification sent to the Organizer.",
   "admin.tournaments.hiding": "Hiding...",
   "admin.tournaments.confirmHide": "Confirm hide",
   "admin.tournaments.organizer": "Organizer",

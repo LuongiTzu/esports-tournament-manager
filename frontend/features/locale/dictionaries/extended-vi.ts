@@ -1117,7 +1117,7 @@ const extendedVi = {
   "admin.tournaments.moderationReason": "Lý do kiểm duyệt",
   "admin.tournaments.reasonPlaceholder": "Nhập lý do từ 3–500 ký tự",
   "admin.tournaments.reasonHint":
-    "Lý do được backend gửi tới Organizer trong cảnh báo.",
+    "Lý do sẽ hiển thị trong thông báo gửi đến Organizer.",
   "admin.tournaments.hiding": "Đang ẩn...",
   "admin.tournaments.confirmHide": "Xác nhận ẩn",
   "admin.tournaments.organizer": "Ban tổ chức",

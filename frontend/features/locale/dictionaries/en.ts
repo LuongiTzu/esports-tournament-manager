@@ -10,6 +10,8 @@ const en = {
   "notifications.empty": "You have no notifications yet.",
   "notifications.loadMore": "Load more",
   "notifications.retry": "Try again",
+  "notifications.openDetails": "View details",
+  "notifications.markRead": "Mark as read",
   "notifications.loadError": "Notifications could not be loaded.",
   "notifications.readError": "The read status could not be updated.",
   "notifications.allRead": "You're all caught up",
@@ -33,7 +35,10 @@ const en = {
     "The tournament has {count} pending reports.",
   "notifications.message.moderationHidden":
     "The tournament was hidden by an administrator.",
+  "notifications.message.moderationRestored":
+    "The tournament was restored by an administrator.",
   "notifications.message.moderationReason": "Reason: {reason}",
+  "notifications.message.moderationAdminEmail": "Administrator email: {email}",
   "notifications.message.commentReply": "{replier} replied to your comment:",
   "notifications.status.DRAFT": "a draft",
   "notifications.status.REGISTRATION": "open for registration",
@@ -48,6 +53,7 @@ const en = {
   "notifications.type.tournamentStatus": "Tournament status",
   "notifications.type.reportThreshold": "Reports need review",
   "notifications.type.adminWarning": "Administrator warning",
+  "notifications.type.adminNotice": "Administrator notice",
   "notifications.type.commentReply": "New reply",
   "notifications.type.system": "System notification",
   "language.label": "Change language",

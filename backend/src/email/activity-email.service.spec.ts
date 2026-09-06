@@ -185,12 +185,18 @@ describe('ActivityEmailService', () => {
           ...(status === ModerationStatus.HIDDEN_BY_ADMIN
             ? { reason: 'Vi phạm' }
             : {}),
+          adminEmail: 'admin@example.com',
         }),
       );
 
       expect(email.sendActivity).toHaveBeenCalledWith(
         'recipient@example.com',
-        expect.objectContaining({ title }),
+        expect.objectContaining({
+          title,
+          paragraphs: expect.arrayContaining([
+            'Email liên hệ quản trị viên: admin@example.com',
+          ]),
+        }),
       );
     },
   );

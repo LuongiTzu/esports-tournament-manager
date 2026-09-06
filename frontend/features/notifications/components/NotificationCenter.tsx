@@ -99,7 +99,7 @@ function notificationCopy(
   notification: UserNotification,
   t: (key: TranslationKey) => string,
   locale: "vi" | "en",
-): { message: string; detail?: string } {
+): { message: string; detail?: string; titleKey?: TranslationKey } {
   const data = asRecord(notification.data);
   if (data?.kind === "MATCH_RESULT") {
     const teamA = stringField(data, "teamAName");
@@ -200,12 +200,33 @@ function notificationCopy(
     }
   }
   if (data?.kind === "TOURNAMENT_MODERATION") {
+    const moderationStatus = stringField(data, "moderationStatus");
     const reason = stringField(data, "reason");
+    const adminEmail = stringField(data, "adminEmail");
     return {
-      message: t("notifications.message.moderationHidden"),
-      detail: reason
-        ? interpolate(t("notifications.message.moderationReason"), { reason })
-        : undefined,
+      titleKey:
+        moderationStatus === "ACTIVE"
+          ? "notifications.type.adminNotice"
+          : undefined,
+      message:
+        moderationStatus === "ACTIVE"
+          ? t("notifications.message.moderationRestored")
+          : t("notifications.message.moderationHidden"),
+      detail:
+        [
+          reason
+            ? interpolate(t("notifications.message.moderationReason"), {
+                reason,
+              })
+            : null,
+          adminEmail
+            ? interpolate(t("notifications.message.moderationAdminEmail"), {
+                email: adminEmail,
+              })
+            : null,
+        ]
+          .filter((value): value is string => value !== null)
+          .join("\n") || undefined,
     };
   }
   if (data?.kind === "COMMENT_REPLY") {
@@ -526,13 +547,11 @@ function AuthenticatedNotificationCenter() {
                     const Icon = meta.icon;
                     const marking = markingIds.has(notification.id);
                     const copy = notificationCopy(notification, t, locale);
+                    const destination = notificationDestination(notification);
                     return (
                       <li key={notification.id}>
-                        <button
-                          type="button"
-                          onClick={() => void openNotification(notification)}
-                          disabled={marking}
-                          className={`group relative flex w-full items-start gap-3.5 border-l-2 px-4 py-3.5 text-left transition-[border-color,background-color] hover:bg-surface-hover disabled:opacity-60 ${
+                        <article
+                          className={`relative flex w-full items-start gap-3.5 border-l-2 px-4 py-3.5 text-left transition-[border-color,background-color] hover:bg-surface-hover ${
                             notification.isRead
                               ? "border-l-transparent bg-surface-elevated"
                               : "border-l-brand bg-brand/[0.06]"
@@ -547,10 +566,10 @@ function AuthenticatedNotificationCenter() {
                               <Icon size={18} weight="duotone" />
                             )}
                           </span>
-                          <span className="min-w-0 flex-1">
+                          <div className="min-w-0 flex-1 select-text">
                             <span className="flex items-center gap-2">
                               <span className="block min-w-0 flex-1 truncate text-sm font-bold text-ink">
-                                {t(meta.titleKey)}
+                                {t(copy.titleKey ?? meta.titleKey)}
                               </span>
                               {!notification.isRead && (
                                 <span
@@ -566,7 +585,7 @@ function AuthenticatedNotificationCenter() {
                               {copy.message}
                             </span>
                             {copy.detail && (
-                              <span className="mt-1 block line-clamp-2 whitespace-normal break-words text-xs leading-4 text-ink-faint">
+                              <span className="mt-1 block whitespace-pre-line break-words text-xs leading-4 text-ink-faint">
                                 {copy.detail}
                               </span>
                             )}
@@ -585,8 +604,22 @@ function AuthenticatedNotificationCenter() {
                                 ? ` · ${notification.tournament.name}`
                                 : ""}
                             </span>
-                          </span>
-                        </button>
+                            {(destination || !notification.isRead) && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void openNotification(notification)
+                                }
+                                disabled={marking}
+                                className="mt-2 inline-flex min-h-8 select-none items-center rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-brand transition hover:border-brand/30 hover:bg-brand/10 disabled:cursor-wait disabled:opacity-60"
+                              >
+                                {destination
+                                  ? t("notifications.openDetails")
+                                  : t("notifications.markRead")}
+                              </button>
+                            )}
+                          </div>
+                        </article>
                       </li>
                     );
                   })}

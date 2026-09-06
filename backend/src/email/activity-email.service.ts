@@ -188,7 +188,10 @@ export class ActivityEmailService implements ActivityEmailPublisher {
             data.reason
               ? `Lý do: ${stringValue(data.reason, '')}`
               : 'Thay đổi được thực hiện bởi quản trị viên ArenaVerse.',
-          ],
+            data.adminEmail
+              ? `Email liên hệ quản trị viên: ${stringValue(data.adminEmail, '')}`
+              : '',
+          ].filter(Boolean),
           action: { label: 'Xem giải đấu', path: '' },
         };
       default:

@@ -94,7 +94,11 @@ describe('AdminService moderation', () => {
   it('requires a reason and warns the organizer when hiding', async () => {
     const { service, prisma, notifications } = setup();
     await expect(
-      service.moderateTournament('t-1', ModerationStatus.HIDDEN_BY_ADMIN),
+      service.moderateTournament(
+        't-1',
+        ModerationStatus.HIDDEN_BY_ADMIN,
+        'admin@example.com',
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     prisma.tournament.findUnique.mockResolvedValue({
@@ -107,6 +111,7 @@ describe('AdminService moderation', () => {
     await service.moderateTournament(
       't-1',
       ModerationStatus.HIDDEN_BY_ADMIN,
+      'admin@example.com',
       'Policy violation',
     );
     expect(notifications.createNotification).toHaveBeenCalledWith(
@@ -114,6 +119,7 @@ describe('AdminService moderation', () => {
         userId: 'u-1',
         type: NotificationType.ADMIN_WARNING,
         tournamentId: 't-1',
+        data: expect.objectContaining({ adminEmail: 'admin@example.com' }),
       }),
     );
   });
@@ -131,7 +137,11 @@ describe('AdminService moderation', () => {
       updatedAt: new Date('2026-08-29T00:00:00.000Z'),
     });
 
-    await service.moderateTournament('t-1', ModerationStatus.ACTIVE);
+    await service.moderateTournament(
+      't-1',
+      ModerationStatus.ACTIVE,
+      'restoring-admin@example.com',
+    );
 
     expect(notifications.createNotification).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -140,6 +150,7 @@ describe('AdminService moderation', () => {
         data: expect.objectContaining({
           kind: 'TOURNAMENT_MODERATION',
           moderationStatus: ModerationStatus.ACTIVE,
+          adminEmail: 'restoring-admin@example.com',
         }),
       }),
     );

@@ -59,8 +59,10 @@ export type NotificationData =
     }
   | {
       kind: "TOURNAMENT_MODERATION";
-      moderationStatus: string;
-      reason: string;
+      moderationStatus: "ACTIVE" | "HIDDEN_BY_ADMIN";
+      previousModerationStatus?: "ACTIVE" | "HIDDEN_BY_ADMIN";
+      reason?: string;
+      adminEmail?: string;
     }
   | {
       kind: "COMMENT_REPLY";

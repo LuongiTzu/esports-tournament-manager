@@ -9,6 +9,8 @@ const vi = {
   "notifications.empty": "Bạn chưa có thông báo nào.",
   "notifications.loadMore": "Tải thêm",
   "notifications.retry": "Thử lại",
+  "notifications.openDetails": "Xem chi tiết",
+  "notifications.markRead": "Đánh dấu đã đọc",
   "notifications.loadError": "Không tải được thông báo.",
   "notifications.readError": "Không thể cập nhật trạng thái đã đọc.",
   "notifications.allRead": "Bạn đã đọc tất cả thông báo",
@@ -32,7 +34,10 @@ const vi = {
   "notifications.message.reportThreshold":
     "Giải đã có {count} báo cáo đang chờ xử lý.",
   "notifications.message.moderationHidden": "Giải đã bị quản trị viên ẩn.",
+  "notifications.message.moderationRestored":
+    "Giải đã được quản trị viên khôi phục.",
   "notifications.message.moderationReason": "Lý do: {reason}",
+  "notifications.message.moderationAdminEmail": "Email quản trị viên: {email}",
   "notifications.message.commentReply":
     "{replier} đã phản hồi bình luận của bạn:",
   "notifications.status.DRAFT": "bản nháp",
@@ -48,6 +53,7 @@ const vi = {
   "notifications.type.tournamentStatus": "Trạng thái giải đấu",
   "notifications.type.reportThreshold": "Báo cáo cần xử lý",
   "notifications.type.adminWarning": "Cảnh báo từ quản trị viên",
+  "notifications.type.adminNotice": "Thông báo từ quản trị viên",
   "notifications.type.commentReply": "Phản hồi mới",
   "notifications.type.system": "Thông báo hệ thống",
   "language.label": "Đổi ngôn ngữ",

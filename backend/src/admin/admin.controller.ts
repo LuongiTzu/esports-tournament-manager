@@ -51,10 +51,12 @@ export class AdminController {
   moderateTournament(
     @Param('id') id: string,
     @Body() dto: ModerateTournamentDto,
+    @CurrentUser('email') adminEmail: string,
   ) {
     return this.adminService.moderateTournament(
       id,
       dto.moderationStatus,
+      adminEmail,
       dto.reason,
     );
   }

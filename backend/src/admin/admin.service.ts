@@ -41,8 +41,13 @@ export class AdminService {
   listTournaments(moderationStatus?: ModerationStatus) {
     return this.tournaments.list(moderationStatus);
   }
-  moderateTournament(id: string, status: ModerationStatus, reason?: string) {
-    return this.tournaments.moderate(id, status, reason);
+  moderateTournament(
+    id: string,
+    status: ModerationStatus,
+    adminEmail: string,
+    reason?: string,
+  ) {
+    return this.tournaments.moderate(id, status, adminEmail, reason);
   }
   verifyTournament(id: string, explicit?: boolean) {
     return this.tournaments.verify(id, explicit);

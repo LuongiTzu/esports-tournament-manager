@@ -34,6 +34,7 @@ export class TournamentModerationService {
   async moderate(
     id: string,
     moderationStatus: ModerationStatus,
+    adminEmail: string,
     reason?: string,
   ) {
     if (
@@ -64,6 +65,7 @@ export class TournamentModerationService {
           kind: 'TOURNAMENT_MODERATION',
           moderationStatus,
           previousModerationStatus: tournament.moderationStatus,
+          adminEmail,
           reason:
             moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN
               ? reason!.trim()
