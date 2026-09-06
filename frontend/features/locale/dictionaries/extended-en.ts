@@ -209,6 +209,7 @@ const extendedEn = {
   "tournament.detail.backToList": "Back to tournaments",
   "tournament.detail.bannerAlt": "Tournament banner",
   "tournament.detail.verified": "Verified",
+  "tournament.detail.official": "Official event",
   "tournament.detail.organizedBy": "Organized by",
   "tournament.detail.manage": "Manage tournament",
   "tournament.detail.registerTeam": "Register team",
@@ -387,6 +388,10 @@ const extendedEn = {
   "standings.roundRobinNoAdvancement":
     "Round Robin currently has no configured advancement rule, so qualified teams are not displayed.",
   "manage.notOrganizer": "You are not an organizer of this tournament",
+  "manage.overrideRequired":
+    "Start an Admin Override session from the administration area before operating this tournament.",
+  "manage.overrideActive":
+    "You are operating this tournament through Admin Override. Every change is audited.",
   "manage.loadError": "Could not load data",
   "manage.eyebrow": "Organizer workspace",
   "manage.title": "Manage",
@@ -530,6 +535,9 @@ const extendedEn = {
   "tournament.create.previewPrize": "Prize",
   "tournament.create.previewPrizeEmpty": "Prize details not added",
   "tournament.create.reviewReady": "Ready to create the tournament",
+  "tournament.create.official": "Create as an official event",
+  "tournament.create.officialDescription":
+    "Use only for platform-operated events. The tournament receives Official and Verified labels when created.",
   "tournament.create.reviewHint":
     "Check the preview and key information before finishing.",
   "tournament.create.section.info": "Tournament information",
@@ -842,6 +850,8 @@ const extendedEn = {
   "competition.audit.action.DOWNSTREAM_RESET": "Downstream stages reset",
   "competition.audit.action.ROUND_DELETED": "Round deleted",
   "competition.audit.action.FINAL_STANDINGS_CONFIRMED": "Final standings confirmed",
+  "competition.audit.action.ADMIN_OVERRIDE_ACTION":
+    "Admin Override performed an action",
   "finalization.error.TOURNAMENT_NOT_MUTABLE":
     "This tournament no longer allows finalization changes.",
   "finalization.error.TOURNAMENT_FINALIZATION_NOT_READY":
@@ -1160,6 +1170,9 @@ const extendedEn = {
   "admin.tournaments.updated": "Updated",
   "admin.tournaments.platformModeration": "Platform moderation",
   "admin.tournaments.verificationLabel": "Verification label",
+  "admin.tournaments.officialLabel": "Tournament type",
+  "admin.tournaments.official": "Official",
+  "admin.tournaments.community": "Community",
   "admin.tournaments.verified": "Verified",
   "admin.tournaments.unverified": "Not verified",
   "admin.tournaments.platformVisibility": "Platform visibility",
@@ -1168,12 +1181,52 @@ const extendedEn = {
     "Organizer PUBLIC/PRIVATE visibility and Admin-hidden moderation state are independent concepts.",
   "admin.tournaments.hiddenVerifyHint":
     "The backend does not allow verifying a hidden tournament",
+  "admin.tournaments.hiddenOfficialHint":
+    "A hidden tournament cannot receive the official label",
+  "admin.tournaments.officialOwnerHint":
+    "Only a tournament organized by an Admin account can receive the official label",
+  "admin.tournaments.officialVerifyHint":
+    "Official tournaments must remain verified",
   "admin.tournaments.updating": "Updating...",
+  "admin.tournaments.makeOfficial": "Mark as official",
+  "admin.tournaments.removeOfficial": "Remove official label",
+  "admin.tournaments.officialConfirm": "Mark as official",
+  "admin.tournaments.removeOfficialConfirm": "Remove the official label from",
+  "admin.tournaments.officialNotice":
+    "The tournament is now official and was automatically verified.",
+  "admin.tournaments.removeOfficialNotice": "The official label was removed.",
+  "admin.tournaments.officialError": "Could not update the official label.",
   "admin.tournaments.unverify": "Remove verification",
   "admin.tournaments.verify": "Verify tournament",
   "admin.tournaments.unhide": "Unhide on platform",
   "admin.tournaments.hide": "Hide from platform",
   "admin.tournaments.viewPublic": "View tournament page",
+  "admin.tournaments.overrideHeading": "Emergency support access",
+  "admin.tournaments.overrideTitle": "Start Admin Override?",
+  "admin.tournaments.overrideDescription":
+    "You are about to receive temporary operational access to",
+  "admin.tournaments.overrideReason": "Override reason",
+  "admin.tournaments.overridePlaceholder":
+    "Describe the incident, dispute, or support request (10–500 characters)",
+  "admin.tournaments.overrideHint":
+    "The reason, Admin identity, and subsequent changes are audited; the Organizer will also be notified.",
+  "admin.tournaments.startOverride": "Start override",
+  "admin.tournaments.startingOverride": "Starting...",
+  "admin.tournaments.endOverride": "End override",
+  "admin.tournaments.endingOverride": "Ending...",
+  "admin.tournaments.endOverrideConfirm":
+    "End this override session? You will no longer be able to modify this tournament.",
+  "admin.tournaments.overrideActive": "Override session is active",
+  "admin.tournaments.overrideBy": "Acting Admin",
+  "admin.tournaments.overrideExpires": "Automatically expires",
+  "admin.tournaments.overrideAccessHint":
+    "Use only for emergency Organizer support. Sessions expire after four hours and permanent deletion remains unavailable.",
+  "admin.tournaments.openManagement": "Open management",
+  "admin.tournaments.overrideStartedNotice":
+    "The override session started and the Organizer was notified.",
+  "admin.tournaments.overrideEndedNotice":
+    "The override session ended and the Organizer was notified.",
+  "admin.tournaments.overrideError": "Could not update the override session.",
   "admin.report.reason.GAMBLING": "Gambling",
   "admin.report.reason.MINOR_SAFETY": "Minor safety",
   "admin.report.reason.HARASSMENT_OR_HATE": "Harassment or hate",

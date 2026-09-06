@@ -38,6 +38,7 @@ import { TournamentListQueryDto } from './dto/tournament-list-query.dto';
 import { ConfirmFinalStandingsDto } from './dto/finalize-tournament.dto';
 import { CompetitionAuditQueryDto } from './dto/competition-audit-query.dto';
 import { CompetitionAuditService } from '../common/services/competition-audit.service';
+import { AllowAdminOverride } from '../common/decorators/allow-admin-override.decorator';
 import {
   TournamentFavoriteMutationResultDto,
   TournamentFavoriteViewFieldsDto,
@@ -165,6 +166,7 @@ export class TournamentsController {
 
   @UseGuards(JwtAuthGuard, OwnershipGuard)
   @Ownership('tournamentId')
+  @AllowAdminOverride()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List organizer-visible competition audit history' })
   @Get(':tournamentId/competition-audit')
@@ -200,7 +202,7 @@ export class TournamentsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateTournamentDto,
   ) {
-    return this.tournamentsService.create(user.id, dto);
+    return this.tournamentsService.create(user.id, dto, user.role);
   }
 
   /**
@@ -209,6 +211,7 @@ export class TournamentsController {
    */
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('tournamentId')
+  @AllowAdminOverride()
   @Patch(':tournamentId')
   update(
     @Param('tournamentId') tournamentId: string,
@@ -219,6 +222,7 @@ export class TournamentsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('tournamentId')
+  @AllowAdminOverride()
   @ApiBearerAuth()
   @ApiOperation({
     summary:
@@ -255,6 +259,7 @@ export class TournamentsController {
    */
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('slug:slug')
+  @AllowAdminOverride()
   @Post(':slug/rounds')
   addRound(@Param('slug') slug: string, @Body() dto: CreateRoundDto) {
     return this.tournamentsService.addRoundBySlug(slug, dto);

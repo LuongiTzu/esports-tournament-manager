@@ -12,6 +12,7 @@ import { ApiBearerAuth, ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
+import { AllowAdminOverride } from '../common/decorators/allow-admin-override.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { TeamAccess, TeamAccessGuard } from '../teams/guards/team-access.guard';
@@ -79,6 +80,7 @@ export class UploadController {
   @Post('tournaments/:tournamentId/banner')
   @UseGuards(EmailVerifiedGuard, OwnershipGuard)
   @Ownership('tournamentId')
+  @AllowAdminOverride()
   @ApiConsumes('multipart/form-data')
   @ApiBody(imageBody)
   @UseInterceptors(FileInterceptor('file', imageUploadOptions))

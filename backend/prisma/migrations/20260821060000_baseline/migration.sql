@@ -131,6 +131,7 @@ CREATE TABLE "tournaments" (
     "visibility" "Visibility" NOT NULL DEFAULT 'PUBLIC',
     "moderation_status" "ModerationStatus" NOT NULL DEFAULT 'ACTIVE',
     "is_verified" BOOLEAN NOT NULL DEFAULT false,
+    "is_official" BOOLEAN NOT NULL DEFAULT false,
     "registration_open" BOOLEAN NOT NULL DEFAULT true,
     "max_teams" INTEGER,
     "start_date" TIMESTAMP(3),
@@ -619,7 +620,10 @@ ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_invited_by_id_fk
 ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_accepted_by_id_fkey" FOREIGN KEY ("accepted_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- CreateEnum
-CREATE TYPE "CompetitionAuditAction" AS ENUM ('ROUND_STRUCTURE_GENERATED', 'ROUND_STRUCTURE_REGENERATED', 'ROUND_SEEDS_UPDATED', 'ROUND_ADVANCEMENT_CONFIRMED', 'SWISS_ITERATION_GENERATED', 'MATCH_RESULT_RECORDED', 'MATCH_RESULT_CORRECTED', 'DOWNSTREAM_RESET', 'ROUND_DELETED', 'FINAL_STANDINGS_CONFIRMED');
+CREATE TYPE "CompetitionAuditAction" AS ENUM ('ROUND_STRUCTURE_GENERATED', 'ROUND_STRUCTURE_REGENERATED', 'ROUND_SEEDS_UPDATED', 'ROUND_ADVANCEMENT_CONFIRMED', 'SWISS_ITERATION_GENERATED', 'MATCH_RESULT_RECORDED', 'MATCH_RESULT_CORRECTED', 'DOWNSTREAM_RESET', 'ROUND_DELETED', 'FINAL_STANDINGS_CONFIRMED', 'ADMIN_OVERRIDE_ACTION');
+
+-- CreateEnum
+CREATE TYPE "TournamentAdminOverrideStatus" AS ENUM ('ACTIVE', 'ENDED');
 
 -- CreateTable
 CREATE TABLE "competition_audit_logs" (
@@ -646,3 +650,32 @@ ALTER TABLE "competition_audit_logs" ADD CONSTRAINT "competition_audit_logs_tour
 
 -- AddForeignKey
 ALTER TABLE "competition_audit_logs" ADD CONSTRAINT "competition_audit_logs_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- CreateTable
+CREATE TABLE "tournament_admin_overrides" (
+    "id" TEXT NOT NULL,
+    "reason" TEXT NOT NULL,
+    "status" "TournamentAdminOverrideStatus" NOT NULL DEFAULT 'ACTIVE',
+    "started_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expires_at" TIMESTAMP(3) NOT NULL,
+    "ended_at" TIMESTAMP(3),
+    "tournament_id" TEXT NOT NULL,
+    "admin_id" TEXT NOT NULL,
+
+    CONSTRAINT "tournament_admin_overrides_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE INDEX "tournament_admin_overrides_tournament_id_status_idx" ON "tournament_admin_overrides"("tournament_id", "status");
+
+-- CreateIndex
+CREATE INDEX "tournament_admin_overrides_admin_id_status_idx" ON "tournament_admin_overrides"("admin_id", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tournament_admin_overrides_one_active_per_tournament_idx" ON "tournament_admin_overrides"("tournament_id") WHERE "status" = 'ACTIVE';
+
+-- AddForeignKey
+ALTER TABLE "tournament_admin_overrides" ADD CONSTRAINT "tournament_admin_overrides_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tournament_admin_overrides" ADD CONSTRAINT "tournament_admin_overrides_admin_id_fkey" FOREIGN KEY ("admin_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

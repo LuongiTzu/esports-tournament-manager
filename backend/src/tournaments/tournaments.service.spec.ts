@@ -197,6 +197,7 @@ describe('TournamentsService public listing', () => {
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         orderBy: [
+          { isOfficial: 'desc' },
           { isVerified: 'desc' },
           { startDate: 'asc' },
           { createdAt: 'desc' },

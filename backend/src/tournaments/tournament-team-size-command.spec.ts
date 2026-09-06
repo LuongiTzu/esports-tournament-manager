@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   GameGenre,
   GamePositionMode,
+  Role,
   TeamSizeMode,
   TournamentMode,
 } from '@prisma/client';
@@ -175,6 +176,43 @@ function updatedData(update: jest.Mock): Record<string, unknown> {
 }
 
 describe('TournamentCommandService GF-2 create contract', () => {
+  it('allows an Admin to create an official and verified tournament', async () => {
+    const { service, create } = createHarness();
+
+    await service.create(
+      'admin-1',
+      {
+        name: 'Official Cup',
+        gameId: baseGame.id,
+        isOfficial: true,
+      },
+      Role.ADMIN,
+    );
+
+    expect(createdData(create)).toMatchObject({
+      organizerId: 'admin-1',
+      isOfficial: true,
+      isVerified: true,
+    });
+  });
+
+  it('rejects an official tournament created by a non-Admin', async () => {
+    const { service, create } = createHarness();
+
+    await expect(
+      service.create(
+        'organizer-1',
+        {
+          name: 'Unofficial Cup',
+          gameId: baseGame.id,
+          isOfficial: true,
+        },
+        Role.SIGNED_UP_USER,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('preserves FIXED defaults and ignores a fake client minTeamSize', async () => {
     const { service, create } = createHarness();
     await service.create('organizer-1', {

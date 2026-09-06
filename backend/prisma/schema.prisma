@@ -212,6 +212,12 @@ enum CompetitionAuditAction {
   DOWNSTREAM_RESET
   ROUND_DELETED
   FINAL_STANDINGS_CONFIRMED
+  ADMIN_OVERRIDE_ACTION
+}
+
+enum TournamentAdminOverrideStatus {
+  ACTIVE
+  ENDED
 }
 
 // ============================================================
@@ -248,18 +254,19 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  organizedTournaments    Tournament[]          @relation("OrganizerTournaments")
-  captainedTeams          Team[]                @relation("CaptainedTeams")
-  teamMembers             TeamMember[]
-  comments                Comment[]             @relation("CommentAuthor")
-  commentReplyTargets     Comment[]             @relation("CommentReplyTarget")
-  notifications           Notification[]
-  tournamentFavorites     TournamentFavorite[]
-  reportedReports         Report[]              @relation("ReporterReports")
-  reviewedReports         Report[]              @relation("ReviewedReports")
-  sentTeamInvitations     TeamInvitation[]      @relation("SentTeamInvitations")
-  acceptedTeamInvitations TeamInvitation[]      @relation("AcceptedTeamInvitations")
-  competitionAuditLogs    CompetitionAuditLog[] @relation("CompetitionAuditActor")
+  organizedTournaments     Tournament[]              @relation("OrganizerTournaments")
+  captainedTeams           Team[]                    @relation("CaptainedTeams")
+  teamMembers              TeamMember[]
+  comments                 Comment[]                 @relation("CommentAuthor")
+  commentReplyTargets      Comment[]                 @relation("CommentReplyTarget")
+  notifications            Notification[]
+  tournamentFavorites      TournamentFavorite[]
+  reportedReports          Report[]                  @relation("ReporterReports")
+  reviewedReports          Report[]                  @relation("ReviewedReports")
+  sentTeamInvitations      TeamInvitation[]          @relation("SentTeamInvitations")
+  acceptedTeamInvitations  TeamInvitation[]          @relation("AcceptedTeamInvitations")
+  competitionAuditLogs     CompetitionAuditLog[]     @relation("CompetitionAuditActor")
+  tournamentAdminOverrides TournamentAdminOverride[] @relation("TournamentAdminOverrideActor")
 
   @@map("users")
 }
@@ -302,6 +309,7 @@ model Tournament {
   visibility       Visibility       @default(PUBLIC)
   moderationStatus ModerationStatus @default(ACTIVE) @map("moderation_status")
   isVerified       Boolean          @default(false) @map("is_verified")
+  isOfficial       Boolean          @default(false) @map("is_official")
   registrationOpen Boolean          @default(true) @map("registration_open")
   maxTeams         Int?             @map("max_teams")
   startDate        DateTime?        @map("start_date")
@@ -347,6 +355,7 @@ model Tournament {
   favorites            TournamentFavorite[]
   teamInvitations      TeamInvitation[]
   competitionAuditLogs CompetitionAuditLog[]
+  adminOverrides       TournamentAdminOverride[]
 
   @@index([gameId, visibility, moderationStatus])
   @@index([status, startDate])
@@ -737,4 +746,23 @@ model CompetitionAuditLog {
   @@index([tournamentId, createdAt])
   @@index([actorId, createdAt])
   @@map("competition_audit_logs")
+}
+
+/// Time-bounded, explicit Admin access to an Organizer-owned Tournament.
+model TournamentAdminOverride {
+  id        String                        @id @default(cuid())
+  reason    String
+  status    TournamentAdminOverrideStatus @default(ACTIVE)
+  startedAt DateTime                      @default(now()) @map("started_at")
+  expiresAt DateTime                      @map("expires_at")
+  endedAt   DateTime?                     @map("ended_at")
+
+  tournamentId String     @map("tournament_id")
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  adminId      String     @map("admin_id")
+  admin        User       @relation("TournamentAdminOverrideActor", fields: [adminId], references: [id], onDelete: Restrict)
+
+  @@index([tournamentId, status])
+  @@index([adminId, status])
+  @@map("tournament_admin_overrides")
 }

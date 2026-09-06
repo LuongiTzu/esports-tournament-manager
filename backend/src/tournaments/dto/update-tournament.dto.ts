@@ -8,5 +8,5 @@ import { CreateTournamentDto } from './create-tournament.dto';
  * `rounds` bị loại: thêm/sửa vòng đấu đi qua endpoint riêng `/rounds`.
  */
 export class UpdateTournamentDto extends PartialType(
-  OmitType(CreateTournamentDto, ['rounds'] as const),
+  OmitType(CreateTournamentDto, ['rounds', 'isOfficial'] as const),
 ) {}

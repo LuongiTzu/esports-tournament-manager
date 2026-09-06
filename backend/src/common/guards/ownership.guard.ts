@@ -9,6 +9,10 @@ import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OWNERSHIP_PARAM_KEY } from '../decorators/ownership.decorator';
 import { AuthenticatedUser } from '../../auth/strategies/jwt.strategy';
+import { Role } from '@prisma/client';
+import { ALLOW_ADMIN_OVERRIDE_KEY } from '../decorators/allow-admin-override.decorator';
+import { TournamentManagementAccessService } from '../services/tournament-management-access.service';
+import type { ActiveAdminOverrideAccess } from '../types/admin-override-access';
 
 /**
  * Guard kiểm tra quyền sở hữu tài nguyên.
@@ -26,6 +30,9 @@ export class OwnershipGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private prisma: PrismaService,
+    private readonly managementAccess: TournamentManagementAccessService = new TournamentManagementAccessService(
+      prisma,
+    ),
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -40,6 +47,7 @@ export class OwnershipGuard implements CanActivate {
       params: Record<string, string>;
       query: Record<string, string>;
       body?: { matches?: unknown };
+      adminOverrideAccess?: ActiveAdminOverrideAccess;
     }>();
 
     const user = request.user;
@@ -117,6 +125,16 @@ export class OwnershipGuard implements CanActivate {
         throw new NotFoundException('Không tìm thấy vòng đấu');
       }
       tournamentId = round.tournamentId;
+    } else if (paramName.startsWith('invitation:')) {
+      const invitationId = request.params[paramName.slice(11)];
+      const invitation = await this.prisma.teamInvitation.findUnique({
+        where: { id: invitationId },
+        select: { tournamentId: true },
+      });
+      if (!invitation) {
+        throw new NotFoundException('Không tìm thấy lời mời');
+      }
+      tournamentId = invitation.tournamentId;
     } else if (paramName.startsWith('slug:')) {
       // Route định danh giải bằng slug, VD @Ownership('slug:slug')
       const slug = request.params[paramName.slice(5)];
@@ -146,6 +164,27 @@ export class OwnershipGuard implements CanActivate {
     }
 
     if (tournament.organizerId !== user.id) {
+      const allowAdminOverride = this.reflector.getAllAndOverride<boolean>(
+        ALLOW_ADMIN_OVERRIDE_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+      if (allowAdminOverride === true && user.role === Role.ADMIN) {
+        const activeOverride =
+          await this.managementAccess.findActiveOverrideForAdmin(
+            tournamentId,
+            user.id,
+            user.role,
+          );
+        if (activeOverride) {
+          request.adminOverrideAccess = {
+            id: activeOverride.id,
+            tournamentId: activeOverride.tournamentId,
+            adminId: activeOverride.adminId,
+            reason: activeOverride.reason,
+          };
+          return true;
+        }
+      }
       throw new ForbiddenException(
         'Bạn không có quyền thực hiện thao tác này trên giải đấu',
       );

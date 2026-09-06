@@ -65,6 +65,12 @@ export type NotificationData =
       adminEmail?: string;
     }
   | {
+      kind: "TOURNAMENT_ADMIN_OVERRIDE";
+      overrideStatus: "ACTIVE" | "ENDED";
+      reason: string;
+      adminEmail: string;
+    }
+  | {
       kind: "COMMENT_REPLY";
       tournamentId: string;
       tournamentName: string;

@@ -11,6 +11,7 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
+import { AllowAdminOverride } from '../common/decorators/allow-admin-override.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { CreateTournamentNotificationDto } from './dto/notification.dto';
@@ -23,6 +24,7 @@ export class NotificationController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('slug:slug')
+  @AllowAdminOverride()
   @Post('tournaments/:slug/notifications')
   createForTournament(
     @Param('slug') slug: string,

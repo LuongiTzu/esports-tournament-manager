@@ -6,6 +6,9 @@ import { EmailVerifiedGuard } from './guards/email-verified.guard';
 import { CompetitionMutationGuardService } from './services/competition-mutation-guard.service';
 import { CompetitionAuditService } from './services/competition-audit.service';
 import { COMPETITION_AUDIT_WRITER } from './ports/competition-audit-writer';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { TournamentManagementAccessService } from './services/tournament-management-access.service';
+import { AdminOverrideAuditInterceptor } from './interceptors/admin-override-audit.interceptor';
 
 /**
  * Module dùng chung — export các guard để dùng được qua @UseGuards().
@@ -20,6 +23,11 @@ import { COMPETITION_AUDIT_WRITER } from './ports/competition-audit-writer';
     ContentFilterService,
     CompetitionMutationGuardService,
     CompetitionAuditService,
+    TournamentManagementAccessService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AdminOverrideAuditInterceptor,
+    },
     {
       provide: COMPETITION_AUDIT_WRITER,
       useExisting: CompetitionAuditService,
@@ -32,6 +40,7 @@ import { COMPETITION_AUDIT_WRITER } from './ports/competition-audit-writer';
     ContentFilterService,
     CompetitionMutationGuardService,
     CompetitionAuditService,
+    TournamentManagementAccessService,
     COMPETITION_AUDIT_WRITER,
   ],
 })

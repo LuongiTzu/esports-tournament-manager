@@ -35,3 +35,16 @@ export class VerifyTournamentDto {
   @IsBoolean()
   isVerified?: boolean;
 }
+
+export class SetTournamentOfficialDto {
+  @IsOptional()
+  @IsBoolean()
+  isOfficial?: boolean;
+}
+
+export class StartTournamentAdminOverrideDto {
+  @IsString()
+  @MinLength(10)
+  @MaxLength(500)
+  reason!: string;
+}

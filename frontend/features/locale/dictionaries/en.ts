@@ -39,6 +39,10 @@ const en = {
     "The tournament was restored by an administrator.",
   "notifications.message.moderationReason": "Reason: {reason}",
   "notifications.message.moderationAdminEmail": "Administrator email: {email}",
+  "notifications.message.overrideStarted":
+    "An administrator started an emergency support session for your tournament.",
+  "notifications.message.overrideEnded":
+    "The administrator emergency support session has ended.",
   "notifications.message.commentReply": "{replier} replied to your comment:",
   "notifications.status.DRAFT": "a draft",
   "notifications.status.REGISTRATION": "open for registration",

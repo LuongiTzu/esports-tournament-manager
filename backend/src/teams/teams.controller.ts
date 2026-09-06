@@ -27,6 +27,7 @@ import {
   CreateTeamInvitationDto,
 } from './dto/team-invitation.dto';
 import { TeamInvitationService } from './team-invitation.service';
+import { AllowAdminOverride } from '../common/decorators/allow-admin-override.decorator';
 import {
   UpdateTeamDto,
   UpdateTeamMemberDto,
@@ -84,7 +85,12 @@ export class TeamsController {
     @Param('slug') slug: string,
     @Query('status') status?: string,
   ) {
-    return this.teamsService.findByTournament(slug, user?.id, status);
+    return this.teamsService.findByTournament(
+      slug,
+      user?.id,
+      status,
+      user?.role,
+    );
   }
 
   /**
@@ -93,6 +99,7 @@ export class TeamsController {
    */
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('slug:slug')
+  @AllowAdminOverride()
   @Post('tournaments/:slug/teams')
   addManual(
     @CurrentUser() user: AuthenticatedUser,
@@ -104,6 +111,7 @@ export class TeamsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('slug:slug')
+  @AllowAdminOverride()
   @Get('tournaments/:slug/manual-team-form')
   getManualTeamForm(
     @CurrentUser() user: AuthenticatedUser,
@@ -114,6 +122,7 @@ export class TeamsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('slug:slug')
+  @AllowAdminOverride()
   @Get('tournaments/:slug/team-invitations')
   listInvitations(
     @CurrentUser('id') userId: string,
@@ -124,6 +133,7 @@ export class TeamsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('slug:slug')
+  @AllowAdminOverride()
   @Post('tournaments/:slug/team-invitations')
   inviteTeam(
     @CurrentUser('id') userId: string,
@@ -169,7 +179,9 @@ export class TeamsController {
     return this.teamInvitations.acceptAccountLink(dto.token, user);
   }
 
-  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('invitation:id')
+  @AllowAdminOverride()
   @Delete('team-invitations/:id')
   revokeInvitation(
     @CurrentUser('id') userId: string,
@@ -199,7 +211,7 @@ export class TeamsController {
     @CurrentUser() user: AuthenticatedUser | undefined,
     @Param('id') id: string,
   ) {
-    return this.teamsService.findOne(id, user?.id);
+    return this.teamsService.findOne(id, user?.id, user?.role);
   }
 
   /**
@@ -279,7 +291,7 @@ export class TeamsController {
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, TeamAccessGuard)
   @TeamAccess('CAPTAIN_OR_ORGANIZER')
   @Delete('teams/:id')
-  remove(@CurrentUser('id') userId: string, @Param('id') id: string) {
-    return this.teamsService.remove(id, userId);
+  remove(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.teamsService.remove(id, user.id, user.role);
   }
 }

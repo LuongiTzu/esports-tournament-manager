@@ -62,6 +62,15 @@ export class CreateRoundDto {
 
 /** DTO tạo giải đấu (UC-U04, UC-U05) */
 export class CreateTournamentDto {
+  @ApiPropertyOptional({
+    description:
+      'Admin-only flag for platform-owned official events; official events are automatically verified',
+    type: Boolean,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isOfficial?: boolean;
+
   // ─── Thông tin cơ bản ────────────────────────────────────────
   @IsString({ message: 'Tên giải đấu phải là chuỗi' })
   @MaxLength(150, { message: 'Tên giải đấu không được quá 150 ký tự' })

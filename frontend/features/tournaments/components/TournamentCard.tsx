@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   CalendarBlankIcon,
+  CrownIcon,
   GameControllerIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react";
@@ -104,6 +105,13 @@ export default function TournamentCard({
           onRollback={onFavoriteRollback}
           showFeedback={showFavoriteFeedback}
         />
+
+        {t.isOfficial && (
+          <span className="absolute bottom-3 left-4 inline-flex items-center gap-1.5 rounded-md border border-accent/30 bg-slate-950/75 px-2.5 py-1 text-xs font-bold text-accent backdrop-blur-md">
+            <CrownIcon size={14} weight="fill" />
+            {translate("tournament.detail.official")}
+          </span>
+        )}
 
         <span className="absolute bottom-3 right-4 grid size-14 place-items-center overflow-hidden rounded-xl border border-white/15 bg-surface/90 text-accent shadow-lg shadow-black/30 backdrop-blur-md">
           <ResolvedImage

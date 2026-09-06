@@ -177,6 +177,24 @@ export class ActivityEmailService implements ActivityEmailPublisher {
           },
         };
       case NotificationType.ADMIN_WARNING:
+        if (data.kind === 'TOURNAMENT_ADMIN_OVERRIDE') {
+          const active = data.overrideStatus === 'ACTIVE';
+          return {
+            title: active
+              ? 'Quản trị viên đang hỗ trợ giải đấu của bạn'
+              : 'Phiên hỗ trợ của quản trị viên đã kết thúc',
+            paragraphs: [
+              active
+                ? 'Một quản trị viên đã bắt đầu phiên can thiệp hỗ trợ cho {tournament}.'
+                : 'Phiên can thiệp hỗ trợ cho {tournament} đã kết thúc.',
+              data.reason ? `Lý do: ${stringValue(data.reason, '')}` : '',
+              data.adminEmail
+                ? `Email liên hệ quản trị viên: ${stringValue(data.adminEmail, '')}`
+                : '',
+            ].filter(Boolean),
+            action: { label: 'Xem giải đấu', path: '' },
+          };
+        }
         if (data.kind !== 'TOURNAMENT_MODERATION') return null;
         return {
           title:

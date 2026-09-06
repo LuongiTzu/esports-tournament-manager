@@ -11,6 +11,7 @@ import {
   NotificationType,
   Prisma,
   RegistrationStatus,
+  Role,
   TeamInvitationStatus,
   TournamentStatus,
   Visibility,
@@ -44,6 +45,7 @@ import {
   NOOP_ACTIVITY_EMAIL_PUBLISHER,
 } from '../common/ports/activity-email-publisher';
 import { CompetitionMutationGuardService } from '../common/services/competition-mutation-guard.service';
+import { TournamentManagementAccessService } from '../common/services/tournament-management-access.service';
 
 const CAPTAIN_SELECT = {
   id: true,
@@ -75,6 +77,9 @@ export class TeamsService {
       events,
     ),
     private readonly competitionGuard: CompetitionMutationGuardService = new CompetitionMutationGuardService(),
+    private readonly managementAccess: TournamentManagementAccessService = new TournamentManagementAccessService(
+      prisma,
+    ),
   ) {}
 
   /**
@@ -168,7 +173,7 @@ export class TeamsService {
       }
     }
 
-    return this.createTeam(tournament, organizerId, dto, {
+    return this.createTeam(tournament, tournament.organizerId, dto, {
       status: RegistrationStatus.APPROVED,
       notifyOrganizer: false,
       validateRegistrant: false,
@@ -184,12 +189,13 @@ export class TeamsService {
     slug: string,
     viewerId: string | undefined,
     status?: string,
+    viewerRole?: string,
   ) {
-    return this.queries.findByTournament(slug, viewerId, status);
+    return this.queries.findByTournament(slug, viewerId, status, viewerRole);
   }
 
-  findOne(teamId: string, viewerId?: string) {
-    return this.queries.findOne(teamId, viewerId);
+  findOne(teamId: string, viewerId?: string, viewerRole?: string) {
+    return this.queries.findOne(teamId, viewerId, viewerRole);
   }
 
   findMyTeams(userId: string) {
@@ -318,7 +324,7 @@ export class TeamsService {
     return this.reviews.updateStatus(teamId, dto);
   }
 
-  async remove(teamId: string, userId: string) {
+  async remove(teamId: string, userId: string, userRole?: string) {
     const reference = await this.prisma.team.findUnique({
       where: { id: teamId },
       select: { tournamentId: true },
@@ -327,6 +333,15 @@ export class TeamsService {
     if (!reference) {
       throw new NotFoundException('Không tìm thấy đội');
     }
+
+    const hasAdminOverride = Boolean(
+      userRole === Role.ADMIN &&
+      (await this.managementAccess.findActiveOverrideForAdmin(
+        reference.tournamentId,
+        userId,
+        userRole,
+      )),
+    );
 
     await this.prisma.$transaction(async (tx) => {
       await this.lockTournament(tx, reference.tournamentId);
@@ -344,8 +359,9 @@ export class TeamsService {
         throw new NotFoundException('Không tìm thấy đội');
       }
 
-      const isOrganizer = team.tournament.organizerId === userId;
-      if (!isOrganizer && team.status !== RegistrationStatus.PENDING) {
+      const canManageTournament =
+        team.tournament.organizerId === userId || hasAdminOverride;
+      if (!canManageTournament && team.status !== RegistrationStatus.PENDING) {
         throw new ForbiddenException(
           'Đội đã được duyệt nên không thể tự rút đăng ký, vui lòng liên hệ ban tổ chức',
         );

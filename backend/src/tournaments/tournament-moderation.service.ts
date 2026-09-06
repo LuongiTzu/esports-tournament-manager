@@ -4,7 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ModerationStatus, NotificationType } from '@prisma/client';
+import {
+  ModerationStatus,
+  NotificationType,
+  Role,
+  TournamentAdminOverrideStatus,
+} from '@prisma/client';
 import {
   NOTIFICATION_PUBLISHER,
   NotificationPublisher,
@@ -24,12 +29,38 @@ export class TournamentModerationService {
       where: { moderationStatus },
       orderBy: [{ reports: { _count: 'desc' } }, { createdAt: 'desc' }],
       include: {
-        organizer: { select: { id: true, displayName: true, email: true } },
+        organizer: {
+          select: { id: true, displayName: true, email: true, role: true },
+        },
         game: { select: { id: true, code: true, name: true } },
+        adminOverrides: {
+          where: {
+            status: TournamentAdminOverrideStatus.ACTIVE,
+            expiresAt: { gt: new Date() },
+          },
+          take: 1,
+          orderBy: { startedAt: 'desc' },
+          select: {
+            id: true,
+            reason: true,
+            status: true,
+            startedAt: true,
+            expiresAt: true,
+            endedAt: true,
+            tournamentId: true,
+            adminId: true,
+            admin: {
+              select: { id: true, displayName: true, email: true },
+            },
+          },
+        },
         _count: { select: { reports: true } },
       },
     });
-    return tournaments.map(withTournamentGameDisplayName);
+    return tournaments.map(({ adminOverrides = [], ...tournament }) => ({
+      ...withTournamentGameDisplayName(tournament),
+      activeAdminOverride: adminOverrides[0] ?? null,
+    }));
   }
   async moderate(
     id: string,
@@ -80,10 +111,20 @@ export class TournamentModerationService {
   async verify(id: string, explicit?: boolean) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { id },
-      select: { id: true, isVerified: true, moderationStatus: true },
+      select: {
+        id: true,
+        isVerified: true,
+        isOfficial: true,
+        moderationStatus: true,
+      },
     });
     if (!tournament) throw new NotFoundException('Tournament not found');
     const nextValue = explicit ?? !tournament.isVerified;
+    if (!nextValue && tournament.isOfficial) {
+      throw new BadRequestException(
+        'An official tournament cannot be unverified',
+      );
+    }
     if (
       nextValue &&
       tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN
@@ -94,6 +135,40 @@ export class TournamentModerationService {
     return this.prisma.tournament.update({
       where: { id },
       data: { isVerified: nextValue },
+    });
+  }
+
+  async setOfficial(id: string, explicit?: boolean) {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        isOfficial: true,
+        moderationStatus: true,
+        organizer: { select: { role: true } },
+      },
+    });
+    if (!tournament) throw new NotFoundException('Tournament not found');
+    const nextValue = explicit ?? !tournament.isOfficial;
+    if (nextValue && tournament.organizer.role !== Role.ADMIN) {
+      throw new BadRequestException(
+        'Only an Admin-organized tournament can receive the official label',
+      );
+    }
+    if (
+      nextValue &&
+      tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN
+    ) {
+      throw new BadRequestException(
+        'A hidden tournament cannot receive the official label',
+      );
+    }
+    return this.prisma.tournament.update({
+      where: { id },
+      data: {
+        isOfficial: nextValue,
+        ...(nextValue ? { isVerified: true } : {}),
+      },
     });
   }
 }

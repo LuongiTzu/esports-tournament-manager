@@ -201,6 +201,29 @@ describe('ActivityEmailService', () => {
     },
   );
 
+  it('emails the Organizer when an Admin Override starts', async () => {
+    const { service, email } = harness();
+
+    await service.publish(
+      notification(NotificationType.ADMIN_WARNING, {
+        kind: 'TOURNAMENT_ADMIN_OVERRIDE',
+        overrideStatus: 'ACTIVE',
+        reason: 'Emergency score correction requested',
+        adminEmail: 'admin@example.com',
+      }),
+    );
+
+    expect(email.sendActivity).toHaveBeenCalledWith(
+      'recipient@example.com',
+      expect.objectContaining({
+        title: 'Quản trị viên đang hỗ trợ giải đấu của bạn',
+        paragraphs: expect.arrayContaining([
+          'Email liên hệ quản trị viên: admin@example.com',
+        ]),
+      }),
+    );
+  });
+
   it('emails the target user when a comment receives a reply', async () => {
     const { service, email } = harness();
 

@@ -17,6 +17,7 @@ import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { RegisterTeamDto } from './dto/register-team.dto';
 import { TeamsService } from './teams.service';
 import { TeamInvitationTokenService } from './team-invitation-token.service';
+import { TournamentManagementAccessService } from '../common/services/tournament-management-access.service';
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -28,10 +29,13 @@ export class TeamInvitationService {
     private readonly tokens: TeamInvitationTokenService,
     private readonly email: EmailService,
     private readonly config: ConfigService,
+    private readonly managementAccess: TournamentManagementAccessService = new TournamentManagementAccessService(
+      prisma,
+    ),
   ) {}
 
   async listForTournament(organizerId: string, slug: string) {
-    const tournament = await this.requireOwnedTournament(organizerId, slug);
+    const tournament = await this.requireManagedTournament(organizerId, slug);
     await this.expirePending(tournament.id);
     return this.prisma.teamInvitation.findMany({
       where: { tournamentId: tournament.id },
@@ -53,7 +57,7 @@ export class TeamInvitationService {
   }
 
   async inviteTeam(organizerId: string, slug: string, rawEmail: string) {
-    const tournament = await this.requireOwnedTournament(organizerId, slug);
+    const tournament = await this.requireManagedTournament(organizerId, slug);
     this.assertCanInviteRegistration(tournament);
     return this.issueInvitation({
       organizerId,
@@ -73,8 +77,14 @@ export class TeamInvitationService {
     });
     if (!team) throw new NotFoundException('Không tìm thấy đội');
     const isOrganizer = team.tournament.organizerId === actorId;
+    const hasAdminOverride = Boolean(
+      await this.managementAccess.findActiveOverrideForAdmin(
+        team.tournament.id,
+        actorId,
+      ),
+    );
     const isCaptain = team.captainId === actorId;
-    if (!isOrganizer && !isCaptain) {
+    if (!isOrganizer && !isCaptain && !hasAdminOverride) {
       throw new ForbiddenException('Bạn không có quyền mời thành viên đội này');
     }
     const member = team.members[0];
@@ -245,7 +255,15 @@ export class TeamInvitationService {
       include: { tournament: { select: { organizerId: true } } },
     });
     if (!invitation) throw new NotFoundException('Không tìm thấy lời mời');
-    if (invitation.tournament.organizerId !== organizerId) {
+    const canManage =
+      invitation.tournament.organizerId === organizerId ||
+      Boolean(
+        await this.managementAccess.findActiveOverrideForAdmin(
+          invitation.tournamentId,
+          organizerId,
+        ),
+      );
+    if (!canManage) {
       throw new ForbiddenException('Bạn không có quyền thu hồi lời mời này');
     }
     if (invitation.status !== TeamInvitationStatus.PENDING) {
@@ -363,12 +381,20 @@ export class TeamInvitationService {
     return invitation;
   }
 
-  private async requireOwnedTournament(organizerId: string, slug: string) {
+  private async requireManagedTournament(actorId: string, slug: string) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { slug },
     });
     if (!tournament) throw new NotFoundException('Không tìm thấy giải đấu');
-    if (tournament.organizerId !== organizerId) {
+    const canManage =
+      tournament.organizerId === actorId ||
+      Boolean(
+        await this.managementAccess.findActiveOverrideForAdmin(
+          tournament.id,
+          actorId,
+        ),
+      );
+    if (!canManage) {
       throw new ForbiddenException('Bạn không có quyền quản lý giải đấu này');
     }
     return tournament;

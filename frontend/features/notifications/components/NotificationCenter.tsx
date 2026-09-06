@@ -229,6 +229,36 @@ function notificationCopy(
           .join("\n") || undefined,
     };
   }
+  if (data?.kind === "TOURNAMENT_ADMIN_OVERRIDE") {
+    const overrideStatus = stringField(data, "overrideStatus");
+    const reason = stringField(data, "reason");
+    const adminEmail = stringField(data, "adminEmail");
+    return {
+      titleKey:
+        overrideStatus === "ENDED"
+          ? "notifications.type.adminNotice"
+          : undefined,
+      message:
+        overrideStatus === "ENDED"
+          ? t("notifications.message.overrideEnded")
+          : t("notifications.message.overrideStarted"),
+      detail:
+        [
+          reason
+            ? interpolate(t("notifications.message.moderationReason"), {
+                reason,
+              })
+            : null,
+          adminEmail
+            ? interpolate(t("notifications.message.moderationAdminEmail"), {
+                email: adminEmail,
+              })
+            : null,
+        ]
+          .filter((value): value is string => value !== null)
+          .join("\n") || undefined,
+    };
+  }
   if (data?.kind === "COMMENT_REPLY") {
     const replierName = stringField(data, "replierName");
     const preview = stringField(data, "replyPreview");

@@ -126,6 +126,7 @@ export interface Tournament {
   status: TournamentStatus;
   moderationStatus?: "ACTIVE" | "HIDDEN_BY_ADMIN";
   isVerified?: boolean;
+  isOfficial?: boolean;
   registrationOpen: boolean;
   minTeamSize: number;
   maxTeamSize: number;
@@ -426,7 +427,8 @@ export type CompetitionAuditAction =
   | "MATCH_RESULT_CORRECTED"
   | "DOWNSTREAM_RESET"
   | "ROUND_DELETED"
-  | "FINAL_STANDINGS_CONFIRMED";
+  | "FINAL_STANDINGS_CONFIRMED"
+  | "ADMIN_OVERRIDE_ACTION";
 
 export interface CompetitionAuditLog {
   id: string;
@@ -527,6 +529,7 @@ export interface UpdateTournamentLifecycleRequest {
 }
 
 export interface CreateTournamentRequest {
+  isOfficial?: boolean;
   name: string;
   gameId: string;
   teamSize?: number;
@@ -558,5 +561,5 @@ export interface CreateTournamentRequest {
 }
 
 export type UpdateTournamentRequest = Partial<
-  Omit<CreateTournamentRequest, "rounds">
+  Omit<CreateTournamentRequest, "rounds" | "isOfficial">
 >;

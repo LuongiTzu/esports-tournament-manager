@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   Logger,
@@ -12,6 +13,7 @@ import {
   NotificationType,
   Prisma,
   RoundStatus,
+  Role,
   TournamentMode,
   TournamentStatus,
   Visibility,
@@ -66,7 +68,12 @@ export class TournamentCommandService {
     private readonly notifications: NotificationPublisher = NOOP_NOTIFICATION_PUBLISHER,
   ) {}
 
-  async create(userId: string, dto: CreateTournamentDto) {
+  async create(userId: string, dto: CreateTournamentDto, userRole?: string) {
+    if (dto.isOfficial && userRole !== Role.ADMIN) {
+      throw new ForbiddenException(
+        'Only an Admin can create an official tournament',
+      );
+    }
     // 1. Kiểm tra game tồn tại
     const game = await this.prisma.game.findFirst({
       where: { id: dto.gameId, code: { in: GAME_CATALOG_CODES } },
@@ -126,6 +133,8 @@ export class TournamentCommandService {
           bannerUrl: dto.bannerUrl,
           visibility,
           moderationStatus: ModerationStatus.ACTIVE, // Instant Publishing
+          isOfficial: dto.isOfficial ?? false,
+          isVerified: dto.isOfficial ?? false,
           status,
           mode,
           location: dto.location,

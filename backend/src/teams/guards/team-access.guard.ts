@@ -9,6 +9,9 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthenticatedUser } from '../../auth/strategies/jwt.strategy';
+import { TournamentManagementAccessService } from '../../common/services/tournament-management-access.service';
+import type { ActiveAdminOverrideAccess } from '../../common/types/admin-override-access';
+import { Role } from '@prisma/client';
 
 export type TeamAccessLevel = 'ORGANIZER' | 'CAPTAIN' | 'CAPTAIN_OR_ORGANIZER';
 
@@ -32,6 +35,9 @@ export class TeamAccessGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private prisma: PrismaService,
+    private readonly managementAccess: TournamentManagementAccessService = new TournamentManagementAccessService(
+      prisma,
+    ),
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -45,6 +51,7 @@ export class TeamAccessGuard implements CanActivate {
       user?: AuthenticatedUser;
       params: Record<string, string>;
       team?: unknown;
+      adminOverrideAccess?: ActiveAdminOverrideAccess;
     }>();
 
     const user = request.user;
@@ -70,12 +77,30 @@ export class TeamAccessGuard implements CanActivate {
     const isCaptain = team.captainId === user.id;
     const isOrganizer = team.tournament.organizerId === user.id;
 
-    const allowed =
+    let allowed =
       level === 'ORGANIZER'
         ? isOrganizer
         : level === 'CAPTAIN'
           ? isCaptain
           : isCaptain || isOrganizer;
+
+    if (!allowed && level !== 'CAPTAIN' && user.role === Role.ADMIN) {
+      const activeOverride =
+        await this.managementAccess.findActiveOverrideForAdmin(
+          team.tournamentId,
+          user.id,
+          user.role,
+        );
+      if (activeOverride) {
+        allowed = true;
+        request.adminOverrideAccess = {
+          id: activeOverride.id,
+          tournamentId: activeOverride.tournamentId,
+          adminId: activeOverride.adminId,
+          reason: activeOverride.reason,
+        };
+      }
+    }
 
     if (!allowed) {
       throw new ForbiddenException(

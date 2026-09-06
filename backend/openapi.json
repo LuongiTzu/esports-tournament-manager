@@ -525,6 +525,116 @@
         ]
       }
     },
+    "/api/admin/tournaments/{id}/official": {
+      "patch": {
+        "operationId": "AdminController_setTournamentOfficial",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetTournamentOfficialDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/tournaments/{id}/override": {
+      "get": {
+        "operationId": "AdminController_getTournamentOverride",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      },
+      "post": {
+        "operationId": "AdminController_startTournamentOverride",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartTournamentAdminOverrideDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
+    "/api/admin/tournaments/{id}/override/end": {
+      "patch": {
+        "operationId": "AdminController_endTournamentOverride",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Admin"
+        ]
+      }
+    },
     "/api/admin/banned-keywords": {
       "get": {
         "operationId": "AdminController_listBannedKeywords",
@@ -980,6 +1090,35 @@
         ]
       }
     },
+    "/api/tournaments/{tournamentId}/competition-audit": {
+      "get": {
+        "operationId": "TournamentsController_competitionAuditHistory",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List organizer-visible competition audit history",
+        "tags": [
+          "Tournaments"
+        ]
+      }
+    },
     "/api/tournaments/{slug}": {
       "get": {
         "operationId": "TournamentsController_findBySlug",
@@ -1064,6 +1203,45 @@
         ]
       }
     },
+    "/api/tournaments/{tournamentId}/finalize-standings": {
+      "post": {
+        "operationId": "TournamentsController_confirmFinalStandings",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmFinalStandingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm terminal standings, assign final ranks and complete the Tournament",
+        "tags": [
+          "Tournaments"
+        ]
+      }
+    },
     "/api/tournaments/{slug}/rounds": {
       "post": {
         "operationId": "TournamentsController_addRound",
@@ -1100,6 +1278,39 @@
     "/api/rounds/{id}/generate": {
       "post": {
         "operationId": "BracketsController_generate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateRoundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "brackets"
+        ]
+      }
+    },
+    "/api/rounds/{id}/generate-preview": {
+      "post": {
+        "operationId": "BracketsController_previewGeneration",
         "parameters": [
           {
             "name": "id",
@@ -1166,9 +1377,75 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceRoundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "409": {
+            "description": "A manual organizer decision is required at a qualification tie boundary"
+          }
+        },
+        "tags": [
+          "brackets"
+        ]
+      }
+    },
+    "/api/rounds/{id}/reset-downstream-preview": {
+      "post": {
+        "operationId": "BracketsController_previewDownstreamReset",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": ""
+          }
+        },
+        "tags": [
+          "brackets"
+        ]
+      }
+    },
+    "/api/rounds/{id}/reset-downstream": {
+      "post": {
+        "operationId": "BracketsController_resetDownstream",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetDownstreamDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "409": {
+            "description": "The reset preview is stale, no downstream data exists, or the Tournament is locked"
           }
         },
         "tags": [
@@ -1250,8 +1527,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": ""
+          "409": {
+            "description": "Round is not the unused final Round, or its Tournament is no longer mutable"
           }
         },
         "tags": [
@@ -1691,6 +1968,200 @@
         ]
       }
     },
+    "/api/tournaments/{slug}/manual-team-form": {
+      "get": {
+        "operationId": "TeamsController_getManualTeamForm",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/tournaments/{slug}/team-invitations": {
+      "get": {
+        "operationId": "TeamsController_listInvitations",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Teams"
+        ]
+      },
+      "post": {
+        "operationId": "TeamsController_inviteTeam",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTeamInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/team-invitations/preview": {
+      "get": {
+        "operationId": "TeamsController_previewInvitation",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/team-invitations/registration-form": {
+      "get": {
+        "operationId": "TeamsController_invitationRegistrationForm",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/team-invitations/accept": {
+      "post": {
+        "operationId": "TeamsController_acceptTeamInvitation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptTeamInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/team-invitations/accept-account-link": {
+      "post": {
+        "operationId": "TeamsController_acceptAccountLinkInvitation",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptAccountLinkInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/team-invitations/{id}": {
+      "delete": {
+        "operationId": "TeamsController_revokeInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
     "/api/users/me/teams": {
       "get": {
         "operationId": "TeamsController_findMyTeams",
@@ -1803,6 +2274,37 @@
             }
           }
         },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Teams"
+        ]
+      }
+    },
+    "/api/teams/{id}/members/{memberId}/invitation": {
+      "post": {
+        "operationId": "TeamsController_inviteMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": ""
@@ -2353,6 +2855,14 @@
         "type": "object",
         "properties": {}
       },
+      "SetTournamentOfficialDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "StartTournamentAdminOverrideDto": {
+        "type": "object",
+        "properties": {}
+      },
       "CreateBannedKeywordDto": {
         "type": "object",
         "properties": {}
@@ -2408,6 +2918,10 @@
       "CreateTournamentDto": {
         "type": "object",
         "properties": {
+          "isOfficial": {
+            "type": "boolean",
+            "description": "Admin-only flag for platform-owned official events; official events are automatically verified"
+          },
           "teamSize": {
             "type": "number",
             "description": "Số người thi đấu chính mỗi bên; backend kiểm tra theo metadata của Game",
@@ -2437,11 +2951,32 @@
           }
         }
       },
+      "ConfirmFinalStandingsDto": {
+        "type": "object",
+        "properties": {
+          "championTeamId": {
+            "type": "string",
+            "description": "Organizer-selected champion when competitive standings are tied at rank one"
+          }
+        }
+      },
       "CreateRoundDto": {
         "type": "object",
         "properties": {}
       },
+      "GenerateRoundDto": {
+        "type": "object",
+        "properties": {}
+      },
       "UpdateSeedsDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AdvanceRoundDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ResetDownstreamDto": {
         "type": "object",
         "properties": {}
       },
@@ -2458,6 +2993,18 @@
         "properties": {}
       },
       "RegisterTeamDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateTeamInvitationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AcceptTeamInvitationDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "AcceptAccountLinkInvitationDto": {
         "type": "object",
         "properties": {}
       },

@@ -23,6 +23,7 @@ import {
 } from './dto/match.dto';
 import { MatchesService } from './matches.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AllowAdminOverride } from '../common/decorators/allow-admin-override.decorator';
 
 @Controller()
 export class MatchesController {
@@ -37,6 +38,7 @@ export class MatchesController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('matches:body')
+  @AllowAdminOverride()
   @Patch('matches/bulk-schedule')
   bulkSchedule(@Body() dto: BulkScheduleDto) {
     return this.matches.bulkSchedule(dto);
@@ -44,6 +46,7 @@ export class MatchesController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('match:id')
+  @AllowAdminOverride()
   @Patch('matches/:id')
   update(
     @Param('id') id: string,
@@ -55,6 +58,7 @@ export class MatchesController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('match:id')
+  @AllowAdminOverride()
   @Put('matches/:id/scores')
   putScores(
     @Param('id') id: string,
@@ -66,6 +70,7 @@ export class MatchesController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @AllowAdminOverride()
   @Post('rounds/:id/matches')
   createManual(@Param('id') id: string, @Body() dto: CreateManualMatchDto) {
     return this.matches.createManual(id, dto);

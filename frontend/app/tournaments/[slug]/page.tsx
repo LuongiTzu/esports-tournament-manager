@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   CalendarBlankIcon,
   ClockIcon,
+  CrownIcon,
   EnvelopeSimpleIcon,
   GameControllerIcon,
   GearSixIcon,
@@ -222,12 +223,17 @@ export default function TournamentDetailPage({
               >
                 {t(`tournament.status.${tournament.status}` as TranslationKey)}
               </span>
-              {tournament.isVerified && (
+              {tournament.isOfficial ? (
+                <span className="inline-flex items-center gap-1.5 border border-accent/35 bg-slate-950/65 px-3 py-1.5 text-xs font-bold text-accent backdrop-blur-md">
+                  <CrownIcon size={14} weight="fill" />
+                  {t("tournament.detail.official")}
+                </span>
+              ) : tournament.isVerified ? (
                 <span className="inline-flex items-center gap-1.5 border border-approved/35 bg-slate-950/65 px-3 py-1.5 text-xs font-bold text-approved backdrop-blur-md">
                   <SealCheckIcon size={14} weight="fill" />
                   {t("tournament.detail.verified")}
                 </span>
-              )}
+              ) : null}
             </div>
           </div>
 

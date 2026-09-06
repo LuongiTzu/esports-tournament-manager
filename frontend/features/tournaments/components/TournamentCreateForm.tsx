@@ -136,6 +136,7 @@ function createRoundForm(name: string, format: RoundFormatValue): RoundForm {
 }
 
 interface TournamentFormState {
+  isOfficial: boolean;
   name: string;
   gameId: string;
   teamSize: string;
@@ -165,6 +166,7 @@ interface TournamentFormState {
 }
 
 const INITIAL_FORM: TournamentFormState = {
+  isOfficial: false,
   name: "",
   gameId: "",
   teamSize: "",
@@ -756,6 +758,7 @@ export default function TournamentCreateForm() {
     setLoading(true);
     try {
       const tournament = await tournamentsApi.create({
+        isOfficial: user?.role === "ADMIN" ? form.isOfficial : undefined,
         name: form.name.trim(),
         gameId: form.gameId,
         teamSize: minimumMembers,
@@ -2175,6 +2178,17 @@ export default function TournamentCreateForm() {
                 title={t("tournament.create.reviewReady")}
                 description={t("tournament.create.reviewHint")}
               >
+                {user?.role === "ADMIN" && (
+                  <div className="mb-5">
+                    <ToggleField
+                      name="isOfficial"
+                      checked={form.isOfficial}
+                      onChange={handleChange}
+                      title={t("tournament.create.official")}
+                      description={t("tournament.create.officialDescription")}
+                    />
+                  </div>
+                )}
                 <dl className="grid gap-5 sm:grid-cols-2">
                   <div>
                     <dt className="text-xs font-medium text-ink-faint">

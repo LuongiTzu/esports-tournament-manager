@@ -1,4 +1,4 @@
-import { EyeSlashIcon, SealCheckIcon } from "@phosphor-icons/react";
+import { CrownIcon, EyeSlashIcon, SealCheckIcon } from "@phosphor-icons/react";
 import ResolvedImage from "@/components/ResolvedImage";
 import type { AdminTournament } from "@/features/admin/types";
 import { formatAdminDate } from "@/features/admin/format";
@@ -50,13 +50,25 @@ export default function AdminTournamentList({
                 </span>
                 <span className="min-w-0">
                   <span className="flex items-center gap-1.5">
-                    <span className="truncate font-semibold text-ink">{tournament.name}</span>
-                    {tournament.isVerified && (
-                      <SealCheckIcon className="shrink-0 text-brand" weight="fill" />
-                    )}
+                    <span className="truncate font-semibold text-ink">
+                      {tournament.name}
+                    </span>
+                    {tournament.isOfficial ? (
+                      <CrownIcon
+                        className="shrink-0 text-accent"
+                        weight="fill"
+                      />
+                    ) : tournament.isVerified ? (
+                      <SealCheckIcon
+                        className="shrink-0 text-brand"
+                        weight="fill"
+                      />
+                    ) : null}
                   </span>
                   <span className="mt-0.5 block truncate text-xs text-ink-faint">
-                    {tournament.displayGameName ?? tournament.game.name} · {t("admin.tournaments.created")} {formatAdminDate(tournament.createdAt, locale)}
+                    {tournament.displayGameName ?? tournament.game.name} ·{" "}
+                    {t("admin.tournaments.created")}{" "}
+                    {formatAdminDate(tournament.createdAt, locale)}
                   </span>
                 </span>
               </span>

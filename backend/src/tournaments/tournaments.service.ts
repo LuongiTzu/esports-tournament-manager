@@ -19,8 +19,8 @@ export class TournamentsService {
     private readonly favorites: TournamentFavoriteService,
     private readonly finalization: TournamentFinalizationService = {} as TournamentFinalizationService,
   ) {}
-  create(userId: string, dto: CreateTournamentDto) {
-    return this.commands.create(userId, dto);
+  create(userId: string, dto: CreateTournamentDto, userRole?: string) {
+    return this.commands.create(userId, dto, userRole);
   }
   findAllPublic(
     query: {

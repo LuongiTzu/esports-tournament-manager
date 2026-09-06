@@ -3,6 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import {
   NotificationType,
   RegistrationStatus,
+  Role,
   TournamentStatus,
 } from '@prisma/client';
 import { ContentFilterService } from '../common/services/content-filter.service';
@@ -240,6 +241,30 @@ describe('TeamsService roster lifecycle', () => {
       message: 'Đã xóa đội thành công',
     });
     expect(roundClient.findFirst).not.toHaveBeenCalled();
+    expect(teamClient.delete).toHaveBeenCalledWith({
+      where: { id: 'team-1' },
+    });
+  });
+
+  it('lets an Admin with an active override remove an approved team', async () => {
+    const approvedTeam = team(
+      RegistrationStatus.APPROVED,
+      lifecycleTournament({ organizerId: 'organizer-1' }),
+    );
+    const { service, teamClient } = harness(approvedTeam);
+    Object.assign(service, {
+      managementAccess: {
+        findActiveOverrideForAdmin: jest
+          .fn()
+          .mockResolvedValue({ id: 'override-1' }),
+      },
+    });
+
+    await expect(
+      service.remove('team-1', 'admin-1', Role.ADMIN),
+    ).resolves.toEqual({
+      message: 'Đã xóa đội thành công',
+    });
     expect(teamClient.delete).toHaveBeenCalledWith({
       where: { id: 'team-1' },
     });

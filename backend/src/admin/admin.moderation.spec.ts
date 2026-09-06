@@ -3,6 +3,7 @@ import {
   ModerationStatus,
   NotificationType,
   ReportStatus,
+  Role,
 } from '@prisma/client';
 import { ContentFilterService } from '../common/services/content-filter.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -246,5 +247,51 @@ describe('AdminService moderation', () => {
       where: { id: 't-1' },
       data: { isVerified: false },
     });
+  });
+
+  it('keeps official and verified labels consistent', async () => {
+    const { service, prisma } = setup();
+    prisma.tournament.findUnique.mockResolvedValue({
+      id: 't-1',
+      isOfficial: false,
+      moderationStatus: ModerationStatus.ACTIVE,
+      organizer: { role: Role.ADMIN },
+    });
+    prisma.tournament.update.mockResolvedValue({
+      id: 't-1',
+      isOfficial: true,
+      isVerified: true,
+    });
+
+    await service.setTournamentOfficial('t-1', true);
+    expect(prisma.tournament.update).toHaveBeenCalledWith({
+      where: { id: 't-1' },
+      data: { isOfficial: true, isVerified: true },
+    });
+
+    prisma.tournament.findUnique.mockResolvedValue({
+      id: 't-1',
+      isOfficial: true,
+      isVerified: true,
+      moderationStatus: ModerationStatus.ACTIVE,
+    });
+    await expect(service.verifyTournament('t-1', false)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+
+  it('does not mark a community-organized tournament as official', async () => {
+    const { service, prisma } = setup();
+    prisma.tournament.findUnique.mockResolvedValue({
+      id: 't-1',
+      isOfficial: false,
+      moderationStatus: ModerationStatus.ACTIVE,
+      organizer: { role: Role.SIGNED_UP_USER },
+    });
+
+    await expect(
+      service.setTournamentOfficial('t-1', true),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.tournament.update).not.toHaveBeenCalled();
   });
 });

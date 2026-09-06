@@ -199,6 +199,7 @@ const extendedVi = {
   "tournament.detail.backToList": "Về danh sách giải",
   "tournament.detail.bannerAlt": "Banner giải đấu",
   "tournament.detail.verified": "Đã xác minh",
+  "tournament.detail.official": "Giải chính thức",
   "tournament.detail.organizedBy": "Tổ chức bởi",
   "tournament.detail.manage": "Quản lý giải",
   "tournament.detail.registerTeam": "Đăng ký đội",
@@ -377,6 +378,10 @@ const extendedVi = {
   "standings.roundRobinNoAdvancement":
     "Vòng tròn hiện không có quy tắc chuyển vòng được cấu hình, nên không hiển thị đội đi tiếp.",
   "manage.notOrganizer": "Bạn không phải ban tổ chức của giải đấu này",
+  "manage.overrideRequired":
+    "Bạn cần bắt đầu phiên Admin Override trong khu vực quản trị trước khi vận hành giải này.",
+  "manage.overrideActive":
+    "Bạn đang vận hành giải bằng quyền Admin Override. Mọi thay đổi đều được ghi nhật ký.",
   "manage.loadError": "Không tải được dữ liệu",
   "manage.eyebrow": "Không gian ban tổ chức",
   "manage.title": "Quản lý",
@@ -516,6 +521,9 @@ const extendedVi = {
   "tournament.create.previewPrize": "Giải thưởng",
   "tournament.create.previewPrizeEmpty": "Chưa cập nhật giải thưởng",
   "tournament.create.reviewReady": "Sẵn sàng tạo giải đấu",
+  "tournament.create.official": "Tạo dưới dạng giải chính thức",
+  "tournament.create.officialDescription":
+    "Chỉ dành cho sự kiện do nền tảng tổ chức. Giải sẽ được gắn nhãn Official và Verified ngay khi tạo.",
   "tournament.create.reviewHint":
     "Kiểm tra bản xem trước và các thông tin chính trước khi hoàn tất.",
   "tournament.create.section.info": "Thông tin giải đấu",
@@ -821,6 +829,8 @@ const extendedVi = {
   "competition.audit.action.DOWNSTREAM_RESET": "Đã reset các vòng phía sau",
   "competition.audit.action.ROUND_DELETED": "Đã xóa vòng đấu",
   "competition.audit.action.FINAL_STANDINGS_CONFIRMED": "Đã xác nhận kết quả chung cuộc",
+  "competition.audit.action.ADMIN_OVERRIDE_ACTION":
+    "Admin Override đã thực hiện thao tác",
   "finalization.error.TOURNAMENT_NOT_MUTABLE":
     "Giải đấu hiện không còn cho phép thay đổi kết quả chung cuộc.",
   "finalization.error.TOURNAMENT_FINALIZATION_NOT_READY":
@@ -1132,6 +1142,9 @@ const extendedVi = {
   "admin.tournaments.updated": "Cập nhật",
   "admin.tournaments.platformModeration": "Kiểm duyệt nền tảng",
   "admin.tournaments.verificationLabel": "Nhãn xác minh",
+  "admin.tournaments.officialLabel": "Loại giải",
+  "admin.tournaments.official": "Chính thức",
+  "admin.tournaments.community": "Cộng đồng",
   "admin.tournaments.verified": "Đã xác minh",
   "admin.tournaments.unverified": "Chưa xác minh",
   "admin.tournaments.platformVisibility": "Hiển thị nền tảng",
@@ -1140,12 +1153,52 @@ const extendedVi = {
     "Trạng thái riêng tư/công khai do Organizer cấu hình và trạng thái Admin ẩn là hai khái niệm độc lập.",
   "admin.tournaments.hiddenVerifyHint":
     "Backend không cho xác minh giải đang bị ẩn",
+  "admin.tournaments.hiddenOfficialHint":
+    "Không thể gắn nhãn chính thức cho giải đang bị ẩn",
+  "admin.tournaments.officialOwnerHint":
+    "Chỉ giải do tài khoản Admin tổ chức mới có thể nhận nhãn chính thức",
+  "admin.tournaments.officialVerifyHint":
+    "Giải chính thức luôn phải giữ trạng thái đã xác minh",
   "admin.tournaments.updating": "Đang cập nhật...",
+  "admin.tournaments.makeOfficial": "Gắn nhãn chính thức",
+  "admin.tournaments.removeOfficial": "Gỡ nhãn chính thức",
+  "admin.tournaments.officialConfirm": "Gắn nhãn chính thức cho",
+  "admin.tournaments.removeOfficialConfirm": "Gỡ nhãn chính thức khỏi",
+  "admin.tournaments.officialNotice":
+    "Đã gắn nhãn giải chính thức và tự động xác minh giải.",
+  "admin.tournaments.removeOfficialNotice": "Đã gỡ nhãn giải chính thức.",
+  "admin.tournaments.officialError": "Không thể cập nhật nhãn chính thức.",
   "admin.tournaments.unverify": "Gỡ xác minh",
   "admin.tournaments.verify": "Xác minh giải",
   "admin.tournaments.unhide": "Bỏ ẩn trên nền tảng",
   "admin.tournaments.hide": "Ẩn khỏi nền tảng",
   "admin.tournaments.viewPublic": "Xem trang giải đấu",
+  "admin.tournaments.overrideHeading": "Can thiệp hỗ trợ",
+  "admin.tournaments.overrideTitle": "Bắt đầu Admin Override?",
+  "admin.tournaments.overrideDescription":
+    "Bạn sắp nhận quyền vận hành tạm thời đối với",
+  "admin.tournaments.overrideReason": "Lý do can thiệp",
+  "admin.tournaments.overridePlaceholder":
+    "Mô tả sự cố, tranh chấp hoặc yêu cầu hỗ trợ (10–500 ký tự)",
+  "admin.tournaments.overrideHint":
+    "Lý do, Admin thực hiện và mọi thay đổi sẽ được lưu vào nhật ký; Organizer cũng sẽ nhận thông báo.",
+  "admin.tournaments.startOverride": "Bắt đầu can thiệp",
+  "admin.tournaments.startingOverride": "Đang bắt đầu...",
+  "admin.tournaments.endOverride": "Kết thúc can thiệp",
+  "admin.tournaments.endingOverride": "Đang kết thúc...",
+  "admin.tournaments.endOverrideConfirm":
+    "Kết thúc phiên can thiệp? Sau đó bạn sẽ không thể tiếp tục sửa giải này.",
+  "admin.tournaments.overrideActive": "Phiên can thiệp đang hoạt động",
+  "admin.tournaments.overrideBy": "Admin thực hiện",
+  "admin.tournaments.overrideExpires": "Tự động hết hạn",
+  "admin.tournaments.overrideAccessHint":
+    "Chỉ bắt đầu khi Organizer cần hỗ trợ khẩn cấp. Phiên tự hết hạn sau 4 giờ và không cho phép xóa vĩnh viễn giải.",
+  "admin.tournaments.openManagement": "Mở bảng quản lý",
+  "admin.tournaments.overrideStartedNotice":
+    "Đã bắt đầu phiên can thiệp và gửi thông báo cho Organizer.",
+  "admin.tournaments.overrideEndedNotice":
+    "Đã kết thúc phiên can thiệp và thông báo cho Organizer.",
+  "admin.tournaments.overrideError": "Không thể cập nhật phiên can thiệp.",
   "admin.report.reason.GAMBLING": "Cá cược",
   "admin.report.reason.MINOR_SAFETY": "An toàn trẻ vị thành niên",
   "admin.report.reason.HARASSMENT_OR_HATE": "Quấy rối hoặc thù ghét",

@@ -87,6 +87,34 @@ export const adminApi = {
         body: JSON.stringify({ isVerified }),
       },
     ),
+  setTournamentOfficial: (tournamentId: string, isOfficial: boolean) =>
+    request<AdminTournamentMutationResult>(
+      `/admin/tournaments/${tournamentId}/official`,
+      {
+        method: "PATCH",
+        auth: true,
+        body: JSON.stringify({ isOfficial }),
+      },
+    ),
+  getTournamentOverride: (tournamentId: string) =>
+    request<AdminTournament["activeAdminOverride"]>(
+      `/admin/tournaments/${tournamentId}/override`,
+      { auth: true },
+    ),
+  startTournamentOverride: (tournamentId: string, reason: string) =>
+    request<NonNullable<AdminTournament["activeAdminOverride"]>>(
+      `/admin/tournaments/${tournamentId}/override`,
+      {
+        method: "POST",
+        auth: true,
+        body: JSON.stringify({ reason }),
+      },
+    ),
+  endTournamentOverride: (tournamentId: string) =>
+    request<NonNullable<AdminTournament["activeAdminOverride"]>>(
+      `/admin/tournaments/${tournamentId}/override/end`,
+      { method: "PATCH", auth: true },
+    ),
   setTournamentModeration: (
     tournamentId: string,
     moderationStatus: AdminTournamentModerationStatus,
@@ -97,7 +125,10 @@ export const adminApi = {
       {
         method: "PATCH",
         auth: true,
-        body: JSON.stringify({ moderationStatus, ...(reason ? { reason } : {}) }),
+        body: JSON.stringify({
+          moderationStatus,
+          ...(reason ? { reason } : {}),
+        }),
       },
     ),
   listReports: (query: AdminReportsQuery = {}) =>

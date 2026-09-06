@@ -8,9 +8,11 @@ import {
   MatchStatus,
   Prisma,
   RegistrationStatus,
+  Role,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { withTournamentGameDisplayName } from '../tournaments/domain/tournament-game-display';
+import { TournamentManagementAccessService } from '../common/services/tournament-management-access.service';
 
 const PUBLIC_MEMBER_SELECT = {
   id: true,
@@ -29,12 +31,18 @@ const CAPTAIN_SELECT = {
 
 @Injectable()
 export class TeamQueryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly managementAccess: TournamentManagementAccessService = new TournamentManagementAccessService(
+      prisma,
+    ),
+  ) {}
 
   async findByTournament(
     slug: string,
     viewerId: string | undefined,
     status?: string,
+    viewerRole?: string,
   ) {
     const tournament = await this.prisma.tournament.findUnique({
       where: { slug },
@@ -45,10 +53,20 @@ export class TeamQueryService {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
 
-    const isOrganizer = tournament.organizerId === viewerId;
+    const canManage =
+      tournament.organizerId === viewerId ||
+      Boolean(
+        viewerId &&
+        viewerRole === Role.ADMIN &&
+        (await this.managementAccess.findActiveOverrideForAdmin(
+          tournament.id,
+          viewerId,
+          viewerRole,
+        )),
+      );
     const where: Prisma.TeamWhereInput = { tournamentId: tournament.id };
 
-    if (!isOrganizer) {
+    if (!canManage) {
       where.status = RegistrationStatus.APPROVED;
     } else if (status && status !== 'ALL') {
       const parsed = status.toUpperCase();
@@ -71,7 +89,7 @@ export class TeamQueryService {
       },
     });
   }
-  async findOne(teamId: string, viewerId?: string) {
+  async findOne(teamId: string, viewerId?: string, viewerRole?: string) {
     const team = await this.prisma.team.findUnique({
       where: { id: teamId },
       include: {
@@ -127,9 +145,19 @@ export class TeamQueryService {
       recentMatches: completedMatches.slice(0, 10),
     };
 
+    const canManage = Boolean(
+      viewerId &&
+      (team.tournament.organizerId === viewerId ||
+        (viewerRole === Role.ADMIN &&
+          (await this.managementAccess.findActiveOverrideForAdmin(
+            team.tournament.id,
+            viewerId,
+            viewerRole,
+          )))),
+    );
     const isPrivileged =
       !!viewerId &&
-      (team.tournament.organizerId === viewerId ||
+      (canManage ||
         team.captainId === viewerId ||
         team.members.some((m) => m.userId === viewerId));
 

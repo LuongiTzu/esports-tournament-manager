@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon } from "@phosphor-icons/react";
+import { ArrowLeftIcon, ShieldWarningIcon } from "@phosphor-icons/react";
 import { useAuth } from "@/features/auth/store";
 import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
 import { accentVars } from "@/features/games/game-accent";
@@ -15,6 +15,8 @@ import TournamentGameEditor from "@/features/tournaments/components/manage/Tourn
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { alertErrorClass } from "@/components/ui";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
+import { adminApi } from "@/features/admin/api";
+import type { AdminTournamentOverride } from "@/features/admin/types";
 
 export default function ManagePage({
   params,
@@ -29,6 +31,9 @@ export default function ManagePage({
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [adminOverride, setAdminOverride] =
+    useState<AdminTournamentOverride | null>(null);
+  const [endingOverride, setEndingOverride] = useState(false);
 
   useEffect(() => {
     if (!ready) return;
@@ -37,24 +42,36 @@ export default function ManagePage({
       return;
     }
     let cancelled = false;
-    tournamentsApi
-      .findBySlug(slug)
-      .then((loadedTournament) => {
+    const load = async () => {
+      try {
+        const loadedTournament = await tournamentsApi.findBySlug(slug);
         if (cancelled) return;
-        setTournament(loadedTournament);
         if (loadedTournament.organizer?.id !== user.id) {
-          setLoadError(t("manage.notOrganizer"));
+          if (user.role !== "ADMIN") {
+            setLoadError(t("manage.notOrganizer"));
+            return;
+          }
+          const activeOverride = await adminApi.getTournamentOverride(
+            loadedTournament.id,
+          );
+          if (cancelled) return;
+          if (!activeOverride || activeOverride.adminId !== user.id) {
+            setLoadError(t("manage.overrideRequired"));
+            return;
+          }
+          setAdminOverride(activeOverride);
         }
-      })
-      .catch((err) => {
+        setTournament(loadedTournament);
+      } catch (err) {
         if (cancelled) return;
         setLoadError(
           err instanceof Error ? err.message : t("manage.loadError"),
         );
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+    void load();
     return () => {
       cancelled = true;
     };
@@ -62,6 +79,24 @@ export default function ManagePage({
 
   const refreshTournament = async () => {
     setTournament(await tournamentsApi.findBySlug(slug));
+  };
+
+  const endAdminOverride = async () => {
+    if (!tournament || !adminOverride || endingOverride) return;
+    if (!window.confirm(t("admin.tournaments.endOverrideConfirm"))) return;
+    setEndingOverride(true);
+    try {
+      await adminApi.endTournamentOverride(tournament.id);
+      router.push("/admin/tournaments");
+    } catch (reason) {
+      setLoadError(
+        reason instanceof Error
+          ? reason.message
+          : t("admin.tournaments.overrideError"),
+      );
+    } finally {
+      setEndingOverride(false);
+    }
   };
 
   if (ready && user?.emailVerifiedAt === null) {
@@ -127,6 +162,36 @@ export default function ManagePage({
             {t(`tournament.status.${tournament.status}` as TranslationKey)}
           </span>
         </div>
+
+        {adminOverride && (
+          <div className="mt-5 flex flex-col gap-3 rounded-xl border border-pending/35 bg-pending/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <ShieldWarningIcon
+                className="mt-0.5 shrink-0 text-pending"
+                size={20}
+                weight="fill"
+              />
+              <div className="min-w-0 text-sm">
+                <p className="font-bold text-pending">
+                  {t("manage.overrideActive")}
+                </p>
+                <p className="mt-1 break-words text-xs leading-5 text-ink-muted">
+                  {adminOverride.reason}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={endingOverride}
+              onClick={() => void endAdminOverride()}
+              className="min-h-9 shrink-0 rounded-lg border border-pending/40 px-3 py-2 text-xs font-semibold text-pending hover:bg-pending/10 disabled:opacity-60"
+            >
+              {endingOverride
+                ? t("admin.tournaments.endingOverride")
+                : t("admin.tournaments.endOverride")}
+            </button>
+          </div>
+        )}
 
         <div className="mt-8">
           <TournamentGameEditor

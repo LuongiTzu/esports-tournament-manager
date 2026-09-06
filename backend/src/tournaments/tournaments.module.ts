@@ -11,6 +11,7 @@ import { NotificationModule } from '../notifications/notification.module';
 import { TournamentFavoriteService } from './tournament-favorite.service';
 import { TournamentFinalizationService } from './tournament-finalization.service';
 import { TournamentRealtimeModule } from './tournament-realtime.module';
+import { TournamentAdminOverrideService } from './tournament-admin-override.service';
 
 /**
  * Module Tournament — quản lý giải đấu (UC-U04, U05, U09, U10, U18)
@@ -31,6 +32,7 @@ import { TournamentRealtimeModule } from './tournament-realtime.module';
     TournamentModerationService,
     TournamentFavoriteService,
     TournamentFinalizationService,
+    TournamentAdminOverrideService,
   ],
   exports: [
     TournamentsService,
@@ -38,6 +40,7 @@ import { TournamentRealtimeModule } from './tournament-realtime.module';
     TournamentQueryService,
     TournamentModerationService,
     TournamentFinalizationService,
+    TournamentAdminOverrideService,
   ],
 })
 export class TournamentsModule {}

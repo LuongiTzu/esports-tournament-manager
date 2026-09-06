@@ -38,6 +38,10 @@ const vi = {
     "Giải đã được quản trị viên khôi phục.",
   "notifications.message.moderationReason": "Lý do: {reason}",
   "notifications.message.moderationAdminEmail": "Email quản trị viên: {email}",
+  "notifications.message.overrideStarted":
+    "Quản trị viên đã bắt đầu phiên can thiệp hỗ trợ cho giải của bạn.",
+  "notifications.message.overrideEnded":
+    "Phiên can thiệp hỗ trợ của quản trị viên đã kết thúc.",
   "notifications.message.commentReply":
     "{replier} đã phản hồi bình luận của bạn:",
   "notifications.status.DRAFT": "bản nháp",

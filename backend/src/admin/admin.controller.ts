@@ -27,6 +27,8 @@ import {
   LockUserDto,
   ModerateTournamentDto,
   ReviewReportDto,
+  SetTournamentOfficialDto,
+  StartTournamentAdminOverrideDto,
   VerifyTournamentDto,
 } from './dto/moderation.dto';
 import {
@@ -103,6 +105,45 @@ export class AdminController {
   @Patch('tournaments/:id/verify')
   verifyTournament(@Param('id') id: string, @Body() dto: VerifyTournamentDto) {
     return this.adminService.verifyTournament(id, dto.isVerified);
+  }
+
+  @Patch('tournaments/:id/official')
+  setTournamentOfficial(
+    @Param('id') id: string,
+    @Body() dto: SetTournamentOfficialDto,
+  ) {
+    return this.adminService.setTournamentOfficial(id, dto.isOfficial);
+  }
+
+  @Get('tournaments/:id/override')
+  getTournamentOverride(@Param('id') id: string) {
+    return this.adminService.getTournamentOverride(id);
+  }
+
+  @Post('tournaments/:id/override')
+  startTournamentOverride(
+    @Param('id') id: string,
+    @Body() dto: StartTournamentAdminOverrideDto,
+    @CurrentUser('id') adminId: string,
+    @CurrentUser('email') adminEmail: string,
+  ) {
+    return this.adminService.startTournamentOverride(
+      id,
+      { id: adminId, email: adminEmail },
+      dto.reason,
+    );
+  }
+
+  @Patch('tournaments/:id/override/end')
+  endTournamentOverride(
+    @Param('id') id: string,
+    @CurrentUser('id') adminId: string,
+    @CurrentUser('email') adminEmail: string,
+  ) {
+    return this.adminService.endTournamentOverride(id, {
+      id: adminId,
+      email: adminEmail,
+    });
   }
 
   @Get('banned-keywords')

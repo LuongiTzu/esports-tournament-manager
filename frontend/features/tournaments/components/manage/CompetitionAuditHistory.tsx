@@ -139,10 +139,13 @@ export default function CompetitionAuditHistory({
                 </p>
                 <p className="mt-1 text-xs text-ink-muted">
                   {entry.actor?.displayName ?? t("competition.audit.system")} ·{" "}
-                  {new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-US", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  }).format(new Date(entry.createdAt))}
+                  {new Intl.DateTimeFormat(
+                    locale === "vi" ? "vi-VN" : "en-US",
+                    {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    },
+                  ).format(new Date(entry.createdAt))}
                 </p>
                 {(entry.roundId || entry.matchId) && (
                   <p className="mt-1 truncate font-mono text-[11px] text-ink-faint">
@@ -150,6 +153,9 @@ export default function CompetitionAuditHistory({
                     {entry.roundId && entry.matchId ? " · " : ""}
                     {entry.matchId ? `Match ${entry.matchId}` : ""}
                   </p>
+                )}
+                {entry.action === "ADMIN_OVERRIDE_ACTION" && (
+                  <AdminOverrideAuditDetails details={entry.details} />
                 )}
               </div>
             </li>
@@ -170,4 +176,38 @@ export default function CompetitionAuditHistory({
       )}
     </section>
   );
+}
+
+function AdminOverrideAuditDetails({
+  details,
+}: {
+  details: Record<string, unknown> | null;
+}) {
+  const { t } = useLocale();
+  const reason = stringDetail(details, "overrideReason");
+  const method = stringDetail(details, "method");
+  const path = stringDetail(details, "path");
+
+  return (
+    <div className="mt-2 rounded-lg border border-pending/25 bg-pending/8 px-3 py-2 text-xs leading-5 text-ink-muted">
+      {reason && (
+        <p className="break-words">
+          <span className="font-semibold text-ink">
+            {t("admin.tournaments.overrideReason")}:
+          </span>{" "}
+          {reason}
+        </p>
+      )}
+      {(method || path) && (
+        <p className="mt-1 break-all font-mono text-[11px] text-ink-faint">
+          {[method, path].filter(Boolean).join(" ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function stringDetail(details: Record<string, unknown> | null, key: string) {
+  const value = details?.[key];
+  return typeof value === "string" ? value : "";
 }

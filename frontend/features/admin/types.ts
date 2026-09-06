@@ -49,6 +49,18 @@ export type AdminTournamentVisibility = TournamentVisibility;
 export type AdminTournamentMode = TournamentMode;
 export type AdminTournamentModerationStatus = "ACTIVE" | "HIDDEN_BY_ADMIN";
 
+export interface AdminTournamentOverride {
+  id: string;
+  reason: string;
+  status: "ACTIVE" | "ENDED";
+  startedAt: string;
+  expiresAt: string;
+  endedAt: string | null;
+  tournamentId: string;
+  adminId: string;
+  admin: { id: string; displayName: string; email: string };
+}
+
 export interface AdminTournament {
   id: string;
   name: string;
@@ -59,6 +71,7 @@ export interface AdminTournament {
   visibility: AdminTournamentVisibility;
   moderationStatus: AdminTournamentModerationStatus;
   isVerified: boolean;
+  isOfficial: boolean;
   registrationOpen: boolean;
   maxTeams: number | null;
   startDate: string | null;
@@ -85,9 +98,15 @@ export interface AdminTournament {
   customGameName: string | null;
   displayGameName: string;
   organizerId: string;
-  organizer: { id: string; displayName: string; email: string };
+  organizer: {
+    id: string;
+    displayName: string;
+    email: string;
+    role: AdminUserRole;
+  };
   game: { id: string; code: string; name: string };
   _count: { reports: number };
+  activeAdminOverride: AdminTournamentOverride | null;
 }
 
 export interface AdminTournamentsQuery {
@@ -96,7 +115,7 @@ export interface AdminTournamentsQuery {
 
 export type AdminTournamentMutationResult = Pick<
   AdminTournament,
-  "id" | "moderationStatus" | "isVerified" | "updatedAt"
+  "id" | "moderationStatus" | "isVerified" | "isOfficial" | "updatedAt"
 >;
 
 export type AdminReportStatus = "PENDING" | "REVIEWED" | "DISMISSED";
@@ -164,10 +183,7 @@ export interface AdminDeleteCommentResult {
   id: string;
 }
 
-export type BannedKeywordCategory =
-  | "GAMBLING"
-  | "PROFANITY"
-  | "MALICIOUS_LINK";
+export type BannedKeywordCategory = "GAMBLING" | "PROFANITY" | "MALICIOUS_LINK";
 
 export interface AdminBannedKeyword {
   id: string;

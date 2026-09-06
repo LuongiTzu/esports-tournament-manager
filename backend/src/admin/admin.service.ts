@@ -12,6 +12,7 @@ import { UserAdministrationService } from '../users/user-administration.service'
 import { TournamentModerationService } from '../tournaments/tournament-moderation.service';
 import { ReportReviewService } from '../reports/report-review.service';
 import { CommentModerationService } from '../comments/comment-moderation.service';
+import { TournamentAdminOverrideService } from '../tournaments/tournament-admin-override.service';
 
 /** ADMIN-protected compatibility facade; business behavior is domain-focused. */
 @Injectable()
@@ -23,6 +24,7 @@ export class AdminService {
     private readonly reports: ReportReviewService,
     private readonly comments: CommentModerationService,
     private readonly keywords: BannedKeywordService,
+    private readonly overrides: TournamentAdminOverrideService = {} as TournamentAdminOverrideService,
   ) {}
 
   listBannedKeywords() {
@@ -51,6 +53,22 @@ export class AdminService {
   }
   verifyTournament(id: string, explicit?: boolean) {
     return this.tournaments.verify(id, explicit);
+  }
+  setTournamentOfficial(id: string, explicit?: boolean) {
+    return this.tournaments.setOfficial(id, explicit);
+  }
+  getTournamentOverride(id: string) {
+    return this.overrides.getActive(id);
+  }
+  startTournamentOverride(
+    id: string,
+    admin: { id: string; email: string },
+    reason: string,
+  ) {
+    return this.overrides.start(id, admin, reason);
+  }
+  endTournamentOverride(id: string, admin: { id: string; email: string }) {
+    return this.overrides.end(id, admin);
   }
 
   listReports(status?: ReportStatus) {

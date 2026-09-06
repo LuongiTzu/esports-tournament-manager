@@ -37,6 +37,7 @@ import {
 } from './dto/bracket-operations.dto';
 import { SwissService } from './swiss.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AllowAdminOverride } from '../common/decorators/allow-admin-override.decorator';
 
 @ApiTags('brackets')
 @Controller('rounds')
@@ -48,6 +49,7 @@ export class BracketsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @AllowAdminOverride()
   @Post(':id/generate')
   generate(
     @Param('id') id: string,
@@ -60,6 +62,7 @@ export class BracketsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @AllowAdminOverride()
   @Post(':id/generate-preview')
   previewGeneration(
     @Param('id') id: string,
@@ -70,6 +73,7 @@ export class BracketsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @AllowAdminOverride()
   @Patch(':id/seeds')
   updateSeeds(
     @Param('id') id: string,
@@ -81,6 +85,7 @@ export class BracketsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @AllowAdminOverride()
   @ApiConflictResponse({
     description:
       'A manual organizer decision is required at a qualification tie boundary',
@@ -96,6 +101,7 @@ export class BracketsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @AllowAdminOverride()
   @Post(':id/reset-downstream-preview')
   previewDownstreamReset(@Param('id') id: string) {
     return this.operations.previewDownstreamReset(id);
@@ -103,6 +109,7 @@ export class BracketsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @AllowAdminOverride()
   @ApiConflictResponse({
     description:
       'The reset preview is stale, no downstream data exists, or the Tournament is locked',
@@ -142,6 +149,7 @@ export class BracketsController {
   })
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @AllowAdminOverride()
   @Post(':id/swiss/generate-next')
   generateNextSwissRound(
     @Param('id') id: string,
@@ -152,6 +160,7 @@ export class BracketsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @AllowAdminOverride()
   @ApiConflictResponse({
     description:
       'Round is not the unused final Round, or its Tournament is no longer mutable',

@@ -95,6 +95,7 @@ export class TournamentQueryService {
         skip,
         take: limit,
         orderBy: [
+          { isOfficial: 'desc' },
           { isVerified: 'desc' },
           { startDate: 'asc' },
           { createdAt: 'desc' },
