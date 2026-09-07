@@ -1,6 +1,7 @@
 import { request } from "@/lib/api/client";
 import type {
   AdminDashboardStats,
+  AdminDashboardPeriod,
   AdminBannedKeyword,
   AdminComment,
   AdminCommentsQuery,
@@ -40,6 +41,9 @@ function commentsQueryString(query: AdminCommentsQuery) {
 
 function tournamentsQueryString(query: AdminTournamentsQuery) {
   const params = new URLSearchParams();
+  if (query.search) params.set("search", query.search);
+  if (query.gameId) params.set("gameId", query.gameId);
+  if (query.status) params.set("status", query.status);
   if (query.moderationStatus) {
     params.set("moderationStatus", query.moderationStatus);
   }
@@ -61,8 +65,10 @@ function usersQueryString(query: AdminUsersQuery) {
 }
 
 export const adminApi = {
-  getDashboardStats: () =>
-    request<AdminDashboardStats>("/admin/stats", { auth: true }),
+  getDashboardStats: (periodDays: AdminDashboardPeriod = 7) =>
+    request<AdminDashboardStats>(`/admin/stats?periodDays=${periodDays}`, {
+      auth: true,
+    }),
   listUsers: (query: AdminUsersQuery) =>
     request<AdminUsersResponse>(`/admin/users?${usersQueryString(query)}`, {
       auth: true,

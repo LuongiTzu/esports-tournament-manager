@@ -100,7 +100,7 @@ export default function AdminCommentsPanel() {
       {notice && <p role="status" className="mt-3 rounded-xl bg-approved/10 px-3 py-2 text-sm text-approved">{notice}</p>}
       {error && <div className="mt-3"><p role="alert" className={alertErrorClass}>{error}</p>{!comments && <button type="button" onClick={() => { setError(""); setReloadKey((value) => value + 1); }} className={`${secondaryButtonClass} mt-2`}>{t("common.retry")}</button>}</div>}
 
-      {loading ? <div className="mt-4 h-72 animate-pulse rounded-xl bg-surface-sub" /> : comments ? comments.length === 0 ? <div className="mt-4 rounded-xl border border-dashed border-line px-4 py-12 text-center text-sm text-ink-muted">{t("admin.comments.empty")}</div> : <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(18rem,1.1fr)]"><AdminCommentList comments={comments} selectedId={selectedId} onSelect={(id) => { setSelectedId(id); setError(""); setNotice(""); }} />{selected && <AdminCommentDetail comment={selected} workingAction={workingAction} onToggleHidden={toggleHidden} onDelete={deleteComment} />}</div> : null}
+      {loading ? <div className="mt-4 h-72 animate-pulse rounded-xl bg-surface-sub" /> : comments ? comments.length === 0 ? <div className="mt-4 rounded-xl border border-dashed border-line px-4 py-12 text-center text-sm text-ink-muted">{t("admin.comments.empty")}</div> : <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start"><AdminCommentList comments={comments} selectedId={selectedId} onSelect={(id) => { setSelectedId(id); setError(""); setNotice(""); }} />{selected && <AdminCommentDetail comment={selected} workingAction={workingAction} onToggleHidden={toggleHidden} onDelete={deleteComment} />}</div> : null}
     </section>
   );
 }

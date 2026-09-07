@@ -4,6 +4,7 @@ import {
   NotificationType,
   ReportStatus,
   Role,
+  TournamentStatus,
 } from '@prisma/client';
 import { ContentFilterService } from '../common/services/content-filter.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -25,12 +26,14 @@ function setup() {
       findUnique: jest.fn(),
       update: jest.fn(),
       count: jest.fn(),
+      groupBy: jest.fn(),
     },
     report: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
       groupBy: jest.fn(),
+      count: jest.fn(),
     },
     comment: {
       findMany: jest.fn(),
@@ -43,6 +46,12 @@ function setup() {
       findUnique: jest.fn(),
       update: jest.fn(),
       count: jest.fn(),
+    },
+    match: {
+      count: jest.fn(),
+    },
+    game: {
+      findMany: jest.fn(),
     },
   };
   const notifications = { createNotification: jest.fn() };
@@ -67,6 +76,8 @@ function setup() {
 }
 
 describe('AdminService moderation', () => {
+  afterEach(() => jest.useRealTimers());
+
   it('exposes the custom display name and stable game code in moderation lists', async () => {
     const { service, prisma } = setup();
     prisma.tournament.findMany.mockResolvedValue([
@@ -88,6 +99,42 @@ describe('AdminService moderation', () => {
         include: expect.objectContaining({
           game: { select: { id: true, code: true, name: true } },
         }),
+      }),
+    );
+  });
+
+  it('applies tournament discovery filters to the moderation list', async () => {
+    const { service, prisma } = setup();
+    prisma.tournament.findMany.mockResolvedValue([]);
+
+    await service.listTournaments({
+      search: 'valorant',
+      gameId: 'game-1',
+      status: TournamentStatus.ONGOING,
+      moderationStatus: ModerationStatus.ACTIVE,
+    });
+
+    expect(prisma.tournament.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          gameId: 'game-1',
+          status: TournamentStatus.ONGOING,
+          moderationStatus: ModerationStatus.ACTIVE,
+          OR: [
+            { name: { contains: 'valorant', mode: 'insensitive' } },
+            {
+              game: {
+                name: { contains: 'valorant', mode: 'insensitive' },
+              },
+            },
+            {
+              customGameName: {
+                contains: 'valorant',
+                mode: 'insensitive',
+              },
+            },
+          ],
+        },
       }),
     );
   });
@@ -209,23 +256,119 @@ describe('AdminService moderation', () => {
   });
 
   it('calculates moderation statistics', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-07T03:00:00.000Z'));
     const { service, prisma } = setup();
     prisma.tournament.count
       .mockResolvedValueOnce(10)
       .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(1)
       .mockResolvedValueOnce(4);
     prisma.user.count.mockResolvedValueOnce(20).mockResolvedValueOnce(3);
+    prisma.match.count.mockResolvedValueOnce(100).mockResolvedValueOnce(6);
+    prisma.report.count.mockResolvedValue(5);
     prisma.report.groupBy.mockResolvedValue([
       { tournamentId: 't-1' },
       { tournamentId: 't-2' },
     ]);
-    await expect(service.stats()).resolves.toEqual({
-      totalTournaments: 10,
-      totalUsers: 20,
-      tournamentsBeingReported: 2,
-      lockedTournaments: 2,
-      lockedAccounts: 3,
-      tournamentsCreatedLast7Days: 4,
+    prisma.user.findMany.mockResolvedValue([
+      { createdAt: new Date('2026-09-01T00:00:00.000Z') },
+      { createdAt: new Date('2026-09-07T00:00:00.000Z') },
+      { createdAt: new Date('2026-08-30T00:00:00.000Z') },
+    ]);
+    prisma.tournament.findMany
+      .mockResolvedValueOnce([
+        { createdAt: new Date('2026-09-02T00:00:00.000Z') },
+        { createdAt: new Date('2026-08-28T00:00:00.000Z') },
+      ])
+      .mockResolvedValueOnce([]);
+    prisma.tournament.groupBy
+      .mockResolvedValueOnce([
+        { status: TournamentStatus.ONGOING, _count: { _all: 2 } },
+      ])
+      .mockResolvedValueOnce([
+        {
+          gameId: 'game-1',
+          customGameName: null,
+          _count: { _all: 4 },
+        },
+        {
+          gameId: 'custom-game',
+          customGameName: 'Chess',
+          _count: { _all: 2 },
+        },
+        {
+          gameId: 'custom-game',
+          customGameName: 'chess',
+          _count: { _all: 1 },
+        },
+      ]);
+    prisma.game.findMany.mockResolvedValue([
+      { id: 'game-1', code: 'VALORANT', name: 'Valorant' },
+      { id: 'custom-game', code: 'CUSTOM', name: 'Custom Game' },
+    ]);
+    prisma.report.findMany.mockResolvedValue([]);
+
+    const result = await service.stats();
+    expect(result).toEqual(
+      expect.objectContaining({
+        periodDays: 7,
+        totalTournaments: 10,
+        totalUsers: 20,
+        newUsers: 2,
+        userGrowthPercent: 100,
+        ongoingTournaments: 2,
+        officialTournaments: 1,
+        totalMatches: 100,
+        matchesToday: 6,
+        pendingReports: 5,
+        tournamentsWithPendingReports: 2,
+        tournamentsBeingReported: 2,
+        hiddenTournaments: 4,
+        lockedTournaments: 4,
+        lockedAccounts: 3,
+        newTournaments: 1,
+        tournamentGrowthPercent: 0,
+        tournamentsCreatedLast7Days: 1,
+        tournamentStatusDistribution: expect.arrayContaining([
+          { status: TournamentStatus.ONGOING, count: 2 },
+        ]),
+        topGames: [
+          {
+            gameId: 'game-1',
+            displayGameName: 'Valorant',
+            tournamentCount: 4,
+          },
+          {
+            gameId: 'custom:chess',
+            displayGameName: 'Chess',
+            tournamentCount: 3,
+          },
+        ],
+        recentReports: [],
+        recentTournaments: [],
+      }),
+    );
+    expect(result.dailyGrowth).toHaveLength(7);
+    expect(result.dailyGrowth[0]).toEqual({
+      date: '2026-09-01',
+      newUsers: 1,
+      newTournaments: 0,
+    });
+    expect(result.dailyGrowth[6]).toEqual({
+      date: '2026-09-07',
+      newUsers: 1,
+      newTournaments: 0,
+    });
+    expect(prisma.match.count).toHaveBeenLastCalledWith({
+      where: {
+        isActive: true,
+        isBye: false,
+        scheduledAt: {
+          gte: new Date('2026-09-06T17:00:00.000Z'),
+          lt: new Date('2026-09-07T17:00:00.000Z'),
+        },
+      },
     });
   });
 

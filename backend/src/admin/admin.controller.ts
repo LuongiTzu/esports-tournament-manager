@@ -33,6 +33,7 @@ import {
 } from './dto/moderation.dto';
 import {
   AdminCommentListQueryDto,
+  AdminDashboardQueryDto,
   AdminReportListQueryDto,
   AdminTournamentListQueryDto,
   AdminUsersQueryDto,
@@ -46,7 +47,7 @@ export class AdminController {
 
   @Get('tournaments')
   listTournaments(@Query() query: AdminTournamentListQueryDto) {
-    return this.adminService.listTournaments(query.moderationStatus);
+    return this.adminService.listTournaments(query);
   }
 
   @Patch('tournaments/:id/moderation')
@@ -98,8 +99,8 @@ export class AdminController {
   }
 
   @Get('stats')
-  stats() {
-    return this.adminService.stats();
+  stats(@Query() query: AdminDashboardQueryDto) {
+    return this.adminService.stats(query.periodDays);
   }
 
   @Patch('tournaments/:id/verify')

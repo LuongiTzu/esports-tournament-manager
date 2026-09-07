@@ -7,8 +7,10 @@ import {
 import {
   ModerationStatus,
   NotificationType,
+  Prisma,
   Role,
   TournamentAdminOverrideStatus,
+  TournamentStatus,
 } from '@prisma/client';
 import {
   NOTIFICATION_PUBLISHER,
@@ -17,6 +19,13 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { withTournamentGameDisplayName } from './domain/tournament-game-display';
 
+export interface TournamentModerationListQuery {
+  search?: string;
+  gameId?: string;
+  status?: TournamentStatus;
+  moderationStatus?: ModerationStatus;
+}
+
 @Injectable()
 export class TournamentModerationService {
   constructor(
@@ -24,9 +33,33 @@ export class TournamentModerationService {
     @Inject(NOTIFICATION_PUBLISHER)
     private readonly notifications: NotificationPublisher,
   ) {}
-  async list(moderationStatus?: ModerationStatus) {
+  async list(query: TournamentModerationListQuery = {}) {
+    const where: Prisma.TournamentWhereInput = {};
+
+    if (query.moderationStatus) {
+      where.moderationStatus = query.moderationStatus;
+    }
+    if (query.gameId) {
+      where.gameId = query.gameId;
+    }
+    if (query.status) {
+      where.status = query.status;
+    }
+    if (query.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { game: { name: { contains: query.search, mode: 'insensitive' } } },
+        {
+          customGameName: {
+            contains: query.search,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+
     const tournaments = await this.prisma.tournament.findMany({
-      where: { moderationStatus },
+      where,
       orderBy: [{ reports: { _count: 'desc' } }, { createdAt: 'desc' }],
       include: {
         organizer: {

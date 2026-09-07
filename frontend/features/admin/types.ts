@@ -8,12 +8,72 @@ import type { Paginated } from "@/shared/types/pagination";
 import type { TournamentStatus } from "@/shared/types/tournament-status";
 
 export interface AdminDashboardStats {
+  periodDays: AdminDashboardPeriod;
   totalTournaments: number;
   totalUsers: number;
+  newUsers: number;
+  userGrowthPercent: number | null;
+  ongoingTournaments: number;
+  officialTournaments: number;
+  newTournaments: number;
+  tournamentGrowthPercent: number | null;
+  totalMatches: number;
+  matchesToday: number;
+  pendingReports: number;
+  tournamentsWithPendingReports: number;
+  hiddenTournaments: number;
+  dailyGrowth: AdminDailyGrowthPoint[];
+  tournamentStatusDistribution: AdminTournamentStatusCount[];
+  topGames: AdminPopularGame[];
+  recentReports: AdminDashboardReport[];
+  recentTournaments: AdminDashboardTournament[];
+  /** Backward-compatible aliases returned by the current endpoint. */
   tournamentsBeingReported: number;
   lockedTournaments: number;
   lockedAccounts: number;
   tournamentsCreatedLast7Days: number;
+}
+
+export type AdminDashboardPeriod = 7 | 30;
+
+export interface AdminDailyGrowthPoint {
+  date: string;
+  newUsers: number;
+  newTournaments: number;
+}
+
+export interface AdminTournamentStatusCount {
+  status: TournamentStatus;
+  count: number;
+}
+
+export interface AdminPopularGame {
+  gameId: string;
+  displayGameName: string;
+  tournamentCount: number;
+}
+
+export interface AdminDashboardReport {
+  id: string;
+  reason: AdminReportReason;
+  status: AdminReportStatus;
+  createdAt: string;
+  tournament: { id: string; name: string; slug: string };
+  reporter: { id: string; displayName: string } | null;
+}
+
+export interface AdminDashboardTournament {
+  id: string;
+  name: string;
+  slug: string;
+  bannerUrl: string | null;
+  status: TournamentStatus;
+  isOfficial: boolean;
+  createdAt: string;
+  customGameName: string | null;
+  displayGameName: string;
+  organizer: { id: string; displayName: string };
+  game: { id: string; code: string; name: string };
 }
 
 export type AdminUserRole = User["role"];
@@ -110,6 +170,9 @@ export interface AdminTournament {
 }
 
 export interface AdminTournamentsQuery {
+  search?: string;
+  gameId?: string;
+  status?: AdminTournamentStatus;
   moderationStatus?: AdminTournamentModerationStatus;
 }
 

@@ -9,7 +9,10 @@ import {
   BannedKeywordService,
 } from './admin-operations.services';
 import { UserAdministrationService } from '../users/user-administration.service';
-import { TournamentModerationService } from '../tournaments/tournament-moderation.service';
+import {
+  TournamentModerationListQuery,
+  TournamentModerationService,
+} from '../tournaments/tournament-moderation.service';
 import { ReportReviewService } from '../reports/report-review.service';
 import { CommentModerationService } from '../comments/comment-moderation.service';
 import { TournamentAdminOverrideService } from '../tournaments/tournament-admin-override.service';
@@ -40,8 +43,8 @@ export class AdminService {
     return this.keywords.remove(id);
   }
 
-  listTournaments(moderationStatus?: ModerationStatus) {
-    return this.tournaments.list(moderationStatus);
+  listTournaments(query: TournamentModerationListQuery = {}) {
+    return this.tournaments.list(query);
   }
   moderateTournament(
     id: string,
@@ -91,8 +94,8 @@ export class AdminService {
     return this.comments.remove(id);
   }
 
-  stats() {
-    return this.dashboard.stats();
+  stats(periodDays: 7 | 30 = 7) {
+    return this.dashboard.stats(periodDays);
   }
   listUsers(
     page = 1,

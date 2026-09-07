@@ -5,7 +5,6 @@ import { TrophyIcon } from "@phosphor-icons/react";
 import { adminApi } from "@/features/admin/api";
 import type {
   AdminTournament,
-  AdminTournamentModerationStatus,
   AdminTournamentsQuery,
 } from "@/features/admin/types";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
@@ -21,13 +20,14 @@ import { selectAvailableItemId } from "@/features/admin/selection";
 import { useAuth } from "@/features/auth/store";
 
 function queryKey(query: AdminTournamentsQuery) {
-  return query.moderationStatus ?? "ALL";
+  return JSON.stringify(query);
 }
 
 export default function AdminTournamentsPage() {
   const { locale, t } = useLocale();
   const { user } = useAuth();
   const [query, setQuery] = useState<AdminTournamentsQuery>({});
+  const [searchInput, setSearchInput] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [result, setResult] = useState<{
     key: string;
@@ -45,6 +45,16 @@ export default function AdminTournamentsPage() {
   useEffect(() => {
     currentKeyRef.current = currentKey;
   }, [currentKey]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      const search = searchInput.trim() || undefined;
+      setQuery((current) =>
+        current.search === search ? current : { ...current, search },
+      );
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   useEffect(() => {
     let cancelled = false;
@@ -256,9 +266,21 @@ export default function AdminTournamentsPage() {
 
       <div className="mt-5">
         <TournamentAdminFilters
-          moderationStatus={query.moderationStatus}
-          onChange={(moderationStatus?: AdminTournamentModerationStatus) => {
-            setQuery({ moderationStatus });
+          query={query}
+          searchInput={searchInput}
+          onSearchInputChange={(value) => {
+            setSearchInput(value);
+            setNotice("");
+            setError("");
+          }}
+          onChange={(nextQuery) => {
+            setQuery(nextQuery);
+            setNotice("");
+            setError("");
+          }}
+          onClear={() => {
+            setSearchInput("");
+            setQuery({});
             setNotice("");
             setError("");
           }}
