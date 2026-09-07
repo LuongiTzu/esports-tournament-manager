@@ -74,8 +74,10 @@ function PosterRow({
 
 export default function GamePosterGridBackground({
   dense = false,
+  fixed = false,
 }: {
   dense?: boolean;
+  fixed?: boolean;
 }) {
   const prefersReducedMotion = useReducedMotion();
   const pointerPosition = useMotionValue(0);
@@ -106,7 +108,7 @@ export default function GamePosterGridBackground({
   return (
     <div
       aria-hidden="true"
-      className={`${styles.root} ${dense ? styles.dense : ""}`}
+      className={`${styles.root} ${dense ? styles.dense : ""} ${fixed ? styles.fixed : ""}`}
     >
       <div className={styles.grid}>
         {Array.from(

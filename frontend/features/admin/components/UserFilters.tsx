@@ -109,7 +109,7 @@ export default function UserFilters({
         </label>
 
         <div className="flex gap-2">
-          <button type="submit" className="min-h-[var(--control-height)] flex-1 rounded-xl bg-brand px-4 text-sm font-semibold text-on-brand hover:bg-brand-hover">
+          <button type="submit" className="min-h-[var(--control-height)] flex-1 rounded-[var(--radius-control)] bg-brand-secondary px-4 text-xs font-black uppercase tracking-wide text-on-brand transition hover:brightness-110">
             {t("common.search")}
           </button>
           {hasFilters && (

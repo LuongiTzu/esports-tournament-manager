@@ -29,6 +29,11 @@
   pointer-events: none;
 }
 
+.fixed {
+  position: fixed;
+  top: 3.5rem;
+}
+
 .grid {
   position: absolute;
   left: 50%;

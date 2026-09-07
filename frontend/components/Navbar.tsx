@@ -4,8 +4,14 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ListIcon, PlusIcon, XIcon } from "@phosphor-icons/react";
+import {
+  ArrowSquareOutIcon,
+  ListIcon,
+  PlusIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 import { logout, useAuth } from "@/features/auth/store";
+import type { User } from "@/features/auth/types";
 import { useLocale } from "@/features/locale/store";
 import type { Locale } from "@/features/locale/types";
 import ResolvedImage from "@/components/ResolvedImage";
@@ -57,6 +63,83 @@ function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
   );
 }
 
+function AdminNavbar({
+  ready,
+  user,
+  scrolled,
+}: {
+  ready: boolean;
+  user: User | null;
+  scrolled: boolean;
+}) {
+  const { t } = useLocale();
+
+  return (
+    <header
+      className={`admin-navbar sticky top-0 z-50 border-b border-line backdrop-blur-xl transition duration-300 ${
+        scrolled
+          ? "bg-surface/95 shadow-md shadow-black/10"
+          : "bg-surface-card/95"
+      }`}
+    >
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-0.5 bg-gradient-brand"
+      />
+      <div className="flex h-14 w-full items-center gap-3 px-3 sm:px-5 lg:px-6">
+        <Link
+          href="/admin"
+          aria-label={t("nav.admin")}
+          className="inline-flex min-w-0 items-center gap-2.5"
+        >
+          <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-md">
+            <Image
+              src="/images/global/logo-web-cut-background.png"
+              alt=""
+              width={1280}
+              height={1280}
+              priority
+              className="size-full object-contain"
+            />
+          </span>
+          <span className="hidden text-sm font-black tracking-tight text-ink sm:inline">
+            ArenaVERSE
+          </span>
+          <span className="hidden h-4 w-px bg-line sm:block" />
+          <span className="truncate text-[10px] font-black uppercase tracking-[0.16em] text-brand sm:text-[11px]">
+            {t("nav.admin")}
+          </span>
+        </Link>
+
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+          <Link
+            href="/"
+            title={t("admin.shell.viewWebsite")}
+            className="inline-flex h-10 items-center gap-2 rounded-md px-2.5 text-xs font-bold text-ink-muted transition hover:bg-surface-hover hover:text-ink sm:px-3"
+          >
+            <ArrowSquareOutIcon size={17} weight="bold" />
+            <span className="hidden md:inline">
+              {t("admin.shell.viewWebsite")}
+            </span>
+          </Link>
+          <NotificationCenter />
+          <div className="hidden sm:block">
+            <LanguageSwitcher compact />
+          </div>
+          {!ready ? (
+            <div
+              aria-label={t("nav.loadingAccount")}
+              className="h-10 w-10 animate-pulse rounded-full bg-surface-sub sm:w-36 sm:rounded-lg"
+            />
+          ) : user ? (
+            <AccountMenu user={user} compactOnMobile />
+          ) : null}
+        </div>
+      </div>
+    </header>
+  );
+}
+
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -87,6 +170,10 @@ export default function Navbar() {
     await logout();
     router.push("/");
   };
+
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return <AdminNavbar ready={ready} user={user} scrolled={scrolled} />;
+  }
 
   const mainLinks = [
     { href: "/", label: t("nav.home") },

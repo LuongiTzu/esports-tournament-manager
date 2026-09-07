@@ -18,7 +18,13 @@ import { useLocale } from "@/features/locale/store";
 import { THEME_OPTIONS } from "@/features/theme/options";
 import { useTheme } from "@/features/theme/store";
 
-export default function AccountMenu({ user }: { user: User }) {
+export default function AccountMenu({
+  user,
+  compactOnMobile = false,
+}: {
+  user: User;
+  compactOnMobile?: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useLocale();
@@ -106,13 +112,15 @@ export default function AccountMenu({ user }: { user: User }) {
             fallback={user.displayName.charAt(0).toUpperCase()}
           />
         </span>
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+        <span
+          className={`min-w-0 flex-1 truncate text-sm font-semibold ${compactOnMobile ? "hidden sm:block" : ""}`}
+        >
           {user.displayName}
         </span>
         <CaretDownIcon
           size={14}
           weight="bold"
-          className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`shrink-0 transition-transform ${compactOnMobile ? "hidden sm:block" : ""} ${open ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -129,6 +137,11 @@ export default function AccountMenu({ user }: { user: User }) {
             <p className="mt-0.5 truncate text-xs text-ink-faint">
               {user.email}
             </p>
+            {user.role === "ADMIN" && (
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-brand">
+                {t("admin.shell.identity")}
+              </p>
+            )}
           </div>
 
           <div className="py-1.5">
