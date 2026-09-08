@@ -4,15 +4,22 @@ import ResolvedImage from "@/components/ResolvedImage";
 import type { BracketMatch, BracketTeam } from "@/features/tournaments/types";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
+import {
+  matchScore,
+  sourceLabel,
+  type MatchSources,
+} from "../competition/bracket/bracket-presentation";
 
 function TeamSlot({
   team,
   score,
   winner,
+  placeholder,
 }: {
   team: BracketTeam | null;
-  score: number;
+  score: number | string;
   winner: boolean;
+  placeholder?: string;
 }) {
   const { t } = useLocale();
   return (
@@ -33,8 +40,11 @@ function TeamSlot({
           "?"
         )}
       </span>
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">
-        {team?.name ?? t("match.awaitingTeam")}
+      <span
+        className="min-w-0 flex-1 truncate text-sm font-medium"
+        title={team?.name ?? placeholder}
+      >
+        {team?.name ?? placeholder ?? t("match.awaitingTeam")}
       </span>
       {team?.seed != null && (
         <span className="text-[10px] text-ink-faint">#{team.seed}</span>
@@ -53,11 +63,13 @@ export default function BracketMatchCard({
   label,
   linkLabels,
   onSelect,
+  sources,
 }: {
   match: BracketMatch;
   label?: string;
   linkLabels?: { winner?: string; loser?: string };
   onSelect?: (match: BracketMatch) => void;
+  sources?: MatchSources;
 }) {
   const { locale, t } = useLocale();
   const winnerId = match.winner?.id;
@@ -98,12 +110,14 @@ export default function BracketMatchCard({
         <div className="space-y-1.5">
           <TeamSlot
             team={match.slots.A}
-            score={match.score.A}
+            score={matchScore(match, "A")}
+            placeholder={sourceLabel(sources?.A, t)}
             winner={Boolean(winnerId && winnerId === match.slots.A?.id)}
           />
           <TeamSlot
             team={match.slots.B}
-            score={match.score.B}
+            score={matchScore(match, "B")}
+            placeholder={sourceLabel(sources?.B, t)}
             winner={Boolean(winnerId && winnerId === match.slots.B?.id)}
           />
         </div>
@@ -130,9 +144,15 @@ export default function BracketMatchCard({
       </div>
       {(linkLabels?.winner || linkLabels?.loser) && (
         <div className="mt-2 border-t border-line/70 pt-2 text-[10px] text-ink-faint">
-          {linkLabels.winner && <p>{t("match.winnerRoute")} → {linkLabels.winner}</p>}
+          {linkLabels.winner && (
+            <p>
+              {t("match.winnerRoute")} → {linkLabels.winner}
+            </p>
+          )}
           {linkLabels.loser && (
-            <p className="mt-0.5">{t("match.loserRoute")} → {linkLabels.loser}</p>
+            <p className="mt-0.5">
+              {t("match.loserRoute")} → {linkLabels.loser}
+            </p>
           )}
         </div>
       )}
@@ -142,7 +162,9 @@ export default function BracketMatchCard({
           onClick={() => onSelect(match)}
           className="mt-3 w-full rounded-lg border border-line py-2 text-xs font-semibold text-ink-muted transition hover:border-brand/50 hover:bg-brand/5 hover:text-brand"
         >
-          {match.isBye || !match.isActive ? t("match.viewDetails") : t("match.viewManage")}
+          {match.isBye || !match.isActive
+            ? t("match.viewDetails")
+            : t("match.viewManage")}
         </button>
       )}
     </article>

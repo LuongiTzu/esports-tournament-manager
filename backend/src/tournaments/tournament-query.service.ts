@@ -18,6 +18,7 @@ import { RoundSettingsService } from '../brackets/round-settings.service';
 import { StandingsService } from '../brackets/standings.service';
 import { resolveSwissProgress } from '../brackets/domain/swiss-progress';
 import { SwissSettings } from '../brackets/types/round-settings';
+import { withSwissBracketView } from '../brackets/swiss-bracket-view';
 import { tournamentVisibilityPolicy } from '../common/policies/tournament-visibility.policy';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -607,48 +608,50 @@ export class TournamentQueryService {
     if (!tournament) throw new NotFoundException('Không tìm thấy giải đấu');
     return {
       tournament: { id: tournament.id, name: tournament.name, slug },
-      rounds: tournament.rounds.map((round) => ({
-        round: {
-          id: round.id,
-          name: round.name,
-          orderIndex: round.orderIndex,
-          format: round.format,
-          status: round.status,
-          bestOf: round.bestOf,
-          settings: this.roundSettingsService.getEffectiveSettings(
-            round.format,
-            round.settings,
-          ),
-        },
-        groups: round.groups.map((group) => ({
-          id: group.id,
-          name: group.name,
-          orderIndex: group.orderIndex,
-          teams: group.teamAssignments.map((assignment) => assignment.team),
-        })),
-        matches: round.matches.map((match) => ({
-          id: match.id,
-          groupId: match.groupId,
-          bracketRound: match.bracketRound,
-          bracketType: match.bracketType,
-          matchNumber: match.matchNumber,
-          status: match.status,
-          outcome: match.outcome,
-          isActive: match.isActive,
-          activationCondition: match.activationCondition,
-          isBye: match.isBye,
-          bestOf: match.bestOf,
-          scheduledAt: match.scheduledAt,
-          slots: { A: match.teamA, B: match.teamB },
-          score: { A: match.scoreA, B: match.scoreB },
-          winner: match.winner,
-          nextMatch: { id: match.nextMatchId, slot: match.nextMatchSlot },
-          loserNextMatch: {
-            id: match.loserNextMatchId,
-            slot: match.loserNextMatchSlot,
+      rounds: tournament.rounds.map((round) =>
+        withSwissBracketView({
+          round: {
+            id: round.id,
+            name: round.name,
+            orderIndex: round.orderIndex,
+            format: round.format,
+            status: round.status,
+            bestOf: round.bestOf,
+            settings: this.roundSettingsService.getEffectiveSettings(
+              round.format,
+              round.settings,
+            ),
           },
-        })),
-      })),
+          groups: round.groups.map((group) => ({
+            id: group.id,
+            name: group.name,
+            orderIndex: group.orderIndex,
+            teams: group.teamAssignments.map((assignment) => assignment.team),
+          })),
+          matches: round.matches.map((match) => ({
+            id: match.id,
+            groupId: match.groupId,
+            bracketRound: match.bracketRound,
+            bracketType: match.bracketType,
+            matchNumber: match.matchNumber,
+            status: match.status,
+            outcome: match.outcome,
+            isActive: match.isActive,
+            activationCondition: match.activationCondition,
+            isBye: match.isBye,
+            bestOf: match.bestOf,
+            scheduledAt: match.scheduledAt,
+            slots: { A: match.teamA, B: match.teamB },
+            score: { A: match.scoreA, B: match.scoreB },
+            winner: match.winner,
+            nextMatch: { id: match.nextMatchId, slot: match.nextMatchSlot },
+            loserNextMatch: {
+              id: match.loserNextMatchId,
+              slot: match.loserNextMatchSlot,
+            },
+          })),
+        }),
+      ),
     };
   }
 

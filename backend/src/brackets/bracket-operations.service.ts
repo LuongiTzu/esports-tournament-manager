@@ -24,6 +24,7 @@ import {
 } from '../common/ports/tournament-event-publisher';
 import { RoundSettingsService } from './round-settings.service';
 import { BracketQueryService } from './bracket-query.service';
+import { withSwissBracketView } from './swiss-bracket-view';
 import { RoundAdvancementService } from './round-advancement.service';
 import { RoundParticipantResolver } from './round-participant-resolver.service';
 import { RoundGenerationReadinessService } from './round-generation-readiness.service';
@@ -435,7 +436,7 @@ function buildPreviewBracket(
         .map((team) => publicTeams.get(team.id)!),
     };
   });
-  return {
+  return withSwissBracketView({
     round: {
       id: round.id,
       name: round.name,
@@ -500,7 +501,7 @@ function buildPreviewBracket(
         },
       };
     }),
-  };
+  });
 }
 
 function resolvePreviewSlots(drafts: MatchDraft[]) {

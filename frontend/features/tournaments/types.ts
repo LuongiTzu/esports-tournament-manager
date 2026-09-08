@@ -217,6 +217,28 @@ export interface RoundBracket {
   round: TournamentRound;
   groups: BracketGroup[];
   matches: BracketMatch[];
+  swiss?: SwissBracketView | null;
+}
+
+export interface SwissRecord {
+  wins: number;
+  losses: number;
+}
+
+export interface SwissRecordGroup {
+  id: string;
+  bracketRound: number;
+  records: SwissRecord[];
+  entries: Array<{
+    matchId: string;
+    A: SwissRecord | null;
+    B: SwissRecord | null;
+  }>;
+}
+
+export interface SwissBracketView {
+  groups: SwissRecordGroup[];
+  links: Array<{ from: string; to: string; result: "winner" | "loser" }>;
 }
 
 export interface TournamentBracket {

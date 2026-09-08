@@ -20,15 +20,20 @@ import RoundStandingsView from "../manage/RoundStandingsView";
 import RoundSettingsSummary from "./RoundSettingsSummary";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { useCompetitionInvalidation } from "@/features/tournaments/realtime";
+import CompetitionStageNavigation from "./CompetitionStageNavigation";
 
 export default function PublicCompetitionView({
   id,
   slug,
   tournamentId,
+  bannerUrl,
+  tournamentName,
 }: {
   id?: string;
   slug: string;
   tournamentId: string;
+  bannerUrl?: string | null;
+  tournamentName?: string;
 }) {
   const { t } = useLocale();
   const [rounds, setRounds] = useState<RoundBracket[]>([]);
@@ -51,11 +56,14 @@ export default function PublicCompetitionView({
           (a, b) => a.round.orderIndex - b.round.orderIndex,
         );
         setRounds(orderedRounds);
+        setError("");
         setStandings(standingsResponse);
         setSelectedRoundId((current) =>
           orderedRounds.some(({ round }) => round.id === current)
             ? current
-            : (orderedRounds[0]?.round.id ?? ""),
+            : (orderedRounds.find(({ round }) => round.status === "ONGOING")?.round.id ??
+              orderedRounds.find(({ round }) => round.status === "UPCOMING")?.round.id ??
+              orderedRounds.at(-1)?.round.id ?? ""),
         );
       })
       .catch((reason: unknown) => {
@@ -152,37 +160,11 @@ export default function PublicCompetitionView({
         </div>
       ) : (
         <>
-          <nav
-            aria-label={t("competition.roundNavigation")}
-            className="mt-5 flex max-w-full gap-2 overflow-x-auto pb-2"
-          >
-            {rounds.map(({ round }, index) => {
-              const active = round.id === selectedBracket.round.id;
-              return (
-                <button
-                  key={round.id}
-                  type="button"
-                  onClick={() => setSelectedRoundId(round.id)}
-                  aria-current={active ? "step" : undefined}
-                  className={`min-w-44 rounded-xl border px-4 py-3 text-left transition ${
-                    active
-                      ? "border-brand bg-brand/10"
-                      : "border-line bg-surface-sub hover:border-line-strong"
-                  }`}
-                >
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
-                    {t("competition.stage")} {index + 1}
-                  </span>
-                  <span className="mt-1 block truncate text-sm font-semibold text-ink">
-                    {round.name}
-                  </span>
-                  <span className="mt-1 block text-xs text-ink-muted">
-                    {roundFormatLabel(round.format, t)}
-                  </span>
-                </button>
-              );
-            })}
-          </nav>
+          <CompetitionStageNavigation
+            rounds={rounds.map(({ round }) => round)}
+            selectedRoundId={selectedBracket.round.id}
+            onSelect={setSelectedRoundId}
+          />
 
           <div className="mt-4 min-w-0 rounded-2xl border border-line bg-surface-sub/25 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -213,7 +195,12 @@ export default function PublicCompetitionView({
               <h3 className="mb-4 font-semibold text-ink">
                 {t("competition.matchesAndSchedule")}
               </h3>
-              <RoundCompetitionView bracket={selectedBracket} />
+              <RoundCompetitionView
+                bracket={selectedBracket}
+                bannerUrl={bannerUrl}
+                tournamentName={tournamentName}
+                standings={selectedStandings}
+              />
             </div>
 
             <div className="mt-8 border-t border-line pt-6">

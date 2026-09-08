@@ -17,11 +17,15 @@ export default function RoundGenerationPreviewDialog({
   isGenerating,
   onClose,
   onConfirm,
+  bannerUrl,
+  tournamentName,
 }: {
   preview: RoundGenerationPreview;
   isGenerating: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  bannerUrl?: string | null;
+  tournamentName?: string;
 }) {
   const { t } = useLocale();
 
@@ -82,7 +86,11 @@ export default function RoundGenerationPreviewDialog({
         )}
 
         <div className="min-h-0 flex-1 overflow-auto px-4 py-5 sm:px-6">
-          <RoundCompetitionView bracket={preview.bracket} />
+          <RoundCompetitionView
+            bracket={preview.bracket}
+            bannerUrl={bannerUrl}
+            tournamentName={tournamentName}
+          />
         </div>
 
         <footer className="flex flex-wrap justify-end gap-2 border-t border-line px-4 py-4 sm:px-6">

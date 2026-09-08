@@ -42,6 +42,8 @@ import DownstreamResetDialog from "./DownstreamResetDialog";
 import CompetitionAuditHistory from "./CompetitionAuditHistory";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { useCompetitionInvalidation } from "@/features/tournaments/realtime";
+import CompetitionStageNavigation from "../competition/CompetitionStageNavigation";
+import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 
 const generateStructureButtonClass =
   "inline-flex min-h-12 items-center justify-center gap-2.5 rounded-md bg-brand px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-brand shadow-[0_12px_30px_-14px_var(--color-brand)] transition hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50";
@@ -226,6 +228,11 @@ export default function CompetitionManager({
   const selectedRound =
     rounds.find((round) => round.id === selectedRoundId) ?? rounds[0];
   const activeRound = bracket?.round ?? selectedRound;
+  const bannerUrl = getTournamentBannerUrl(
+    tournament.bannerUrl,
+    tournament.game.name,
+    tournament.game.code,
+  );
   const activeStandings = standings?.rounds.find(
     (round): round is RoundStandings => round.roundId === selectedRound?.id,
   );
@@ -681,50 +688,25 @@ export default function CompetitionManager({
         </span>
       </div>
 
-      <nav
-        aria-label={t("competition.roundNavigation")}
-        className="mt-5 flex gap-2 overflow-x-auto pb-2"
-      >
-        {rounds.map((round, index) => {
-          const active = round.id === selectedRound?.id;
-          return (
-            <button
-              key={round.id}
-              type="button"
-              onClick={() => {
-                if (round.id === selectedRound?.id) return;
-                setLoading(true);
-                setError("");
-                setBracket(null);
-                setSelectedMatchId(null);
-                setGenerationPreview(null);
-                setDownstreamResetPreview(null);
-                setSelectedRoundId(round.id);
-                setNotice("");
-                setTieBreakDecision(null);
-                setSelectedTieTeamIds([]);
-                setChampionshipTieBreak(null);
-                setSelectedChampionTeamId("");
-              }}
-              className={`min-w-44 rounded-xl border px-4 py-3 text-left transition ${
-                active
-                  ? "border-brand bg-brand/10"
-                  : "border-line bg-surface-card hover:border-line-strong"
-              }`}
-            >
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
-                {t("competition.stage")} {index + 1}
-              </span>
-              <span className="mt-1 block truncate text-sm font-semibold text-ink">
-                {round.name}
-              </span>
-              <span className="mt-1 block text-xs text-ink-muted">
-                {roundFormatLabel(round.format, t)}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
+      <CompetitionStageNavigation
+        rounds={rounds}
+        selectedRoundId={selectedRound?.id}
+        onSelect={(roundId) => {
+          if (roundId === selectedRound?.id) return;
+          setLoading(true);
+          setError("");
+          setBracket(null);
+          setSelectedMatchId(null);
+          setGenerationPreview(null);
+          setDownstreamResetPreview(null);
+          setSelectedRoundId(roundId);
+          setNotice("");
+          setTieBreakDecision(null);
+          setSelectedTieTeamIds([]);
+          setChampionshipTieBreak(null);
+          setSelectedChampionTeamId("");
+        }}
+      />
 
       {selectedRound && (
         <div className="mt-4 rounded-2xl border border-line bg-surface-card p-4 sm:p-6">
@@ -1044,7 +1026,7 @@ export default function CompetitionManager({
           )}
 
           <div className="mt-6">
-            {loading ? (
+            {loading && !bracket ? (
               <div
                 aria-label={t("competition.manage.loadingStructure")}
                 className="grid min-h-48 place-items-center rounded-xl border border-line"
@@ -1057,6 +1039,9 @@ export default function CompetitionManager({
             ) : bracket ? (
               <RoundCompetitionView
                 bracket={bracket}
+                bannerUrl={bannerUrl}
+                tournamentName={tournament.name}
+                standings={activeStandings}
                 onSelectMatch={(match: BracketMatch) =>
                   setSelectedMatchId(match.id)
                 }
@@ -1125,6 +1110,8 @@ export default function CompetitionManager({
       {generationPreview && (
         <RoundGenerationPreviewDialog
           preview={generationPreview}
+          bannerUrl={bannerUrl}
+          tournamentName={tournament.name}
           isGenerating={working === "generate"}
           onClose={() => setGenerationPreview(null)}
           onConfirm={() => void confirmGeneration()}

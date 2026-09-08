@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:bracket": "node --experimental-strip-types --test tests/bracket-presentation.test.mjs tests/swiss-presentation.test.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

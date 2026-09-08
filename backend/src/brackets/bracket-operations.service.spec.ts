@@ -32,7 +32,10 @@ function round(
     orderIndex,
     format,
     status: 'UPCOMING',
-    settings: { thirdPlaceMatch: false },
+    settings:
+      format === RoundFormat.SWISS
+        ? { numberOfRounds: 3, advancingTeamCount: 2 }
+        : { thirdPlaceMatch: false },
     bestOf: 3,
     _count: { groups: 0 },
     matches,
@@ -133,6 +136,45 @@ function harness(roundValue: ReturnType<typeof round>, teamCount = 4) {
 }
 
 describe('BracketOperationsService generation', () => {
+  it('includes the initial Swiss record group in a preview without writing matches', async () => {
+    const { service, tx, brackets } = harness(round([], RoundFormat.SWISS));
+    brackets.generate = jest.fn().mockResolvedValue([
+      {
+        key: 'swiss-1',
+        bracketRound: 1,
+        bracketType: null,
+        matchNumber: 1,
+        teamA: { teamId: 'team-1' },
+        teamB: { teamId: 'team-2' },
+        isBye: false,
+        bestOf: 3,
+        nextMatchKey: null,
+        nextMatchSlot: null,
+        loserNextMatchKey: null,
+        loserNextMatchSlot: null,
+      },
+    ]);
+    const preview = await service.previewGeneration('round-1');
+    expect(preview.bracket.swiss).toEqual({
+      groups: [
+        {
+          id: 'swiss-1-0-0',
+          bracketRound: 1,
+          records: [{ wins: 0, losses: 0 }],
+          entries: [
+            {
+              matchId: 'swiss-1',
+              A: { wins: 0, losses: 0 },
+              B: { wins: 0, losses: 0 },
+            },
+          ],
+        },
+      ],
+      links: [],
+    });
+    expect(tx.match.create).not.toHaveBeenCalled();
+  });
+
   it('previews the canonical generated structure without persisting it', async () => {
     const { service, tx, brackets } = harness(round());
     brackets.generate = jest.fn().mockResolvedValue([

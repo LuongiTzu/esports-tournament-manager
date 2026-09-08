@@ -611,6 +611,8 @@ export default function TournamentDetailPage({
           id="competition"
           slug={slug}
           tournamentId={tournament.id}
+          bannerUrl={bannerUrl}
+          tournamentName={tournament.name}
         />
 
         <section

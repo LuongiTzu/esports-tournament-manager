@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RoundSettingsService } from './round-settings.service';
+import { withSwissBracketView } from './swiss-bracket-view';
 
 const PUBLIC_BRACKET_TEAM_SELECT = {
   id: true,
@@ -55,7 +56,7 @@ export class BracketQueryService {
         participant.seed,
       ]),
     );
-    return {
+    return withSwissBracketView({
       round: {
         id: round.id,
         name: round.name,
@@ -112,7 +113,7 @@ export class BracketQueryService {
           slot: match.loserNextMatchSlot,
         },
       })),
-    };
+    });
   }
 }
 
