@@ -1042,6 +1042,7 @@ const extendedVi = {
   "admin.dashboard.statuses": "trạng thái",
   "admin.dashboard.popularity": "Mức độ phổ biến",
   "admin.dashboard.popularGames": "Top game theo số giải",
+  "admin.dashboard.otherGames": "Các game khác",
   "admin.dashboard.noGameData": "Chưa có dữ liệu game.",
   "admin.dashboard.viewAll": "Xem tất cả",
   "admin.dashboard.recentActivity": "Hoạt động gần đây",
@@ -1194,9 +1195,9 @@ const extendedVi = {
   "admin.tournaments.platformVisibility": "Hiển thị nền tảng",
   "admin.tournaments.activeState": "Đang hoạt động",
   "admin.tournaments.separationHint":
-    "Trạng thái riêng tư/công khai do Organizer cấu hình và trạng thái Admin ẩn là hai khái niệm độc lập.",
+    "Ẩn trên nền tảng không thay đổi chế độ công khai/riêng tư của giải.",
   "admin.tournaments.hiddenVerifyHint":
-    "Backend không cho xác minh giải đang bị ẩn",
+    "Cần bỏ ẩn giải trước khi xác minh.",
   "admin.tournaments.hiddenOfficialHint":
     "Không thể gắn nhãn chính thức cho giải đang bị ẩn",
   "admin.tournaments.officialOwnerHint":
@@ -1206,6 +1207,8 @@ const extendedVi = {
   "admin.tournaments.updating": "Đang cập nhật...",
   "admin.tournaments.makeOfficial": "Gắn nhãn chính thức",
   "admin.tournaments.removeOfficial": "Gỡ nhãn chính thức",
+  "admin.tournaments.makeOfficialShort": "Gắn chính thức",
+  "admin.tournaments.removeOfficialShort": "Gỡ chính thức",
   "admin.tournaments.officialConfirm": "Gắn nhãn chính thức cho",
   "admin.tournaments.removeOfficialConfirm": "Gỡ nhãn chính thức khỏi",
   "admin.tournaments.officialNotice":
@@ -1216,8 +1219,11 @@ const extendedVi = {
   "admin.tournaments.verify": "Xác minh giải",
   "admin.tournaments.unhide": "Bỏ ẩn trên nền tảng",
   "admin.tournaments.hide": "Ẩn khỏi nền tảng",
+  "admin.tournaments.unhideShort": "Bỏ ẩn giải",
+  "admin.tournaments.hideShort": "Ẩn giải",
   "admin.tournaments.viewPublic": "Xem trang giải đấu",
   "admin.tournaments.overrideHeading": "Can thiệp hỗ trợ",
+  "admin.tournaments.overrideDuration": "4 giờ",
   "admin.tournaments.overrideTitle": "Bắt đầu Admin Override?",
   "admin.tournaments.overrideDescription":
     "Bạn sắp nhận quyền vận hành tạm thời đối với",

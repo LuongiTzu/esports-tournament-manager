@@ -9,6 +9,7 @@ import {
   PlayIcon,
   XCircleIcon,
 } from "@phosphor-icons/react";
+import ResolvedImage from "@/components/ResolvedImage";
 import { formatAdminNumber } from "@/features/admin/format";
 import type {
   AdminDailyGrowthPoint,
@@ -17,6 +18,7 @@ import type {
 } from "@/features/admin/types";
 import { localeTag } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
+import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 import type { TournamentStatus } from "@/shared/types/tournament-status";
 
 const STATUS_STYLES: Record<
@@ -59,6 +61,27 @@ const STATUS_STYLES: Record<
     icon: XCircleIcon,
   },
 };
+
+const POPULAR_GAME_COLORS = [
+  "var(--color-brand-secondary)",
+  "var(--color-brand)",
+  "var(--color-accent)",
+  "var(--color-approved)",
+  "var(--color-pending)",
+] as const;
+
+function createDonutGradient(
+  slices: Array<{ count: number; color: string }>,
+  total: number,
+) {
+  let offset = 0;
+  const stops = slices.map((slice) => {
+    const start = offset;
+    offset += (slice.count / total) * 100;
+    return `${slice.color} ${start}% ${offset}%`;
+  });
+  return `conic-gradient(${stops.join(", ")})`;
+}
 
 function Panel({
   children,
@@ -380,9 +403,36 @@ export function TournamentStatusDistribution({
 
 export function PopularGamesChart({ stats }: { stats: AdminDashboardStats }) {
   const { locale, t } = useLocale();
-  const maxCount = Math.max(
-    1,
-    ...stats.topGames.map((game) => game.tournamentCount),
+  const rankedGames = stats.topGames.map((game, index) => ({
+    ...game,
+    color: POPULAR_GAME_COLORS[index % POPULAR_GAME_COLORS.length],
+  }));
+  const rankedTournamentCount = rankedGames.reduce(
+    (sum, game) => sum + game.tournamentCount,
+    0,
+  );
+  const chartTotal = Math.max(stats.totalTournaments, rankedTournamentCount, 1);
+  const otherTournamentCount = Math.max(
+    chartTotal - rankedTournamentCount,
+    0,
+  );
+  const donutGradient = createDonutGradient(
+    [
+      ...rankedGames.map((game) => ({
+        count: game.tournamentCount,
+        color: game.color,
+      })),
+      ...(otherTournamentCount > 0
+        ? [
+            {
+              count: otherTournamentCount,
+              color:
+                "color-mix(in oklab, var(--color-ink-faint) 25%, transparent)",
+            },
+          ]
+        : []),
+    ],
+    chartTotal,
   );
 
   return (
@@ -408,38 +458,98 @@ export function PopularGamesChart({ stats }: { stats: AdminDashboardStats }) {
           {t("admin.dashboard.noGameData")}
         </p>
       ) : (
-        <div className="mt-5 space-y-4">
-          {stats.topGames.map((game, index) => (
-            <div key={game.gameId}>
-              <div className="mb-1.5 flex items-center gap-3 text-xs">
-                <span className="w-5 font-mono text-ink-faint">
-                  {String(index + 1).padStart(2, "0")}
+        <div className="mt-6 grid items-center gap-6 sm:grid-cols-[13rem_minmax(0,1fr)]">
+          <div
+            role="img"
+            aria-label={`${t("admin.dashboard.popularGames")}: ${formatAdminNumber(chartTotal, locale)}`}
+            className="mx-auto grid size-52 shrink-0 place-items-center rounded-full p-[15px] shadow-[0_16px_48px_color-mix(in_oklab,var(--color-brand)_16%,transparent)]"
+            style={{ background: donutGradient }}
+          >
+            <div className="grid size-full place-items-center rounded-full border border-line bg-surface-card/75 text-center backdrop-blur-xl">
+              <span>
+                <GameControllerIcon
+                  size={22}
+                  weight="duotone"
+                  className="mx-auto text-brand-secondary"
+                />
+                <strong className="mt-1 block font-mono text-3xl font-black text-ink">
+                  {formatAdminNumber(chartTotal, locale)}
+                </strong>
+                <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wide text-ink-faint">
+                  {t("admin.dashboard.totalTournaments")}
                 </span>
-                <span className="min-w-0 flex-1 truncate font-semibold text-ink-muted">
-                  {game.displayGameName}
+              </span>
+            </div>
+          </div>
+
+          <ul className="min-w-0 space-y-2">
+            {rankedGames.map((game, index) => (
+              <li
+                key={game.gameId}
+                className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-line bg-surface-sub/35 p-2"
+              >
+                <span className="h-9 w-12 overflow-hidden rounded-md bg-surface-sub">
+                  <ResolvedImage
+                    src={getTournamentBannerUrl(
+                      null,
+                      game.displayGameName,
+                      game.gameCode,
+                    )}
+                    alt={game.displayGameName}
+                    className="size-full object-cover"
+                    fallback={
+                      <span className="grid size-full place-items-center font-mono text-xs font-black text-brand">
+                        {game.displayGameName.charAt(0).toUpperCase()}
+                      </span>
+                    }
+                  />
                 </span>
-                <span className="font-mono font-black text-ink">
-                  {formatAdminNumber(game.tournamentCount, locale)} ·{" "}
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: game.color }}
+                    />
+                    <span className="truncate text-xs font-bold text-ink-muted">
+                      {String(index + 1).padStart(2, "0")} ·{" "}
+                      {game.displayGameName}
+                    </span>
+                  </span>
+                </span>
+                <span className="text-right">
+                  <strong className="block font-mono text-sm font-black text-ink">
+                    {formatAdminNumber(game.tournamentCount, locale)}
+                  </strong>
+                  <span className="block font-mono text-[10px] text-ink-faint">
+                    {((game.tournamentCount / chartTotal) * 100).toLocaleString(
+                      localeTag(locale),
+                      { maximumFractionDigits: 1 },
+                    )}
+                    %
+                  </span>
+                </span>
+              </li>
+            ))}
+
+            {otherTournamentCount > 0 && (
+              <li className="flex items-center gap-3 px-2 pt-1 text-[11px] text-ink-faint">
+                <span className="size-2 rounded-full bg-ink-faint/40" />
+                <span className="min-w-0 flex-1 font-semibold">
+                  {t("admin.dashboard.otherGames")}
+                </span>
+                <span className="font-mono font-bold">
+                  {formatAdminNumber(otherTournamentCount, locale)} ·{" "}
                   {(
-                    (game.tournamentCount /
-                      Math.max(stats.totalTournaments, 1)) *
+                    (otherTournamentCount / chartTotal) *
                     100
                   ).toLocaleString(localeTag(locale), {
                     maximumFractionDigits: 1,
                   })}
                   %
                 </span>
-              </div>
-              <div className="ml-8 h-2 overflow-hidden rounded-full bg-surface-sub">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-brand to-brand-secondary"
-                  style={{
-                    width: `${(game.tournamentCount / maxCount) * 100}%`,
-                  }}
-                />
-              </div>
-            </div>
-          ))}
+              </li>
+            )}
+          </ul>
         </div>
       )}
     </Panel>

@@ -336,11 +336,13 @@ describe('AdminService moderation', () => {
         topGames: [
           {
             gameId: 'game-1',
+            gameCode: 'VALORANT',
             displayGameName: 'Valorant',
             tournamentCount: 4,
           },
           {
             gameId: 'custom:chess',
+            gameCode: 'CUSTOM',
             displayGameName: 'Chess',
             tournamentCount: 3,
           },

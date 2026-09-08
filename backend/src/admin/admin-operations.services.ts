@@ -274,7 +274,12 @@ function aggregateTopGames(
 ) {
   const totals = new Map<
     string,
-    { gameId: string; displayGameName: string; tournamentCount: number }
+    {
+      gameId: string;
+      gameCode: string;
+      displayGameName: string;
+      tournamentCount: number;
+    }
   >();
 
   for (const row of rows) {
@@ -287,6 +292,7 @@ function aggregateTopGames(
     const current = totals.get(key);
     totals.set(key, {
       gameId: customName ? key : row.gameId,
+      gameCode: game?.code ?? 'CUSTOM',
       displayGameName: current?.displayGameName ?? displayGameName,
       tournamentCount: (current?.tournamentCount ?? 0) + row._count._all,
     });

@@ -1067,6 +1067,7 @@ const extendedEn = {
   "admin.dashboard.statuses": "statuses",
   "admin.dashboard.popularity": "Popularity",
   "admin.dashboard.popularGames": "Top games by tournaments",
+  "admin.dashboard.otherGames": "Other games",
   "admin.dashboard.noGameData": "No game data yet.",
   "admin.dashboard.viewAll": "View all",
   "admin.dashboard.recentActivity": "Recent activity",
@@ -1222,9 +1223,9 @@ const extendedEn = {
   "admin.tournaments.platformVisibility": "Platform visibility",
   "admin.tournaments.activeState": "Active",
   "admin.tournaments.separationHint":
-    "Organizer PUBLIC/PRIVATE visibility and Admin-hidden moderation state are independent concepts.",
+    "Hiding a tournament on the platform does not change its public/private setting.",
   "admin.tournaments.hiddenVerifyHint":
-    "The backend does not allow verifying a hidden tournament",
+    "Unhide the tournament before verifying it.",
   "admin.tournaments.hiddenOfficialHint":
     "A hidden tournament cannot receive the official label",
   "admin.tournaments.officialOwnerHint":
@@ -1234,6 +1235,8 @@ const extendedEn = {
   "admin.tournaments.updating": "Updating...",
   "admin.tournaments.makeOfficial": "Mark as official",
   "admin.tournaments.removeOfficial": "Remove official label",
+  "admin.tournaments.makeOfficialShort": "Make official",
+  "admin.tournaments.removeOfficialShort": "Remove label",
   "admin.tournaments.officialConfirm": "Mark as official",
   "admin.tournaments.removeOfficialConfirm": "Remove the official label from",
   "admin.tournaments.officialNotice":
@@ -1244,8 +1247,11 @@ const extendedEn = {
   "admin.tournaments.verify": "Verify tournament",
   "admin.tournaments.unhide": "Unhide on platform",
   "admin.tournaments.hide": "Hide from platform",
+  "admin.tournaments.unhideShort": "Unhide",
+  "admin.tournaments.hideShort": "Hide",
   "admin.tournaments.viewPublic": "View tournament page",
   "admin.tournaments.overrideHeading": "Emergency support access",
+  "admin.tournaments.overrideDuration": "4 hours",
   "admin.tournaments.overrideTitle": "Start Admin Override?",
   "admin.tournaments.overrideDescription":
     "You are about to receive temporary operational access to",

@@ -1,21 +1,29 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
+  ArrowUpRightIcon,
+  CircleNotchIcon,
+  ClockIcon,
   CrownIcon,
   EyeIcon,
   EyeSlashIcon,
+  InfoIcon,
   SealCheckIcon,
   ShieldWarningIcon,
   WrenchIcon,
 } from "@phosphor-icons/react";
 import ResolvedImage from "@/components/ResolvedImage";
-import { primaryButtonClass, secondaryButtonClass } from "@/components/ui";
 import type { AdminTournament } from "@/features/admin/types";
 import { formatAdminDate } from "@/features/admin/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 
 export type AdminTournamentWorkingAction =
   "VERIFY" | "OFFICIAL" | "MODERATE" | "OVERRIDE" | "";
+
+const actionButtonClass =
+  "inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold leading-5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface-card disabled:cursor-not-allowed disabled:opacity-45 [&_svg]:shrink-0";
+
+const neutralActionClass = `${actionButtonClass} border-line-strong/70 bg-surface-card/55 text-ink-muted enabled:hover:border-brand/50 enabled:hover:bg-brand/10 enabled:hover:text-ink`;
 
 export default function AdminTournamentDetail({
   tournament,
@@ -45,6 +53,17 @@ export default function AdminTournamentDetail({
   const ownsActiveOverride = activeOverride?.adminId === currentAdminId;
   const canBecomeOfficial = tournament.organizer.role === "ADMIN";
   const working = Boolean(workingAction);
+  const officialHint =
+    !tournament.isOfficial && !canBecomeOfficial
+      ? t("admin.tournaments.officialOwnerHint")
+      : hidden && !tournament.isOfficial
+        ? t("admin.tournaments.hiddenOfficialHint")
+        : undefined;
+  const verificationHint = tournament.isOfficial
+    ? t("admin.tournaments.officialVerifyHint")
+    : hidden && !tournament.isVerified
+      ? t("admin.tournaments.hiddenVerifyHint")
+      : undefined;
   const formatDate = (value: string | null) =>
     value ? formatAdminDate(value, locale, true) : t("common.notSet");
 
@@ -168,153 +187,220 @@ export default function AdminTournamentDetail({
         </dl>
 
         <section className="mt-5 border-t border-line pt-5">
-          <div className="flex items-center gap-2">
-            <ShieldWarningIcon className="text-brand" />
-            <h3 className="text-sm font-bold text-ink">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-brand/15 bg-brand/10 text-brand-hover">
+              <ShieldWarningIcon size={17} aria-hidden="true" />
+            </span>
+            <h3 className="text-sm font-semibold text-ink">
               {t("admin.tournaments.platformModeration")}
             </h3>
           </div>
-          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
-            <StatusBadge
-              active={tournament.isOfficial}
-              activeClass="bg-accent/12 text-accent"
-            >
-              {t("admin.tournaments.officialLabel")}:{" "}
-              {tournament.isOfficial
-                ? t("admin.tournaments.official")
-                : t("admin.tournaments.community")}
-            </StatusBadge>
-            <StatusBadge active={tournament.isVerified}>
-              {t("admin.tournaments.verificationLabel")}:{" "}
-              {tournament.isVerified
-                ? t("admin.tournaments.verified")
-                : t("admin.tournaments.unverified")}
-            </StatusBadge>
-            <span
-              className={`rounded-lg px-3 py-2 font-semibold ${
-                hidden
-                  ? "bg-rejected/12 text-rejected"
-                  : "bg-approved/12 text-approved"
-              }`}
-            >
-              {t("admin.tournaments.platformVisibility")}:{" "}
-              {hidden
-                ? t("admin.tournaments.hidden")
-                : t("admin.tournaments.activeState")}
-            </span>
-          </div>
-          <p className="mt-3 text-xs leading-5 text-ink-faint">
-            {t("admin.tournaments.separationHint")}
-          </p>
-
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              disabled={
-                working ||
-                (!tournament.isOfficial && (hidden || !canBecomeOfficial))
-              }
-              onClick={() => onOfficialChange(!tournament.isOfficial)}
-              className={secondaryButtonClass}
-              title={
-                !tournament.isOfficial && !canBecomeOfficial
-                  ? t("admin.tournaments.officialOwnerHint")
-                  : hidden && !tournament.isOfficial
-                    ? t("admin.tournaments.hiddenOfficialHint")
-                    : undefined
-              }
-            >
-              <CrownIcon />
-              {workingAction === "OFFICIAL"
-                ? t("admin.tournaments.updating")
-                : tournament.isOfficial
-                  ? t("admin.tournaments.removeOfficial")
-                  : t("admin.tournaments.makeOfficial")}
-            </button>
-            <button
-              type="button"
-              disabled={
-                working ||
-                tournament.isOfficial ||
-                (hidden && !tournament.isVerified)
-              }
-              onClick={() => onVerificationChange(!tournament.isVerified)}
-              className={secondaryButtonClass}
-              title={
+          <div className="mt-4 divide-y divide-line rounded-xl border border-line bg-surface-sub/35">
+            <ModerationSettingRow
+              icon={CrownIcon}
+              label={t("admin.tournaments.officialLabel")}
+              value={
                 tournament.isOfficial
-                  ? t("admin.tournaments.officialVerifyHint")
-                  : hidden && !tournament.isVerified
-                    ? t("admin.tournaments.hiddenVerifyHint")
-                    : undefined
+                  ? t("admin.tournaments.official")
+                  : t("admin.tournaments.community")
               }
+              tone={
+                tournament.isOfficial ? "text-brand-hover" : "text-ink-muted"
+              }
+              hint={officialHint}
             >
-              <SealCheckIcon />
-              {workingAction === "VERIFY"
-                ? t("admin.tournaments.updating")
-                : tournament.isVerified
+              <button
+                type="button"
+                disabled={
+                  working ||
+                  (!tournament.isOfficial && (hidden || !canBecomeOfficial))
+                }
+                onClick={() => onOfficialChange(!tournament.isOfficial)}
+                className={neutralActionClass}
+                title={officialHint}
+                aria-busy={workingAction === "OFFICIAL"}
+                aria-label={
+                  tournament.isOfficial
+                    ? t("admin.tournaments.removeOfficial")
+                    : t("admin.tournaments.makeOfficial")
+                }
+              >
+                {workingAction === "OFFICIAL" && (
+                  <CircleNotchIcon
+                    size={14}
+                    className="animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                )}
+                {tournament.isOfficial
+                  ? t("admin.tournaments.removeOfficialShort")
+                  : t("admin.tournaments.makeOfficialShort")}
+              </button>
+            </ModerationSettingRow>
+            <ModerationSettingRow
+              icon={SealCheckIcon}
+              label={t("admin.tournaments.verificationLabel")}
+              value={
+                tournament.isVerified
+                  ? t("admin.tournaments.verified")
+                  : t("admin.tournaments.unverified")
+              }
+              tone={
+                tournament.isVerified ? "text-brand-hover" : "text-ink-muted"
+              }
+              hint={verificationHint}
+            >
+              <button
+                type="button"
+                disabled={
+                  working ||
+                  tournament.isOfficial ||
+                  (hidden && !tournament.isVerified)
+                }
+                onClick={() => onVerificationChange(!tournament.isVerified)}
+                className={neutralActionClass}
+                title={verificationHint}
+                aria-busy={workingAction === "VERIFY"}
+              >
+                {workingAction === "VERIFY" && (
+                  <CircleNotchIcon
+                    size={14}
+                    className="animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                )}
+                {tournament.isVerified
                   ? t("admin.tournaments.unverify")
                   : t("admin.tournaments.verify")}
-            </button>
-            <button
-              type="button"
-              disabled={working}
-              onClick={hidden ? onUnhide : onHide}
-              className={
+              </button>
+            </ModerationSettingRow>
+            <ModerationSettingRow
+              icon={hidden ? EyeSlashIcon : EyeIcon}
+              label={t("admin.tournaments.platformVisibility")}
+              value={
                 hidden
-                  ? primaryButtonClass
-                  : `${secondaryButtonClass} border-rejected/40 text-rejected`
+                  ? t("admin.tournaments.hidden")
+                  : t("admin.tournaments.platformVisible")
               }
+              tone={hidden ? "text-rejected" : "text-approved"}
             >
-              {hidden ? <EyeIcon /> : <EyeSlashIcon />}
-              {workingAction === "MODERATE"
-                ? t("admin.tournaments.updating")
-                : hidden
-                  ? t("admin.tournaments.unhide")
-                  : t("admin.tournaments.hide")}
-            </button>
+              <button
+                type="button"
+                disabled={working}
+                onClick={hidden ? onUnhide : onHide}
+                aria-busy={workingAction === "MODERATE"}
+                aria-label={
+                  hidden
+                    ? t("admin.tournaments.unhide")
+                    : t("admin.tournaments.hide")
+                }
+                className={`${actionButtonClass} ${
+                  hidden
+                    ? "border-brand/30 bg-brand/12 text-brand-hover enabled:hover:bg-brand/20"
+                    : "border-rejected/25 bg-rejected/10 text-rejected enabled:hover:bg-rejected/15"
+                }`}
+              >
+                {workingAction === "MODERATE" && (
+                  <CircleNotchIcon
+                    size={14}
+                    className="animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                )}
+                {hidden
+                  ? t("admin.tournaments.unhideShort")
+                  : t("admin.tournaments.hideShort")}
+              </button>
+            </ModerationSettingRow>
           </div>
+          <p className="mt-3 flex items-start gap-2 px-1 text-xs leading-5 text-ink-faint">
+            <InfoIcon
+              size={14}
+              className="mt-0.5 shrink-0"
+              aria-hidden="true"
+            />
+            {t("admin.tournaments.separationHint")}
+          </p>
         </section>
 
         {!isOwnTournament && (
-          <section className="mt-5 border-t border-line pt-5">
-            <div className="flex items-center gap-2">
-              <WrenchIcon className="text-pending" />
-              <h3 className="text-sm font-bold text-ink">
+          <section className="mt-5 rounded-xl border border-line bg-surface-sub/35 p-4">
+            <div className="flex items-center gap-2.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-pending/15 bg-pending/10 text-pending">
+                <WrenchIcon size={17} aria-hidden="true" />
+              </span>
+              <h3 className="min-w-0 flex-1 text-sm font-semibold text-ink">
                 {t("admin.tournaments.overrideHeading")}
               </h3>
+              {!activeOverride && (
+                <span
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-ink-muted"
+                  title={t("admin.tournaments.overrideExpires")}
+                >
+                  <ClockIcon size={13} aria-hidden="true" />
+                  {t("admin.tournaments.overrideDuration")}
+                </span>
+              )}
             </div>
             {activeOverride ? (
-              <div className="mt-3 rounded-xl border border-pending/30 bg-pending/10 p-3 text-xs leading-5 text-ink-muted">
-                <p className="font-semibold text-pending">
+              <div className="mt-4 text-xs leading-5 text-ink-muted">
+                <p className="flex items-center gap-2 font-medium text-pending">
+                  <span className="size-1.5 shrink-0 rounded-full bg-pending" />
                   {t("admin.tournaments.overrideActive")}
                 </p>
-                <p className="mt-1">
-                  {t("admin.tournaments.overrideBy")}:{" "}
-                  {activeOverride.admin.displayName} (
-                  {activeOverride.admin.email})
-                </p>
-                <p className="mt-1 break-words">
-                  {t("admin.tournaments.overrideReason")}:{" "}
-                  {activeOverride.reason}
-                </p>
-                <p className="mt-1">
-                  {t("admin.tournaments.overrideExpires")}:{" "}
-                  {formatAdminDate(activeOverride.expiresAt, locale, true)}
-                </p>
+                <dl className="mt-3 space-y-3 border-t border-line pt-3">
+                  <div>
+                    <dt className="text-ink-faint">
+                      {t("admin.tournaments.overrideBy")}
+                    </dt>
+                    <dd className="mt-0.5 font-medium text-ink">
+                      {activeOverride.admin.displayName}
+                      <span className="block break-all font-normal text-ink-muted">
+                        {activeOverride.admin.email}
+                      </span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-faint">
+                      {t("admin.tournaments.overrideReason")}
+                    </dt>
+                    <dd className="mt-0.5 break-words">
+                      {activeOverride.reason}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="flex items-center gap-1.5 text-ink-faint">
+                      <ClockIcon size={13} aria-hidden="true" />
+                      {t("admin.tournaments.overrideExpires")}
+                    </dt>
+                    <dd className="mt-0.5 font-medium text-ink">
+                      {formatAdminDate(activeOverride.expiresAt, locale, true)}
+                    </dd>
+                  </div>
+                </dl>
                 {ownsActiveOverride && (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="mt-4 grid gap-2">
                     <Link
                       href={`/tournaments/${tournament.slug}/manage`}
-                      className={primaryButtonClass}
+                      className={`${actionButtonClass} border-brand/30 bg-brand/12 text-brand-hover hover:bg-brand/20`}
                     >
-                      <WrenchIcon /> {t("admin.tournaments.openManagement")}
+                      {t("admin.tournaments.openManagement")}
+                      <ArrowUpRightIcon size={15} aria-hidden="true" />
                     </Link>
                     <button
                       type="button"
                       disabled={working}
                       onClick={onEndOverride}
-                      className={secondaryButtonClass}
+                      aria-busy={workingAction === "OVERRIDE"}
+                      className={neutralActionClass}
                     >
+                      {workingAction === "OVERRIDE" && (
+                        <CircleNotchIcon
+                          size={14}
+                          className="animate-spin motion-reduce:animate-none"
+                          aria-hidden="true"
+                        />
+                      )}
                       {workingAction === "OVERRIDE"
                         ? t("admin.tournaments.endingOverride")
                         : t("admin.tournaments.endOverride")}
@@ -331,10 +417,21 @@ export default function AdminTournamentDetail({
                   type="button"
                   disabled={working}
                   onClick={onStartOverride}
-                  className={`${secondaryButtonClass} mt-3 w-full border-pending/40 text-pending`}
+                  aria-busy={workingAction === "OVERRIDE"}
+                  className={`${actionButtonClass} mt-4 w-full justify-between border-pending/25 bg-pending/8 text-pending enabled:hover:border-pending/45 enabled:hover:bg-pending/15`}
                 >
-                  <ShieldWarningIcon />
-                  {t("admin.tournaments.startOverride")}
+                  {workingAction === "OVERRIDE"
+                    ? t("admin.tournaments.startingOverride")
+                    : t("admin.tournaments.startOverride")}
+                  {workingAction === "OVERRIDE" ? (
+                    <CircleNotchIcon
+                      size={15}
+                      className="animate-spin motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <ArrowUpRightIcon size={15} aria-hidden="true" />
+                  )}
                 </button>
               </>
             )}
@@ -343,32 +440,56 @@ export default function AdminTournamentDetail({
 
         <Link
           href={`/tournaments/${tournament.slug}`}
-          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand hover:text-brand-hover"
+          className="mt-4 flex min-h-10 items-center justify-between gap-2 rounded-lg px-2 text-xs font-medium text-ink-muted transition-colors hover:bg-brand/10 hover:text-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
-          <EyeIcon /> {t("admin.tournaments.viewPublic")}
+          <span className="inline-flex items-center gap-2">
+            <EyeIcon size={15} aria-hidden="true" />
+            {t("admin.tournaments.viewPublic")}
+          </span>
+          <ArrowUpRightIcon size={15} aria-hidden="true" />
         </Link>
       </div>
     </article>
   );
 }
 
-function StatusBadge({
-  active,
-  activeClass = "bg-brand/12 text-brand",
+function ModerationSettingRow({
+  icon: Icon,
+  label,
+  value,
+  tone,
+  hint,
   children,
 }: {
-  active: boolean;
-  activeClass?: string;
+  icon: typeof CrownIcon;
+  label: string;
+  value: string;
+  tone: string;
+  hint?: string;
   children: ReactNode;
 }) {
   return (
-    <span
-      className={`rounded-lg px-3 py-2 font-semibold ${
-        active ? activeClass : "bg-surface-sub text-ink-muted"
-      }`}
-    >
-      {children}
-    </span>
+    <div className="p-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2.5">
+        <div className="flex min-w-32 flex-1 items-center gap-2.5">
+          <Icon
+            size={17}
+            className="shrink-0 text-ink-faint"
+            aria-hidden="true"
+          />
+          <dl className="min-w-0">
+            <dt className="text-[11px] leading-5 text-ink-faint">{label}</dt>
+            <dd className={`mt-0.5 text-xs font-semibold leading-5 ${tone}`}>
+              {value}
+            </dd>
+          </dl>
+        </div>
+        {children}
+      </div>
+      {hint && (
+        <p className="mt-2 text-[11px] leading-5 text-ink-faint">{hint}</p>
+      )}
+    </div>
   );
 }
 

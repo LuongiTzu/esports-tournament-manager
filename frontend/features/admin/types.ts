@@ -49,6 +49,7 @@ export interface AdminTournamentStatusCount {
 
 export interface AdminPopularGame {
   gameId: string;
+  gameCode: string;
   displayGameName: string;
   tournamentCount: number;
 }

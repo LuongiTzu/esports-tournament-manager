@@ -193,31 +193,115 @@ body {
 .admin-sidebar {
   background-color: color-mix(
     in oklab,
-    var(--color-surface-card) 76%,
+    var(--color-surface-card) 58%,
     transparent
   );
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
 }
 
 .admin-console .bg-surface-card {
   background-color: color-mix(
     in oklab,
-    var(--color-surface-card) 68%,
+    var(--color-surface-card) 50%,
     transparent
   );
-  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
 }
 
 .admin-console .bg-surface-sub {
   background-color: color-mix(
     in oklab,
-    var(--color-surface-sub) 55%,
+    var(--color-surface-sub) 36%,
+    transparent
+  );
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.admin-console .bg-input {
+  background-color: color-mix(in oklab, var(--color-input) 34%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.admin-console .bg-surface-elevated {
+  background-color: color-mix(
+    in oklab,
+    var(--color-surface-elevated) 56%,
+    transparent
+  );
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+/* Tailwind opacity variants need their own glass values because their class
+   names do not match the exact surface selectors above. */
+.admin-console .bg-surface-card\/75 {
+  --admin-glass-opacity: 54%;
+}
+
+.admin-console .bg-surface-card\/70 {
+  --admin-glass-opacity: 48%;
+}
+
+.admin-console .bg-surface-card\/55 {
+  --admin-glass-opacity: 40%;
+}
+
+.admin-console .bg-surface-card\/75,
+.admin-console .bg-surface-card\/70,
+.admin-console .bg-surface-card\/55 {
+  background-color: color-mix(
+    in oklab,
+    var(--color-surface-card) var(--admin-glass-opacity),
     transparent
   );
 }
 
-.admin-console .bg-input {
-  background-color: color-mix(in oklab, var(--color-input) 52%, transparent);
-  backdrop-filter: blur(10px);
+.admin-console .bg-surface-sub\/70 {
+  --admin-glass-opacity: 44%;
+}
+
+.admin-console .bg-surface-sub\/65 {
+  --admin-glass-opacity: 41%;
+}
+
+.admin-console .bg-surface-sub\/60 {
+  --admin-glass-opacity: 38%;
+}
+
+.admin-console .bg-surface-sub\/50 {
+  --admin-glass-opacity: 31%;
+}
+
+.admin-console .bg-surface-sub\/35 {
+  --admin-glass-opacity: 23%;
+}
+
+.admin-console .bg-surface-sub\/70,
+.admin-console .bg-surface-sub\/65,
+.admin-console .bg-surface-sub\/60,
+.admin-console .bg-surface-sub\/50,
+.admin-console .bg-surface-sub\/35 {
+  background-color: color-mix(
+    in oklab,
+    var(--color-surface-sub) var(--admin-glass-opacity),
+    transparent
+  );
+}
+
+.admin-console .bg-surface-card\/75,
+.admin-console .bg-surface-card\/70,
+.admin-console .bg-surface-card\/55,
+.admin-console .bg-surface-sub\/70,
+.admin-console .bg-surface-sub\/65,
+.admin-console .bg-surface-sub\/60,
+.admin-console .bg-surface-sub\/50,
+.admin-console .bg-surface-sub\/35 {
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
 
 .admin-console .bg-brand-secondary {
