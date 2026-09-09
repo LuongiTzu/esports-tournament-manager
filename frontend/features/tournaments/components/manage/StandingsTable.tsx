@@ -1,9 +1,9 @@
 "use client";
 
-import { CheckCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import type { BasicStanding, BracketTeam } from "@/features/tournaments/types";
 import ResolvedImage from "@/components/ResolvedImage";
 import { useLocale } from "@/features/locale/store";
+import QualificationBadge from "./QualificationBadge";
 
 export default function StandingsTable({
   rows,
@@ -77,15 +77,12 @@ export default function StandingsTable({
                         fallback={row.name.slice(0, 1)}
                       />
                     </span>
-                    <span className="min-w-0" title={row.name}>
-                      {row.name}
-                    </span>
-                    {qualified && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-approved/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-approved">
-                        <CheckCircleIcon weight="fill" />{" "}
-                        {t("standings.qualified")}
+                    <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="min-w-0 flex-1 basis-24" title={row.name}>
+                        {row.name}
                       </span>
-                    )}
+                      {qualified && <QualificationBadge />}
+                    </span>
                   </span>
                 </td>
                 {!compact && (

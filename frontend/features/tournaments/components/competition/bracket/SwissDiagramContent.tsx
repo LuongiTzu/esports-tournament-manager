@@ -34,7 +34,6 @@ export default function SwissDiagramContent({
           <span>
             {t("competition.swissIteration")} {column.round}
           </span>
-          <span>{String(column.round).padStart(2, "0")}</span>
           {column.pending && (
             <div
               className={styles.swissPending}
@@ -176,7 +175,7 @@ export default function SwissDiagramContent({
                 key={row.teamId}
                 title={`#${row.rank} · ${row.team?.name ?? t("match.noTeam")}`}
               >
-                {row.team?.shortName || row.team?.name || t("match.noTeam")}
+                {row.team?.name || t("match.noTeam")}
               </span>
             ))}
           </div>

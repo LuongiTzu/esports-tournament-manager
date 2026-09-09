@@ -164,6 +164,9 @@ export default function DepthCarousel({
 
   const rootStyle = {
     "--dc-perspective": `${perspective}px`,
+    "--dc-card-width": `${cardWidth}px`,
+    "--dc-card-ratio": `${cardWidth} / ${cardHeight}`,
+    "--dc-card-height-ratio": `${cardHeight / cardWidth}`,
   } as CarouselStyle;
 
   return (
@@ -188,9 +191,6 @@ export default function DepthCarousel({
           const visible = offset >= 0 && distance <= visibleCards;
           const direction = tiltDirection === "right" ? 1 : -1;
           const cardStyle = {
-            "--dc-card-width": `${cardWidth}px`,
-            "--dc-card-height": `${cardHeight}px`,
-            "--dc-card-ratio": `${cardWidth} / ${cardHeight}`,
             "--dc-radius": `${radius}px`,
             "--dc-tint": tint,
             "--dc-duration": `${duration}ms`,

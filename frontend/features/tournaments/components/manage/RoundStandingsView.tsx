@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircleIcon, TrophyIcon } from "@phosphor-icons/react/dist/ssr";
+import { TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import type {
   RoundStandings,
   SwissStanding,
@@ -8,6 +8,7 @@ import type {
   TournamentStandingsResponse,
 } from "@/features/tournaments/types";
 import StandingsTable from "./StandingsTable";
+import QualificationBadge from "./QualificationBadge";
 import { useLocale } from "@/features/locale/store";
 
 function SwissTable({
@@ -58,16 +59,11 @@ function SwissTable({
                     {row.team?.name ??
                       `${t("standings.team")} ${row.teamId.slice(0, 8)}`}
                     {row.state === "ELIMINATED" && (
-                      <span className="rounded-full bg-rejected/10 px-2 py-0.5 text-xs text-rejected">
+                      <span className="shrink-0 whitespace-nowrap rounded-full bg-rejected/10 px-2 py-0.5 text-xs text-rejected">
                         {t("swiss.eliminated")}
                       </span>
                     )}
-                    {qualified && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-approved/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-approved">
-                        <CheckCircleIcon weight="fill" />{" "}
-                        {t("standings.qualified")}
-                      </span>
-                    )}
+                    {qualified && <QualificationBadge />}
                   </span>
                 </td>
                 <td className="px-3 py-3 text-center text-ink-muted">

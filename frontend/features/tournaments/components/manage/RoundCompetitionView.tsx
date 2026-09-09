@@ -20,12 +20,14 @@ export default function RoundCompetitionView({
   tournamentName,
   standings,
   onSelectMatch,
+  diagramClassName,
 }: {
   bracket: RoundBracket;
   bannerUrl?: string | null;
   tournamentName?: string;
   standings?: RoundStandings;
   onSelectMatch?: (match: BracketMatch) => void;
+  diagramClassName?: string;
 }) {
   const { t } = useLocale();
   const panelId = useId();
@@ -37,14 +39,16 @@ export default function RoundCompetitionView({
       : "list");
   if (["GROUP_STAGE", "ROUND_ROBIN"].includes(bracket.round.format))
     return (
-      <LeagueCompetitionView
-        key={bracket.round.id}
-        bracket={bracket}
-        standings={standings}
-        bannerUrl={bannerUrl}
-        tournamentName={tournamentName}
-        onSelectMatch={onSelectMatch}
-      />
+      <div className={diagramClassName}>
+        <LeagueCompetitionView
+          key={bracket.round.id}
+          bracket={bracket}
+          standings={standings}
+          bannerUrl={bannerUrl}
+          tournamentName={tournamentName}
+          onSelectMatch={onSelectMatch}
+        />
+      </div>
     );
   return (
     <div className="min-w-0">
@@ -78,7 +82,10 @@ export default function RoundCompetitionView({
           })}
         </div>
       </div>
-      <div id={panelId}>
+      <div
+        id={panelId}
+        className={mode === "diagram" ? diagramClassName : undefined}
+      >
         {mode === "diagram" ? (
           <BracketDiagram
             key={bracket.round.id}

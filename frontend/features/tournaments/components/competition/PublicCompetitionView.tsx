@@ -169,7 +169,7 @@ export default function PublicCompetitionView({
             onSelect={setSelectedRoundId}
           />
 
-          <div className="mt-4 min-w-0 rounded-2xl border border-line bg-surface-sub/25 p-4 sm:p-5">
+          <div className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-line bg-surface-sub/25 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-bold text-ink">
@@ -207,6 +207,7 @@ export default function PublicCompetitionView({
                 )}
               </h3>
               <RoundCompetitionView
+                diagramClassName="-mx-4 sm:-mx-5"
                 bracket={selectedBracket}
                 bannerUrl={bannerUrl}
                 tournamentName={tournamentName}

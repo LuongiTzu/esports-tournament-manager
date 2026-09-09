@@ -1,4 +1,6 @@
 .root {
+  --dc-card-center-x: 43%;
+  --dc-rendered-card-width: min(var(--dc-card-width), 82vw);
   position: relative;
   width: 100%;
   height: 100%;
@@ -33,8 +35,8 @@
 .card {
   position: absolute;
   top: 50%;
-  left: 43%;
-  width: min(var(--dc-card-width), 82vw);
+  left: var(--dc-card-center-x);
+  width: var(--dc-rendered-card-width);
   height: auto;
   aspect-ratio: var(--dc-card-ratio);
   padding: 0;
@@ -132,8 +134,8 @@
 
 .dots {
   position: absolute;
-  bottom: 0.5rem;
-  left: 50%;
+  top: calc(50% + var(--dc-rendered-card-width) * var(--dc-card-height-ratio) / 2 + 20px);
+  left: var(--dc-card-center-x);
   z-index: 2000;
   display: flex;
   gap: 0.45rem;
@@ -173,8 +175,8 @@
 }
 
 @media (min-width: 640px) {
-  .card {
-    left: 42%;
+  .root {
+    --dc-card-center-x: 42%;
   }
 
   .previous {

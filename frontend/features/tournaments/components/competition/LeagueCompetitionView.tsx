@@ -12,6 +12,7 @@ import type {
 } from "@/features/tournaments/types";
 import StandingsTable from "../manage/StandingsTable";
 import BracketMatchCard from "../manage/BracketMatchCard";
+import BracketBackdrop from "./bracket/BracketBackdrop";
 import styles from "./league.module.css";
 
 export default function LeagueCompetitionView({
@@ -67,9 +68,7 @@ export default function LeagueCompetitionView({
       className={styles.board}
       aria-label={roundFormatLabel(bracket.round.format, t)}
     >
-      <div className={styles.art} aria-hidden="true">
-        <ResolvedImage src={bannerUrl} alt="" className={styles.poster} />
-      </div>
+      <BracketBackdrop roundId={bracket.round.id} bannerUrl={bannerUrl} />
       <div className={styles.content}>
         <header className={styles.header}>
           <div>

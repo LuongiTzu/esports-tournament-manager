@@ -7,9 +7,7 @@ import {
   PlusIcon,
   TrophyIcon,
 } from "@phosphor-icons/react";
-import ResolvedImage from "@/components/ResolvedImage";
 import { useLocale } from "@/features/locale/store";
-import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 import { roundFormatLabel } from "@/features/tournaments/round-formats";
 import type {
   BracketMatch,
@@ -23,12 +21,16 @@ import {
   type BracketLayout,
 } from "./bracket-presentation";
 import DiagramMatchCard from "./DiagramMatchCard";
+import BracketBackdrop from "./BracketBackdrop";
 import SwissDiagramContent from "./SwissDiagramContent";
 import {
   layoutSwissBracket,
   type SwissBracketLayout,
 } from "./swiss-presentation";
 import styles from "./bracket.module.css";
+
+// Keep round headings readable by default; "fit" still shows the whole bracket.
+const MIN_AUTO_SCALE = 0.65;
 
 export default function BracketDiagram({
   bracket,
@@ -88,10 +90,13 @@ export default function BracketDiagram({
         )
       : zoom === "auto"
         ? viewportSize.width >= 640
-          ? Math.min(
-              1,
-              viewportSize.width / layout.width,
-              viewportSize.maxHeight / layout.height,
+          ? Math.max(
+              MIN_AUTO_SCALE,
+              Math.min(
+                1,
+                viewportSize.width / layout.width,
+                viewportSize.maxHeight / layout.height,
+              ),
             )
           : Math.min(
               1,
@@ -148,14 +153,7 @@ export default function BracketDiagram({
       data-format={bracket.round.format}
       aria-label={t("bracket.diagram")}
     >
-      <div className={styles.backdrop} aria-hidden="true">
-        <ResolvedImage
-          src={bannerUrl}
-          fallbackSrc={getTournamentBannerUrl()}
-          alt=""
-          className={styles.poster}
-        />
-      </div>
+      <BracketBackdrop roundId={bracket.round.id} bannerUrl={bannerUrl} />
       <header className={styles.header}>
         <div className={styles.titleBlock}>
           <p className={styles.eyebrow}>
@@ -247,7 +245,6 @@ export default function BracketDiagram({
                       }}
                     >
                       <span>{columnLabel(column)}</span>
-                      <span>{String(column.round).padStart(2, "0")}</span>
                       {column.pending && (
                         <div className={styles.pendingRound}>
                           <span>— / —</span>
@@ -324,9 +321,7 @@ export default function BracketDiagram({
                   <span key={row.teamId}>
                     <small>#{row.rank}</small>
                     <strong>
-                      {row.team?.shortName ||
-                        row.team?.name ||
-                        t("match.noTeam")}
+                      {row.team?.name || t("match.noTeam")}
                     </strong>
                     <b>
                       {row.wins}–{row.losses}

@@ -141,7 +141,7 @@ export default function MyProfilePage() {
 
   return (
     <div className="my-tournaments-page home-sections w-full flex-1">
-      <div className="mx-auto w-full max-w-5xl px-4 py-10">
+      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <h1 className="text-2xl font-black text-ink sm:text-3xl">
           {t("profile.myTournaments")}
         </h1>

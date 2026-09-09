@@ -85,7 +85,7 @@ export default function DiagramMatchCard({
           <span className={styles.seed}>({team.seed})</span>
         )}
         <span className={styles.teamName} title={slotName(slot)}>
-          {team?.shortName || slotName(slot)}
+          {slotName(slot)}
         </span>
         {records?.[slot] && (
           <small className={styles.teamRecord}>

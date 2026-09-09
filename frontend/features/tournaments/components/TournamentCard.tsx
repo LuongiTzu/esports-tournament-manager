@@ -65,7 +65,7 @@ export default function TournamentCard({
   return (
     <article
       style={accentVars(t.game?.name)}
-      className={`tournament-card group relative overflow-hidden rounded-2xl border border-line bg-surface-card/90 transition duration-300 hover:-translate-y-1 hover:border-accent/55 hover:shadow-xl hover:shadow-accent/10 ${
+      className={`tournament-card group relative overflow-hidden rounded-2xl border border-line bg-surface-card/90 transition-[border-color,box-shadow] duration-300 hover:border-accent/55 hover:shadow-xl hover:shadow-accent/10 ${
         listView
           ? "grid sm:grid-cols-[18rem_minmax(0,1fr)]"
           : "flex h-full flex-col"
@@ -83,7 +83,7 @@ export default function TournamentCard({
           src={getTournamentBannerUrl(t.bannerUrl, t.game?.name, t.game?.code)}
           fallbackSrc={getTournamentBannerUrl(null, t.game?.name, t.game?.code)}
           alt=""
-          className="absolute inset-0 size-full object-cover object-center transition-transform duration-500 ease-out group-hover:scale-105"
+          className="absolute inset-0 size-full object-cover object-center"
         />
         <div
           aria-hidden

@@ -7,12 +7,13 @@ import type {
 import type { BracketLayout } from "./bracket-presentation";
 
 export const SWISS_SHEET = {
-  cardWidth: 264,
+  cardWidth: 360,
   cardHeight: 60,
   columnGap: 62,
   rowGap: 30,
   padding: 36,
   heading: 36,
+  columnHeading: 72,
   footer: 28,
   sourceY: 30,
   slotAY: 30,
@@ -48,8 +49,16 @@ export function layoutSwissBracket(
   numberOfRounds?: number,
 ): SwissBracketLayout {
   const metrics = SWISS_SHEET;
-  const { padding, heading, footer, cardWidth, cardHeight, columnGap, rowGap } =
-    metrics;
+  const {
+    padding,
+    heading,
+    columnHeading,
+    footer,
+    cardWidth,
+    cardHeight,
+    columnGap,
+    rowGap,
+  } = metrics;
   const matches = new Map(bracket.matches.map((match) => [match.id, match]));
   const byIteration = new Map<number, SwissRecordGroup[]>();
   for (const group of bracket.swiss?.groups ?? []) {
@@ -91,7 +100,7 @@ export function layoutSwissBracket(
   const groupHeight = (group: SwissRecordGroup) =>
     heading + group.entries.length * cardHeight + footer;
   const resultHeight = (teamCount: number) =>
-    heading + Math.max(56, Math.ceil(teamCount / 3) * 34 + 16);
+    heading + Math.max(56, Math.ceil(teamCount / 2) * 56 + 16);
   const resultsHeight =
     [...resultMap.values()].reduce(
       (height, group) => height + resultHeight(group.teams.length),
@@ -139,7 +148,7 @@ export function layoutSwissBracket(
     const totalHeight =
       columnGroups.reduce((height, group) => height + groupHeight(group), 0) +
       Math.max(0, columnGroups.length - 1) * rowGap;
-    let y = padding + heading + (contentHeight - totalHeight) / 2;
+    let y = padding + columnHeading + (contentHeight - totalHeight) / 2;
     for (const group of columnGroups) {
       const height = groupHeight(group);
       groups.push({ group, x, y, height });
@@ -172,7 +181,7 @@ export function layoutSwissBracket(
       path: `M ${x1} ${y1} H ${x1 + columnGap / 2 + (link.result === "loser" ? 5 : -5)} V ${y2} H ${x2}`,
     });
   }
-  let resultY = padding + heading + (contentHeight - resultsHeight) / 2;
+  let resultY = padding + columnHeading + (contentHeight - resultsHeight) / 2;
   const results = [...resultMap.values()].map((group) => {
     const height = resultHeight(group.teams.length);
     const positioned = {
@@ -199,6 +208,6 @@ export function layoutSwissBracket(
         columnCount * cardWidth +
         Math.max(0, columnCount - 1) * columnGap,
     ),
-    height: padding * 2 + heading + contentHeight,
+    height: padding * 2 + columnHeading + contentHeight,
   };
 }

@@ -85,12 +85,12 @@ export function matchScore(match: BracketMatch, slot: Slot) {
 }
 
 export const BRACKET = {
-  cardWidth: 320,
+  cardWidth: 400,
   cardHeight: 80,
   columnGap: 76,
   rowGap: 14,
   padding: 42,
-  heading: 40,
+  heading: 100,
   sourceY: 26,
   slotAY: 26,
   slotBY: 26,
@@ -99,12 +99,12 @@ export const BRACKET = {
 export function bracketMetrics(format: RoundBracket["round"]["format"]) {
   return format === "DOUBLE_ELIM"
     ? {
-        cardWidth: 288,
+        cardWidth: 336,
         cardHeight: 128,
         columnGap: 92,
         rowGap: 62,
         padding: 44,
-        heading: 48,
+        heading: 100,
         sourceY: 68,
         slotAY: 68,
         slotBY: 68,
@@ -268,7 +268,7 @@ export function layoutBracket(
         lane,
         round: matches[0].bracketRound ?? 0,
         x,
-        y: top + 26,
+        y: top + 40,
         kind:
           lane === "bronze"
             ? "bronze"
@@ -323,7 +323,7 @@ export function layoutBracket(
         lane: "main",
         round,
         x: padding + (round - 1) * (cardWidth + columnGap),
-        y: padding + 26,
+        y: padding + 40,
         kind: "round",
         pending: true,
       });
