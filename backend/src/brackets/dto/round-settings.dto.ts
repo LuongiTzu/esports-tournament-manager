@@ -90,6 +90,22 @@ export class GroupStageSettingsDto extends MatchScoringSettingsDto {
 /** Thụy Sĩ */
 export class SwissSettingsDto extends MatchScoringSettingsDto {
   @IsOptional()
+  @IsIn(['FIXED_ROUNDS', 'THRESHOLD'])
+  mode?: 'FIXED_ROUNDS' | 'THRESHOLD';
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  winsToAdvance?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  lossesToEliminate?: number;
+
+  @IsOptional()
   @IsInt({ message: 'numberOfRounds phải là số nguyên' })
   @Min(1, { message: 'numberOfRounds tối thiểu là 1' })
   @Max(20, { message: 'numberOfRounds tối đa là 20' })

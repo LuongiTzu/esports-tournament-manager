@@ -33,6 +33,7 @@ import type {
 import { ApiError } from "@/lib/api/client";
 
 import RoundCompetitionView from "./RoundCompetitionView";
+import RoundSettingsEditor from "./RoundSettingsEditor";
 import MatchManagementPanel from "./MatchManagementPanel";
 import RoundProgressionSummary from "./RoundProgressionSummary";
 import RoundStandingsView from "./RoundStandingsView";
@@ -841,6 +842,22 @@ export default function CompetitionManager({
 
           <div className="mt-4">
             <RoundSettingsSummary round={activeRound} />
+            <RoundSettingsEditor
+              key={`${activeRound.id}-${JSON.stringify(activeRound.settings)}`}
+              round={activeRound}
+              locked={
+                loading ||
+                !bracket ||
+                bracket.matches.length > 0 ||
+                bracket.groups.length > 0 ||
+                activeRound.status !== "UPCOMING" ||
+                ["COMPLETED", "CANCELLED"].includes(tournament.status)
+              }
+              onSaved={async () => {
+                await loadCompetition(activeRound.id);
+                await onTournamentRefresh();
+              }}
+            />
           </div>
 
           {notice && (
@@ -1074,11 +1091,15 @@ export default function CompetitionManager({
                     )}
                   </p>
                 )}
-                <RoundStandingsView
-                  data={activeStandings}
-                  round={activeRound}
-                  tournament={standings.tournament}
-                />
+                {!["GROUP_STAGE", "ROUND_ROBIN"].includes(
+                  activeRound.format,
+                ) && (
+                  <RoundStandingsView
+                    data={activeStandings}
+                    round={activeRound}
+                    tournament={standings.tournament}
+                  />
+                )}
               </div>
             ) : !loading ? (
               <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-muted">

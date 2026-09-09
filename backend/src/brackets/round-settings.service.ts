@@ -167,6 +167,15 @@ function canonicalizeSettings(
   }
   if (format === RoundFormat.SWISS) {
     const canonical = { ...settings };
+    if (canonical.mode === 'THRESHOLD') {
+      if (canonical.winsToAdvance === undefined) canonical.winsToAdvance = 3;
+      if (canonical.lossesToEliminate === undefined)
+        canonical.lossesToEliminate = 3;
+      canonical.numberOfRounds = null;
+      // Keep the legacy response field, but threshold qualification has no Top-N cutoff.
+      canonical.advancingTeamCount =
+        DEFAULT_ROUND_SETTINGS[RoundFormat.SWISS].advancingTeamCount;
+    }
     if (
       canonical.numberOfRounds === undefined &&
       canonical.numRounds !== undefined

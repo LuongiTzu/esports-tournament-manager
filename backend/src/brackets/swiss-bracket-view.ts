@@ -1,6 +1,10 @@
 import { RoundFormat } from '@prisma/client';
 import { SwissGenerator } from './generators/swiss.generator';
-import { RoundSettingsMap, SwissSettings } from './types/round-settings';
+import {
+  RoundSettingsMap,
+  SwissSettings,
+  resolveSwissRoundLimit,
+} from './types/round-settings';
 import { SwissMatchSnapshot } from './types/swiss';
 
 interface ViewTeam {
@@ -38,6 +42,7 @@ export interface SwissRecordGroup {
 }
 
 export interface SwissBracketView {
+  roundLimit?: number;
   groups: SwissRecordGroup[];
   links: Array<{
     from: string;
@@ -171,7 +176,13 @@ function buildSwissBracketView(
       }
     }
   }
-  return { groups: [...groups.values()], links: [...links.values()] };
+  return {
+    groups: [...groups.values()],
+    links: [...links.values()],
+    ...(settings.mode === 'THRESHOLD'
+      ? { roundLimit: resolveSwissRoundLimit(teams.size, settings) }
+      : {}),
+  };
 }
 
 function recordKey(record: SwissRecord) {

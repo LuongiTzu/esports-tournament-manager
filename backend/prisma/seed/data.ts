@@ -1,5 +1,6 @@
 import {
   Gender,
+  ModerationStatus,
   Role,
   RoundFormat,
   TournamentMode,
@@ -15,20 +16,24 @@ import {
 } from '../../src/brackets/types/round-settings';
 
 export const DEVELOPMENT_PASSWORD = '12345678';
-export const SEED_EMAIL_DOMAIN = 'seed.esports.test';
-export const SEED_SLUG_PREFIX = 'dev-seed-';
+export const SEED_EMAIL_DOMAIN = 'du-lieu-giai-dau.test';
+export const SEED_SLUG_PREFIX = 'du-lieu-viet-';
+
+export type SeedPersona =
+  'ADMIN' | 'ORGANIZER' | 'HYBRID' | 'PARTICIPANT' | 'SPECTATOR';
 
 export interface SeedUserSpec {
   id: string;
   email: string;
   displayName: string;
   role: Role;
-  persona: 'ADMIN' | 'ORGANIZER' | 'PARTICIPANT';
+  persona: SeedPersona;
   gender: Gender;
   phoneNumber: string;
   birthDate: string;
   currentAddress: string;
   bio: string;
+  isLocked: boolean;
 }
 
 interface RoundBase {
@@ -46,10 +51,7 @@ export type SeedRoundSpec =
       format: typeof RoundFormat.GROUP_STAGE;
       settings: GroupStageSettings;
     })
-  | (RoundBase & {
-      format: typeof RoundFormat.SWISS;
-      settings: SwissSettings;
-    })
+  | (RoundBase & { format: typeof RoundFormat.SWISS; settings: SwissSettings })
   | (RoundBase & {
       format: typeof RoundFormat.PLAYOFF;
       settings: PlayoffSettings;
@@ -65,11 +67,14 @@ export interface SeedTournamentSpec {
   slug: string;
   gameCode: string;
   teamSize?: number;
-  customGameName?: string;
   organizerIndex: number;
   description: string;
+  rules: string;
   status: TournamentStatus;
   visibility: Visibility;
+  moderationStatus: ModerationStatus;
+  isVerified: boolean;
+  isOfficial: boolean;
   mode: TournamentMode;
   location: string | null;
   maxTeams: number;
@@ -88,811 +93,371 @@ export interface SeedTournamentSpec {
   rounds: SeedRoundSpec[];
 }
 
-const people = [
-  ['admin-01', 'nguyen.minh.anh', 'Nguyễn Minh Anh', 'ADMIN'],
-  ['admin-02', 'tran.quoc.bao', 'Trần Quốc Bảo', 'ADMIN'],
-  ['organizer-01', 'le.hoang.nam', 'Lê Hoàng Nam', 'ORGANIZER'],
-  ['organizer-02', 'pham.thuy.linh', 'Phạm Thùy Linh', 'ORGANIZER'],
-  ['organizer-03', 'vo.duc.huy', 'Võ Đức Huy', 'ORGANIZER'],
-  ['organizer-04', 'bui.ngoc.mai', 'Bùi Ngọc Mai', 'ORGANIZER'],
-  ['organizer-05', 'dang.gia.khanh', 'Đặng Gia Khánh', 'ORGANIZER'],
-  ['organizer-06', 'ho.thanh.tung', 'Hồ Thanh Tùng', 'ORGANIZER'],
-  ['organizer-07', 'do.yen.nhi', 'Đỗ Yến Nhi', 'ORGANIZER'],
-  ['organizer-08', 'vu.quang.minh', 'Vũ Quang Minh', 'ORGANIZER'],
-  ['participant-01', 'nguyen.tuan.kiet', 'Nguyễn Tuấn Kiệt', 'PARTICIPANT'],
-  ['participant-02', 'tran.gia.han', 'Trần Gia Hân', 'PARTICIPANT'],
-  ['participant-03', 'le.minh.khoi', 'Lê Minh Khôi', 'PARTICIPANT'],
-  ['participant-04', 'pham.ngoc.ha', 'Phạm Ngọc Hà', 'PARTICIPANT'],
-  ['participant-05', 'vo.thanh.son', 'Võ Thanh Sơn', 'PARTICIPANT'],
-  ['participant-06', 'bui.thao.vy', 'Bùi Thảo Vy', 'PARTICIPANT'],
-  ['participant-07', 'dang.quoc.huy', 'Đặng Quốc Huy', 'PARTICIPANT'],
-  ['participant-08', 'ho.kim.ngan', 'Hồ Kim Ngân', 'PARTICIPANT'],
-  ['participant-09', 'do.hoang.long', 'Đỗ Hoàng Long', 'PARTICIPANT'],
-  ['participant-10', 'vu.phuong.thao', 'Vũ Phương Thảo', 'PARTICIPANT'],
-  ['participant-11', 'nguyen.duc.manh', 'Nguyễn Đức Mạnh', 'PARTICIPANT'],
-  ['participant-12', 'tran.quynh.anh', 'Trần Quỳnh Anh', 'PARTICIPANT'],
-  ['participant-13', 'le.tien.dat', 'Lê Tiến Đạt', 'PARTICIPANT'],
-  ['participant-14', 'pham.bao.ngoc', 'Phạm Bảo Ngọc', 'PARTICIPANT'],
-  ['participant-15', 'vo.gia.huy', 'Võ Gia Huy', 'PARTICIPANT'],
-  ['participant-16', 'bui.thanh.truc', 'Bùi Thanh Trúc', 'PARTICIPANT'],
-  ['participant-17', 'dang.minh.phuc', 'Đặng Minh Phúc', 'PARTICIPANT'],
-  ['participant-18', 'ho.ngoc.diep', 'Hồ Ngọc Diệp', 'PARTICIPANT'],
-  ['participant-19', 'do.quang.vinh', 'Đỗ Quang Vinh', 'PARTICIPANT'],
-  ['participant-20', 'vu.ha.my', 'Vũ Hà My', 'PARTICIPANT'],
-] as const;
-
-export const SEED_USERS: SeedUserSpec[] = people.map(
-  ([id, emailPrefix, displayName, persona], index) => ({
-    id: `seed-user-${id}`,
-    email: `${emailPrefix}@${SEED_EMAIL_DOMAIN}`,
-    displayName,
-    role: persona === 'ADMIN' ? Role.ADMIN : Role.SIGNED_UP_USER,
-    persona,
-    gender: [Gender.MALE, Gender.FEMALE, Gender.OTHER][index % 3],
-    phoneNumber: `0901${String(index + 1).padStart(6, '0')}`,
-    birthDate: `${1988 + (index % 12)}-${String((index % 9) + 1).padStart(2, '0')}-15T00:00:00.000Z`,
-    currentAddress: ['TP. Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'][index % 3],
-    bio: `${displayName} yêu thích Esports và thường xuyên tham gia các giải đấu cộng đồng. Đây là tài khoản giả lập phục vụ phát triển.`,
-  }),
-);
-
-const rr = (
-  allowDraws: boolean,
-  meetingsPerPair = 1,
-  winPoints = 3,
-  drawPoints = 1,
-  lossPoints = 0,
-): RoundRobinSettings => ({
-  advancingTeamCount: 2,
-  winPoints,
-  drawPoints,
-  lossPoints,
-  allowDraws,
-  meetingsPerPair,
-});
-
-const groups = (
-  allowDraws: boolean,
-  meetingsPerPair = 1,
-): GroupStageSettings => ({
-  numberOfGroups: 2,
-  advancingTeamsPerGroup: 2,
-  winPoints: 3,
-  drawPoints: 1,
-  lossPoints: 0,
-  allowDraws,
-  meetingsPerPair,
-});
-
-const swiss = (
-  numberOfRounds: number,
-  advancingTeamCount: number,
-): SwissSettings => ({ numberOfRounds, advancingTeamCount });
-
-export const SEED_TOURNAMENTS: SeedTournamentSpec[] = [
-  {
-    id: 'seed-tournament-01',
-    name: 'Celestial Vanguard Championship',
-    slug: `${SEED_SLUG_PREFIX}celestial-vanguard`,
-    gameCode: 'LIEN_QUAN_MOBILE',
-    organizerIndex: 0,
-    description:
-      'A completed mobile MOBA championship with balanced groups and a four-team playoff.',
-    status: TournamentStatus.COMPLETED,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.OFFLINE,
-    location: 'Aurora Convention Hall, Ho Chi Minh City',
-    maxTeams: 12,
-    maxTeamSize: 7,
-    approvedTeams: 8,
-    pendingTeams: 2,
-    rejectedTeams: 1,
-    startDate: '2026-05-02T02:00:00.000Z',
-    endDate: '2026-05-10T12:00:00.000Z',
-    registrationStartDate: '2026-03-01T00:00:00.000Z',
-    registrationDeadline: '2026-04-20T16:59:59.000Z',
-    competition: 'COMPLETE',
-    rounds: [
-      {
-        key: 'groups',
-        name: 'Group Stage',
-        format: RoundFormat.GROUP_STAGE,
-        bestOf: 3,
-        settings: groups(true),
-      },
-      {
-        key: 'playoff',
-        name: 'Championship Playoff',
-        format: RoundFormat.PLAYOFF,
-        bestOf: 5,
-        settings: { thirdPlaceMatch: true },
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-02',
-    name: 'Neon Rift League',
-    slug: `${SEED_SLUG_PREFIX}neon-rift-league`,
-    gameCode: 'LEAGUE_OF_LEGENDS',
-    organizerIndex: 1,
-    description:
-      'A two-leg league season with custom scoring and live standings.',
-    status: TournamentStatus.ONGOING,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.ONLINE,
-    location: null,
-    maxTeams: 8,
-    maxTeamSize: 5,
-    approvedTeams: 6,
-    pendingTeams: 1,
-    rejectedTeams: 0,
-    startDate: '2026-08-10T11:00:00.000Z',
-    endDate: '2026-09-15T15:00:00.000Z',
-    registrationStartDate: '2026-06-20T00:00:00.000Z',
-    registrationDeadline: '2026-08-01T16:59:59.000Z',
-    competition: 'PARTIAL',
-    partialMatchLimit: 8,
-    rounds: [
-      {
-        key: 'league',
-        name: 'League Season',
-        format: RoundFormat.ROUND_ROBIN,
-        bestOf: 3,
-        settings: rr(true, 2, 2, 1, 0),
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-03',
-    name: 'Radiant Protocol Invitational',
-    slug: `${SEED_SLUG_PREFIX}radiant-protocol`,
-    gameCode: 'VALORANT',
-    organizerIndex: 2,
-    description:
-      'Three Swiss pairing rounds followed by a decisive four-team final bracket.',
-    status: TournamentStatus.COMPLETED,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.HYBRID,
-    location: 'Summit Broadcast Studio, Ha Noi',
-    maxTeams: 10,
-    maxTeamSize: 7,
-    approvedTeams: 8,
-    pendingTeams: 0,
-    rejectedTeams: 1,
-    startDate: '2026-06-12T03:00:00.000Z',
-    endDate: '2026-06-21T13:00:00.000Z',
-    registrationStartDate: '2026-04-01T00:00:00.000Z',
-    registrationDeadline: '2026-05-31T16:59:59.000Z',
-    competition: 'COMPLETE',
-    rounds: [
-      {
-        key: 'swiss',
-        name: 'Swiss Stage',
-        format: RoundFormat.SWISS,
-        bestOf: 3,
-        settings: swiss(3, 4),
-      },
-      {
-        key: 'playoff',
-        name: 'Final Four',
-        format: RoundFormat.PLAYOFF,
-        bestOf: 3,
-        settings: { thirdPlaceMatch: false },
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-04',
-    name: 'Iron Circuit Open',
-    slug: `${SEED_SLUG_PREFIX}iron-circuit-open`,
-    gameCode: 'COUNTER_STRIKE_2',
-    organizerIndex: 3,
-    description:
-      'A live double-elimination open featuring seeded byes and loser-bracket routing.',
-    status: TournamentStatus.ONGOING,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.OFFLINE,
-    location: 'Pulse Arena, Da Nang',
-    maxTeams: 8,
-    maxTeamSize: 6,
-    approvedTeams: 6,
-    pendingTeams: 1,
-    rejectedTeams: 1,
-    startDate: '2026-08-18T02:00:00.000Z',
-    endDate: '2026-08-24T14:00:00.000Z',
-    registrationStartDate: '2026-07-01T00:00:00.000Z',
-    registrationDeadline: '2026-08-10T16:59:59.000Z',
-    competition: 'PARTIAL',
-    partialMatchLimit: 6,
-    rounds: [
-      {
-        key: 'double',
-        name: 'Double Elimination',
-        format: RoundFormat.DOUBLE_ELIM,
-        bestOf: 3,
-        settings: { grandFinalReset: true },
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-05',
-    name: 'Ancient Nexus Draft Cup',
-    slug: `${SEED_SLUG_PREFIX}ancient-nexus-draft`,
-    gameCode: 'DOTA_2',
-    organizerIndex: 4,
-    description:
-      'A private organizer draft prepared for a future single-elimination cup.',
-    status: TournamentStatus.DRAFT,
-    visibility: Visibility.PRIVATE,
-    mode: TournamentMode.ONLINE,
-    location: null,
-    maxTeams: 8,
-    maxTeamSize: 5,
-    approvedTeams: 0,
-    pendingTeams: 0,
-    rejectedTeams: 0,
-    startDate: '2026-11-07T03:00:00.000Z',
-    endDate: '2026-11-08T14:00:00.000Z',
-    registrationStartDate: '2026-09-01T00:00:00.000Z',
-    registrationDeadline: '2026-10-25T16:59:59.000Z',
-    competition: 'NONE',
-    rounds: [
-      {
-        key: 'playoff',
-        name: 'Main Bracket',
-        format: RoundFormat.PLAYOFF,
-        bestOf: 3,
-        settings: { thirdPlaceMatch: false },
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-06',
-    name: 'Skyline Trios Championship',
-    slug: `${SEED_SLUG_PREFIX}skyline-trios`,
-    gameCode: 'ROCKET_LEAGUE',
-    organizerIndex: 5,
-    description:
-      'A six-team single-elimination championship demonstrating deterministic first-round byes.',
-    status: TournamentStatus.COMPLETED,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.HYBRID,
-    location: 'Ember Studio, Ho Chi Minh City',
-    maxTeams: 8,
-    maxTeamSize: 4,
-    approvedTeams: 6,
-    pendingTeams: 1,
-    rejectedTeams: 0,
-    startDate: '2026-04-11T03:00:00.000Z',
-    endDate: '2026-04-12T13:00:00.000Z',
-    registrationStartDate: '2026-02-01T00:00:00.000Z',
-    registrationDeadline: '2026-03-31T16:59:59.000Z',
-    competition: 'COMPLETE',
-    rounds: [
-      {
-        key: 'playoff',
-        name: 'Championship Bracket',
-        format: RoundFormat.PLAYOFF,
-        bestOf: 5,
-        settings: { thirdPlaceMatch: true },
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-07',
-    name: 'Crimson Fist Masters',
-    slug: `${SEED_SLUG_PREFIX}crimson-fist-masters`,
-    gameCode: 'TEKKEN_8',
-    organizerIndex: 6,
-    description:
-      'An eight-player double-elimination fighting game final without a bracket reset.',
-    status: TournamentStatus.COMPLETED,
-    visibility: Visibility.PRIVATE,
-    mode: TournamentMode.OFFLINE,
-    location: 'Harbor Community Stage, Hai Phong',
-    maxTeams: 8,
-    maxTeamSize: 1,
-    approvedTeams: 8,
-    pendingTeams: 0,
-    rejectedTeams: 0,
-    startDate: '2026-03-21T03:00:00.000Z',
-    endDate: '2026-03-22T13:00:00.000Z',
-    registrationStartDate: '2026-01-10T00:00:00.000Z',
-    registrationDeadline: '2026-03-10T16:59:59.000Z',
-    competition: 'COMPLETE',
-    rounds: [
-      {
-        key: 'double',
-        name: 'Masters Bracket',
-        format: RoundFormat.DOUBLE_ELIM,
-        bestOf: 5,
-        settings: { grandFinalReset: false },
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-08',
-    name: 'Metro Clash League',
-    slug: `${SEED_SLUG_PREFIX}metro-clash-league`,
-    gameCode: 'STREET_FIGHTER_6',
-    organizerIndex: 7,
-    description:
-      'A completed round-robin league where configured draws contribute to standings.',
-    status: TournamentStatus.COMPLETED,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.ONLINE,
-    location: null,
-    maxTeams: 6,
-    maxTeamSize: 1,
-    approvedTeams: 6,
-    pendingTeams: 0,
-    rejectedTeams: 0,
-    startDate: '2026-02-14T03:00:00.000Z',
-    endDate: '2026-02-28T13:00:00.000Z',
-    registrationStartDate: '2025-12-20T00:00:00.000Z',
-    registrationDeadline: '2026-02-01T16:59:59.000Z',
-    competition: 'COMPLETE',
-    rounds: [
-      {
-        key: 'league',
-        name: 'Metro League',
-        format: RoundFormat.ROUND_ROBIN,
-        bestOf: 3,
-        settings: rr(true),
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-09',
-    name: 'Mobile Legends Swiss Series',
-    slug: `${SEED_SLUG_PREFIX}mobile-legends-swiss`,
-    gameCode: 'MLBB',
-    organizerIndex: 0,
-    description:
-      'An active four-round Swiss series with record-influenced pairings and no draws.',
-    status: TournamentStatus.ONGOING,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.ONLINE,
-    location: null,
-    maxTeams: 12,
-    maxTeamSize: 6,
-    approvedTeams: 8,
-    pendingTeams: 2,
-    rejectedTeams: 0,
-    startDate: '2026-08-08T03:00:00.000Z',
-    endDate: '2026-09-05T13:00:00.000Z',
-    registrationStartDate: '2026-06-15T00:00:00.000Z',
-    registrationDeadline: '2026-07-30T16:59:59.000Z',
-    competition: 'PARTIAL',
-    swissCompletedRounds: 2,
-    rounds: [
-      {
-        key: 'swiss',
-        name: 'Swiss Stage',
-        format: RoundFormat.SWISS,
-        bestOf: 3,
-        settings: swiss(4, 4),
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-10',
-    name: 'Honor of Kings Groups Cup',
-    slug: `${SEED_SLUG_PREFIX}honor-of-kings-groups`,
-    gameCode: 'HONOR_OF_KINGS',
-    organizerIndex: 1,
-    description:
-      'An ongoing equal-sized group stage with partially reported match results.',
-    status: TournamentStatus.ONGOING,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.OFFLINE,
-    location: 'Nova Campus Arena, Ha Noi',
-    maxTeams: 10,
-    maxTeamSize: 6,
-    approvedTeams: 8,
-    pendingTeams: 0,
-    rejectedTeams: 1,
-    startDate: '2026-08-15T03:00:00.000Z',
-    endDate: '2026-08-30T13:00:00.000Z',
-    registrationStartDate: '2026-06-01T00:00:00.000Z',
-    registrationDeadline: '2026-08-05T16:59:59.000Z',
-    competition: 'PARTIAL',
-    partialMatchLimit: 5,
-    rounds: [
-      {
-        key: 'groups',
-        name: 'Group Stage',
-        format: RoundFormat.GROUP_STAGE,
-        bestOf: 3,
-        settings: groups(true),
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-11',
-    name: 'Wild Rift Rookie Cup',
-    slug: `${SEED_SLUG_PREFIX}wild-rift-rookie`,
-    gameCode: 'WILD_RIFT',
-    organizerIndex: 2,
-    description:
-      'An open registration cup with approved, pending, and rejected team applications.',
-    status: TournamentStatus.REGISTRATION,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.ONLINE,
-    location: null,
-    maxTeams: 8,
-    maxTeamSize: 5,
-    approvedTeams: 3,
-    pendingTeams: 2,
-    rejectedTeams: 1,
-    startDate: '2026-10-10T03:00:00.000Z',
-    endDate: '2026-10-11T13:00:00.000Z',
-    registrationStartDate: '2026-08-01T00:00:00.000Z',
-    registrationDeadline: '2026-09-30T16:59:59.000Z',
-    competition: 'NONE',
-    rounds: [
-      {
-        key: 'playoff',
-        name: 'Rookie Playoff',
-        format: RoundFormat.PLAYOFF,
-        bestOf: 3,
-        settings: { thirdPlaceMatch: false },
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-12',
-    name: 'FC Online Solo League',
-    slug: `${SEED_SLUG_PREFIX}fc-online-solo`,
-    gameCode: 'FC_ONLINE',
-    teamSize: 1,
-    organizerIndex: 3,
-    description:
-      'A completed FC Online individual league using ordinary one-player Team records.',
-    status: TournamentStatus.COMPLETED,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.ONLINE,
-    location: null,
-    maxTeams: 4,
-    maxTeamSize: 1,
-    approvedTeams: 4,
-    pendingTeams: 0,
-    rejectedTeams: 0,
-    startDate: '2026-01-10T03:00:00.000Z',
-    endDate: '2026-02-07T13:00:00.000Z',
-    registrationStartDate: '2025-11-01T00:00:00.000Z',
-    registrationDeadline: '2025-12-31T16:59:59.000Z',
-    competition: 'COMPLETE',
-    rounds: [
-      {
-        key: 'league',
-        name: 'Tactical League',
-        format: RoundFormat.ROUND_ROBIN,
-        bestOf: 3,
-        settings: rr(true, 2),
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-13',
-    name: 'FC Online Team Double Crown',
-    slug: `${SEED_SLUG_PREFIX}fc-online-team`,
-    gameCode: 'FC_ONLINE',
-    teamSize: 3,
-    organizerIndex: 4,
-    description:
-      'A completed FC Online three-player team event using generic series results.',
-    status: TournamentStatus.COMPLETED,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.HYBRID,
-    location: 'Vertex Production House, Ho Chi Minh City',
-    maxTeams: 4,
-    maxTeamSize: 4,
-    approvedTeams: 4,
-    pendingTeams: 0,
-    rejectedTeams: 0,
-    startDate: '2026-04-25T03:00:00.000Z',
-    endDate: '2026-04-27T13:00:00.000Z',
-    registrationStartDate: '2026-02-01T00:00:00.000Z',
-    registrationDeadline: '2026-04-10T16:59:59.000Z',
-    competition: 'COMPLETE',
-    forceGrandFinalReset: true,
-    rounds: [
-      {
-        key: 'double',
-        name: 'Double Crown Bracket',
-        format: RoundFormat.DOUBLE_ELIM,
-        bestOf: 3,
-        settings: { grandFinalReset: true },
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-14',
-    name: 'CrossFire Tactical Championship',
-    slug: `${SEED_SLUG_PREFIX}crossfire-tactical`,
-    gameCode: 'CROSSFIRE_PC',
-    organizerIndex: 5,
-    description:
-      'A CrossFire event demonstrating optional and repeatable tactical positions.',
-    status: TournamentStatus.ONGOING,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.OFFLINE,
-    location: 'Ember Dome, Da Nang',
-    maxTeams: 10,
-    maxTeamSize: 6,
-    approvedTeams: 8,
-    pendingTeams: 1,
-    rejectedTeams: 0,
-    startDate: '2026-08-16T03:00:00.000Z',
-    endDate: '2026-08-29T13:00:00.000Z',
-    registrationStartDate: '2026-06-15T00:00:00.000Z',
-    registrationDeadline: '2026-08-05T16:59:59.000Z',
-    competition: 'PARTIAL',
-    partialMatchLimit: 2,
-    rounds: [
-      {
-        key: 'groups',
-        name: 'Group Stage',
-        format: RoundFormat.GROUP_STAGE,
-        bestOf: 3,
-        settings: groups(false),
-      },
-      {
-        key: 'playoff',
-        name: 'Aerial Playoff',
-        format: RoundFormat.PLAYOFF,
-        bestOf: 5,
-        settings: { thirdPlaceMatch: true },
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-15',
-    name: 'Pokémon UNITE Open',
-    slug: `${SEED_SLUG_PREFIX}pokemon-unite-open`,
-    gameCode: 'POKEMON_UNITE',
-    organizerIndex: 6,
-    description:
-      'A seven-team completed bracket with no persistent player-position requirement.',
-    status: TournamentStatus.COMPLETED,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.OFFLINE,
-    location: 'Harbor Arcade Hall, Hai Phong',
-    maxTeams: 8,
-    maxTeamSize: 6,
-    approvedTeams: 7,
-    pendingTeams: 0,
-    rejectedTeams: 0,
-    startDate: '2026-07-04T03:00:00.000Z',
-    endDate: '2026-07-05T13:00:00.000Z',
-    registrationStartDate: '2026-05-01T00:00:00.000Z',
-    registrationDeadline: '2026-06-25T16:59:59.000Z',
-    competition: 'COMPLETE',
-    rounds: [
-      {
-        key: 'playoff',
-        name: 'Dojo Bracket',
-        format: RoundFormat.PLAYOFF,
-        bestOf: 5,
-        settings: { thirdPlaceMatch: true },
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-16',
-    name: 'Chess Swiss Lab',
-    slug: `${SEED_SLUG_PREFIX}chess-swiss`,
-    gameCode: 'CUSTOM',
-    teamSize: 1,
-    customGameName: 'Chess',
-    organizerIndex: 7,
-    description:
-      'An odd-player Swiss event demonstrating deterministic bye allocation.',
-    status: TournamentStatus.ONGOING,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.ONLINE,
-    location: null,
-    maxTeams: 8,
-    maxTeamSize: 1,
-    approvedTeams: 7,
-    pendingTeams: 0,
-    rejectedTeams: 0,
-    startDate: '2026-08-20T03:00:00.000Z',
-    endDate: '2026-09-03T13:00:00.000Z',
-    registrationStartDate: '2026-07-01T00:00:00.000Z',
-    registrationDeadline: '2026-08-12T16:59:59.000Z',
-    competition: 'PARTIAL',
-    swissCompletedRounds: 1,
-    rounds: [
-      {
-        key: 'swiss',
-        name: 'Swiss Lab',
-        format: RoundFormat.SWISS,
-        bestOf: 3,
-        settings: swiss(3, 4),
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-17',
-    name: 'Lotus Mobile Academy',
-    slug: `${SEED_SLUG_PREFIX}lotus-mobile-academy`,
-    gameCode: 'LIEN_QUAN_MOBILE',
-    organizerIndex: 0,
-    description:
-      'A private draft configured for an equal-sized academy group stage.',
-    status: TournamentStatus.DRAFT,
-    visibility: Visibility.PRIVATE,
-    mode: TournamentMode.ONLINE,
-    location: null,
-    maxTeams: 8,
-    maxTeamSize: 5,
-    approvedTeams: 0,
-    pendingTeams: 0,
-    rejectedTeams: 0,
-    startDate: '2026-12-05T03:00:00.000Z',
-    endDate: '2026-12-13T13:00:00.000Z',
-    registrationStartDate: '2026-10-01T00:00:00.000Z',
-    registrationDeadline: '2026-11-25T16:59:59.000Z',
-    competition: 'NONE',
-    rounds: [
-      {
-        key: 'groups',
-        name: 'Academy Groups',
-        format: RoundFormat.GROUP_STAGE,
-        bestOf: 3,
-        settings: groups(false),
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-18',
-    name: 'Custom Arena Showcase',
-    slug: `${SEED_SLUG_PREFIX}custom-arena`,
-    gameCode: 'CUSTOM',
-    teamSize: 5,
-    customGameName: 'Custom Arena',
-    organizerIndex: 1,
-    description:
-      'A cancelled showcase retained to exercise lifecycle and rejected registration views.',
-    status: TournamentStatus.CANCELLED,
-    visibility: Visibility.PUBLIC,
-    mode: TournamentMode.HYBRID,
-    location: 'Nova Broadcast Room, Ha Noi',
-    maxTeams: 8,
-    maxTeamSize: 7,
-    approvedTeams: 0,
-    pendingTeams: 0,
-    rejectedTeams: 2,
-    startDate: '2026-09-12T03:00:00.000Z',
-    endDate: '2026-09-13T13:00:00.000Z',
-    registrationStartDate: '2026-07-01T00:00:00.000Z',
-    registrationDeadline: '2026-08-31T16:59:59.000Z',
-    competition: 'NONE',
-    rounds: [
-      {
-        key: 'playoff',
-        name: 'Showcase Bracket',
-        format: RoundFormat.PLAYOFF,
-        bestOf: 3,
-        settings: { thirdPlaceMatch: false },
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-19',
-    name: 'Valorant Campus Qualifier',
-    slug: `${SEED_SLUG_PREFIX}valorant-campus`,
-    gameCode: 'VALORANT',
-    organizerIndex: 2,
-    description:
-      'A private campus qualifier accepting registrations for a three-round Swiss stage.',
-    status: TournamentStatus.REGISTRATION,
-    visibility: Visibility.PRIVATE,
-    mode: TournamentMode.OFFLINE,
-    location: 'Summit University Hall, Ha Noi',
-    maxTeams: 8,
-    maxTeamSize: 6,
-    approvedTeams: 4,
-    pendingTeams: 2,
-    rejectedTeams: 1,
-    startDate: '2026-10-17T03:00:00.000Z',
-    endDate: '2026-10-18T13:00:00.000Z',
-    registrationStartDate: '2026-08-01T00:00:00.000Z',
-    registrationDeadline: '2026-10-05T16:59:59.000Z',
-    competition: 'NONE',
-    rounds: [
-      {
-        key: 'swiss',
-        name: 'Campus Swiss',
-        format: RoundFormat.SWISS,
-        bestOf: 3,
-        settings: swiss(3, 4),
-      },
-    ],
-  },
-  {
-    id: 'seed-tournament-20',
-    name: 'Counter Core Invitational',
-    slug: `${SEED_SLUG_PREFIX}counter-core`,
-    gameCode: 'COUNTER_STRIKE_2',
-    organizerIndex: 3,
-    description:
-      'A private hybrid invitational taking applications for two equal groups.',
-    status: TournamentStatus.REGISTRATION,
-    visibility: Visibility.PRIVATE,
-    mode: TournamentMode.HYBRID,
-    location: 'Pulse Broadcast Center, Da Nang',
-    maxTeams: 8,
-    maxTeamSize: 5,
-    approvedTeams: 4,
-    pendingTeams: 2,
-    rejectedTeams: 0,
-    startDate: '2026-11-14T03:00:00.000Z',
-    endDate: '2026-11-22T13:00:00.000Z',
-    registrationStartDate: '2026-08-15T00:00:00.000Z',
-    registrationDeadline: '2026-10-31T16:59:59.000Z',
-    competition: 'NONE',
-    rounds: [
-      {
-        key: 'groups',
-        name: 'Invitational Groups',
-        format: RoundFormat.GROUP_STAGE,
-        bestOf: 3,
-        settings: groups(false),
-      },
-    ],
-  },
+const familyNames = [
+  'Nguyễn',
+  'Trần',
+  'Lê',
+  'Phạm',
+  'Hoàng',
+  'Huỳnh',
+  'Phan',
+  'Vũ',
+  'Võ',
+  'Đặng',
+  'Bùi',
+  'Đỗ',
+  'Hồ',
+  'Ngô',
+  'Dương',
+];
+const givenNames = [
+  'Minh Anh',
+  'Quốc Bảo',
+  'Hoàng Nam',
+  'Thùy Linh',
+  'Đức Huy',
+  'Gia Hân',
+  'Tuấn Kiệt',
+  'Ngọc Mai',
+  'Thanh Tùng',
+  'Khánh Vy',
+];
+const provinces = [
+  'Hà Nội',
+  'Thành phố Hồ Chí Minh',
+  'Đà Nẵng',
+  'Hải Phòng',
+  'Cần Thơ',
+  'Huế',
+  'Nha Trang',
+  'Đà Lạt',
+  'Biên Hòa',
+  'Vũng Tàu',
 ];
 
-export const TEAM_NAME_PREFIXES = [
-  'Sài Gòn',
-  'Thăng Long',
-  'Đà Nẵng',
-  'Cửu Long',
-  'Hải Phòng',
-  'Tây Nguyên',
-  'Đông Đô',
-  'Huế',
-  'Mekong',
-  'Sen Việt',
+function personaFor(index: number): SeedPersona {
+  if (index < 3) return 'ADMIN';
+  if (index < 33) return 'ORGANIZER';
+  if (index < 45) return 'HYBRID';
+  if (index < 120) return 'PARTICIPANT';
+  return 'SPECTATOR';
+}
+
+const personaBio: Record<SeedPersona, string> = {
+  ADMIN: 'Quản trị viên phụ trách vận hành và an toàn cộng đồng.',
+  ORGANIZER: 'Thành viên tập trung tổ chức các giải đấu cộng đồng.',
+  HYBRID: 'Vừa tổ chức giải đấu, vừa thi đấu và theo dõi cộng đồng.',
+  PARTICIPANT: 'Tuyển thủ yêu thích thi đấu và giao lưu cùng các đội tuyển.',
+  SPECTATOR: 'Khán giả thường xuyên theo dõi, bình luận và cổ vũ giải đấu.',
+};
+
+export const SEED_USERS: SeedUserSpec[] = Array.from(
+  { length: 150 },
+  (_, index) => {
+    const persona = personaFor(index);
+    const ordinal = index + 1;
+    return {
+      id: `seed-user-${String(ordinal).padStart(3, '0')}`,
+      email: `thanh-vien-${String(ordinal).padStart(3, '0')}@${SEED_EMAIL_DOMAIN}`,
+      displayName: `${familyNames[index % familyNames.length]} ${givenNames[Math.floor(index / familyNames.length) % givenNames.length]}`,
+      role: persona === 'ADMIN' ? Role.ADMIN : Role.SIGNED_UP_USER,
+      persona,
+      gender: [Gender.MALE, Gender.FEMALE, Gender.OTHER][index % 3],
+      phoneNumber: `090${String(1000000 + ordinal).slice(-7)}`,
+      birthDate: `${1988 + (index % 16)}-${String((index % 12) + 1).padStart(2, '0')}-${String((index % 24) + 1).padStart(2, '0')}`,
+      currentAddress: provinces[index % provinces.length],
+      bio: personaBio[persona],
+      isLocked: [58, 79, 101, 124, 133, 141, 148].includes(ordinal),
+    };
+  },
+);
+
+export const VIETNAMESE_MEMBER_NAMES = SEED_USERS.map(
+  (user) => user.displayName,
+);
+
+export const TEAM_NAMES = [
+  'Sài Gòn Hỏa Long',
+  'Hà Nội Sao Khuê',
+  'Đà Nẵng Hải Ưng',
+  'Cần Thơ Phù Sa',
+  'Huế Ngự Lâm',
+  'Hải Phòng Sóng Đỏ',
+  'Nha Trang Kình Ngư',
+  'Đà Lạt Thông Xanh',
+  'Biên Hòa Lôi Báo',
+  'Vũng Tàu Hải Đăng',
+  'Bắc Ninh Kinh Bắc',
+  'Quảng Ninh Hắc Long',
+  'Thanh Hóa Lam Sơn',
+  'Nghệ An Sông Lam',
+  'Bình Dương Thép Xanh',
+  'Đồng Nai Chiến Tượng',
+  'An Giang Thất Sơn',
+  'Kiên Giang Biển Ngọc',
+  'Quảng Nam Hoài Phố',
+  'Bình Định Tây Sơn',
+];
+
+const gameDistribution: Array<[string, number]> = [
+  ['LIEN_QUAN_MOBILE', 17],
+  ['LEAGUE_OF_LEGENDS', 15],
+  ['VALORANT', 8],
+  ['COUNTER_STRIKE_2', 7],
+  ['DOTA_2', 6],
+  ['MLBB', 5],
+  ['HONOR_OF_KINGS', 4],
+  ['WILD_RIFT', 4],
+  ['FC_ONLINE', 4],
+  ['CROSSFIRE_PC', 4],
+  ['TEKKEN_8', 3],
+  ['ROCKET_LEAGUE', 3],
+];
+
+type CompetitionPlan =
+  | 'SWISS_PLAYOFF'
+  | 'SWISS_DOUBLE'
+  | 'GROUP_PLAYOFF'
+  | 'GROUP_DOUBLE'
+  | 'ROUND_ROBIN_PLAYOFF'
+  | 'ROUND_ROBIN_DOUBLE'
+  | 'PLAYOFF_ONLY'
+  | 'DOUBLE_ONLY'
+  | 'ROUND_ROBIN_ONLY'
+  | 'GROUP_ONLY';
+
+const competitionPlans: CompetitionPlan[] = [
+  ...Array<CompetitionPlan>(24).fill('SWISS_PLAYOFF'),
+  ...Array<CompetitionPlan>(6).fill('SWISS_DOUBLE'),
+  ...Array<CompetitionPlan>(14).fill('GROUP_PLAYOFF'),
+  ...Array<CompetitionPlan>(6).fill('GROUP_DOUBLE'),
+  ...Array<CompetitionPlan>(8).fill('ROUND_ROBIN_PLAYOFF'),
+  ...Array<CompetitionPlan>(4).fill('ROUND_ROBIN_DOUBLE'),
+  ...Array<CompetitionPlan>(8).fill('PLAYOFF_ONLY'),
+  ...Array<CompetitionPlan>(4).fill('DOUBLE_ONLY'),
+  ...Array<CompetitionPlan>(4).fill('ROUND_ROBIN_ONLY'),
+  ...Array<CompetitionPlan>(2).fill('GROUP_ONLY'),
+];
+
+const tournamentThemes = [
+  'Hào Khí',
   'Rồng Việt',
-  'Bình Minh',
-] as const;
+  'Sao Khuê',
+  'Hải Đăng',
+  'Ngọn Lửa Trẻ',
+  'Đường Đến Vinh Quang',
+  'Khát Vọng Việt',
+  'Đỉnh Cao Chiến Thuật',
+  'Bản Lĩnh Anh Tài',
+  'Sức Trẻ Ba Miền',
+];
+const tournamentKinds = [
+  'Cúp Mùa Thu',
+  'Giải Sinh Viên',
+  'Giải Cộng Đồng',
+  'Đại Chiến Khu Vực',
+  'Cúp Mở Rộng',
+  'Giải Tranh Hạng',
+  'Ngày Hội Thể Thao Điện Tử',
+  'Cúp Anh Tài',
+];
+const gameLabels: Record<string, string> = {
+  LIEN_QUAN_MOBILE: 'Liên Quân',
+  LEAGUE_OF_LEGENDS: 'Liên Minh Huyền Thoại',
+  VALORANT: 'Valorant',
+  COUNTER_STRIKE_2: 'Phản Công 2',
+  DOTA_2: 'Dota 2',
+  MLBB: 'Bang Bang',
+  HONOR_OF_KINGS: 'Vương Giả Vinh Diệu',
+  WILD_RIFT: 'Tốc Chiến',
+  FC_ONLINE: 'Bóng Đá Trực Tuyến',
+  CROSSFIRE_PC: 'Đột Kích',
+  TEKKEN_8: 'Thiết Quyền',
+  ROCKET_LEAGUE: 'Bóng Đá Tên Lửa',
+};
 
-export const TEAM_NAME_SUFFIXES = [
-  'Chiến Binh',
-  'Hộ Vệ',
-  'Mãnh Hổ',
-  'Sao Đỏ',
-  'Kỳ Lân',
-  'Sói Trẻ',
-  'Cánh Én',
-  'Tia Chớp',
-  'Tiên Phong',
-  'Vô Địch',
-] as const;
+const expandedGames = gameDistribution.flatMap(([gameCode, count]) =>
+  Array<string>(count).fill(gameCode),
+);
 
-export const VIETNAMESE_MEMBER_NAMES = [
-  'Nguyễn Hải Đăng',
-  'Trần Minh Nhật',
-  'Lê Quốc Thịnh',
-  'Phạm Anh Tú',
-  'Võ Thành Công',
-  'Bùi Khánh Linh',
-  'Đặng Hoài Nam',
-  'Hồ Minh Châu',
-  'Đỗ Đức Anh',
-  'Vũ Thu Trang',
-  'Nguyễn Bảo Long',
-  'Trần Ngọc Ánh',
-  'Lê Duy Khang',
-  'Phạm Thanh Hằng',
-  'Võ Nhật Quang',
-  'Bùi Mai Phương',
-  'Đặng Trung Kiên',
-  'Hồ Gia Linh',
-  'Đỗ Hữu Phước',
-  'Vũ Khánh Vy',
-] as const;
+function statusFor(index: number): TournamentStatus {
+  if (index < 30) return TournamentStatus.COMPLETED;
+  if (index < 50) return TournamentStatus.ONGOING;
+  if (index < 68) return TournamentStatus.REGISTRATION;
+  if (index < 76) return TournamentStatus.DRAFT;
+  return TournamentStatus.CANCELLED;
+}
+
+function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * 86_400_000);
+}
+
+function startDateFor(index: number, status: TournamentStatus): Date {
+  if (status === TournamentStatus.COMPLETED)
+    return addDays(new Date('2026-08-01T02:00:00.000Z'), index % 25);
+  if (status === TournamentStatus.ONGOING)
+    return addDays(new Date('2026-08-25T02:00:00.000Z'), (index - 30) % 12);
+  if (status === TournamentStatus.REGISTRATION)
+    return addDays(new Date('2026-09-10T02:00:00.000Z'), (index - 50) % 6);
+  if (status === TournamentStatus.DRAFT)
+    return addDays(new Date('2026-09-12T02:00:00.000Z'), (index - 68) % 4);
+  return addDays(new Date('2026-09-03T02:00:00.000Z'), index - 76);
+}
+
+function roundsFor(plan: CompetitionPlan, index: number): SeedRoundSpec[] {
+  const swiss: SeedRoundSpec = {
+    key: 'vong-thuy-si',
+    name: 'Vòng Thụy Sĩ',
+    format: RoundFormat.SWISS,
+    bestOf: 3,
+    settings:
+      index < 27
+        ? {
+            mode: 'THRESHOLD',
+            winsToAdvance: 3,
+            lossesToEliminate: 3,
+            numberOfRounds: 5,
+            advancingTeamCount: 8,
+          }
+        : { mode: 'FIXED_ROUNDS', numberOfRounds: 4, advancingTeamCount: 8 },
+  };
+  const group: SeedRoundSpec = {
+    key: 'vong-bang',
+    name: 'Vòng bảng',
+    format: RoundFormat.GROUP_STAGE,
+    bestOf: index % 3 === 0 ? 3 : 1,
+    settings: {
+      numberOfGroups: 4,
+      advancingTeamsPerGroup: 2,
+      winPoints: 3,
+      drawPoints: 1,
+      lossPoints: 0,
+      allowDraws: index % 4 === 0,
+      meetingsPerPair: 1,
+    },
+  };
+  const roundRobin: SeedRoundSpec = {
+    key: 'vong-tron',
+    name: 'Vòng tròn tính điểm',
+    format: RoundFormat.ROUND_ROBIN,
+    bestOf: index % 2 === 0 ? 3 : 1,
+    settings: {
+      advancingTeamCount: 4,
+      winPoints: 3,
+      drawPoints: 1,
+      lossPoints: 0,
+      allowDraws: index % 3 === 0,
+      meetingsPerPair: index % 5 === 0 ? 2 : 1,
+    },
+  };
+  const playoff: SeedRoundSpec = {
+    key: 'vong-loai-truc-tiep',
+    name: 'Vòng loại trực tiếp',
+    format: RoundFormat.PLAYOFF,
+    bestOf: index % 4 === 0 ? 5 : 3,
+    settings: { thirdPlaceMatch: index % 3 === 0 },
+  };
+  const doubleElim: SeedRoundSpec = {
+    key: 'nhanh-thang-nhanh-thua',
+    name: 'Nhánh thắng – nhánh thua',
+    format: RoundFormat.DOUBLE_ELIM,
+    bestOf: index % 4 === 0 ? 5 : 3,
+    settings: { grandFinalReset: index === 29 || index === 58 },
+  };
+  switch (plan) {
+    case 'SWISS_PLAYOFF':
+      return [swiss, playoff];
+    case 'SWISS_DOUBLE':
+      return [swiss, doubleElim];
+    case 'GROUP_PLAYOFF':
+      return [group, playoff];
+    case 'GROUP_DOUBLE':
+      return [group, doubleElim];
+    case 'ROUND_ROBIN_PLAYOFF':
+      return [roundRobin, playoff];
+    case 'ROUND_ROBIN_DOUBLE':
+      return [roundRobin, doubleElim];
+    case 'PLAYOFF_ONLY':
+      return [playoff];
+    case 'DOUBLE_ONLY':
+      return [doubleElim];
+    case 'ROUND_ROBIN_ONLY':
+      return [roundRobin];
+    case 'GROUP_ONLY':
+      return [group];
+  }
+}
+
+function approvedTeamCount(plan: CompetitionPlan): number {
+  return plan.startsWith('SWISS') || plan.startsWith('GROUP') ? 16 : 8;
+}
+
+export const SEED_TOURNAMENTS: SeedTournamentSpec[] = expandedGames.map(
+  (gameCode, index) => {
+    const status = statusFor(index);
+    const plan = competitionPlans[index];
+    const startDate = startDateFor(index, status);
+    const competition =
+      status === TournamentStatus.COMPLETED
+        ? 'COMPLETE'
+        : status === TournamentStatus.ONGOING
+          ? 'PARTIAL'
+          : 'NONE';
+    const expectedApproved = approvedTeamCount(plan);
+    const approvedTeams =
+      competition === 'NONE' ? (index % 6) + 1 : expectedApproved;
+    const pendingTeams =
+      status === TournamentStatus.REGISTRATION ? 2 + (index % 4) : 0;
+    const rejectedTeams =
+      status === TournamentStatus.DRAFT ? 0 : index % 3 === 0 ? 1 : 0;
+    const ordinal = index + 1;
+    const region = provinces[index % provinces.length];
+    const name = `${tournamentThemes[index % tournamentThemes.length]} – ${tournamentKinds[Math.floor(index / 10) % tournamentKinds.length]} ${gameLabels[gameCode]} ${region} 2026`;
+    const mode = [
+      TournamentMode.ONLINE,
+      TournamentMode.OFFLINE,
+      TournamentMode.HYBRID,
+    ][index % 3];
+    return {
+      id: `seed-tournament-${String(ordinal).padStart(3, '0')}`,
+      name,
+      slug: `${SEED_SLUG_PREFIX}${String(ordinal).padStart(3, '0')}`,
+      gameCode,
+      organizerIndex: index % 42,
+      description: `${name} quy tụ các đội tuyển giàu nhiệt huyết, hướng đến môi trường thi đấu công bằng và chuyên nghiệp.`,
+      rules:
+        'Các đội có mặt đúng giờ, sử dụng đội hình đã đăng ký, tôn trọng đối thủ và tuân thủ quyết định của ban tổ chức.',
+      status,
+      visibility: index % 7 === 0 ? Visibility.PRIVATE : Visibility.PUBLIC,
+      moderationStatus: [61, 72, 78].includes(ordinal)
+        ? ModerationStatus.HIDDEN_BY_ADMIN
+        : ModerationStatus.ACTIVE,
+      isVerified: index % 3 !== 1,
+      isOfficial: index % 4 === 0,
+      mode,
+      location: mode === TournamentMode.ONLINE ? null : region,
+      maxTeams: Math.max(expectedApproved, approvedTeams + pendingTeams),
+      maxTeamSize: gameCode === 'TEKKEN_8' ? 3 : 7,
+      approvedTeams,
+      pendingTeams,
+      rejectedTeams,
+      startDate: startDate.toISOString(),
+      endDate: addDays(
+        startDate,
+        status === TournamentStatus.COMPLETED
+          ? 4 + (index % 4)
+          : 8 + (index % 7),
+      ).toISOString(),
+      registrationStartDate: addDays(
+        startDate,
+        -14 - (index % 7),
+      ).toISOString(),
+      registrationDeadline: addDays(startDate, -1).toISOString(),
+      competition,
+      partialMatchLimit: 2 + (index % 5),
+      swissCompletedRounds: 1 + (index % 3),
+      forceGrandFinalReset: index === 29 || index === 58,
+      rounds: roundsFor(plan, index),
+    };
+  },
+);

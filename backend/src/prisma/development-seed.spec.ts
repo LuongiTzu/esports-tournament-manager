@@ -1,4 +1,4 @@
-import { RoundFormat } from '@prisma/client';
+import { Role, RoundFormat, TournamentStatus } from '@prisma/client';
 import { GAME_CATALOG } from '../games/game-catalog';
 import { TournamentTeamSizePolicy } from '../tournaments/domain/tournament-team-size.policy';
 import {
@@ -20,92 +20,114 @@ const LEGACY_SETTING_KEYS = new Set([
 ]);
 
 describe('development seed specification', () => {
-  it('defines the intended deterministic user personas and credentials', () => {
-    expect(SEED_USERS).toHaveLength(30);
-    expect(SEED_USERS.filter((user) => user.persona === 'ADMIN')).toHaveLength(
-      2,
+  it('defines 150 varied Vietnamese development accounts', () => {
+    expect(SEED_USERS).toHaveLength(150);
+    expect(SEED_USERS.filter((user) => user.role === Role.ADMIN)).toHaveLength(
+      3,
     );
     expect(
       SEED_USERS.filter((user) => user.persona === 'ORGANIZER'),
-    ).toHaveLength(8);
+    ).toHaveLength(30);
+    expect(SEED_USERS.filter((user) => user.persona === 'HYBRID')).toHaveLength(
+      12,
+    );
     expect(
       SEED_USERS.filter((user) => user.persona === 'PARTICIPANT'),
-    ).toHaveLength(20);
-    expect(new Set(SEED_USERS.map((user) => user.id)).size).toBe(30);
-    expect(new Set(SEED_USERS.map((user) => user.email)).size).toBe(30);
+    ).toHaveLength(75);
+    expect(
+      SEED_USERS.filter((user) => user.persona === 'SPECTATOR'),
+    ).toHaveLength(30);
+    expect(SEED_USERS.filter((user) => user.isLocked)).toHaveLength(7);
+    expect(
+      SEED_USERS.filter((user) => user.isLocked && user.role === Role.ADMIN),
+    ).toHaveLength(0);
+    expect(new Set(SEED_USERS.map((user) => user.id)).size).toBe(150);
+    expect(new Set(SEED_USERS.map((user) => user.email)).size).toBe(150);
     expect(DEVELOPMENT_PASSWORD).toBe('12345678');
   });
 
-  it('represents every approved game and no deprecated game', () => {
-    expect(SEED_TOURNAMENTS).toHaveLength(20);
-    expect(
-      [
-        ...new Set(SEED_TOURNAMENTS.map((tournament) => tournament.gameCode)),
-      ].sort(),
-    ).toEqual(GAME_CATALOG.map((game) => game.code).sort());
-    expect(
-      SEED_TOURNAMENTS.some((tournament) =>
-        ['PUBG', 'CS_GO'].includes(tournament.gameCode),
-      ),
-    ).toBe(false);
+  it('defines the requested tournament and game distribution', () => {
+    expect(SEED_TOURNAMENTS).toHaveLength(80);
+    const byGame = Object.fromEntries(
+      GAME_CATALOG.map((game) => [
+        game.code,
+        SEED_TOURNAMENTS.filter(
+          (tournament) => tournament.gameCode === game.code,
+        ).length,
+      ]),
+    );
+    expect(byGame.LIEN_QUAN_MOBILE).toBe(17);
+    expect(byGame.LEAGUE_OF_LEGENDS).toBe(15);
+    expect(byGame.TEKKEN_8).toBe(3);
+    expect(byGame.ROCKET_LEAGUE).toBe(3);
+    expect(Object.values(byGame).reduce((sum, count) => sum + count, 0)).toBe(
+      80,
+    );
   });
 
-  it('uses roster snapshots within game bounds', () => {
+  it('spreads coherent lifecycle states from early August to mid September', () => {
+    const statusCount = (status: TournamentStatus) =>
+      SEED_TOURNAMENTS.filter((tournament) => tournament.status === status)
+        .length;
+    expect(statusCount(TournamentStatus.COMPLETED)).toBe(30);
+    expect(statusCount(TournamentStatus.ONGOING)).toBe(20);
+    expect(statusCount(TournamentStatus.REGISTRATION)).toBe(18);
+    expect(statusCount(TournamentStatus.DRAFT)).toBe(8);
+    expect(statusCount(TournamentStatus.CANCELLED)).toBe(4);
+    const starts = SEED_TOURNAMENTS.map(
+      (tournament) => new Date(tournament.startDate),
+    );
+    expect(
+      new Date(Math.min(...starts.map(Number))).toISOString().slice(0, 10),
+    ).toBe('2026-08-01');
+    expect(
+      new Date(Math.max(...starts.map(Number))).toISOString().slice(0, 10),
+    ).toBe('2026-09-15');
+    for (const tournament of SEED_TOURNAMENTS) {
+      expect(new Date(tournament.registrationStartDate).getTime()).toBeLessThan(
+        new Date(tournament.registrationDeadline).getTime(),
+      );
+      expect(new Date(tournament.registrationDeadline).getTime()).toBeLessThan(
+        new Date(tournament.startDate).getTime(),
+      );
+      expect(new Date(tournament.startDate).getTime()).toBeLessThan(
+        new Date(tournament.endDate).getTime(),
+      );
+    }
+  });
+
+  it('uses 90 percent threshold Swiss and 90 percent double elimination without reset', () => {
+    const swissRounds = SEED_TOURNAMENTS.flatMap(
+      (tournament) => tournament.rounds,
+    ).filter((round) => round.format === RoundFormat.SWISS);
+    const doubleRounds = SEED_TOURNAMENTS.flatMap(
+      (tournament) => tournament.rounds,
+    ).filter((round) => round.format === RoundFormat.DOUBLE_ELIM);
+    expect(swissRounds).toHaveLength(30);
+    expect(
+      swissRounds.filter((round) => round.settings.mode === 'THRESHOLD'),
+    ).toHaveLength(27);
+    expect(doubleRounds).toHaveLength(20);
+    expect(
+      doubleRounds.filter((round) => !round.settings.grandFinalReset),
+    ).toHaveLength(18);
+  });
+
+  it('uses valid roster snapshots and canonical round settings', () => {
     const games = new Map(GAME_CATALOG.map((game) => [game.code, game]));
     const policy = new TournamentTeamSizePolicy();
+    const formats = new Set<RoundFormat>();
     for (const tournament of SEED_TOURNAMENTS) {
       const game = games.get(tournament.gameCode);
       expect(game).toBeDefined();
-      if (!game) throw new Error(`Unknown game ${tournament.gameCode}`);
+      if (!game) continue;
       const teamSize = policy.resolveTeamSize(game, tournament.teamSize);
       expect(
         policy.validateMaxTeamSize(game, teamSize, tournament.maxTeamSize),
       ).toBe(tournament.maxTeamSize);
       expect(
-        tournament.gameCode === 'CUSTOM'
-          ? Boolean(tournament.customGameName?.trim())
-          : tournament.customGameName === undefined,
-      ).toBe(true);
-      expect(tournament.maxTeamSize).toBeGreaterThanOrEqual(teamSize);
-      expect(tournament.maxTeamSize).toBeLessThanOrEqual(game.maxTeamSize);
-      expect(
-        tournament.approvedTeams +
-          tournament.pendingTeams +
-          tournament.rejectedTeams,
+        tournament.approvedTeams + tournament.pendingTeams,
       ).toBeLessThanOrEqual(tournament.maxTeams);
-    }
-  });
-
-  it('includes representative PRESET and FLEXIBLE snapshots', () => {
-    expect(
-      SEED_TOURNAMENTS.filter(
-        (tournament) => tournament.gameCode === 'FC_ONLINE',
-      ).map((tournament) => [tournament.teamSize, tournament.maxTeamSize]),
-    ).toEqual(
-      expect.arrayContaining([
-        [1, 1],
-        [3, 4],
-      ]),
-    );
-    expect(
-      SEED_TOURNAMENTS.filter(
-        (tournament) => tournament.gameCode === 'CUSTOM',
-      ).map((tournament) => [
-        tournament.customGameName,
-        tournament.teamSize,
-        tournament.maxTeamSize,
-      ]),
-    ).toEqual(
-      expect.arrayContaining([
-        ['Chess', 1, 1],
-        ['Custom Arena', 5, 7],
-      ]),
-    );
-  });
-
-  it('uses canonical settings and valid equal-group configurations', () => {
-    const formats = new Set<RoundFormat>();
-    for (const tournament of SEED_TOURNAMENTS) {
       for (const round of tournament.rounds) {
         formats.add(round.format);
         expect(

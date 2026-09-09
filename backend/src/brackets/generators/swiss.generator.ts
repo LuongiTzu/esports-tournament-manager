@@ -15,6 +15,7 @@ import {
 import {
   resolveSwissNumberOfRounds,
   SwissSettings,
+  swissTeamState,
 } from '../types/round-settings';
 
 const SWISS_WIN_POINTS = 3;
@@ -43,7 +44,7 @@ export class SwissGenerator implements IBracketGenerator<
   calculateStandings(
     teams: readonly BracketTeam[],
     matches: readonly SwissMatchSnapshot[],
-    _settings: SwissSettings,
+    settings: SwissSettings,
   ): SwissStanding[] {
     const completed = matches.filter((match) => match.completed || match.isBye);
     const rows = new Map<
@@ -132,6 +133,9 @@ export class SwissGenerator implements IBracketGenerator<
     return withBuchholz.map((standing, index) => ({
       ...standing,
       rank: index + 1,
+      ...(settings.mode === 'THRESHOLD'
+        ? { state: swissTeamState(standing, settings) }
+        : {}),
     }));
   }
 
@@ -146,7 +150,9 @@ export class SwissGenerator implements IBracketGenerator<
     );
     const played = playedPairs(input.matches);
     const warnings: string[] = [];
-    const pool = [...standings];
+    const pool = standings.filter(
+      (row) => swissTeamState(row, input.settings) === 'ACTIVE',
+    );
     let byeTeamId: string | null = null;
     if (pool.length % 2 === 1) {
       const eligible = [...pool]
@@ -160,14 +166,31 @@ export class SwissGenerator implements IBracketGenerator<
       );
     }
 
-    let pairs = pairWithBacktracking(pool, played, false, 20000);
+    let pairs =
+      input.settings.mode === 'THRESHOLD'
+        ? pairWithBacktracking(pool, played, false, 20000, true)
+        : null;
+    pairs ??= pairWithBacktracking(pool, played, false, 20000);
     if (!pairs) {
       pairs = pairWithBacktracking(pool, played, true, 20000);
       warnings.push(
-        `Swiss round ${input.bracketRound}: rematch was mathematically unavoidable`,
+        input.settings.mode === 'THRESHOLD'
+          ? `Swiss round ${input.bracketRound}: pairing search required a rematch`
+          : `Swiss round ${input.bracketRound}: rematch was mathematically unavoidable`,
       );
     }
     if (!pairs) throw new Error('Unable to produce Swiss pairings');
+    if (
+      input.settings.mode === 'THRESHOLD' &&
+      pairs.some(([a, b]) => {
+        const first = standings.find((row) => row.teamId === a)!;
+        const second = standings.find((row) => row.teamId === b)!;
+        return first.wins !== second.wins || first.losses !== second.losses;
+      })
+    )
+      warnings.push(
+        `Swiss round ${input.bracketRound}: teams were floated between record groups`,
+      );
 
     const matches = pairs.map(([teamAId, teamBId], index) =>
       swissDraft(input.bracketRound, index + 1, teamAId, teamBId, input.bestOf),
@@ -269,6 +292,7 @@ function pairWithBacktracking(
   played: Set<string>,
   allowRematch: boolean,
   limit: number,
+  sameRecordOnly = false,
 ): Array<[string, string]> | null {
   let visited = 0;
   const search = (
@@ -285,6 +309,11 @@ function pairWithBacktracking(
             Math.abs(first.points - b.points) || a.rank - b.rank,
       );
     for (const candidate of candidates) {
+      if (
+        sameRecordOnly &&
+        (first.wins !== candidate.wins || first.losses !== candidate.losses)
+      )
+        continue;
       if (!allowRematch && played.has(pairKey(first.teamId, candidate.teamId)))
         continue;
       const rest = remaining.filter(

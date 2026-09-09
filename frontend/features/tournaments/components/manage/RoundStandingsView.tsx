@@ -35,13 +35,19 @@ function SwissTable({
             <th className="px-3 py-3 text-center">{t("standings.points")}</th>
             <th className="px-3 py-3 text-center">BYE</th>
             <th className="px-3 py-3 text-center">Buchholz</th>
-            <th className="px-3 py-3 text-center">{t("standings.buchholzCut1")}</th>
-            <th className="px-3 py-3 text-center">{t("standings.difference")}</th>
+            <th className="px-3 py-3 text-center">
+              {t("standings.buchholzCut1")}
+            </th>
+            <th className="px-3 py-3 text-center">
+              {t("standings.difference")}
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
           {rows.map((row) => {
-            const qualified = qualifiedTeamIds.includes(row.teamId);
+            const qualified =
+              row.state === "QUALIFIED" ||
+              qualifiedTeamIds.includes(row.teamId);
             return (
               <tr key={row.teamId} className={qualified ? "bg-approved/5" : ""}>
                 <td className="px-3 py-3 text-center font-semibold text-ink">
@@ -49,10 +55,17 @@ function SwissTable({
                 </td>
                 <td className="px-3 py-3 font-medium text-ink">
                   <span className="flex items-center gap-2">
-                    {row.team?.name ?? `${t("standings.team")} ${row.teamId.slice(0, 8)}`}
+                    {row.team?.name ??
+                      `${t("standings.team")} ${row.teamId.slice(0, 8)}`}
+                    {row.state === "ELIMINATED" && (
+                      <span className="rounded-full bg-rejected/10 px-2 py-0.5 text-xs text-rejected">
+                        {t("swiss.eliminated")}
+                      </span>
+                    )}
                     {qualified && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-approved/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-approved">
-                        <CheckCircleIcon weight="fill" /> {t("standings.qualified")}
+                        <CheckCircleIcon weight="fill" />{" "}
+                        {t("standings.qualified")}
                       </span>
                     )}
                   </span>
@@ -105,7 +118,9 @@ export default function RoundStandingsView({
   if (data.format === "PLAYOFF" || data.format === "DOUBLE_ELIM") {
     return (
       <div className="rounded-xl border border-line bg-surface-sub p-4">
-        <p className="text-sm font-semibold text-ink">{t("standings.eliminationResult")}</p>
+        <p className="text-sm font-semibold text-ink">
+          {t("standings.eliminationResult")}
+        </p>
         {tournament.champion ? (
           <p className="mt-3 flex items-center gap-2 text-sm text-approved">
             <TrophyIcon weight="fill" /> {t("standings.champion")}:{" "}
@@ -152,7 +167,11 @@ export default function RoundStandingsView({
     return (
       <div className="space-y-3">
         <p className="text-sm text-ink-muted">
-          {t("standings.swissHint")}
+          {t(
+            round.format === "SWISS" && round.settings.mode === "THRESHOLD"
+              ? "swiss.thresholdHint"
+              : "standings.swissHint",
+          )}
         </p>
         <SwissTable rows={data.standings} qualifiedTeamIds={qualifiedTeamIds} />
       </div>
@@ -165,9 +184,12 @@ export default function RoundStandingsView({
         {t("round.settings.pointsWdl")}:{" "}
         {round.format === "ROUND_ROBIN" &&
           `${round.settings.winPoints}/${round.settings.drawPoints}/${round.settings.lossPoints}`}
-        . {t("standings.roundRobinNoAdvancement")}
+        . {t("standings.qualifiedPersistedHint")}
       </p>
-      <StandingsTable rows={data.standings} />
+      <StandingsTable
+        rows={data.standings}
+        qualifiedTeamIds={qualifiedTeamIds}
+      />
     </div>
   );
 }

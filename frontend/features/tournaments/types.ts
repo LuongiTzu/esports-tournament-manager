@@ -31,6 +31,9 @@ export interface GroupStageSettings {
 }
 
 export interface SwissSettings {
+  mode?: "FIXED_ROUNDS" | "THRESHOLD";
+  winsToAdvance?: number;
+  lossesToEliminate?: number;
   scoringMode?: MatchScoringMode;
   numberOfRounds: number | null;
   advancingTeamCount: number;
@@ -237,6 +240,7 @@ export interface SwissRecordGroup {
 }
 
 export interface SwissBracketView {
+  roundLimit?: number;
   groups: SwissRecordGroup[];
   links: Array<{ from: string; to: string; result: "winner" | "loser" }>;
 }
@@ -267,6 +271,7 @@ export interface GroupStanding {
 }
 
 export interface SwissStanding {
+  state?: "ACTIVE" | "QUALIFIED" | "ELIMINATED";
   rank: number;
   teamId: string;
   team: BracketTeam | null;

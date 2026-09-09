@@ -21,6 +21,7 @@ import {
   RoundRobinSettings,
   resolveSwissNumberOfRounds,
   SwissSettings,
+  swissTeamState,
 } from './types/round-settings';
 import { analyzeQualificationBoundary } from './domain/qualification-boundary';
 import {
@@ -166,7 +167,39 @@ export class RoundAdvancementService {
         ) as SwissSettings;
         const swissStandings = result.rounds[0].standings as Array<{
           teamId: string;
+          wins: number;
+          losses: number;
         }>;
+        if (swissSettings.mode === 'THRESHOLD') {
+          if (
+            swissStandings.some(
+              (row) => swissTeamState(row, swissSettings) === 'ACTIVE',
+            )
+          ) {
+            throw new BadRequestException(
+              'Swiss threshold stage still has active teams',
+            );
+          }
+          const teamIds = swissStandings
+            .filter((row) => swissTeamState(row, swissSettings) === 'QUALIFIED')
+            .map((row) => row.teamId);
+          if (
+            qualifiedTeamIds &&
+            (qualifiedTeamIds.length !== teamIds.length ||
+              new Set(qualifiedTeamIds).size !== teamIds.length ||
+              qualifiedTeamIds.some((id) => !teamIds.includes(id)))
+          ) {
+            throw new BadRequestException(
+              'Threshold qualification is determined by the win target',
+            );
+          }
+          return this.persistAdvancement(tx, {
+            round,
+            nextRound,
+            teamIds,
+            actorId,
+          });
+        }
         const numberOfRounds = resolveSwissNumberOfRounds(
           swissStandings.length,
           swissSettings.numberOfRounds,

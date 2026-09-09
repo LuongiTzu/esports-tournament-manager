@@ -162,11 +162,13 @@ export default function SwissDiagramContent({
             height: group.height,
           }}
           data-qualified={group.qualified}
-          aria-label={`${group.wins}–${group.losses} ${group.qualified ? t("bracket.swissQualified") : t("bracket.currentStandings")}`}
+          data-eliminated={group.eliminated}
+          aria-label={`${group.wins}–${group.losses} ${group.qualified ? t("bracket.swissQualified") : group.eliminated ? t("swiss.eliminated") : t("bracket.currentStandings")}`}
         >
           <h5 className={styles.swissRecord}>
             {group.wins}–{group.losses}
             {group.qualified && <span>{t("bracket.swissQualified")}</span>}
+            {group.eliminated && <span>{t("swiss.eliminated")}</span>}
           </h5>
           <div className={styles.swissResultTeams}>
             {group.teams.map((row) => (

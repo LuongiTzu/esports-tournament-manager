@@ -1,5 +1,7 @@
 "use client";
 
+import SwissSettingsFields from "./competition/SwissSettingsFields";
+
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -78,6 +80,9 @@ interface RoundForm {
     meetingsPerPair: string;
   };
   swiss: {
+    mode: string;
+    winsToAdvance: string;
+    lossesToEliminate: string;
     numberOfRounds: string;
     advancingTeamCount: string;
   };
@@ -109,6 +114,9 @@ const DEFAULT_GROUP_STAGE_SETTINGS: RoundForm["groupStage"] = {
 };
 
 const DEFAULT_SWISS_SETTINGS: RoundForm["swiss"] = {
+  mode: "FIXED_ROUNDS",
+  winsToAdvance: "3",
+  lossesToEliminate: "3",
   numberOfRounds: "",
   advancingTeamCount: "8",
 };
@@ -616,6 +624,18 @@ export default function TournamentCreateForm() {
     }
     for (const round of rounds) {
       if (round.format !== "SWISS") continue;
+      if (round.swiss.mode === "THRESHOLD") {
+        if (
+          [round.swiss.winsToAdvance, round.swiss.lossesToEliminate].some(
+            (value) =>
+              !Number.isInteger(Number(value)) ||
+              Number(value) < 1 ||
+              Number(value) > 10,
+          )
+        )
+          return t("swiss.thresholdInvalid");
+        continue;
+      }
       const numberOfRounds = optionalNumber(round.swiss.numberOfRounds);
       const advancingTeamCount = Number(round.swiss.advancingTeamCount);
       if (
@@ -820,8 +840,20 @@ export default function TournamentCreateForm() {
               format: "SWISS",
               settings: {
                 scoringMode: round.scoringMode,
+                mode:
+                  round.swiss.mode === "THRESHOLD"
+                    ? "THRESHOLD"
+                    : "FIXED_ROUNDS",
+                ...(round.swiss.mode === "THRESHOLD"
+                  ? {
+                      winsToAdvance: Number(round.swiss.winsToAdvance),
+                      lossesToEliminate: Number(round.swiss.lossesToEliminate),
+                    }
+                  : {}),
                 numberOfRounds:
-                  optionalNumber(round.swiss.numberOfRounds) ?? null,
+                  round.swiss.mode === "THRESHOLD"
+                    ? null
+                    : (optionalNumber(round.swiss.numberOfRounds) ?? null),
                 advancingTeamCount: Number(round.swiss.advancingTeamCount),
               },
             };
@@ -1825,73 +1857,12 @@ export default function TournamentCreateForm() {
                           )}
                           {round.format === "SWISS" && (
                             <div className="mt-4 border-t border-line/70 pt-4">
-                              <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-faint">
-                                {t("tournament.create.swissSettings")}
-                              </p>
-                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                <label className={labelClass}>
-                                  {t("tournament.create.swissRounds")}
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    max={20}
-                                    step={1}
-                                    value={round.swiss.numberOfRounds}
-                                    onChange={(event) =>
-                                      updateSwissSettings(
-                                        index,
-                                        "numberOfRounds",
-                                        event.target.value,
-                                      )
-                                    }
-                                    className={`${inputClass} mt-1 bg-surface`}
-                                    placeholder={t(
-                                      "tournament.create.automaticPlaceholder",
-                                    )}
-                                  />
-                                  <span className={`${hintClass} mt-1 block`}>
-                                    {t("tournament.create.swissRoundsHint")}
-                                  </span>
-                                </label>
-                                <label className={labelClass}>
-                                  {t("tournament.create.advancingTeams")}
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    max={256}
-                                    step={1}
-                                    value={round.swiss.advancingTeamCount}
-                                    onChange={(event) =>
-                                      updateSwissSettings(
-                                        index,
-                                        "advancingTeamCount",
-                                        event.target.value,
-                                      )
-                                    }
-                                    className={`${inputClass} mt-1 bg-surface`}
-                                  />
-                                  <span className={`${hintClass} mt-1 block`}>
-                                    {t("tournament.create.advancingTeamsHint")}
-                                  </span>
-                                </label>
-                              </div>
-                              <div className="mt-3 rounded-lg border border-line bg-surface/70 px-3 py-2.5 text-xs leading-5 text-ink-muted">
-                                <p>{t("tournament.create.swissBehavior")}</p>
-                                {!round.swiss.numberOfRounds &&
-                                  optionalNumber(form.maxTeams) !==
-                                    undefined && (
-                                    <p className="mt-1">
-                                      {t("tournament.create.estimatedCapacity")}
-                                      :{" "}
-                                      {Math.ceil(
-                                        Math.log2(
-                                          optionalNumber(form.maxTeams)!,
-                                        ),
-                                      )}{" "}
-                                      {t("tournament.create.actualRoundsHint")}
-                                    </p>
-                                  )}
-                              </div>
+                              <SwissSettingsFields
+                                value={round.swiss}
+                                onChange={(key, value) =>
+                                  updateSwissSettings(index, key, value)
+                                }
+                              />
                             </div>
                           )}
                           {round.format === "PLAYOFF" && (

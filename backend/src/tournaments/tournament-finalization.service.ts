@@ -114,6 +114,8 @@ export class TournamentFinalizationService {
                 matchNumber: true,
                 groupId: true,
                 winnerTeamId: true,
+                teamAId: true,
+                teamBId: true,
               },
             },
           },

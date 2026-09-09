@@ -5,7 +5,6 @@ import {
   GamePositionMode,
   Gender,
   MemberRole,
-  ModerationStatus,
   NotificationType,
   Prisma,
   RegistrationStatus,
@@ -13,6 +12,8 @@ import {
   ReportStatus,
   RoundFormat,
   RoundStatus,
+  TeamInvitationPurpose,
+  TeamInvitationStatus,
   TournamentStatus,
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -30,17 +31,36 @@ import {
   SEED_TOURNAMENTS,
   SEED_USERS,
   SeedTournamentSpec,
-  TEAM_NAME_PREFIXES,
-  TEAM_NAME_SUFFIXES,
+  TEAM_NAMES,
   VIETNAMESE_MEMBER_NAMES,
 } from './seed/data';
 import { validateSeed } from './seed/validation';
 
 const BCRYPT_ROUNDS = 10;
-const PARTICIPANTS = SEED_USERS.filter(
-  (user) => user.persona === 'PARTICIPANT',
+const PARTICIPANTS = SEED_USERS.filter((user) =>
+  ['HYBRID', 'PARTICIPANT'].includes(user.persona),
 );
-const ORGANIZERS = SEED_USERS.filter((user) => user.persona === 'ORGANIZER');
+const COMMUNITY_USERS = SEED_USERS.filter(
+  (user) => user.role === 'SIGNED_UP_USER',
+);
+const ORGANIZERS = SEED_USERS.filter((user) =>
+  ['ORGANIZER', 'HYBRID'].includes(user.persona),
+);
+const RESET_CONFIRMATION = 'RESET_LOCAL_ESPORTS_DEV_DB';
+const POSTER_BY_GAME: Record<string, string> = {
+  LIEN_QUAN_MOBILE: '/images/tournaments/common/posters/arena-of-valor.jpg',
+  LEAGUE_OF_LEGENDS: '/images/tournaments/common/posters/league-of-legends.jpg',
+  VALORANT: '/images/tournaments/common/posters/valorant.jpg',
+  COUNTER_STRIKE_2: '/images/tournaments/common/posters/counter-strike-2.jpg',
+  DOTA_2: '/images/tournaments/common/posters/dota-2.jpg',
+  MLBB: '/images/tournaments/common/posters/mobile%20legend.jpg',
+  HONOR_OF_KINGS: '/images/tournaments/common/posters/honor-of-king.jpg',
+  WILD_RIFT: '/images/tournaments/common/posters/wild-rift.jpg',
+  FC_ONLINE: '/images/tournaments/common/posters/fc-online.jpg',
+  CROSSFIRE_PC: '/images/tournaments/common/posters/crossfire.jpg',
+  TEKKEN_8: '/images/tournaments/common/posters/tenken.jpg',
+  ROCKET_LEAGUE: '/images/tournaments/common/posters/rocket-league.jpg',
+};
 
 async function main(): Promise<void> {
   const app = await NestFactory.createApplicationContext(AppModule, {
@@ -49,10 +69,21 @@ async function main(): Promise<void> {
 
   try {
     const prisma = app.get(PrismaService);
-    await cleanOwnedSeedData(prisma);
+    if (process.argv.includes('--validate-only')) {
+      const summary = await validateSeed(prisma);
+      console.log('Dữ liệu phát triển hiện tại hợp lệ.');
+      console.log(JSON.stringify(summary, null, 2));
+      return;
+    }
+    if (process.argv.includes('--replace-all')) {
+      assertAuthorizedLocalReplacement();
+      await cleanOperationalData(prisma);
+    } else {
+      await cleanOwnedSeedData(prisma);
+    }
     await syncGameCatalog(prisma);
     await seedUsers(prisma);
-    await seedBannedKeywords(prisma);
+    await ensureBannedKeywords(prisma);
 
     const games = new Map(
       (await prisma.game.findMany()).map((game) => [game.code, game]),
@@ -183,6 +214,67 @@ async function cleanOwnedSeedData(prisma: PrismaService): Promise<void> {
   });
 }
 
+function assertAuthorizedLocalReplacement(): void {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error('DATABASE_URL chưa được cấu hình.');
+  const target = new URL(databaseUrl);
+  const database = decodeURIComponent(target.pathname.replace(/^\/+/, ''));
+  const allowedHosts = new Set(['localhost', '127.0.0.1', '::1']);
+  if (
+    !allowedHosts.has(target.hostname.replace(/^\[|\]$/g, '').toLowerCase()) ||
+    database !== 'esports_tournament_db' ||
+    process.env.NODE_ENV === 'production'
+  ) {
+    throw new Error(
+      'Chỉ được thay toàn bộ dữ liệu của cơ sở dữ liệu phát triển local.',
+    );
+  }
+  if (process.env.CONFIRM_DEV_DB_RESET !== RESET_CONFIRMATION) {
+    throw new Error(`Cần đặt CONFIRM_DEV_DB_RESET=${RESET_CONFIRMATION}.`);
+  }
+}
+
+async function cleanOperationalData(prisma: PrismaService): Promise<void> {
+  const gamesBefore = await prisma.game.findMany({ orderBy: { code: 'asc' } });
+  const keywordsBefore = await prisma.bannedKeyword.findMany({
+    orderBy: { keyword: 'asc' },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.notification.deleteMany();
+    await tx.tournamentFavorite.deleteMany();
+    await tx.report.deleteMany();
+    await tx.comment.deleteMany({ where: { parentId: { not: null } } });
+    await tx.comment.deleteMany();
+    await tx.teamInvitation.deleteMany();
+    await tx.matchScore.deleteMany();
+    await tx.match.deleteMany();
+    await tx.groupTeam.deleteMany();
+    await tx.roundTeam.deleteMany();
+    await tx.group.deleteMany();
+    await tx.teamMember.deleteMany();
+    await tx.team.deleteMany();
+    await tx.competitionAuditLog.deleteMany();
+    await tx.tournamentAdminOverride.deleteMany();
+    await tx.round.deleteMany();
+    await tx.tournament.deleteMany();
+    await tx.user.deleteMany();
+  });
+
+  const [gamesAfter, keywordsAfter] = await Promise.all([
+    prisma.game.findMany({ orderBy: { code: 'asc' } }),
+    prisma.bannedKeyword.findMany({ orderBy: { keyword: 'asc' } }),
+  ]);
+  if (
+    JSON.stringify(gamesAfter) !== JSON.stringify(gamesBefore) ||
+    JSON.stringify(keywordsAfter) !== JSON.stringify(keywordsBefore)
+  ) {
+    throw new Error(
+      'Danh mục game hoặc bộ từ khóa cấm đã bị thay đổi khi làm sạch.',
+    );
+  }
+}
+
 async function seedUsers(prisma: PrismaService): Promise<void> {
   const passwordHash = await bcrypt.hash(DEVELOPMENT_PASSWORD, BCRYPT_ROUNDS);
   const emailVerifiedAt = new Date('2026-01-01T00:00:00.000Z');
@@ -198,6 +290,7 @@ async function seedUsers(prisma: PrismaService): Promise<void> {
       currentAddress: user.currentAddress,
       bio: user.bio,
       avatarUrl: null,
+      isLocked: user.isLocked,
       emailVerificationTokenHash: null,
       emailVerificationExpiresAt: null,
     };
@@ -214,8 +307,7 @@ async function seedUsers(prisma: PrismaService): Promise<void> {
   }
 }
 
-async function seedBannedKeywords(prisma: PrismaService): Promise<void> {
-  await prisma.bannedKeyword.deleteMany();
+async function ensureBannedKeywords(prisma: PrismaService): Promise<void> {
   await prisma.bannedKeyword.createMany({
     data: [
       { keyword: 'link cá cược', category: BannedKeywordCategory.GAMBLING },
@@ -231,6 +323,7 @@ async function seedBannedKeywords(prisma: PrismaService): Promise<void> {
       },
       { keyword: 'đồ gian lận', category: BannedKeywordCategory.PROFANITY },
     ],
+    skipDuplicates: true,
   });
 }
 
@@ -248,21 +341,19 @@ async function seedTournament(
       name: spec.name,
       slug: spec.slug,
       description: spec.description,
-      customGameName: spec.customGameName,
-      rules:
-        'Thi đấu đúng giờ, sử dụng đội hình đã đăng ký và tuân thủ quyết định của ban tổ chức.',
-      bannerUrl: null,
+      customGameName: null,
+      rules: spec.rules,
+      bannerUrl: POSTER_BY_GAME[game.code] ?? null,
       visibility: spec.visibility,
-      moderationStatus:
-        spec.status === TournamentStatus.CANCELLED
-          ? ModerationStatus.HIDDEN_BY_ADMIN
-          : ModerationStatus.ACTIVE,
-      isVerified: tournamentIndex % 3 !== 1,
+      moderationStatus: spec.moderationStatus,
+      isVerified: spec.isVerified,
+      isOfficial: spec.isOfficial,
       registrationOpen: spec.status === TournamentStatus.REGISTRATION,
       maxTeams: spec.maxTeams,
       startDate: new Date(spec.startDate),
       endDate: new Date(spec.endDate),
-      status: spec.status,
+      status:
+        spec.competition === 'NONE' ? spec.status : TournamentStatus.ONGOING,
       mode: spec.mode,
       location: spec.location,
       minTeamSize: activeTeamSize,
@@ -364,12 +455,7 @@ async function seedTeam(
   const status = teamRegistrationStatus(tournament, teamIndex);
   const captain =
     PARTICIPANTS[(tournamentIndex * 3 + teamIndex) % PARTICIPANTS.length];
-  const prefix = TEAM_NAME_PREFIXES[teamIndex % TEAM_NAME_PREFIXES.length];
-  const suffix =
-    TEAM_NAME_SUFFIXES[
-      (tournamentIndex + teamIndex * 2) % TEAM_NAME_SUFFIXES.length
-    ];
-  const teamName = `${prefix} ${suffix}`;
+  const teamName = TEAM_NAMES[teamIndex % TEAM_NAMES.length];
   const capacity = tournament.maxTeamSize - activeTeamSize;
   const playerCount =
     activeTeamSize + (capacity === 0 ? 0 : teamIndex % (capacity + 1));
@@ -384,7 +470,11 @@ async function seedTeam(
       tournamentId,
       captainId: captain.id,
       name: teamName,
-      shortName: `${prefix.slice(0, 3).toUpperCase()}${teamIndex + 1}`,
+      shortName: teamName
+        .split(' ')
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase(),
       description: `${teamName} là đội tuyển cộng đồng được tạo để mô phỏng dữ liệu thi đấu tại Việt Nam.`,
       logoUrl: null,
       status,
@@ -538,66 +628,87 @@ async function seedCommunityData(prisma: PrismaService): Promise<void> {
   const publicTournaments = SEED_TOURNAMENTS.filter(
     (tournament) => tournament.visibility === 'PUBLIC',
   );
+  const activityDate = (offset: number, hour = 8) =>
+    new Date(
+      new Date('2026-08-02T00:00:00.000Z').getTime() +
+        offset * 24 * 60 * 60 * 1000 +
+        hour * 60 * 60 * 1000,
+    );
+
   await prisma.tournamentFavorite.createMany({
-    data: publicTournaments.slice(0, 12).flatMap((tournament, index) => [
-      {
-        userId: PARTICIPANTS[index % PARTICIPANTS.length].id,
-        tournamentId: tournament.id,
-        createdAt: new Date(
-          `2026-08-${String((index % 20) + 1).padStart(2, '0')}T08:00:00.000Z`,
-        ),
-      },
-      {
-        userId: PARTICIPANTS[(index + 5) % PARTICIPANTS.length].id,
-        tournamentId: tournament.id,
-        createdAt: new Date(
-          `2026-08-${String((index % 20) + 1).padStart(2, '0')}T09:00:00.000Z`,
-        ),
-      },
-    ]),
+    data: COMMUNITY_USERS.flatMap((user, index) =>
+      [0, 1].map((offset) => ({
+        userId: user.id,
+        tournamentId:
+          publicTournaments[
+            (index * 5 + offset * 11) % publicTournaments.length
+          ].id,
+        createdAt: activityDate(index % 35, 7 + offset),
+      })),
+    ),
   });
 
-  for (const [index, tournament] of publicTournaments.slice(0, 8).entries()) {
-    const rootAuthor = PARTICIPANTS[index % PARTICIPANTS.length];
-    const replyAuthor = PARTICIPANTS[(index + 7) % PARTICIPANTS.length];
-    const replyId = `seed-comment-${String(SEED_TOURNAMENTS.indexOf(tournament) + 1).padStart(2, '0')}-reply`;
-    const rootId = `seed-comment-${String(SEED_TOURNAMENTS.indexOf(tournament) + 1).padStart(2, '0')}-1`;
+  const rootComments = await Promise.all(
+    COMMUNITY_USERS.map((author, index) => {
+      const tournament =
+        publicTournaments[(index * 7) % publicTournaments.length];
+      return prisma.comment.create({
+        data: {
+          id: `seed-community-comment-${String(index + 1).padStart(3, '0')}`,
+          content: [
+            'Lịch thi đấu được sắp xếp hợp lý, chúc các đội thi đấu thật tốt.',
+            'Ban tổ chức cho mình hỏi các trận sắp tới có phát trực tiếp không?',
+            'Thể thức của giải lần này khá hấp dẫn, mình sẽ theo dõi đến chung kết.',
+            'Thông tin đội tuyển và thời gian thi đấu được trình bày rất dễ theo dõi.',
+            'Mong ban tổ chức cập nhật kết quả ngay sau khi trận đấu kết thúc.',
+          ][index % 5],
+          authorId: author.id,
+          tournamentId: tournament.id,
+          isHidden: index % 47 === 0,
+          deletedAt: index % 73 === 0 ? activityDate(index % 35, 14) : null,
+          createdAt: activityDate(index % 35, 10),
+        },
+      });
+    }),
+  );
+
+  for (let index = 0; index < 90; index++) {
+    const root = rootComments[(index * 11) % rootComments.length];
+    const replyAuthor =
+      COMMUNITY_USERS[(index * 17 + 9) % COMMUNITY_USERS.length];
+    const rootAuthor = COMMUNITY_USERS[(index * 11) % COMMUNITY_USERS.length];
+    const replyId = `seed-community-reply-${String(index + 1).padStart(3, '0')}`;
     await prisma.comment.create({
       data: {
         id: replyId,
         content: [
-          'Mình cũng thấy lịch hợp lý, hy vọng ban tổ chức cập nhật kết quả sớm.',
-          'Có nhé bạn, mình thấy ban tổ chức đã để đường dẫn trong phần thông tin giải.',
-          'Đội hình năm nay mạnh lắm, chắc các trận vòng sau sẽ rất hấp dẫn.',
-          'Cảm ơn bạn đã chia sẻ, mình sẽ theo dõi lịch thi đấu thường xuyên.',
+          'Mình cũng đang chờ trận này, hai đội có phong độ khá cân bằng.',
+          'Theo thông báo mới nhất thì lịch vẫn được giữ nguyên bạn nhé.',
+          'Cảm ơn bạn, mình đã thêm giải vào danh sách theo dõi.',
+          'Ban tổ chức đã cập nhật đường dẫn phát trực tiếp trong phần thông tin.',
         ][index % 4],
         authorId: replyAuthor.id,
-        tournamentId: tournament.id,
-        parentId: rootId,
+        tournamentId: root.tournamentId,
+        parentId: root.id,
         replyToUserId: rootAuthor.id,
-        createdAt: new Date(
-          `2026-08-${String(index + 10).padStart(2, '0')}T10:30:00.000Z`,
-        ),
+        createdAt: activityDate(index % 35, 12),
       },
     });
     await prisma.notification.create({
       data: {
-        id: `seed-notification-comment-${index + 1}`,
+        id: `seed-notification-reply-${String(index + 1).padStart(3, '0')}`,
         userId: rootAuthor.id,
-        tournamentId: tournament.id,
+        tournamentId: root.tournamentId,
         type: NotificationType.COMMENT_REPLY,
         content: `${replyAuthor.displayName} đã trả lời bình luận của bạn`,
         data: {
           kind: 'COMMENT_REPLY',
-          rootCommentId: rootId,
+          rootCommentId: root.id,
           replyCommentId: replyId,
-          replierName: replyAuthor.displayName,
         },
         deduplicationKey: `seed:comment-reply:${replyId}`,
         isRead: index % 3 === 0,
-        createdAt: new Date(
-          `2026-08-${String(index + 10).padStart(2, '0')}T10:31:00.000Z`,
-        ),
+        createdAt: activityDate(index % 35, 12),
       },
     });
   }
@@ -619,57 +730,104 @@ async function seedCommunityData(prisma: PrismaService): Promise<void> {
     'Nội dung giải có nhắc đến hoạt động cá cược.',
   ];
   await prisma.report.createMany({
-    data: reportReasons.map((reason, index) => {
+    data: Array.from({ length: 60 }, (_, index) => {
+      const reason = reportReasons[index % reportReasons.length];
       const status = [
         ReportStatus.PENDING,
         ReportStatus.REVIEWED,
         ReportStatus.DISMISSED,
       ][index % 3];
       return {
-        id: `seed-report-${index + 1}`,
-        tournamentId: publicTournaments[index].id,
-        reporterUserId: PARTICIPANTS[(index + 3) % PARTICIPANTS.length].id,
+        id: `seed-report-${String(index + 1).padStart(3, '0')}`,
+        tournamentId: publicTournaments[(index * 3) % 14].id,
+        reporterUserId:
+          COMMUNITY_USERS[(index * 17) % COMMUNITY_USERS.length].id,
         reason,
-        description: reportDescriptions[index],
+        description: reportDescriptions[index % reportDescriptions.length],
         status,
         reviewedBy:
-          status === ReportStatus.PENDING ? null : SEED_USERS[index % 2].id,
+          status === ReportStatus.PENDING ? null : SEED_USERS[index % 3].id,
         reviewedAt:
-          status === ReportStatus.PENDING
-            ? null
-            : new Date(
-                `2026-08-${String(index + 15).padStart(2, '0')}T09:00:00.000Z`,
-              ),
-        createdAt: new Date(
-          `2026-08-${String(index + 14).padStart(2, '0')}T09:00:00.000Z`,
-        ),
+          status === ReportStatus.PENDING ? null : activityDate(index % 35, 16),
+        createdAt: activityDate(index % 35, 15),
       };
     }),
   });
 
   await prisma.notification.createMany({
-    data: publicTournaments.slice(0, 10).map((tournament, index) => ({
-      id: `seed-notification-tournament-${index + 1}`,
-      userId: PARTICIPANTS[(index + 2) % PARTICIPANTS.length].id,
-      tournamentId: tournament.id,
-      type:
-        index % 2 === 0
-          ? NotificationType.SCHEDULE_CHANGE
-          : NotificationType.TOURNAMENT_STATUS,
-      content:
-        index % 2 === 0
-          ? 'Lịch thi đấu vừa được ban tổ chức cập nhật'
-          : 'Trạng thái giải đấu vừa thay đổi',
-      data:
-        index % 2 === 0
-          ? { kind: 'MATCH_SCHEDULE', tournamentName: tournament.name }
-          : { kind: 'TOURNAMENT_STATUS', status: tournament.status },
-      deduplicationKey: `seed:tournament-notification:${index + 1}`,
-      isRead: index % 4 === 0,
-      createdAt: new Date(
-        `2026-08-${String(index + 1).padStart(2, '0')}T12:00:00.000Z`,
-      ),
-    })),
+    data: COMMUNITY_USERS.map((user, index) => {
+      const tournament =
+        publicTournaments[(index * 13) % publicTournaments.length];
+      return {
+        id: `seed-notification-tournament-${String(index + 1).padStart(3, '0')}`,
+        userId: user.id,
+        tournamentId: tournament.id,
+        type:
+          index % 2 === 0
+            ? NotificationType.SCHEDULE_CHANGE
+            : NotificationType.TOURNAMENT_STATUS,
+        content:
+          index % 2 === 0
+            ? 'Lịch thi đấu vừa được ban tổ chức cập nhật'
+            : 'Trạng thái giải đấu vừa thay đổi',
+        data:
+          index % 2 === 0
+            ? { kind: 'MATCH_SCHEDULE', tournamentName: tournament.name }
+            : { kind: 'TOURNAMENT_STATUS', status: tournament.status },
+        deduplicationKey: `seed:tournament-notification:${index + 1}`,
+        isRead: index % 4 === 0,
+        createdAt: activityDate(index % 35, 13),
+      };
+    }),
+  });
+
+  const invitationTeams = await prisma.team.findMany({
+    where: { tournament: { slug: { startsWith: SEED_SLUG_PREFIX } } },
+    include: {
+      tournament: { select: { organizerId: true } },
+      members: { take: 1 },
+    },
+    orderBy: { id: 'asc' },
+    take: 80,
+  });
+  await prisma.teamInvitation.createMany({
+    data: invitationTeams.map((team, index) => {
+      const invitee =
+        COMMUNITY_USERS[(index * 19 + 5) % COMMUNITY_USERS.length];
+      const status = [
+        TeamInvitationStatus.ACCEPTED,
+        TeamInvitationStatus.PENDING,
+        TeamInvitationStatus.REVOKED,
+        TeamInvitationStatus.EXPIRED,
+      ][index % 4];
+      const createdAt = activityDate(index % 30, 9);
+      return {
+        id: `seed-invitation-${String(index + 1).padStart(3, '0')}`,
+        purpose: TeamInvitationPurpose.MEMBER_LINK,
+        status,
+        email: invitee.email,
+        tokenHash: `ma-moi-du-lieu-${String(index + 1).padStart(3, '0')}`,
+        expiresAt: new Date(
+          createdAt.getTime() +
+            (status === TeamInvitationStatus.EXPIRED ? 1 : 14) * 86_400_000,
+        ),
+        acceptedAt:
+          status === TeamInvitationStatus.ACCEPTED
+            ? new Date(createdAt.getTime() + 86_400_000)
+            : null,
+        revokedAt:
+          status === TeamInvitationStatus.REVOKED
+            ? new Date(createdAt.getTime() + 86_400_000)
+            : null,
+        tournamentId: team.tournamentId,
+        teamId: team.id,
+        memberId: team.members[0]?.id ?? null,
+        invitedById: team.tournament.organizerId,
+        acceptedById:
+          status === TeamInvitationStatus.ACCEPTED ? invitee.id : null,
+        createdAt,
+      };
+    }),
   });
 }
 

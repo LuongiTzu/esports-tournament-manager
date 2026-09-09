@@ -1,7 +1,13 @@
 import { BracketType, MatchStatus, RoundFormat } from '@prisma/client';
-import { RoundSettingsFor } from '../types/round-settings';
+import {
+  RoundSettingsFor,
+  resolveSwissRoundLimit,
+  swissTeamState,
+} from '../types/round-settings';
 
 export interface RoundCompletionMatch {
+  teamAId?: string | null;
+  teamBId?: string | null;
   status: MatchStatus;
   isActive: boolean;
   isBye: boolean;
@@ -148,6 +154,8 @@ function evaluateSwiss(
   input: RoundCompletionInputFor<typeof RoundFormat.SWISS>,
   progress: MatchProgress,
 ): RoundCompletionResult {
+  if (input.settings.mode === 'THRESHOLD')
+    return evaluateThresholdSwiss(input, progress);
   const resolvedIterations =
     input.settings.numberOfRounds ??
     Math.ceil(Math.log2(input.participantCount));
@@ -226,6 +234,86 @@ function evaluateSwiss(
     expected,
     currentIteration,
     resolvedIterations,
+  );
+}
+
+function evaluateThresholdSwiss(
+  input: RoundCompletionInputFor<typeof RoundFormat.SWISS>,
+  progress: MatchProgress,
+): RoundCompletionResult {
+  const limit = resolveSwissRoundLimit(input.participantCount, input.settings);
+  const current = Math.max(
+    0,
+    ...input.matches.map((match) => match.bracketRound ?? 0),
+  );
+  const invalid = () =>
+    swissResult(progress, 'INVALID_STRUCTURE', false, null, current, limit);
+  if (
+    current < 1 ||
+    current > limit ||
+    input.matches.some(
+      (match) =>
+        !match.isActive ||
+        !Number.isInteger(match.bracketRound) ||
+        (match.bracketRound ?? 0) < 1,
+    )
+  )
+    return invalid();
+  const records = new Map<string, { wins: number; losses: number }>();
+  for (const match of input.matches.filter(
+    (match) => match.bracketRound === 1,
+  )) {
+    for (const id of [match.teamAId, match.teamBId])
+      if (id) records.set(id, { wins: 0, losses: 0 });
+  }
+  if (records.size !== input.participantCount) return invalid();
+  for (let iteration = 1; iteration <= current; iteration++) {
+    const active = new Set(
+      [...records]
+        .filter(
+          ([, record]) => swissTeamState(record, input.settings) === 'ACTIVE',
+        )
+        .map(([id]) => id),
+    );
+    const matches = input.matches.filter(
+      (match) => match.bracketRound === iteration,
+    );
+    if (!active.size || matches.length !== Math.ceil(active.size / 2))
+      return invalid();
+    let byes = 0;
+    let pending = false;
+    for (const match of matches) {
+      const a = match.teamAId;
+      const b = match.teamBId;
+      if (!a || !active.delete(a)) return invalid();
+      if (match.isBye) {
+        if (b || ++byes > 1) return invalid();
+      } else if (!b || !active.delete(b)) return invalid();
+      if (match.status !== MatchStatus.COMPLETED) {
+        pending = true;
+        continue;
+      }
+      if (match.winnerTeamId !== a && (!b || match.winnerTeamId !== b))
+        return invalid();
+      records.get(match.winnerTeamId)!.wins++;
+      if (b) records.get(match.winnerTeamId === a ? b : a)!.losses++;
+    }
+    if (active.size) return invalid();
+    if (pending)
+      return iteration === current
+        ? swissResult(progress, 'MATCHES_PENDING', false, null, current, limit)
+        : invalid();
+  }
+  const completed = [...records.values()].every(
+    (record) => swissTeamState(record, input.settings) !== 'ACTIVE',
+  );
+  return swissResult(
+    progress,
+    completed ? 'COMPLETED' : 'SWISS_ITERATIONS_PENDING',
+    completed,
+    completed ? input.matches.length : null,
+    current,
+    limit,
   );
 }
 
@@ -353,7 +441,7 @@ function swissResult(
   progress: MatchProgress,
   code: RoundCompletionCode,
   completed: boolean,
-  expectedMatchCount: number,
+  expectedMatchCount: number | null,
   currentSwissIteration: number,
   resolvedSwissIterations: number,
 ): RoundCompletionResult {

@@ -126,11 +126,45 @@ async function completeQualifyingRound(
     });
   }
 
-  await services.brackets.advance(round.id);
+  try {
+    await services.brackets.advance(round.id);
+  } catch (error) {
+    const selection = tieBreakSelection(error);
+    if (!selection) throw error;
+    await services.brackets.advance(round.id, selection);
+  }
   await services.prisma.round.update({
     where: { id: round.id },
     data: { status: RoundStatus.COMPLETED },
   });
+}
+
+function tieBreakSelection(error: unknown): string[] | null {
+  const response = (error as { response?: unknown })?.response as
+    | {
+        code?: string;
+        details?: {
+          fixedQualifiedTeams?: Array<{ teamId?: string }>;
+          tieBreaks?: Array<{
+            requiredSelections?: number;
+            candidates?: Array<{ teamId?: string }>;
+          }>;
+        };
+      }
+    | undefined;
+  if (response?.code !== 'ROUND_TIE_BREAK_REQUIRED' || !response.details) {
+    return null;
+  }
+  const fixed = (response.details.fixedQualifiedTeams ?? [])
+    .map((team) => team.teamId)
+    .filter((teamId): teamId is string => Boolean(teamId));
+  const selected = (response.details.tieBreaks ?? []).flatMap((tie) =>
+    (tie.candidates ?? [])
+      .map((team) => team.teamId)
+      .filter((teamId): teamId is string => Boolean(teamId))
+      .slice(0, tie.requiredSelections ?? 0),
+  );
+  return [...fixed, ...selected];
 }
 
 async function seedSwissRound(
@@ -212,6 +246,7 @@ async function completeAvailableMatches(
     const match = candidates[0];
     const useDraw = options.allowDraws && completed % 4 === 3;
     const winsRequired = Math.floor(match.bestOf / 2) + 1;
+    const drawScore = Math.floor(match.bestOf / 2);
     const grandFinalResetRequired = Boolean(
       tournament.forceGrandFinalReset &&
       match.nextMatchId &&
@@ -224,12 +259,12 @@ async function completeAvailableMatches(
     await services.matches.update(match.id, {
       status: MatchStatus.COMPLETED,
       scoreA: useDraw
-        ? 1
+        ? drawScore
         : teamAWins
           ? winsRequired
           : Math.max(0, winsRequired - 1),
       scoreB: useDraw
-        ? 1
+        ? drawScore
         : teamAWins
           ? Math.max(0, winsRequired - 1)
           : winsRequired,

@@ -12,6 +12,7 @@ export interface SwissMatchSnapshot {
 }
 
 export interface SwissStanding {
+  state?: 'ACTIVE' | 'QUALIFIED' | 'ELIMINATED';
   rank: number;
   teamId: string;
   points: number;

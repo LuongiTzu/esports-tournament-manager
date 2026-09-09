@@ -3,10 +3,7 @@ import {
   evaluateRoundCompletion,
   RoundCompletionMatch,
 } from './round-completion';
-import {
-  resolveSwissNumberOfRounds,
-  SwissSettings,
-} from '../types/round-settings';
+import { resolveSwissRoundLimit, SwissSettings } from '../types/round-settings';
 
 export type SwissGenerationBlockedReason =
   | 'NOT_GENERATED'
@@ -32,9 +29,9 @@ export function resolveSwissProgress(input: {
   roundStatus: RoundStatus;
   tournamentStatus: TournamentStatus;
 }): SwissResolvedProgress {
-  const resolvedNumberOfRounds = resolveSwissNumberOfRounds(
+  const resolvedNumberOfRounds = resolveSwissRoundLimit(
     input.participantCount,
-    input.settings.numberOfRounds,
+    input.settings,
   );
   const currentIteration = Math.max(
     0,

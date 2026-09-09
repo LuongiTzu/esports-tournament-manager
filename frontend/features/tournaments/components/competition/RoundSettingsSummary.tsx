@@ -93,6 +93,21 @@ export default function RoundSettingsSummary({
         </div>
       );
     case "SWISS":
+      if (round.settings.mode === "THRESHOLD")
+        return (
+          <div className="flex flex-wrap gap-2">
+            {common}
+            <SettingPill label={t("swiss.mode")} value={t("swiss.threshold")} />
+            <SettingPill
+              label={t("swiss.winsTarget")}
+              value={round.settings.winsToAdvance ?? 3}
+            />
+            <SettingPill
+              label={t("swiss.lossesTarget")}
+              value={round.settings.lossesToEliminate ?? 3}
+            />
+          </div>
+        );
       return (
         <div className="flex flex-wrap gap-2">
           {common}

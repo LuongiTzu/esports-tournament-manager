@@ -38,7 +38,13 @@ const CANONICAL_SETTING_KEYS: Record<RoundFormat, Set<string>> = {
     'allowDraws',
     'meetingsPerPair',
   ]),
-  [RoundFormat.SWISS]: new Set(['numberOfRounds', 'advancingTeamCount']),
+  [RoundFormat.SWISS]: new Set([
+    'mode',
+    'winsToAdvance',
+    'lossesToEliminate',
+    'numberOfRounds',
+    'advancingTeamCount',
+  ]),
   [RoundFormat.PLAYOFF]: new Set(['thirdPlaceMatch']),
   [RoundFormat.DOUBLE_ELIM]: new Set(['grandFinalReset']),
 };
@@ -61,6 +67,7 @@ export interface SeedSummary {
   notifications: number;
   favorites: number;
   reports: number;
+  invitations: number;
   bannedKeywords: number;
   roundAssignments: number;
   groupAssignments: number;
@@ -108,26 +115,30 @@ export async function validateSeed(
   );
 
   assert(
-    users.length === 30,
-    `Expected 30 seeded users, found ${users.length}`,
+    users.length === 150,
+    `Expected 150 seeded users, found ${users.length}`,
   );
   assert(
-    users.filter((user) => user.role === Role.ADMIN).length === 2,
-    'Expected exactly 2 seeded admins',
+    users.filter((user) => user.role === Role.ADMIN).length === 3,
+    'Expected exactly 3 seeded admins',
   );
   assert(
-    users.filter((user) => user.role === Role.SIGNED_UP_USER).length === 28,
-    'Expected exactly 28 signed-up users',
+    users.filter((user) => user.role === Role.SIGNED_UP_USER).length === 147,
+    'Expected exactly 147 signed-up users',
   );
   assert(
     new Set(
       users.flatMap((user) => user.organizedTournaments.map(() => user.id)),
-    ).size === 8,
-    'Expected exactly 8 organizer owners',
+    ).size === 42,
+    'Expected exactly 42 organizer owners',
   );
   assert(
     new Set(users.map((user) => user.email)).size === users.length,
     'Seeded user emails must be unique',
+  );
+  assert(
+    users.filter((user) => user.isLocked).length === 7,
+    'Expected exactly 7 locked development accounts',
   );
   for (const user of users) {
     assert(
@@ -142,10 +153,18 @@ export async function validateSeed(
     GAME_CATALOG_CODES.every((code) => gameCodes.has(code)),
     'Database is missing one or more canonical games',
   );
-  assert(tournaments.length === 20, 'Expected exactly 20 seeded tournaments');
+  assert(tournaments.length === 80, 'Expected exactly 80 seeded tournaments');
   assert(
-    new Set(tournaments.map((tournament) => tournament.game.code)).size === 15,
-    'Expected all 15 canonical games to have seeded tournaments',
+    new Set(tournaments.map((tournament) => tournament.game.code)).size === 12,
+    'Expected tournaments across exactly 12 canonical games',
+  );
+  const tournamentCountByGame = countBy(
+    tournaments.map((tournament) => tournament.game.code),
+  );
+  assert(
+    tournamentCountByGame.LIEN_QUAN_MOBILE === 17 &&
+      tournamentCountByGame.LEAGUE_OF_LEGENDS === 15,
+    'The requested Liên Quân and Liên Minh tournament distribution is missing',
   );
 
   for (const tournament of tournaments) {
@@ -411,6 +430,27 @@ export async function validateSeed(
   const allRounds = tournaments.flatMap((tournament) => tournament.rounds);
   const allGroups = allRounds.flatMap((round) => round.groups);
   const allMatches = allRounds.flatMap((round) => round.matches);
+  const swissRounds = allRounds.filter(
+    (round) => round.format === RoundFormat.SWISS,
+  );
+  const thresholdSwissRounds = swissRounds.filter(
+    (round) => asRecord(round.settings)?.mode === 'THRESHOLD',
+  );
+  const doubleEliminationRounds = allRounds.filter(
+    (round) => round.format === RoundFormat.DOUBLE_ELIM,
+  );
+  const doubleEliminationWithoutReset = doubleEliminationRounds.filter(
+    (round) => asRecord(round.settings)?.grandFinalReset === false,
+  );
+  assert(
+    swissRounds.length === 30 && thresholdSwissRounds.length === 27,
+    'Expected 27 of 30 Swiss rounds to use esports thresholds',
+  );
+  assert(
+    doubleEliminationRounds.length === 20 &&
+      doubleEliminationWithoutReset.length === 18,
+    'Expected 18 of 20 double-elimination rounds without a final reset',
+  );
   const [
     matchScores,
     comments,
@@ -418,6 +458,7 @@ export async function validateSeed(
     notifications,
     favorites,
     reports,
+    invitations,
     bannedKeywords,
     roundAssignments,
     groupAssignments,
@@ -428,6 +469,7 @@ export async function validateSeed(
     prisma.notification.count(),
     prisma.tournamentFavorite.count(),
     prisma.report.count(),
+    prisma.teamInvitation.count(),
     prisma.bannedKeyword.count(),
     prisma.roundTeam.count(),
     prisma.groupTeam.count(),
@@ -439,12 +481,38 @@ export async function validateSeed(
     notifications,
     favorites,
     reports,
+    invitations,
     bannedKeywords,
     roundAssignments,
     groupAssignments,
   };
   for (const [table, count] of Object.entries(completeTableCounts)) {
     assert(count > 0, `${table} must contain realistic development data`);
+  }
+  for (const persona of [
+    'ORGANIZER',
+    'HYBRID',
+    'PARTICIPANT',
+    'SPECTATOR',
+  ] as const) {
+    const userIds = SEED_USERS.filter((user) => user.persona === persona).map(
+      (user) => user.id,
+    );
+    const [personaComments, personaReplies, personaFavorites, personaReports] =
+      await Promise.all([
+        prisma.comment.count({ where: { authorId: { in: userIds } } }),
+        prisma.comment.count({
+          where: { authorId: { in: userIds }, parentId: { not: null } },
+        }),
+        prisma.tournamentFavorite.count({ where: { userId: { in: userIds } } }),
+        prisma.report.count({ where: { reporterUserId: { in: userIds } } }),
+      ]);
+    assert(
+      [personaComments, personaReplies, personaFavorites, personaReports].every(
+        (count) => count > 0,
+      ),
+      `${persona} must have comments, replies, favorites and reports`,
+    );
   }
   const imageUrls = [
     ...users.map((user) => user.avatarUrl),
@@ -462,8 +530,9 @@ export async function validateSeed(
     admins: users.filter((user) => user.role === Role.ADMIN).length,
     signedUpUsers: users.filter((user) => user.role === Role.SIGNED_UP_USER)
       .length,
-    organizerOwners: SEED_USERS.filter((user) => user.persona === 'ORGANIZER')
-      .length,
+    organizerOwners: SEED_USERS.filter((user) =>
+      ['ORGANIZER', 'HYBRID'].includes(user.persona),
+    ).length,
     games: games.length,
     tournaments: tournaments.length,
     rounds: allRounds.length,

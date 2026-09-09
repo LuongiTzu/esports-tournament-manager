@@ -69,22 +69,25 @@ function harness(
   const tx = {
     $queryRaw: jest.fn().mockResolvedValue([{ id: initial.id }]),
     match: {
+      findFirst: jest.fn().mockResolvedValue(null),
       findUnique: jest.fn(({ where }: { where: { id: string } }) =>
         Promise.resolve(rows[where.id] ?? null),
       ),
-      findMany: jest.fn(async (): Promise<Array<Record<string, unknown>>> =>
-        Object.values(rows).map((row) => ({
-          id: row.id,
-          status: row.status ?? MatchStatus.PENDING,
-          isActive: row.isActive !== false,
-          bracketType: row.bracketType ?? null,
-          bracketRound: row.bracketRound ?? 1,
-          matchNumber: row.matchNumber ?? 1,
-          winnerTeamId: row.winnerTeamId ?? null,
-          scheduledAt: row.scheduledAt ?? null,
-          updatedAt: row.updatedAt ?? new Date('2026-08-14T00:00:00.000Z'),
-          round: row.round,
-        })),
+      findMany: jest.fn((): Promise<Array<Record<string, unknown>>> =>
+        Promise.resolve(
+          Object.values(rows).map((row) => ({
+            id: row.id,
+            status: row.status ?? MatchStatus.PENDING,
+            isActive: row.isActive !== false,
+            bracketType: row.bracketType ?? null,
+            bracketRound: row.bracketRound ?? 1,
+            matchNumber: row.matchNumber ?? 1,
+            winnerTeamId: row.winnerTeamId ?? null,
+            scheduledAt: row.scheduledAt ?? null,
+            updatedAt: row.updatedAt ?? new Date('2026-08-14T00:00:00.000Z'),
+            round: row.round,
+          })),
+        ),
       ),
       update: jest.fn(
         ({
@@ -205,6 +208,38 @@ const games = (winners: Array<'A' | 'B'>) => ({
 });
 
 describe('MatchesService results', () => {
+  it.each(['summary', 'games'])(
+    'locks threshold Swiss %s corrections after a later pairing exists',
+    async (kind) => {
+      const initial = match({
+        status: MatchStatus.COMPLETED,
+        scoreA: 2,
+        scoreB: 0,
+        winnerTeamId: 'team-a',
+        outcome: MatchOutcome.TEAM_A,
+        round: {
+          id: 'round-1',
+          name: 'Swiss',
+          format: RoundFormat.SWISS,
+          settings: { mode: 'THRESHOLD' },
+          tournamentId: 'tournament-1',
+        },
+      });
+      const { service, tx } = harness(initial);
+      tx.match.findFirst.mockResolvedValue({ id: 'later' });
+      const operation =
+        kind === 'summary'
+          ? service.update('match-1', {
+              scoreA: 0,
+              scoreB: 2,
+              status: MatchStatus.COMPLETED,
+            })
+          : service.putScores('match-1', games(['B', 'B']));
+      await expect(operation).rejects.toThrow('later pairing round');
+      expect(tx.match.update).not.toHaveBeenCalled();
+      expect(tx.matchScore.deleteMany).not.toHaveBeenCalled();
+    },
+  );
   it('synchronizes Round lifecycle in the same result transaction', async () => {
     const { service, roundLifecycle, tx } = harness();
 
@@ -822,7 +857,7 @@ describe('MatchesService results', () => {
           teamBName: 'Bravo',
           scoreA: 2,
           scoreB: 0,
-        }),
+        }) as unknown,
         sourceKey: expect.stringContaining('match:match-1:result:') as string,
       }),
     );
@@ -1104,7 +1139,7 @@ describe('MatchesService organizer operations', () => {
           teamAName: 'Alpha',
           teamBName: 'Bravo',
           newScheduledAt: '2026-08-20T10:00:00.000Z',
-        }),
+        }) as unknown,
       }),
     );
     expect(jest.mocked(events.publish)).toHaveBeenCalledWith(

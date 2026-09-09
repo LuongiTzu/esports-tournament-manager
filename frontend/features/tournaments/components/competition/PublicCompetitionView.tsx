@@ -61,17 +61,18 @@ export default function PublicCompetitionView({
         setSelectedRoundId((current) =>
           orderedRounds.some(({ round }) => round.id === current)
             ? current
-            : (orderedRounds.find(({ round }) => round.status === "ONGOING")?.round.id ??
-              orderedRounds.find(({ round }) => round.status === "UPCOMING")?.round.id ??
-              orderedRounds.at(-1)?.round.id ?? ""),
+            : (orderedRounds.find(({ round }) => round.status === "ONGOING")
+                ?.round.id ??
+              orderedRounds.find(({ round }) => round.status === "UPCOMING")
+                ?.round.id ??
+              orderedRounds.at(-1)?.round.id ??
+              ""),
         );
       })
       .catch((reason: unknown) => {
         if (cancelled) return;
         setError(
-          reason instanceof Error
-            ? reason.message
-            : t("competition.loadError"),
+          reason instanceof Error ? reason.message : t("competition.loadError"),
         );
       })
       .finally(() => {
@@ -128,7 +129,9 @@ export default function PublicCompetitionView({
                     : "border-line bg-surface-sub text-ink-muted"
               }`}
             >
-              {t(`tournament.status.${standings.tournament.status}` as TranslationKey)}
+              {t(
+                `tournament.status.${standings.tournament.status}` as TranslationKey,
+              )}
             </span>
             {standings.tournament.champion && (
               <span className="inline-flex items-center gap-2 rounded-full border border-approved/30 bg-approved/10 px-3 py-1.5 text-sm font-semibold text-approved">
@@ -177,7 +180,9 @@ export default function PublicCompetitionView({
                 </p>
               </div>
               <span className="rounded-full bg-surface-card px-3 py-1 text-xs font-medium text-ink-muted">
-                {t(`round.status.${selectedBracket.round.status}` as TranslationKey)}
+                {t(
+                  `round.status.${selectedBracket.round.status}` as TranslationKey,
+                )}
               </span>
             </div>
 
@@ -193,7 +198,13 @@ export default function PublicCompetitionView({
 
             <div className="mt-6 min-w-0">
               <h3 className="mb-4 font-semibold text-ink">
-                {t("competition.matchesAndSchedule")}
+                {t(
+                  ["GROUP_STAGE", "ROUND_ROBIN"].includes(
+                    selectedBracket.round.format,
+                  )
+                    ? "competition.title"
+                    : "competition.matchesAndSchedule",
+                )}
               </h3>
               <RoundCompetitionView
                 bracket={selectedBracket}
@@ -203,25 +214,29 @@ export default function PublicCompetitionView({
               />
             </div>
 
-            <div className="mt-8 border-t border-line pt-6">
-              <h3 className="mb-4 font-semibold text-ink">
-                {selectedBracket.round.format === "PLAYOFF" ||
-                selectedBracket.round.format === "DOUBLE_ELIM"
-                  ? t("competition.stageResults")
-                  : t("competition.standings")}
-              </h3>
-              {selectedStandings && standings ? (
-                <RoundStandingsView
-                  data={selectedStandings}
-                  round={selectedBracket.round}
-                  tournament={standings.tournament}
-                />
-              ) : (
-                <p className="text-sm text-ink-muted">
-                  {t("competition.noStandings")}
-                </p>
-              )}
-            </div>
+            {!["GROUP_STAGE", "ROUND_ROBIN"].includes(
+              selectedBracket.round.format,
+            ) && (
+              <div className="mt-8 border-t border-line pt-6">
+                <h3 className="mb-4 font-semibold text-ink">
+                  {selectedBracket.round.format === "PLAYOFF" ||
+                  selectedBracket.round.format === "DOUBLE_ELIM"
+                    ? t("competition.stageResults")
+                    : t("competition.standings")}
+                </h3>
+                {selectedStandings && standings ? (
+                  <RoundStandingsView
+                    data={selectedStandings}
+                    round={selectedBracket.round}
+                    tournament={standings.tournament}
+                  />
+                ) : (
+                  <p className="text-sm text-ink-muted">
+                    {t("competition.noStandings")}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </>
       )}

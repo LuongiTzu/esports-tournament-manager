@@ -23,14 +23,17 @@ import {
 } from './domain/swiss-progress';
 import { SwissGenerator } from './generators/swiss.generator';
 import { RoundSettingsService } from './round-settings.service';
-import {
-  resolveSwissNumberOfRounds,
-  SwissSettings,
-} from './types/round-settings';
+import { resolveSwissRoundLimit, SwissSettings } from './types/round-settings';
 import { SwissMatchSnapshot } from './types/swiss';
 import { SwissStandingsQueryService } from './swiss-standings-query.service';
 import type { StandingsClient } from './standings.service';
 import { RoundParticipantResolver } from './round-participant-resolver.service';
+import { RoundLifecycleService } from './round-lifecycle.service';
+import {
+  NOOP_TOURNAMENT_EVENT_PUBLISHER,
+  TOURNAMENT_EVENT_PUBLISHER,
+  TournamentEventPublisher,
+} from '../common/ports/tournament-event-publisher';
 import {
   COMPETITION_AUDIT_WRITER,
   CompetitionAuditWriter,
@@ -53,10 +56,13 @@ export class SwissService {
     private readonly participants: RoundParticipantResolver = new RoundParticipantResolver(),
     @Inject(COMPETITION_AUDIT_WRITER)
     private readonly audit: CompetitionAuditWriter = NOOP_COMPETITION_AUDIT_WRITER,
+    private readonly lifecycle: RoundLifecycleService = new RoundLifecycleService(),
+    @Inject(TOURNAMENT_EVENT_PUBLISHER)
+    private readonly events: TournamentEventPublisher = NOOP_TOURNAMENT_EVENT_PUBLISHER,
   ) {}
 
   async generateNextSwissRound(roundId: string, actorId?: string) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const reference = await tx.round.findUnique({
         where: { id: roundId },
         select: { id: true, tournamentId: true },
@@ -126,10 +132,7 @@ export class SwissService {
         RoundFormat.SWISS,
         rawSettings,
       )) as SwissSettings;
-      const numberOfRounds = resolveSwissNumberOfRounds(
-        teams.length,
-        settings.numberOfRounds,
-      );
+      const numberOfRounds = resolveSwissRoundLimit(teams.length, settings);
       const progress = resolveSwissProgress({
         participantCount: teams.length,
         settings,
@@ -178,6 +181,8 @@ export class SwissService {
         },
       });
       const bye = persistedMatches.find((match) => match.isBye) ?? null;
+      if (settings.mode === 'THRESHOLD')
+        await this.lifecycle.synchronize(tx, roundId);
       await this.audit.record(tx, {
         tournamentId: round.tournamentId,
         actorId,
@@ -192,6 +197,7 @@ export class SwissService {
         },
       });
       return {
+        tournamentId: round.tournamentId,
         roundId,
         bracketRound: nextRound,
         numberOfRounds,
@@ -202,6 +208,9 @@ export class SwissService {
         warnings: result.warnings,
       };
     });
+    const { tournamentId, ...payload } = result;
+    this.events.publish({ tournamentId, event: 'bracketGenerated', payload });
+    return payload;
   }
 
   async calculateSwissStandings(roundId: string, client?: StandingsClient) {

@@ -10,6 +10,7 @@ import type {
 import { useLocale } from "@/features/locale/store";
 import BracketDiagram from "../competition/bracket/BracketDiagram";
 import RoundMatchList from "./RoundMatchList";
+import LeagueCompetitionView from "../competition/LeagueCompetitionView";
 
 type ViewMode = "diagram" | "list";
 
@@ -31,9 +32,20 @@ export default function RoundCompetitionView({
   const [preferences, setPreferences] = useState<Record<string, ViewMode>>({});
   const mode =
     preferences[bracket.round.id] ??
-    (["PLAYOFF", "DOUBLE_ELIM"].includes(bracket.round.format)
+    (["PLAYOFF", "DOUBLE_ELIM", "SWISS"].includes(bracket.round.format)
       ? "diagram"
       : "list");
+  if (["GROUP_STAGE", "ROUND_ROBIN"].includes(bracket.round.format))
+    return (
+      <LeagueCompetitionView
+        key={bracket.round.id}
+        bracket={bracket}
+        standings={standings}
+        bannerUrl={bannerUrl}
+        tournamentName={tournamentName}
+        onSelectMatch={onSelectMatch}
+      />
+    );
   return (
     <div className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

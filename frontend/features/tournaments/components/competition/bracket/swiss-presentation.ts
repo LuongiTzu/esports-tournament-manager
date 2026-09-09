@@ -30,6 +30,7 @@ interface SwissResultGroup {
   wins: number;
   losses: number;
   qualified: boolean;
+  eliminated: boolean;
   teams: SwissStanding[];
   x: number;
   y: number;
@@ -71,13 +72,16 @@ export function layoutSwissBracket(
     for (const row of [...standings.standings].sort(
       (a, b) => a.rank - b.rank,
     )) {
-      const isQualified = qualified.has(row.teamId);
+      const isQualified =
+        row.state === "QUALIFIED" || qualified.has(row.teamId);
+      const eliminated = row.state === "ELIMINATED";
       const key = `${row.wins}-${row.losses}-${isQualified}`;
       const group = resultMap.get(key) ?? {
         key,
         wins: row.wins,
         losses: row.losses,
         qualified: isQualified,
+        eliminated,
         teams: [],
       };
       group.teams.push(row);
@@ -108,7 +112,12 @@ export function layoutSwissBracket(
   const nodes: BracketLayout["nodes"] = [];
   const lastIteration = Math.max(0, ...byIteration.keys());
   const totalIterations = lastIteration
-    ? Math.max(lastIteration, numberOfRounds ?? lastIteration)
+    ? Math.max(
+        lastIteration,
+        standings?.swissProgress?.allIterationsComplete
+          ? lastIteration
+          : (numberOfRounds ?? lastIteration),
+      )
     : 0;
   for (let iteration = 1; iteration <= totalIterations; iteration++) {
     const columnGroups = [...(byIteration.get(iteration) ?? [])].sort(

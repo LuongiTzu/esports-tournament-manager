@@ -98,3 +98,18 @@ test("large result groups fit all teams inside the sheet", () => {
   assert.ok(layout.results[0].y + layout.results[0].height <= layout.height);
   assert.ok(layout.results[0].x + layout.metrics.cardWidth <= layout.width);
 });
+
+test("threshold result panels follow backend state before advancement is persisted", () => {
+  const bracket = swiss();
+  const layout = layoutSwissBracket(bracket, {
+    format: "SWISS", advancement: { qualifiedTeams: [] },
+    standings: [
+      { rank: 1, teamId: "q", team: teams[0], wins: 3, losses: 0, state: "QUALIFIED" },
+      { rank: 2, teamId: "a", team: teams[1], wins: 2, losses: 2, state: "ACTIVE" },
+      { rank: 3, teamId: "e", team: teams[2], wins: 0, losses: 3, state: "ELIMINATED" },
+    ],
+  }, 5);
+  assert.equal(layout.results.find(group => group.teams[0].teamId === "q").qualified, true);
+  assert.equal(layout.results.find(group => group.teams[0].teamId === "e").eliminated, true);
+  assert.equal(layout.results.find(group => group.teams[0].teamId === "a").qualified, false);
+});

@@ -2,6 +2,7 @@ import {
   ArrayMinSize,
   ArrayMaxSize,
   IsArray,
+  IsObject,
   IsInt,
   IsString,
   IsOptional,
@@ -12,6 +13,11 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+export class UpdateRoundSettingsDto {
+  @IsObject()
+  settings!: Record<string, unknown>;
+}
 
 export class SeedAssignmentDto {
   @IsString()

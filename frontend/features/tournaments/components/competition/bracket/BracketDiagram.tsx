@@ -50,6 +50,7 @@ export default function BracketDiagram({
   const [hovered, setHovered] = useState<string | null>(null);
   const swissRounds =
     standings?.swissProgress?.resolvedNumberOfRounds ??
+    bracket.swiss?.roundLimit ??
     (bracket.round.format === "SWISS"
       ? (bracket.round.settings.numberOfRounds ?? undefined)
       : undefined);
@@ -170,6 +171,9 @@ export default function BracketDiagram({
           </div>
           <p className={styles.subtitle}>
             {t("competition.stage")}: {bracket.round.name}
+            {bracket.round.format === "SWISS" &&
+              bracket.round.settings.mode === "THRESHOLD" &&
+              ` · ${t("swiss.winsTarget")}: ${bracket.round.settings.winsToAdvance ?? 3} / ${t("swiss.lossesTarget")}: ${bracket.round.settings.lossesToEliminate ?? 3}`}
           </p>
         </div>
       </header>

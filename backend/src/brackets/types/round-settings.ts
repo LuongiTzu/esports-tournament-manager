@@ -62,6 +62,9 @@ export interface GroupStageSettings extends MatchScoringSettings {
  * Không sinh hết bracket một lần — mỗi vòng sinh sau khi vòng trước kết thúc.
  */
 export interface SwissSettings extends MatchScoringSettings {
+  mode?: 'FIXED_ROUNDS' | 'THRESHOLD';
+  winsToAdvance?: number;
+  lossesToEliminate?: number;
   /** Null means derive ceil(log2(actual participating teams)) at generation. */
   numberOfRounds: number | null;
   /** Number of highest-ranked teams passed to the next Tournament Round. */
@@ -139,4 +142,23 @@ export function resolveSwissNumberOfRounds(
   configuredNumberOfRounds: number | null,
 ): number {
   return configuredNumberOfRounds ?? Math.ceil(Math.log2(teamCount));
+}
+
+export function resolveSwissRoundLimit(
+  teamCount: number,
+  settings: SwissSettings,
+): number {
+  return settings.mode === 'THRESHOLD'
+    ? (settings.winsToAdvance ?? 3) + (settings.lossesToEliminate ?? 3) - 1
+    : resolveSwissNumberOfRounds(teamCount, settings.numberOfRounds);
+}
+
+export function swissTeamState(
+  record: { wins: number; losses: number },
+  settings: SwissSettings,
+): 'ACTIVE' | 'QUALIFIED' | 'ELIMINATED' {
+  if (settings.mode !== 'THRESHOLD') return 'ACTIVE';
+  if (record.wins >= (settings.winsToAdvance ?? 3)) return 'QUALIFIED';
+  if (record.losses >= (settings.lossesToEliminate ?? 3)) return 'ELIMINATED';
+  return 'ACTIVE';
 }

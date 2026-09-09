@@ -24,6 +24,12 @@ import { request } from "@/lib/api/client";
 import { uploadImage } from "@/lib/api/upload";
 
 export const tournamentsApi = {
+  updateRoundSettings: (roundId: string, settings: Record<string, unknown>) =>
+    request<unknown>(`/rounds/${roundId}/settings`, {
+      method: "PATCH",
+      body: JSON.stringify({ settings }),
+      auth: true,
+    }),
   findAll: (params: FindAllTournamentsParams = {}) => {
     const query = new URLSearchParams();
     if (params.search) query.set("search", params.search);

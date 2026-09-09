@@ -29,6 +29,29 @@ export class CompetitionProgressionService {
     resultChanged: boolean,
   ) {
     if (!resultChanged) return;
+    const settings = match.round.settings as Record<string, unknown> | null;
+    if (
+      match.round.format === RoundFormat.SWISS &&
+      settings?.mode === 'THRESHOLD'
+    ) {
+      const source = await tx.match.findUnique({
+        where: { id: match.id },
+        select: { bracketRound: true },
+      });
+      const later =
+        source?.bracketRound &&
+        (await tx.match.findFirst({
+          where: {
+            roundId: match.round.id,
+            bracketRound: { gt: source.bracketRound },
+          },
+          select: { id: true },
+        }));
+      if (later)
+        throw new ConflictException(
+          'Cannot change a threshold Swiss result after a later pairing round has been generated',
+        );
+    }
     await this.rollbackInterRoundAdvancement(tx, match);
     if (
       newStatus === MatchStatus.COMPLETED &&

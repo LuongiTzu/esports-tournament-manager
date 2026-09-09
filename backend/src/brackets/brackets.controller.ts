@@ -34,6 +34,7 @@ import {
   GenerateRoundDto,
   ResetDownstreamDto,
   UpdateSeedsDto,
+  UpdateRoundSettingsDto,
 } from './dto/bracket-operations.dto';
 import { SwissService } from './swiss.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -46,6 +47,14 @@ export class BracketsController {
     private readonly operations: BracketOperationsService,
     private readonly swiss: SwissService,
   ) {}
+
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('round:id')
+  @AllowAdminOverride()
+  @Patch(':id/settings')
+  updateSettings(@Param('id') id: string, @Body() dto: UpdateRoundSettingsDto) {
+    return this.operations.updateSettings(id, dto.settings);
+  }
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')

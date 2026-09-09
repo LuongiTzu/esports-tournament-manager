@@ -951,6 +951,7 @@ describe('BracketOperationsService format-specific advancement', () => {
       teamId?: string;
       points?: number;
       wins?: number;
+      losses?: number;
       buchholz?: number;
       buchholzCut1?: number;
       scoreDifference?: number;
@@ -1176,6 +1177,39 @@ describe('BracketOperationsService format-specific advancement', () => {
     await expect(early.service.advance('round-1')).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it('advances every threshold qualifier independently of Top N and rejects early advancement', async () => {
+    const config = {
+      mode: 'THRESHOLD',
+      winsToAdvance: 3,
+      lossesToEliminate: 3,
+      advancingTeamCount: 1,
+      numberOfRounds: null,
+    };
+    const rows = [
+      { teamId: 'q1', wins: 3, losses: 0 },
+      { teamId: 'q2', wins: 3, losses: 2 },
+      { teamId: 'e1', wins: 2, losses: 3 },
+    ];
+    const final = harnessFor(RoundFormat.SWISS, config, rows, 5);
+    await expect(final.service.advance('round-1')).resolves.toMatchObject({
+      advanceCount: 2,
+    });
+    expect(final.participants).toEqual(['q1', 'q2']);
+    const early = harnessFor(
+      RoundFormat.SWISS,
+      config,
+      [...rows, { teamId: 'active', wins: 2, losses: 2 }],
+      4,
+    );
+    await expect(early.service.advance('round-1')).rejects.toThrow(
+      'still has active teams',
+    );
+    const incorrect = harnessFor(RoundFormat.SWISS, config, rows, 5);
+    await expect(
+      incorrect.service.advance('round-1', ['q1', 'e1']),
+    ).rejects.toThrow('win target');
   });
 
   it('uses the derived Swiss round limit when numberOfRounds is automatic', async () => {

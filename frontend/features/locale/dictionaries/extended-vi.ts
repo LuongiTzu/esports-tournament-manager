@@ -1,4 +1,27 @@
 const extendedVi = {
+  "swiss.mode": "Cơ chế Swiss",
+  "swiss.fixed": "Số lượt cố định",
+  "swiss.threshold": "Ngưỡng thắng–thua",
+  "swiss.winsTarget": "Số thắng để đi tiếp",
+  "swiss.lossesTarget": "Số thua để bị loại",
+  "swiss.thresholdHint":
+    "Đạt ngưỡng thì dừng thi đấu. Ưu tiên ghép cùng thành tích, tránh tái đấu; có thể chuyển nhóm khi cần. BYE tính một thắng. Số đội đi tiếp phụ thuộc kết quả, không chọn Top N.",
+  "swiss.thresholdInvalid":
+    "Ngưỡng thắng và thua phải là số nguyên từ 1 đến 10.",
+  "swiss.eliminated": "Bị loại",
+  "swiss.active": "Đang thi đấu",
+  "competition.settings.edit": "Cấu hình thi đấu",
+  "competition.settings.locked": "Cấu hình được khóa sau khi sinh lịch đấu.",
+  "competition.settings.saved": "Đã lưu cấu hình thi đấu.",
+  "competition.settings.save": "Lưu cấu hình",
+  "competition.table.overview": "Tổng quan các bảng",
+  "competition.table.all": "Tất cả bảng",
+  "competition.table.schedule": "Lịch đấu",
+  "competition.table.cutoff":
+    "Vùng suất đi tiếp dự kiến; kết quả chính thức theo xác nhận của giải.",
+  "competition.table.details": "Chọn một bảng để xem thống kê chi tiết.",
+  "competition.table.round": "Tất cả lượt",
+
   "bracket.diagram": "Sơ đồ",
   "bracket.list": "Danh sách trận",
   "bracket.viewHint": "Theo dõi lịch đấu và hành trình của các đội.",
@@ -21,7 +44,8 @@ const extendedVi = {
   "bracket.fit": "Vừa khung",
   "bracket.panHint": "Cuộn để xem sơ đồ · Phóng to để đọc chi tiết",
   "bracket.notGenerated": "Sơ đồ đang chờ được tạo",
-  "bracket.awaitingStructure": "Các trận sẽ xuất hiện khi lịch đấu của giai đoạn này được tạo.",
+  "bracket.awaitingStructure":
+    "Các trận sẽ xuất hiện khi lịch đấu của giai đoạn này được tạo.",
   "bracket.awaitingPairing": "Chờ ghép cặp",
   "bracket.currentStandings": "Thành tích hiện tại",
   "bracket.swissMixed": "Ghép cặp giữa hai nhóm thành tích",
@@ -850,16 +874,21 @@ const extendedVi = {
   "competition.audit.empty": "Chưa có thay đổi thi đấu nào được ghi nhận.",
   "competition.audit.loadError": "Không thể tải lịch sử thay đổi thi đấu.",
   "competition.audit.system": "Hệ thống",
-  "competition.audit.action.ROUND_STRUCTURE_GENERATED": "Đã tạo cấu trúc vòng đấu",
-  "competition.audit.action.ROUND_STRUCTURE_REGENERATED": "Đã tạo lại cấu trúc vòng đấu",
+  "competition.audit.action.ROUND_STRUCTURE_GENERATED":
+    "Đã tạo cấu trúc vòng đấu",
+  "competition.audit.action.ROUND_STRUCTURE_REGENERATED":
+    "Đã tạo lại cấu trúc vòng đấu",
   "competition.audit.action.ROUND_SEEDS_UPDATED": "Đã cập nhật seed của vòng",
-  "competition.audit.action.ROUND_ADVANCEMENT_CONFIRMED": "Đã xác nhận đội đi tiếp",
-  "competition.audit.action.SWISS_ITERATION_GENERATED": "Đã tạo lượt Swiss tiếp theo",
+  "competition.audit.action.ROUND_ADVANCEMENT_CONFIRMED":
+    "Đã xác nhận đội đi tiếp",
+  "competition.audit.action.SWISS_ITERATION_GENERATED":
+    "Đã tạo lượt Swiss tiếp theo",
   "competition.audit.action.MATCH_RESULT_RECORDED": "Đã ghi nhận kết quả trận",
   "competition.audit.action.MATCH_RESULT_CORRECTED": "Đã sửa kết quả trận",
   "competition.audit.action.DOWNSTREAM_RESET": "Đã reset các vòng phía sau",
   "competition.audit.action.ROUND_DELETED": "Đã xóa vòng đấu",
-  "competition.audit.action.FINAL_STANDINGS_CONFIRMED": "Đã xác nhận kết quả chung cuộc",
+  "competition.audit.action.FINAL_STANDINGS_CONFIRMED":
+    "Đã xác nhận kết quả chung cuộc",
   "competition.audit.action.ADMIN_OVERRIDE_ACTION":
     "Admin Override đã thực hiện thao tác",
   "finalization.error.TOURNAMENT_NOT_MUTABLE":
@@ -1227,8 +1256,7 @@ const extendedVi = {
   "admin.tournaments.activeState": "Đang hoạt động",
   "admin.tournaments.separationHint":
     "Ẩn trên nền tảng không thay đổi chế độ công khai/riêng tư của giải.",
-  "admin.tournaments.hiddenVerifyHint":
-    "Cần bỏ ẩn giải trước khi xác minh.",
+  "admin.tournaments.hiddenVerifyHint": "Cần bỏ ẩn giải trước khi xác minh.",
   "admin.tournaments.hiddenOfficialHint":
     "Không thể gắn nhãn chính thức cho giải đang bị ẩn",
   "admin.tournaments.officialOwnerHint":

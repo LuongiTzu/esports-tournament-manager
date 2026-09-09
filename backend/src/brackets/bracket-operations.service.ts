@@ -243,6 +243,67 @@ export class BracketOperationsService {
   previewGeneration(roundId: string, force = false) {
     return this.generation.preview(roundId, force);
   }
+  async updateSettings(roundId: string, supplied: Record<string, unknown>) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const reference = await tx.round.findUnique({
+        where: { id: roundId },
+        select: { tournamentId: true },
+      });
+      if (!reference) throw new NotFoundException('Round not found');
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "tournaments" WHERE "id" = ${reference.tournamentId} FOR UPDATE`,
+      );
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "rounds" WHERE "id" = ${roundId} FOR UPDATE`,
+      );
+      const round = await tx.round.findUnique({
+        where: { id: roundId },
+        include: {
+          tournament: { select: { status: true } },
+          _count: {
+            select: { matches: true, groups: true, advancedTeams: true },
+          },
+        },
+      });
+      if (!round || round.tournamentId !== reference.tournamentId)
+        throw new ConflictException('Round changed');
+      if (!['SWISS', 'DOUBLE_ELIM'].includes(round.format))
+        throw new BadRequestException(
+          'Only Swiss and double elimination settings can be edited here',
+        );
+      if (
+        ['COMPLETED', 'CANCELLED'].includes(round.tournament.status) ||
+        round.status !== 'UPCOMING' ||
+        round._count.matches ||
+        round._count.groups ||
+        round._count.advancedTeams
+      ) {
+        throw new ConflictException(
+          'Settings can only change before a stage has a generated structure',
+        );
+      }
+      const effective = this.settingsService.getEffectiveSettings(
+        round.format,
+        round.settings,
+      );
+      const settings = await this.settingsService.normalizeForFormat(
+        round.format,
+        { ...effective, ...supplied },
+        round.bestOf,
+      );
+      await tx.round.update({
+        where: { id: roundId },
+        data: { settings: settings as unknown as Prisma.InputJsonValue },
+      });
+      return { roundId, tournamentId: round.tournamentId, settings };
+    });
+    this.events.publish({
+      tournamentId: result.tournamentId,
+      event: 'standingsUpdated',
+      payload: { roundId },
+    });
+    return result;
+  }
   generate(
     roundId: string,
     force = false,

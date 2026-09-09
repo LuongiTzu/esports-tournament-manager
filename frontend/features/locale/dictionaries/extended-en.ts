@@ -1,6 +1,30 @@
 import type extendedVi from "@/features/locale/dictionaries/extended-vi";
 
 const extendedEn = {
+  "swiss.mode": "Swiss mode",
+  "swiss.fixed": "Fixed rounds",
+  "swiss.threshold": "Win/loss thresholds",
+  "swiss.winsTarget": "Wins to qualify",
+  "swiss.lossesTarget": "Losses to be eliminated",
+  "swiss.thresholdHint":
+    "Teams stop at either threshold. Pairings prefer the same record and avoid rematches; floating is allowed when needed. A bye counts as a win. Qualification follows results, not a top-N cutoff.",
+  "swiss.thresholdInvalid":
+    "Win and loss thresholds must be integers from 1 to 10.",
+  "swiss.eliminated": "Eliminated",
+  "swiss.active": "Competing",
+  "competition.settings.edit": "Competition settings",
+  "competition.settings.locked":
+    "Settings are locked after the schedule is generated.",
+  "competition.settings.saved": "Competition settings saved.",
+  "competition.settings.save": "Save settings",
+  "competition.table.overview": "Group overview",
+  "competition.table.all": "All groups",
+  "competition.table.schedule": "Schedule",
+  "competition.table.cutoff":
+    "Provisional qualification places; official qualification follows tournament confirmation.",
+  "competition.table.details": "Select a group for detailed statistics.",
+  "competition.table.round": "All rounds",
+
   "bracket.diagram": "Bracket",
   "bracket.list": "Match list",
   "bracket.viewHint": "Follow the fixtures and each team's journey.",
@@ -9,7 +33,8 @@ const extendedEn = {
   "bracket.loserOf": "Loser of",
   "bracket.resetFinal": "Grand final reset",
   "bracket.ifNeeded": "If needed",
-  "bracket.resetCondition": "Played if the lower bracket team wins the grand final",
+  "bracket.resetCondition":
+    "Played if the lower bracket team wins the grand final",
   "bracket.bye": "Bye",
   "bracket.schedulePending": "Schedule pending",
   "bracket.finals": "Finals",
@@ -23,12 +48,14 @@ const extendedEn = {
   "bracket.fit": "Fit to view",
   "bracket.panHint": "Scroll to explore · Zoom in for details",
   "bracket.notGenerated": "Bracket awaiting generation",
-  "bracket.awaitingStructure": "Matches will appear once the fixtures for this stage are generated.",
+  "bracket.awaitingStructure":
+    "Matches will appear once the fixtures for this stage are generated.",
   "bracket.awaitingPairing": "Awaiting pairings",
   "bracket.currentStandings": "Current standings",
   "bracket.swissMixed": "Pairing across different records",
   "bracket.swissQualified": "Advances",
-  "bracket.swissPendingHint": "Pairings are determined after the previous iteration",
+  "bracket.swissPendingHint":
+    "Pairings are determined after the previous iteration",
   "bracket.swissWinPath": "After a win",
   "bracket.swissLossPath": "After a loss",
   "bracket.stageLabel": "Stage",
@@ -871,16 +898,21 @@ const extendedEn = {
   "competition.audit.empty": "No competition changes have been recorded yet.",
   "competition.audit.loadError": "Could not load competition change history.",
   "competition.audit.system": "System",
-  "competition.audit.action.ROUND_STRUCTURE_GENERATED": "Round structure generated",
-  "competition.audit.action.ROUND_STRUCTURE_REGENERATED": "Round structure regenerated",
+  "competition.audit.action.ROUND_STRUCTURE_GENERATED":
+    "Round structure generated",
+  "competition.audit.action.ROUND_STRUCTURE_REGENERATED":
+    "Round structure regenerated",
   "competition.audit.action.ROUND_SEEDS_UPDATED": "Round seeds updated",
-  "competition.audit.action.ROUND_ADVANCEMENT_CONFIRMED": "Advancing teams confirmed",
-  "competition.audit.action.SWISS_ITERATION_GENERATED": "Next Swiss iteration generated",
+  "competition.audit.action.ROUND_ADVANCEMENT_CONFIRMED":
+    "Advancing teams confirmed",
+  "competition.audit.action.SWISS_ITERATION_GENERATED":
+    "Next Swiss iteration generated",
   "competition.audit.action.MATCH_RESULT_RECORDED": "Match result recorded",
   "competition.audit.action.MATCH_RESULT_CORRECTED": "Match result corrected",
   "competition.audit.action.DOWNSTREAM_RESET": "Downstream stages reset",
   "competition.audit.action.ROUND_DELETED": "Round deleted",
-  "competition.audit.action.FINAL_STANDINGS_CONFIRMED": "Final standings confirmed",
+  "competition.audit.action.FINAL_STANDINGS_CONFIRMED":
+    "Final standings confirmed",
   "competition.audit.action.ADMIN_OVERRIDE_ACTION":
     "Admin Override performed an action",
   "finalization.error.TOURNAMENT_NOT_MUTABLE":
