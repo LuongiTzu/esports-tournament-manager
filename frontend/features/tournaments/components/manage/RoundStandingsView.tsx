@@ -1,6 +1,6 @@
 "use client";
 
-import { TrophyIcon } from "@phosphor-icons/react/dist/ssr";
+import ChampionCelebration from "../competition/ChampionCelebration";
 import type {
   RoundStandings,
   SwissStanding,
@@ -112,21 +112,18 @@ export default function RoundStandingsView({
   );
 
   if (data.format === "PLAYOFF" || data.format === "DOUBLE_ELIM") {
+    if (tournament.champion) {
+      return <ChampionCelebration champion={tournament.champion} />;
+    }
+
     return (
       <div className="rounded-xl border border-line bg-surface-sub p-4">
         <p className="text-sm font-semibold text-ink">
           {t("standings.eliminationResult")}
         </p>
-        {tournament.champion ? (
-          <p className="mt-3 flex items-center gap-2 text-sm text-approved">
-            <TrophyIcon weight="fill" /> {t("standings.champion")}:{" "}
-            <strong>{tournament.champion.name}</strong>
-          </p>
-        ) : (
-          <p className="mt-2 text-sm text-ink-muted">
-            {t("standings.eliminationNoTable")}
-          </p>
-        )}
+        <p className="mt-2 text-sm text-ink-muted">
+          {t("standings.eliminationNoTable")}
+        </p>
       </div>
     );
   }

@@ -1,0 +1,23 @@
+.root {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  user-select: none;
+}
+
+.svg {
+  display: block;
+  width: max(100%, 1000px);
+  height: auto;
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.measure {
+  visibility: hidden;
+  pointer-events: none;
+}

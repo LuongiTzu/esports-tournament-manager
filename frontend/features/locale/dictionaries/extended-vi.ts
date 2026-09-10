@@ -423,6 +423,9 @@ const extendedVi = {
   "standings.buchholzCut1": "Cut-1",
   "standings.eliminationResult": "Kết quả loại trực tiếp",
   "standings.champion": "Nhà vô địch",
+  "standings.championCongratulations": "Chúc mừng nhà vô địch",
+  "standings.pauseCelebration": "Tạm dừng hiệu ứng chúc mừng",
+  "standings.resumeCelebration": "Tiếp tục hiệu ứng chúc mừng",
   "standings.eliminationNoTable":
     "Thể thức loại trực tiếp không sử dụng bảng xếp hạng. Nhà vô địch sẽ xuất hiện khi hệ thống hoàn tất giải đấu.",
   "standings.advanceEachGroup": "đội đi tiếp mỗi bảng.",

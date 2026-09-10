@@ -436,6 +436,9 @@ const extendedEn = {
   "standings.buchholzCut1": "Cut-1",
   "standings.eliminationResult": "Elimination result",
   "standings.champion": "Champion",
+  "standings.championCongratulations": "Congratulations to the champions",
+  "standings.pauseCelebration": "Pause celebration effects",
+  "standings.resumeCelebration": "Resume celebration effects",
   "standings.eliminationNoTable":
     "Elimination formats do not use standings. The champion will appear when the system completes the tournament.",
   "standings.advanceEachGroup": "teams advance from each group.",
