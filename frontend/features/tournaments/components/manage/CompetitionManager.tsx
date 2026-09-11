@@ -1,5 +1,7 @@
 "use client";
 
+import { LoadingRegion, LoadingStatus, Skeleton } from "@/components/Loading";
+import { CompetitionSkeleton } from "./ManagementSkeletons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowCounterClockwiseIcon,
@@ -258,8 +260,6 @@ export default function CompetitionManager({
         setStandings(standingsResponse);
       } catch (err) {
         if (requestId !== loadRequestId.current) return;
-        setBracket(null);
-        setStandings(null);
         setError(
           err instanceof Error
             ? err.message
@@ -693,10 +693,11 @@ export default function CompetitionManager({
         rounds={rounds}
         selectedRoundId={selectedRound?.id}
         onSelect={(roundId) => {
-          if (roundId === selectedRound?.id) return;
+          if (roundId === selectedRound?.id || working) return;
           setLoading(true);
           setError("");
           setBracket(null);
+          setStandings(null);
           setSelectedMatchId(null);
           setGenerationPreview(null);
           setDownstreamResetPreview(null);
@@ -733,7 +734,7 @@ export default function CompetitionManager({
               </p>
             </div>
 
-            {!loading &&
+            {bracket &&
               (actionsAllowed ||
                 canAdvance ||
                 canFinalizeStandings ||
@@ -748,7 +749,9 @@ export default function CompetitionManager({
                         type="button"
                         onClick={generateNextSwiss}
                         disabled={
-                          Boolean(working) || !swissProgress.canGenerateNext
+                          Boolean(working) ||
+                          loading ||
+                          !swissProgress.canGenerateNext
                         }
                         title={
                           swissProgress.blockedReason
@@ -760,7 +763,10 @@ export default function CompetitionManager({
                         className={primaryButtonClass}
                       >
                         {working === "swiss" ? (
-                          <CircleNotchIcon className="animate-spin" />
+                          <CircleNotchIcon
+                            aria-hidden="true"
+                            className="motion-safe:animate-spin"
+                          />
                         ) : (
                           <PlayIcon weight="fill" />
                         )}
@@ -772,7 +778,7 @@ export default function CompetitionManager({
                       <button
                         type="button"
                         onClick={previewGeneration}
-                        disabled={Boolean(working)}
+                        disabled={Boolean(working) || loading}
                         className={
                           hasStructure
                             ? secondaryButtonClass
@@ -780,7 +786,10 @@ export default function CompetitionManager({
                         }
                       >
                         {working === "preview" ? (
-                          <CircleNotchIcon className="animate-spin" />
+                          <CircleNotchIcon
+                            aria-hidden="true"
+                            className="motion-safe:animate-spin"
+                          />
                         ) : hasStructure ? (
                           <ArrowsClockwiseIcon />
                         ) : (
@@ -795,11 +804,14 @@ export default function CompetitionManager({
                     <button
                       type="button"
                       onClick={() => void advanceRound()}
-                      disabled={Boolean(working)}
+                      disabled={Boolean(working) || loading}
                       className={primaryButtonClass}
                     >
                       {working === "advance" ? (
-                        <CircleNotchIcon className="animate-spin" />
+                        <CircleNotchIcon
+                          aria-hidden="true"
+                          className="motion-safe:animate-spin"
+                        />
                       ) : (
                         <ArrowRightIcon weight="bold" />
                       )}
@@ -810,11 +822,14 @@ export default function CompetitionManager({
                     <button
                       type="button"
                       onClick={() => void finalizeStandings()}
-                      disabled={Boolean(working)}
+                      disabled={Boolean(working) || loading}
                       className={primaryButtonClass}
                     >
                       {working === "finalize" ? (
-                        <CircleNotchIcon className="animate-spin" />
+                        <CircleNotchIcon
+                          aria-hidden="true"
+                          className="motion-safe:animate-spin"
+                        />
                       ) : (
                         <TrophyIcon weight="fill" />
                       )}
@@ -825,11 +840,14 @@ export default function CompetitionManager({
                     <button
                       type="button"
                       onClick={() => void previewDownstreamReset()}
-                      disabled={Boolean(working)}
+                      disabled={Boolean(working) || loading}
                       className="inline-flex min-h-[var(--control-height)] items-center justify-center gap-2 rounded-[var(--radius-control)] border border-rejected/45 bg-rejected/10 px-5 py-3 text-sm font-semibold text-rejected transition hover:bg-rejected/15 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {working === "resetPreview" ? (
-                        <CircleNotchIcon className="animate-spin" />
+                        <CircleNotchIcon
+                          aria-hidden="true"
+                          className="motion-safe:animate-spin"
+                        />
                       ) : (
                         <ArrowCounterClockwiseIcon weight="bold" />
                       )}
@@ -840,6 +858,21 @@ export default function CompetitionManager({
               )}
           </div>
 
+          <div className="mt-3 flex min-h-5 items-center" aria-live="polite">
+            {working ? (
+              <LoadingStatus
+                label={t(
+                  working === "generate" || working === "swiss"
+                    ? "competition.manage.generating"
+                    : working === "advance"
+                      ? "competition.manage.advancing"
+                      : "common.processing",
+                )}
+              />
+            ) : loading && bracket ? (
+              <LoadingStatus label={t("common.refreshing")} />
+            ) : null}
+          </div>
           <div className="mt-4">
             <RoundSettingsSummary round={activeRound} />
             <RoundSettingsEditor
@@ -876,6 +909,14 @@ export default function CompetitionManager({
             >
               <WarningCircleIcon className="mt-0.5 shrink-0" />
               {error}
+              <button
+                type="button"
+                disabled={loading || Boolean(working)}
+                className="ml-auto shrink-0 underline"
+                onClick={() => void loadCompetition(selectedRound.id)}
+              >
+                {t("common.retry")}
+              </button>
             </p>
           )}
 
@@ -979,7 +1020,10 @@ export default function CompetitionManager({
                 className={`${primaryButtonClass} mt-4`}
               >
                 {working === "advance" ? (
-                  <CircleNotchIcon className="animate-spin" />
+                  <CircleNotchIcon
+                    aria-hidden="true"
+                    className="motion-safe:animate-spin"
+                  />
                 ) : (
                   <ArrowRightIcon weight="bold" />
                 )}
@@ -1011,7 +1055,7 @@ export default function CompetitionManager({
                       name="championTeamId"
                       value={candidate.teamId}
                       checked={selectedChampionTeamId === candidate.teamId}
-                      disabled={Boolean(working)}
+                      disabled={Boolean(working) || loading}
                       onChange={() =>
                         setSelectedChampionTeamId(candidate.teamId)
                       }
@@ -1033,7 +1077,10 @@ export default function CompetitionManager({
                 className={`${primaryButtonClass} mt-4`}
               >
                 {working === "finalize" ? (
-                  <CircleNotchIcon className="animate-spin" />
+                  <CircleNotchIcon
+                    aria-hidden="true"
+                    className="motion-safe:animate-spin"
+                  />
                 ) : (
                   <TrophyIcon weight="fill" />
                 )}
@@ -1044,15 +1091,9 @@ export default function CompetitionManager({
 
           <div className="mt-6">
             {loading && !bracket ? (
-              <div
-                aria-label={t("competition.manage.loadingStructure")}
-                className="grid min-h-48 place-items-center rounded-xl border border-line"
-              >
-                <CircleNotchIcon
-                  className="animate-spin text-brand"
-                  size={28}
-                />
-              </div>
+              <CompetitionSkeleton
+                label={t("competition.manage.loadingStructure")}
+              />
             ) : bracket ? (
               <RoundCompetitionView
                 bracket={bracket}
@@ -1063,7 +1104,7 @@ export default function CompetitionManager({
                   setSelectedMatchId(match.id)
                 }
               />
-            ) : (
+            ) : error ? null : (
               <div className="rounded-xl border border-dashed border-line px-5 py-10 text-center text-sm text-ink-muted">
                 {t("competition.manage.noStructure")}
               </div>
@@ -1101,7 +1142,15 @@ export default function CompetitionManager({
                   />
                 )}
               </div>
-            ) : !loading ? (
+            ) : loading ? (
+              <LoadingRegion label={t("common.loading")}>
+                <div className="space-y-3">
+                  {[0, 1, 2].map((row) => (
+                    <Skeleton key={row} className="h-12 w-full" />
+                  ))}
+                </div>
+              </LoadingRegion>
+            ) : !error ? (
               <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-muted">
                 {t("competition.manage.noProgressData")}
               </p>

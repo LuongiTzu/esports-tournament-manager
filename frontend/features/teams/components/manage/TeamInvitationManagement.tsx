@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { LoadingRegion, Skeleton } from "@/components/Loading";
 import Link from "next/link";
 import {
   CircleNotchIcon,
@@ -18,19 +19,27 @@ import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { teamsApi } from "@/features/teams/api";
 import type { TeamInvitation } from "@/features/teams/types";
+import type { TournamentDetail } from "@/features/tournaments/types";
 
 export default function TeamInvitationManagement({
-  tournamentSlug,
+  tournament,
+  onRefresh,
   refreshVersion,
 }: {
-  tournamentSlug: string;
+  tournament: TournamentDetail;
+  onRefresh: () => Promise<void>;
   refreshVersion: number;
 }) {
   const { locale, t } = useLocale();
+  const tournamentSlug = tournament.slug;
+  const canInvite = tournament.management?.teamInvitation.allowed === true;
+  const canAddManual = tournament.management?.manualTeam.allowed === true;
+  const lockedReason = tournament.management?.teamInvitation.reason;
   const [invitations, setInvitations] = useState<TeamInvitation[]>([]);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
-  const [working, setWorking] = useState(false);
+  const [working, setWorking] = useState<string | null>(null);
+  const [retryVersion, setRetryVersion] = useState(0);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -61,12 +70,12 @@ export default function TeamInvitationManagement({
     return () => {
       cancelled = true;
     };
-  }, [tournamentSlug, refreshVersion, t]);
+  }, [tournamentSlug, refreshVersion, t, retryVersion]);
 
   const invite = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (working || !email.trim()) return;
-    setWorking(true);
+    if (working || !canInvite || !email.trim()) return;
+    setWorking("invite");
     setError("");
     setNotice("");
     try {
@@ -78,15 +87,16 @@ export default function TeamInvitationManagement({
       setError(
         reason instanceof Error ? reason.message : t("invitation.sendError"),
       );
+      await onRefresh().catch(() => {});
     } finally {
-      setWorking(false);
+      setWorking(null);
     }
   };
 
   const revoke = async (invitation: TeamInvitation) => {
     if (working || invitation.status !== "PENDING") return;
     if (!window.confirm(t("invitation.revokeConfirm"))) return;
-    setWorking(true);
+    setWorking(invitation.id);
     setError("");
     setNotice("");
     try {
@@ -98,7 +108,7 @@ export default function TeamInvitationManagement({
         reason instanceof Error ? reason.message : t("invitation.revokeError"),
       );
     } finally {
-      setWorking(false);
+      setWorking(null);
     }
   };
 
@@ -109,56 +119,107 @@ export default function TeamInvitationManagement({
           <div className="flex items-center gap-2">
             <EnvelopeSimpleIcon className="text-brand" size={22} />
             <h3 className="font-bold text-ink">
-              {t("invitation.managementTitle")}
+              {t(
+                canInvite || canAddManual
+                  ? "invitation.managementTitle"
+                  : "invitation.historyTitle",
+              )}
             </h3>
           </div>
           <p className="mt-1 text-sm text-ink-muted">
-            {t("invitation.managementHint")}
+            {t(
+              canInvite || canAddManual
+                ? "invitation.managementHint"
+                : "invitation.historyHint",
+            )}
           </p>
         </div>
-        <Link
-          href={`/tournaments/${tournamentSlug}/register-team?mode=manual`}
-          className={secondaryButtonClass}
-        >
-          <PlusIcon /> {t("invitation.addManualTeam")}
-        </Link>
+        {canAddManual && (
+          <Link
+            href={`/tournaments/${tournamentSlug}/register-team?mode=manual`}
+            className={secondaryButtonClass}
+          >
+            <PlusIcon /> {t("invitation.addManualTeam")}
+          </Link>
+        )}
       </div>
 
-      <form
-        onSubmit={invite}
-        className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end"
-      >
-        <div className="min-w-0 flex-1">
-          <label htmlFor="team-invitation-email" className={labelClass}>
-            {t("invitation.captainEmail")}
-          </label>
-          <input
-            id="team-invitation-email"
-            type="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="captain@example.com"
-            className={inputClass}
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={working}
-          className="inline-flex min-h-[var(--control-height)] items-center justify-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-on-brand disabled:opacity-50"
+      {canInvite ? (
+        <form
+          onSubmit={invite}
+          className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end"
         >
-          {working && <CircleNotchIcon className="animate-spin" />}
-          {t("invitation.send")}
-        </button>
-      </form>
+          <div className="min-w-0 flex-1">
+            <label htmlFor="team-invitation-email" className={labelClass}>
+              {t("invitation.captainEmail")}
+            </label>
+            <input
+              id="team-invitation-email"
+              type="email"
+              disabled={Boolean(working)}
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="captain@example.com"
+              className={inputClass}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={Boolean(working)}
+            className="inline-flex min-h-[var(--control-height)] items-center justify-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-on-brand disabled:opacity-50"
+          >
+            {working === "invite" && (
+              <CircleNotchIcon
+                aria-hidden="true"
+                className="motion-safe:animate-spin"
+              />
+            )}
+            {working === "invite" ? t("common.sending") : t("invitation.send")}
+          </button>
+        </form>
+      ) : (
+        <p className="mt-3 rounded-lg bg-surface-sub px-3 py-2.5 text-xs leading-relaxed text-ink-muted">
+          {lockedReason
+            ? t(`manage.reason.${lockedReason}`)
+            : t("manage.permissionsUnavailable")}
+        </p>
+      )}
 
-      {notice && <p className="mt-3 text-sm text-approved">{notice}</p>}
-      {error && <p className={`${alertErrorClass} mt-3`}>{error}</p>}
+      {notice && (
+        <p role="status" className="mt-3 text-sm text-approved">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p
+          role="alert"
+          className={`${alertErrorClass} mt-3 flex flex-wrap items-center gap-3`}
+        >
+          {error}
+          <button
+            type="button"
+            disabled={loading || Boolean(working)}
+            className="ml-auto underline"
+            onClick={() => {
+              setError("");
+              setLoading(invitations.length === 0);
+              setRetryVersion((value) => value + 1);
+            }}
+          >
+            {t("common.retry")}
+          </button>
+        </p>
+      )}
 
       {loading ? (
-        <div className="mt-5 flex items-center gap-2 text-sm text-ink-muted">
-          <CircleNotchIcon className="animate-spin" /> {t("common.loading")}
-        </div>
+        <LoadingRegion label={t("common.loading")} className="mt-5">
+          <div className="space-y-3">
+            {[0, 1].map((row) => (
+              <Skeleton key={row} className="h-12 w-full" />
+            ))}
+          </div>
+        </LoadingRegion>
       ) : invitations.length > 0 ? (
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[44rem] text-left text-sm">
@@ -205,11 +266,22 @@ export default function TeamInvitationManagement({
                       <button
                         type="button"
                         onClick={() => revoke(invitation)}
-                        disabled={working}
-                        aria-label={t("invitation.revoke")}
+                        disabled={Boolean(working)}
+                        aria-label={
+                          working === invitation.id
+                            ? t("common.processing")
+                            : t("invitation.revoke")
+                        }
                         className="inline-flex rounded-lg p-2 text-rejected hover:bg-rejected/10 disabled:opacity-50"
                       >
-                        <TrashIcon />
+                        {working === invitation.id ? (
+                          <CircleNotchIcon
+                            aria-hidden="true"
+                            className="motion-safe:animate-spin"
+                          />
+                        ) : (
+                          <TrashIcon />
+                        )}
                       </button>
                     )}
                   </td>
@@ -218,9 +290,9 @@ export default function TeamInvitationManagement({
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : !error ? (
         <p className="mt-5 text-sm text-ink-faint">{t("invitation.empty")}</p>
-      )}
+      ) : null}
     </section>
   );
 }

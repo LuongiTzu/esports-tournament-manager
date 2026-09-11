@@ -1,5 +1,7 @@
 "use client";
 
+import { CircleNotchIcon } from "@phosphor-icons/react";
+
 import ResolvedImage from "@/components/ResolvedImage";
 import StatusBadge from "@/features/teams/components/StatusBadge";
 import type { GamePositionMode } from "@/features/games/types";
@@ -11,6 +13,7 @@ import type {
 } from "@/features/teams/types";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
+import type { TournamentManagementReason } from "@/features/tournaments/types";
 
 const PLAYER_ROLES = new Set<MemberRole>(["CAPTAIN", "PLAYER", "SUBSTITUTE"]);
 
@@ -106,7 +109,7 @@ function MemberCard({
               disabled={inviting}
               className="mt-3 text-xs font-semibold text-brand hover:underline disabled:cursor-wait disabled:opacity-50"
             >
-              {t("invitation.linkMember")}
+              {inviting ? t("common.sending") : t("invitation.linkMember")}
             </button>
           )}
         </div>
@@ -117,6 +120,8 @@ function MemberCard({
 
 export default function TeamRegistrationDetail({
   team,
+  canApprove,
+  approvalLockReason,
   positionMode,
   minTeamSize,
   maxTeamSize,
@@ -129,6 +134,8 @@ export default function TeamRegistrationDetail({
   onInviteMember,
 }: {
   team: TeamDetail;
+  canApprove: boolean;
+  approvalLockReason: TournamentManagementReason | null;
   positionMode: GamePositionMode;
   minTeamSize: number;
   maxTeamSize: number;
@@ -288,6 +295,13 @@ export default function TeamRegistrationDetail({
 
       {team.status === "PENDING" && (
         <section className="mt-5 border-t border-line pt-5">
+          {!canApprove && (
+            <p className="mb-3 text-xs leading-relaxed text-ink-muted">
+              {approvalLockReason
+                ? t(`manage.reason.${approvalLockReason}`)
+                : t("manage.permissionsUnavailable")}
+            </p>
+          )}
           <label
             className="block text-sm font-medium text-ink"
             htmlFor={`reject-${team.id}`}
@@ -307,9 +321,20 @@ export default function TeamRegistrationDetail({
             <button
               type="button"
               onClick={onApprove}
-              disabled={working !== null}
-              className="rounded-lg bg-approved px-4 py-2 text-sm font-semibold text-surface disabled:opacity-50"
+              disabled={working !== null || !canApprove}
+              title={
+                approvalLockReason
+                  ? t(`manage.reason.${approvalLockReason}`)
+                  : undefined
+              }
+              className="inline-flex items-center gap-2 rounded-lg bg-approved px-4 py-2 text-sm font-semibold text-surface disabled:opacity-50"
             >
+              {working === "approve" && (
+                <CircleNotchIcon
+                  aria-hidden="true"
+                  className="motion-safe:animate-spin"
+                />
+              )}
               {working === "approve"
                 ? t("registration.approving")
                 : t("registration.approveTeam")}
@@ -318,8 +343,14 @@ export default function TeamRegistrationDetail({
               type="button"
               onClick={onReject}
               disabled={working !== null}
-              className="rounded-lg border border-rejected/40 bg-rejected/10 px-4 py-2 text-sm font-semibold text-rejected disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-rejected/40 bg-rejected/10 px-4 py-2 text-sm font-semibold text-rejected disabled:opacity-50"
             >
+              {working === "reject" && (
+                <CircleNotchIcon
+                  aria-hidden="true"
+                  className="motion-safe:animate-spin"
+                />
+              )}
               {working === "reject"
                 ? t("registration.rejecting")
                 : t("registration.rejectTeam")}

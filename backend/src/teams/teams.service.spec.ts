@@ -59,6 +59,7 @@ function harness(teamValue = team()) {
   };
   const prisma = {
     team: teamClient,
+    round: roundClient,
     teamMember: teamMemberClient,
     tournament: { findUniqueOrThrow: jest.fn() },
     $transaction: jest.fn(
@@ -93,6 +94,7 @@ function harness(teamValue = team()) {
     publish: jest.fn().mockResolvedValue(undefined),
   } as unknown as ActivityEmailPublisher;
   return {
+    prisma,
     service: new TeamsService(
       prisma,
       validator,
@@ -112,6 +114,108 @@ function harness(teamValue = team()) {
 }
 
 describe('TeamsService roster lifecycle', () => {
+  it.each([
+    TournamentStatus.ONGOING,
+    TournamentStatus.COMPLETED,
+    TournamentStatus.CANCELLED,
+  ])(
+    'blocks manual entries and approval for %s even without generated matches',
+    async (status) => {
+      const { service, teamClient } = harness(
+        team(RegistrationStatus.PENDING, lifecycleTournament({ status })),
+      );
+      Object.assign(service, {
+        loadTournamentForRegistration: jest
+          .fn()
+          .mockResolvedValue(lifecycleTournament({ status })),
+        buildRegistrationForm: jest
+          .fn()
+          .mockResolvedValue({ canRegister: true, reason: null }),
+      });
+      await expect(
+        service.addManual('organizer-1', 'cup', {} as never),
+      ).rejects.toMatchObject({
+        response: { code: 'TOURNAMENT_PARTICIPANTS_LOCKED' },
+      });
+      await expect(
+        service.updateStatus('team-1', { status: RegistrationStatus.APPROVED }),
+      ).rejects.toMatchObject({
+        response: { code: 'TOURNAMENT_PARTICIPANTS_LOCKED' },
+      });
+      await expect(
+        service.getManualRegistrationForm('cup', {} as never),
+      ).resolves.toMatchObject({
+        canRegister: false,
+        reason: expect.any(String),
+      });
+      expect(teamClient.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does not advertise manual registration after structure generation', async () => {
+    const { service, roundClient } = harness();
+    roundClient.findFirst.mockResolvedValue({
+      _count: { matches: 1, groups: 0 },
+    });
+    Object.assign(service, {
+      loadTournamentForRegistration: jest
+        .fn()
+        .mockResolvedValue(lifecycleTournament({ id: 'tournament-1' })),
+      buildRegistrationForm: jest
+        .fn()
+        .mockResolvedValue({ canRegister: true, reason: null }),
+    });
+    await expect(
+      service.getManualRegistrationForm('cup', {} as never),
+    ).resolves.toMatchObject({ canRegister: false });
+  });
+
+  it('allows manual setup in a draft even while public registration is closed', async () => {
+    const { service } = harness();
+    const createTeam = jest.fn().mockResolvedValue({ id: 'manual-team' });
+    Object.assign(service, {
+      loadTournamentForRegistration: jest.fn().mockResolvedValue(
+        lifecycleTournament({
+          status: TournamentStatus.DRAFT,
+          registrationOpen: false,
+        }),
+      ),
+      createTeam,
+    });
+    await expect(
+      service.addManual('organizer-1', 'cup', {} as never),
+    ).resolves.toEqual({ id: 'manual-team' });
+    expect(createTeam).toHaveBeenCalled();
+  });
+
+  it('rechecks manual registration after acquiring the tournament lock', async () => {
+    const { service, prisma } = harness();
+    const create = jest.fn();
+    const locked = lifecycleTournament({
+      id: 'tournament-1',
+      status: TournamentStatus.ONGOING,
+    });
+    const load = jest
+      .fn()
+      .mockResolvedValueOnce(
+        lifecycleTournament({ id: 'tournament-1', slug: 'cup' }),
+      )
+      .mockResolvedValueOnce(locked);
+    Object.assign(service, { loadTournamentForRegistration: load });
+    jest.mocked(prisma.$transaction).mockImplementationOnce((callback) => {
+      const operation = callback as (tx: unknown) => Promise<unknown>;
+      return operation({ $queryRaw: jest.fn(), team: { create } });
+    });
+    await expect(
+      service.addManual('organizer-1', 'cup', {
+        name: 'Team',
+        members: [],
+      } as never),
+    ).rejects.toMatchObject({
+      response: { code: 'TOURNAMENT_PARTICIPANTS_LOCKED' },
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
   it('publishes a registration-success email only after the team is created', async () => {
     const { service, activityEmails } = harness();
     Object.assign(service, {

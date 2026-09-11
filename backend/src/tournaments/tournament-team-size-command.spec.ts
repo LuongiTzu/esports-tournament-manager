@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   GameGenre,
@@ -6,6 +5,7 @@ import {
   Role,
   TeamSizeMode,
   TournamentMode,
+  TournamentStatus,
 } from '@prisma/client';
 import { RoundSettingsService } from '../brackets/round-settings.service';
 import { ContentFilterService } from '../common/services/content-filter.service';
@@ -122,12 +122,16 @@ function createHarness(game: TestGame = baseGame) {
 }
 
 function createdData(create: jest.Mock): Record<string, unknown> {
-  return create.mock.calls[0][0].data as Record<string, unknown>;
+  const [input] = create.mock.calls[0] as [{ data: Record<string, unknown> }];
+  return input.data;
 }
 
 function currentTournament(game: TestGame = baseGame, overrides = {}) {
   return {
     id: 'tournament-1',
+    status: TournamentStatus.DRAFT,
+    _count: { teams: 0 },
+    rounds: [],
     gameId: game.id,
     customGameName: game.code === 'CUSTOM' ? 'Chess' : null,
     minTeamSize: game.defaultTeamSize,
@@ -152,14 +156,16 @@ function updateHarness(
   current = currentTournament(),
   newGame: TestGame = presetGame,
 ) {
-  const update = jest.fn().mockImplementation(({ data }) =>
-    Promise.resolve({
-      ...current,
-      ...data,
-      game: data.gameId ? newGame : current.game,
-      rounds: [],
-    }),
-  );
+  const update = jest
+    .fn()
+    .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({
+        ...current,
+        ...data,
+        game: data.gameId ? newGame : current.game,
+        rounds: [],
+      }),
+    );
   const prisma = {
     tournament: {
       findUnique: jest.fn().mockResolvedValue(current),
@@ -167,12 +173,18 @@ function updateHarness(
     },
     game: { findFirst: jest.fn().mockResolvedValue(newGame) },
   } as unknown as PrismaService;
+  Object.assign(prisma, {
+    $queryRaw: jest.fn(),
+    $transaction: jest.fn((callback: (client: PrismaService) => unknown) =>
+      callback(prisma),
+    ),
+  });
   const filter = contentFilter();
   return { service: command(prisma, filter), update, filter };
 }
 
 function updatedData(update: jest.Mock): Record<string, unknown> {
-  return update.mock.calls[0][0].data as Record<string, unknown>;
+  return createdData(update);
 }
 
 describe('TournamentCommandService GF-2 create contract', () => {
@@ -311,7 +323,7 @@ describe('TournamentCommandService GF-2 create contract', () => {
       { customGameName: 'Chess', teamSize: 20, maxTeamSize: 31 },
       'max above cap',
     ],
-  ])('rejects invalid CUSTOM create: %s', async (fields, _label) => {
+  ])('rejects invalid CUSTOM create: %s', async (...[fields]) => {
     const { service } = createHarness(customGame);
     await expect(
       service.create('organizer-1', {
@@ -340,11 +352,55 @@ describe('TournamentCommandService GF-2 create contract', () => {
       gameId: customGame.id,
       customGameName: 'Chess',
     });
-    expect(filter.validate).toHaveBeenCalledWith('Chess');
+    expect(
+      (filter as unknown as { validate: jest.Mock }).validate,
+    ).toHaveBeenCalledWith('Chess');
   });
 });
 
 describe('TournamentCommandService GF-2 update contract', () => {
+  it.each([
+    TournamentStatus.ONGOING,
+    TournamentStatus.COMPLETED,
+    TournamentStatus.CANCELLED,
+  ])('locks game and roster changes for %s', async (status) => {
+    const { service, update } = updateHarness(
+      currentTournament(baseGame, { status }),
+    );
+    await expect(
+      service.update('tournament-1', { gameId: presetGame.id }),
+    ).rejects.toMatchObject({
+      response: { code: 'TOURNAMENT_CONFIGURATION_LOCKED' },
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { _count: { teams: 1 } },
+    { rounds: [{ _count: { matches: 1, groups: 0 } }] },
+    { rounds: [{ _count: { matches: 0, groups: 1 } }] },
+  ])(
+    'locks setup once registration or structure consumes it',
+    async (state) => {
+      const { service, update } = updateHarness(
+        currentTournament(baseGame, state),
+      );
+      await expect(
+        service.update('tournament-1', { maxTeamSize: 6 }),
+      ).rejects.toMatchObject({
+        response: { code: 'TOURNAMENT_CONFIGURATION_LOCKED' },
+      });
+      expect(update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps visibility editable while competition setup is locked', async () => {
+    const { service, update } = updateHarness(
+      currentTournament(baseGame, { status: TournamentStatus.ONGOING }),
+    );
+    await service.update('tournament-1', { visibility: 'PRIVATE' });
+    expect(update).toHaveBeenCalled();
+  });
   it.each([
     [1, 1, 1],
     [undefined, 3, 3],
@@ -439,7 +495,9 @@ describe('TournamentCommandService GF-2 update contract', () => {
     expect(updatedData(update)).toMatchObject({ customGameName: 'New Name' });
     expect(updatedData(update).minTeamSize).toBeUndefined();
     expect(updatedData(update).maxTeamSize).toBeUndefined();
-    expect(filter.validate).toHaveBeenCalledWith('  New Name  ');
+    expect(
+      (filter as unknown as { validate: jest.Mock }).validate,
+    ).toHaveBeenCalledWith('  New Name  ');
   });
 
   it('validates max-only CUSTOM update against the current snapshot', async () => {

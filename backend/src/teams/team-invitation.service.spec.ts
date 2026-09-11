@@ -51,7 +51,14 @@ function harness() {
     tournament: { findUnique: jest.fn().mockResolvedValue(row) },
     teamInvitation,
     $transaction: jest.fn((callback: (tx: unknown) => unknown) =>
-      callback({ teamInvitation }),
+      callback({
+        teamInvitation,
+        $queryRaw: jest.fn(),
+        tournament: {
+          findUnique: jest.fn().mockImplementation(() => Promise.resolve(row)),
+        },
+        round: { findFirst: jest.fn().mockResolvedValue(null) },
+      }),
     ),
   } as unknown as PrismaService;
   const teams = {
@@ -64,6 +71,7 @@ function harness() {
   } as unknown as ConfigService;
   const tokens = new TeamInvitationTokenService();
   return {
+    prisma,
     row,
     teamInvitation,
     teams,
@@ -73,6 +81,26 @@ function harness() {
 }
 
 describe('TeamInvitationService', () => {
+  it('rejects invitations if the tournament starts before invitation persistence', async () => {
+    const { row, prisma, teamInvitation, email, service } = harness();
+    jest.mocked(prisma.$transaction).mockImplementationOnce((callback) => {
+      const operation = callback as (tx: unknown) => Promise<unknown>;
+      return operation({
+        $queryRaw: jest.fn(),
+        tournament: {
+          findUnique: jest
+            .fn()
+            .mockResolvedValue({ ...row, status: TournamentStatus.ONGOING }),
+        },
+        teamInvitation,
+      });
+    });
+    await expect(
+      service.inviteTeam('organizer-1', row.slug, 'captain@example.com'),
+    ).rejects.toThrow();
+    expect(teamInvitation.create).not.toHaveBeenCalled();
+    expect(email.sendActivity).not.toHaveBeenCalled();
+  });
   it('normalizes the recipient, expires by the registration deadline and sends no raw token to persistence', async () => {
     const { row, teamInvitation, email, service } = harness();
 

@@ -37,6 +37,12 @@ import {
   TournamentTeamSizePolicy,
   TournamentTeamSizeRuleError,
 } from './domain/tournament-team-size.policy';
+import {
+  gameConfigurationLockReason,
+  managementReasons,
+  setupStatusReason,
+  tournamentStartReasons,
+} from './domain/tournament-management.policy';
 import { TOURNAMENT_GAME_SELECT } from './tournament-prisma.select';
 import { withTournamentGameDisplayName } from './domain/tournament-game-display';
 import {
@@ -190,130 +196,234 @@ export class TournamentCommandService {
   }
 
   async update(tournamentId: string, dto: UpdateTournamentDto) {
-    const current = await this.prisma.tournament.findUnique({
-      where: { id: tournamentId },
-      include: { game: { select: TOURNAMENT_GAME_SELECT } },
-    });
-
-    if (!current) {
-      throw new NotFoundException('Không tìm thấy giải đấu');
-    }
-
-    // Đổi game → giới hạn đội hình phải khớp game mới
-    let game = current.game;
-    if (dto.gameId && dto.gameId !== current.gameId) {
-      const newGame = await this.prisma.game.findFirst({
-        where: { id: dto.gameId, code: { in: GAME_CATALOG_CODES } },
-        select: TOURNAMENT_GAME_SELECT,
+    const { current, updated } = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT "id" FROM "tournaments" WHERE "id" = ${tournamentId} FOR UPDATE`,
+      );
+      const current = await tx.tournament.findUnique({
+        where: { id: tournamentId },
+        include: {
+          game: { select: TOURNAMENT_GAME_SELECT },
+          _count: { select: { teams: true } },
+          rounds: {
+            orderBy: { orderIndex: 'asc' },
+            select: { _count: { select: { matches: true, groups: true } } },
+          },
+        },
       });
-      if (!newGame) {
-        throw new BadRequestException('Game không tồn tại');
+
+      if (!current) {
+        throw new NotFoundException('Không tìm thấy giải đấu');
       }
-      game = newGame;
-    }
 
-    const gameChanged = game.id !== current.gameId;
-    const teamSizeChanged = dto.teamSize !== undefined;
-    const minTeamSize =
-      gameChanged || teamSizeChanged
-        ? this.resolveTeamSize(game, dto.teamSize)
-        : current.minTeamSize;
-    const maxTeamSize = gameChanged
-      ? this.resolveMaxTeamSize(game, minTeamSize, dto.maxTeamSize)
-      : teamSizeChanged || dto.maxTeamSize !== undefined
-        ? this.validateMaxTeamSize(
-            game,
-            minTeamSize,
-            dto.maxTeamSize ?? current.maxTeamSize,
-          )
-        : current.maxTeamSize;
-    const customGameName = this.resolveCustomGameName(
-      game.code,
-      dto.customGameName,
-      gameChanged ? undefined : current.customGameName,
-    );
-
-    // Lọc từ khóa cấm nếu có thay đổi name/description
-    if (dto.name || dto.description || dto.rules) {
-      this.validateContent(dto.name, dto.description, dto.rules);
-    }
-
-    if (dto.status !== undefined) {
+      // Đổi game → giới hạn đội hình phải khớp game mới
+      const changesGameConfiguration =
+        (dto.gameId !== undefined && dto.gameId !== current.gameId) ||
+        (dto.teamSize !== undefined && dto.teamSize !== current.minTeamSize) ||
+        (dto.maxTeamSize !== undefined &&
+          dto.maxTeamSize !== current.maxTeamSize) ||
+        (dto.customGameName !== undefined &&
+          dto.customGameName !== current.customGameName) ||
+        ['minAge', 'maxAge', 'allowedGenders', 'requireMemberFullInfo'].some(
+          (key) => {
+            const field = key as
+              'minAge' | 'maxAge' | 'allowedGenders' | 'requireMemberFullInfo';
+            return (
+              dto[field] !== undefined &&
+              JSON.stringify(dto[field]) !== JSON.stringify(current[field])
+            );
+          },
+        );
+      if (changesGameConfiguration) {
+        const reason = gameConfigurationLockReason(
+          current.status,
+          current._count.teams,
+          current.rounds.some(
+            (round) => round._count.matches > 0 || round._count.groups > 0,
+          ),
+        );
+        if (reason)
+          throw new ConflictException({
+            code: ApplicationErrorCode.TOURNAMENT_CONFIGURATION_LOCKED,
+            message: managementReasons[reason],
+            details: { reason },
+          });
+      }
       if (
-        dto.status === TournamentStatus.COMPLETED &&
-        current.status !== TournamentStatus.COMPLETED
+        setupStatusReason(current.status) &&
+        (dto.maxTeams !== undefined ||
+          dto.autoApproveTeams !== undefined ||
+          dto.registrationStartDate !== undefined ||
+          dto.registrationDeadline !== undefined)
       ) {
         throw new ConflictException({
-          message:
-            'Tournament completion must be performed by the competition finalization workflow',
-          code: ApplicationErrorCode.TOURNAMENT_COMPLETION_REQUIRES_FINALIZATION,
+          code: ApplicationErrorCode.TOURNAMENT_CONFIGURATION_LOCKED,
+          message: managementReasons.SETUP_CLOSED,
+          details: { reason: 'SETUP_CLOSED' },
         });
       }
-      try {
-        this.lifecyclePolicy.assertCanTransition(current.status, dto.status);
-      } catch (error) {
-        if (error instanceof InvalidTournamentStatusTransitionError) {
-          throw new BadRequestException({
-            message: error.message,
-            code: ApplicationErrorCode.INVALID_TOURNAMENT_STATUS_TRANSITION,
+
+      let game = current.game;
+      if (dto.gameId && dto.gameId !== current.gameId) {
+        const newGame = await tx.game.findFirst({
+          where: { id: dto.gameId, code: { in: GAME_CATALOG_CODES } },
+          select: TOURNAMENT_GAME_SELECT,
+        });
+        if (!newGame) {
+          throw new BadRequestException('Game không tồn tại');
+        }
+        game = newGame;
+      }
+
+      const gameChanged = game.id !== current.gameId;
+      const teamSizeChanged = dto.teamSize !== undefined;
+      const minTeamSize =
+        gameChanged || teamSizeChanged
+          ? this.resolveTeamSize(game, dto.teamSize)
+          : current.minTeamSize;
+      const maxTeamSize = gameChanged
+        ? this.resolveMaxTeamSize(game, minTeamSize, dto.maxTeamSize)
+        : teamSizeChanged || dto.maxTeamSize !== undefined
+          ? this.validateMaxTeamSize(
+              game,
+              minTeamSize,
+              dto.maxTeamSize ?? current.maxTeamSize,
+            )
+          : current.maxTeamSize;
+      const customGameName = this.resolveCustomGameName(
+        game.code,
+        dto.customGameName,
+        gameChanged ? undefined : current.customGameName,
+      );
+
+      // Lọc từ khóa cấm nếu có thay đổi name/description
+      if (dto.name || dto.description || dto.rules) {
+        this.validateContent(dto.name, dto.description, dto.rules);
+      }
+
+      if (dto.status !== undefined) {
+        if (
+          dto.status === TournamentStatus.COMPLETED &&
+          current.status !== TournamentStatus.COMPLETED
+        ) {
+          throw new ConflictException({
+            message:
+              'Tournament completion must be performed by the competition finalization workflow',
+            code: ApplicationErrorCode.TOURNAMENT_COMPLETION_REQUIRES_FINALIZATION,
           });
         }
-        throw error;
+        try {
+          this.lifecyclePolicy.assertCanTransition(current.status, dto.status);
+        } catch (error) {
+          if (error instanceof InvalidTournamentStatusTransitionError) {
+            throw new BadRequestException({
+              message: error.message,
+              code: ApplicationErrorCode.INVALID_TOURNAMENT_STATUS_TRANSITION,
+            });
+          }
+          throw error;
+        }
       }
-    }
 
-    const merged = { ...current, ...stripUndefined(dto) };
-    this.validateMergedSettings(merged);
+      if (
+        dto.status === TournamentStatus.ONGOING &&
+        current.status !== TournamentStatus.ONGOING
+      ) {
+        const approvedCount = await tx.team.count({
+          where: { tournamentId, status: 'APPROVED' },
+        });
+        const reasons = tournamentStartReasons(
+          current.status,
+          dto.registrationOpen ?? current.registrationOpen,
+          approvedCount,
+          current.rounds[0]?._count.matches ?? 0,
+        );
+        if (reasons.length)
+          throw new ConflictException({
+            code: ApplicationErrorCode.TOURNAMENT_START_NOT_READY,
+            message: reasons
+              .map((reason) => managementReasons[reason])
+              .join(' '),
+            details: { reasons },
+          });
+      }
+      const nextStatus = dto.status ?? current.status;
+      if (
+        dto.registrationOpen === true &&
+        nextStatus !== TournamentStatus.DRAFT
+      ) {
+        const hasStructure = current.rounds.some(
+          (round) => round._count.matches > 0 || round._count.groups > 0,
+        );
+        if (nextStatus !== TournamentStatus.REGISTRATION || hasStructure)
+          throw new ConflictException({
+            code: ApplicationErrorCode.TOURNAMENT_REGISTRATION_LOCKED,
+            message:
+              nextStatus !== TournamentStatus.REGISTRATION
+                ? managementReasons.SETUP_CLOSED
+                : managementReasons.STRUCTURE_EXISTS,
+          });
+      }
 
-    const targetStatus = dto.status ?? current.status;
-    const visibility =
-      targetStatus === TournamentStatus.DRAFT
-        ? Visibility.PRIVATE
-        : dto.visibility;
-    const registrationOpen =
-      targetStatus === TournamentStatus.DRAFT ? false : dto.registrationOpen;
+      const merged = { ...current, ...stripUndefined(dto) };
+      this.validateMergedSettings(merged);
 
-    const updated = await this.prisma.tournament.update({
-      where: { id: tournamentId },
-      data: {
-        name: dto.name,
-        description: dto.description,
-        customGameName:
-          gameChanged || dto.customGameName !== undefined
-            ? customGameName
-            : undefined,
-        rules: dto.rules,
-        bannerUrl: dto.bannerUrl,
-        visibility,
-        status: dto.status,
-        mode: dto.mode,
-        location: dto.location,
-        registrationOpen,
-        maxTeams: dto.maxTeams,
-        minTeamSize: gameChanged || teamSizeChanged ? minTeamSize : undefined,
-        maxTeamSize:
-          gameChanged || teamSizeChanged || dto.maxTeamSize !== undefined
-            ? maxTeamSize
-            : undefined,
-        minAge: dto.minAge,
-        maxAge: dto.maxAge,
-        allowedGenders: dto.allowedGenders,
-        registrationStartDate: toDate(dto.registrationStartDate),
-        registrationDeadline: toDate(dto.registrationDeadline),
-        startDate: toDate(dto.startDate),
-        endDate: toDate(dto.endDate),
-        autoApproveTeams: dto.autoApproveTeams,
-        requireMemberFullInfo: dto.requireMemberFullInfo,
-        prizePool: dto.prizePool,
-        contactEmail: dto.contactEmail,
-        contactPhone: dto.contactPhone,
-        contactLink: dto.contactLink,
-        gameId: dto.gameId,
-      },
-      include: {
-        game: { select: TOURNAMENT_GAME_SELECT },
-        rounds: { orderBy: { orderIndex: 'asc' } },
-      },
+      const targetStatus = dto.status ?? current.status;
+      const visibility =
+        targetStatus === TournamentStatus.DRAFT
+          ? Visibility.PRIVATE
+          : dto.visibility;
+      const registrationOpen =
+        targetStatus === TournamentStatus.DRAFT ||
+        targetStatus === TournamentStatus.ONGOING ||
+        targetStatus === TournamentStatus.COMPLETED ||
+        targetStatus === TournamentStatus.CANCELLED
+          ? false
+          : dto.registrationOpen;
+
+      const updated = await tx.tournament.update({
+        where: { id: tournamentId },
+        data: {
+          name: dto.name,
+          description: dto.description,
+          customGameName:
+            gameChanged || dto.customGameName !== undefined
+              ? customGameName
+              : undefined,
+          rules: dto.rules,
+          bannerUrl: dto.bannerUrl,
+          visibility,
+          status: dto.status,
+          mode: dto.mode,
+          location: dto.location,
+          registrationOpen,
+          maxTeams: dto.maxTeams,
+          minTeamSize: gameChanged || teamSizeChanged ? minTeamSize : undefined,
+          maxTeamSize:
+            gameChanged || teamSizeChanged || dto.maxTeamSize !== undefined
+              ? maxTeamSize
+              : undefined,
+          minAge: dto.minAge,
+          maxAge: dto.maxAge,
+          allowedGenders: dto.allowedGenders,
+          registrationStartDate: toDate(dto.registrationStartDate),
+          registrationDeadline: toDate(dto.registrationDeadline),
+          startDate: toDate(dto.startDate),
+          endDate: toDate(dto.endDate),
+          autoApproveTeams: dto.autoApproveTeams,
+          requireMemberFullInfo: dto.requireMemberFullInfo,
+          prizePool: dto.prizePool,
+          contactEmail: dto.contactEmail,
+          contactPhone: dto.contactPhone,
+          contactLink: dto.contactLink,
+          gameId: dto.gameId,
+        },
+        include: {
+          game: { select: TOURNAMENT_GAME_SELECT },
+          rounds: { orderBy: { orderIndex: 'asc' } },
+        },
+      });
+      return { current, updated };
     });
 
     if (dto.status !== undefined && dto.status !== current.status) {

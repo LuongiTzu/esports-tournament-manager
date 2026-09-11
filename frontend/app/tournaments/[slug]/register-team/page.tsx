@@ -348,6 +348,12 @@ export default function RegisterTeamPage({
             ? reason.message
             : t("team.register.submitError"),
       );
+      if (manualMode && reason instanceof ApiError && reason.status === 409) {
+        await teamsApi
+          .getManualRegistrationForm(slug)
+          .then(setConfig)
+          .catch(() => {});
+      }
     } finally {
       setSubmitting(false);
     }

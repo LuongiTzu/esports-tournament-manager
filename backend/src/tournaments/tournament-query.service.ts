@@ -27,6 +27,13 @@ import {
 } from './tournament-prisma.select';
 import { withTournamentGameDisplayName } from './domain/tournament-game-display';
 import { resolveTournamentFinalizationMode } from './domain/tournament-finalization.policy';
+import {
+  gameConfigurationLockReason,
+  managementAction,
+  participantLockReason,
+  registrationWindowReason,
+  tournamentStartReasons,
+} from './domain/tournament-management.policy';
 
 @Injectable()
 export class TournamentQueryService {
@@ -164,9 +171,56 @@ export class TournamentQueryService {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
 
+    const firstRound = tournament.rounds[0];
+    const participantReason = participantLockReason(
+      tournament.status,
+      Boolean(
+        firstRound &&
+        (firstRound._count.matches > 0 || firstRound.groups.length > 0),
+      ),
+    );
+    const occupiedCount = tournament.maxTeams
+      ? await this.prisma.team.count({
+          where: {
+            tournamentId: tournament.id,
+            status: { in: ['PENDING', 'APPROVED'] },
+          },
+        })
+      : tournament.teams.length;
+    const capacityReason =
+      tournament.maxTeams && occupiedCount >= tournament.maxTeams
+        ? ('CAPACITY_REACHED' as const)
+        : null;
+    const registrationReason =
+      registrationWindowReason(tournament) ??
+      participantReason ??
+      capacityReason;
+    const startReasons = tournamentStartReasons(
+      tournament.status,
+      tournament.registrationOpen,
+      tournament.teams.length,
+      firstRound?._count.matches ?? 0,
+    );
+
     return withTournamentFavoriteState(
       withTournamentGameDisplayName({
         ...tournament,
+        management: {
+          gameConfiguration: managementAction(
+            gameConfigurationLockReason(
+              tournament.status,
+              tournament._count.teams,
+              tournament.rounds.some(
+                (round) => round._count.matches > 0 || round.groups.length > 0,
+              ),
+            ),
+          ),
+          participants: managementAction(participantReason),
+          manualTeam: managementAction(participantReason ?? capacityReason),
+          teamInvitation: managementAction(registrationReason),
+          registration: managementAction(registrationReason),
+          start: { allowed: startReasons.length === 0, reasons: startReasons },
+        },
         rounds: tournament.rounds.map((round) => ({
           ...round,
           settings: this.roundSettingsService.getEffectiveSettings(

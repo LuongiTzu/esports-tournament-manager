@@ -1,6 +1,62 @@
 import type extendedVi from "@/features/locale/dictionaries/extended-vi";
 
 const extendedEn = {
+  "common.saving": "Saving…",
+  "common.refreshing": "Updating…",
+  "common.processing": "Processing…",
+  "common.sending": "Sending…",
+  "competition.manage.generating": "Generating matches…",
+  "competition.manage.advancing": "Advancing round…",
+  "invitation.historyTitle": "Invitation history",
+  "invitation.historyHint": "Review sent invitations and their responses.",
+  "manage.locked": "Locked",
+  "manage.permissionsUnavailable":
+    "Actions could not be loaded. Please refresh the page.",
+  "manage.reason.SETUP_CLOSED":
+    "The tournament has started or ended. Configuration and team entries are locked.",
+  "manage.reason.TEAMS_EXIST":
+    "Configuration is locked because team registrations already exist.",
+  "manage.reason.STRUCTURE_EXISTS":
+    "Team entries are locked because the competition structure has been generated.",
+  "manage.reason.REGISTRATION_CLOSED": "The organizer has closed registration.",
+  "manage.reason.REGISTRATION_NOT_STARTED": "Registration has not opened yet.",
+  "manage.reason.REGISTRATION_EXPIRED": "The registration deadline has passed.",
+  "manage.reason.TOURNAMENT_STARTED":
+    "The scheduled tournament start has been reached. Registration is closed.",
+  "manage.reason.CAPACITY_REACHED":
+    "The tournament has reached its team capacity.",
+  "manage.reason.STATUS_NOT_REGISTRATION":
+    "Team registration is only available during the registration stage.",
+  "manage.reason.REGISTRATION_MUST_BE_CLOSED":
+    "Close registration before starting the tournament.",
+  "manage.reason.NOT_ENOUGH_TEAMS": "At least two approved teams are required.",
+  "manage.reason.FIRST_ROUND_NOT_GENERATED":
+    "Generate the first round's matches before starting.",
+  "lifecycle.stateTitle": "Tournament status",
+  "lifecycle.summary.DRAFT":
+    "Set up the tournament and prepare teams before publishing.",
+  "lifecycle.summary.REGISTRATION":
+    "Confirm teams, close registration and prepare the match schedule.",
+  "lifecycle.summary.ONGOING":
+    "Manage the schedule, update results and run the competition rounds.",
+  "lifecycle.summary.COMPLETED":
+    "The tournament is complete. Results and standings are available in the competition section.",
+  "lifecycle.summary.CANCELLED":
+    "The tournament is cancelled. Information and competition history remain available.",
+  "lifecycle.start": "Start tournament",
+  "lifecycle.startConfirm":
+    "Start this tournament? Team entries and competition configuration will be locked. You cannot return to registration.",
+  "lifecycle.started": "Tournament started.",
+  "lifecycle.beforeStart": "Complete before starting",
+  "lifecycle.cancel": "Cancel tournament",
+  "lifecycle.cancelConfirm":
+    "Cancel this tournament? Registration and competition updates will stop. This action cannot be undone.",
+  "lifecycle.cancelled": "Tournament cancelled.",
+  "lifecycle.cancelHint": "Only cancel if the tournament cannot continue.",
+  "lifecycle.acceptingTeams": "Accepting registrations",
+  "lifecycle.notAcceptingTeams": "Not accepting registrations",
+  "lifecycle.publicHint": "Everyone can discover and view this tournament.",
+  "lifecycle.privateHint": "Only people with access can view this tournament.",
   "swiss.mode": "Swiss mode",
   "swiss.fixed": "Fixed rounds",
   "swiss.threshold": "Win/loss thresholds",

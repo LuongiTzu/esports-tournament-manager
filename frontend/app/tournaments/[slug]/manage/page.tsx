@@ -13,7 +13,8 @@ import CompetitionManager from "@/features/tournaments/components/manage/Competi
 import TournamentLifecycleControls from "@/features/tournaments/components/manage/TournamentLifecycleControls";
 import TournamentGameEditor from "@/features/tournaments/components/manage/TournamentGameEditor";
 import type { TournamentDetail } from "@/features/tournaments/types";
-import { alertErrorClass } from "@/components/ui";
+import { ManagementPageSkeleton } from "@/features/tournaments/components/manage/ManagementSkeletons";
+import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { adminApi } from "@/features/admin/api";
 import type { AdminTournamentOverride } from "@/features/admin/types";
@@ -30,6 +31,7 @@ export default function ManagePage({
 
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retryVersion, setRetryVersion] = useState(0);
   const [loadError, setLoadError] = useState("");
   const [adminOverride, setAdminOverride] =
     useState<AdminTournamentOverride | null>(null);
@@ -75,11 +77,48 @@ export default function ManagePage({
     return () => {
       cancelled = true;
     };
-  }, [slug, router, ready, user, t]);
+  }, [slug, router, ready, user, t, retryVersion]);
 
   const refreshTournament = async () => {
     setTournament(await tournamentsApi.findBySlug(slug));
   };
+
+  useEffect(() => {
+    if (!tournament) return;
+    let cancelled = false;
+    const refresh = () => {
+      void tournamentsApi
+        .findBySlug(slug)
+        .then((value) => {
+          if (!cancelled) setTournament(value);
+        })
+        .catch(() => {});
+    };
+    const onFocus = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    const now = Date.now();
+    const upcoming = [
+      tournament.registrationStartDate,
+      tournament.registrationDeadline,
+      tournament.startDate,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => new Date(value).getTime() + 1)
+      .filter((value) => value > now);
+    const timer = upcoming.length
+      ? window.setTimeout(
+          refresh,
+          Math.min(Math.min(...upcoming) - now, 2_147_483_647),
+        )
+      : undefined;
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [slug, tournament]);
 
   const endAdminOverride = async () => {
     if (!tournament || !adminOverride || endingOverride) return;
@@ -108,15 +147,7 @@ export default function ManagePage({
   }
 
   if (loading) {
-    return (
-      <div className="mx-auto w-full max-w-4xl flex-1 px-4 py-10">
-        <div aria-hidden className="space-y-3">
-          <div className="h-9 w-1/2 rounded bg-surface-card" />
-          <div className="h-24 rounded-xl bg-surface-card" />
-          <div className="h-24 rounded-xl bg-surface-card" />
-        </div>
-      </div>
-    );
+    return <ManagementPageSkeleton label={t("common.loading")} />;
   }
 
   if (loadError || !tournament) {
@@ -125,6 +156,17 @@ export default function ManagePage({
         <p className={alertErrorClass}>
           {loadError || t("tournament.detail.notFound")}
         </p>
+        <button
+          type="button"
+          className={`${secondaryButtonClass} mt-4 mr-4`}
+          onClick={() => {
+            setLoadError("");
+            setLoading(true);
+            setRetryVersion((value) => value + 1);
+          }}
+        >
+          {t("common.retry")}
+        </button>
         <Link
           href="/"
           className="mt-4 inline-block text-sm text-brand hover:underline"

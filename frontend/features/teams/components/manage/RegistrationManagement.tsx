@@ -3,11 +3,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CheckCircleIcon,
-  CircleNotchIcon,
   UsersThreeIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
-import { alertErrorClass } from "@/components/ui";
+import {
+  RegistrationSkeleton,
+  TeamDetailSkeleton,
+} from "./RegistrationSkeletons";
+import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { teamsApi } from "@/features/teams/api";
 import type {
   TeamDetail,
@@ -40,6 +43,8 @@ export default function RegistrationManagement({
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [detail, setDetail] = useState<TeamDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retryVersion, setRetryVersion] = useState(0);
+  const [detailRetryVersion, setDetailRetryVersion] = useState(0);
   const [detailLoading, setDetailLoading] = useState(false);
   const [working, setWorking] = useState<"approve" | "reject" | null>(null);
   const [invitingMemberId, setInvitingMemberId] = useState<string | null>(null);
@@ -90,7 +95,7 @@ export default function RegistrationManagement({
     return () => {
       cancelled = true;
     };
-  }, [tournament.slug, t]);
+  }, [tournament.slug, t, retryVersion]);
 
   useEffect(() => {
     if (!selectedTeamId) {
@@ -121,7 +126,7 @@ export default function RegistrationManagement({
     return () => {
       cancelled = true;
     };
-  }, [selectedTeamId, t]);
+  }, [selectedTeamId, t, detailRetryVersion]);
 
   const counts = useMemo(
     () => ({
@@ -150,6 +155,8 @@ export default function RegistrationManagement({
 
   const mutateStatus = async (status: "APPROVED" | "REJECTED") => {
     if (!detail || detail.status !== "PENDING" || working) return;
+    if (status === "APPROVED" && !tournament.management?.participants.allowed)
+      return;
     const trimmedReason = rejectionReason.trim();
     if (status === "REJECTED" && trimmedReason.length < 5) {
       setDetailError(t("registration.rejectReasonMin"));
@@ -191,6 +198,7 @@ export default function RegistrationManagement({
           ? reason.message
           : t("registration.updateError"),
       );
+      await onTournamentRefresh().catch(() => {});
     } finally {
       setWorking(null);
     }
@@ -220,7 +228,8 @@ export default function RegistrationManagement({
       aria-labelledby="registration-management-heading"
     >
       <TeamInvitationManagement
-        tournamentSlug={tournament.slug}
+        tournament={tournament}
+        onRefresh={onTournamentRefresh}
         refreshVersion={invitationRefreshVersion}
       />
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -235,13 +244,13 @@ export default function RegistrationManagement({
             {t("registration.title")}
           </h2>
           <p className="mt-2 text-sm text-ink-muted">
-            {t("registration.approved")}: {counts.APPROVED}
+            {t("registration.approved")}: {loading ? "..." : counts.APPROVED}
             {tournament.maxTeams ? ` / ${tournament.maxTeams}` : ""}{" "}
             {t("registration.teamsUnit")}
           </p>
         </div>
         <span className="rounded-full border border-line bg-surface-card px-3 py-1.5 text-xs text-ink-muted">
-          {counts.PENDING} {t("registration.pendingCount")}
+          {loading ? "..." : counts.PENDING} {t("registration.pendingCount")}
         </span>
       </div>
 
@@ -252,6 +261,9 @@ export default function RegistrationManagement({
             <button
               key={item}
               type="button"
+              disabled={
+                loading || Boolean(working) || Boolean(invitingMemberId)
+              }
               onClick={() => changeFilter(item)}
               className={`shrink-0 rounded-full border px-3.5 py-2 text-sm font-medium transition ${
                 active
@@ -262,7 +274,9 @@ export default function RegistrationManagement({
               {item === "ALL"
                 ? t("registration.filter.all")
                 : t(`team.status.${item}` as TranslationKey)}{" "}
-              <span className="ml-1 font-mono text-xs">{counts[item]}</span>
+              <span className="ml-1 font-mono text-xs">
+                {loading ? "..." : counts[item]}
+              </span>
             </button>
           );
         })}
@@ -282,14 +296,24 @@ export default function RegistrationManagement({
           className={`${alertErrorClass} mt-4 flex items-start gap-2`}
         >
           <WarningCircleIcon className="mt-0.5 shrink-0" /> {error}
+          <button
+            type="button"
+            disabled={loading}
+            className="ml-auto shrink-0 underline"
+            onClick={() => {
+              setError("");
+              setLoading(true);
+              setRetryVersion((value) => value + 1);
+            }}
+          >
+            {t("common.retry")}
+          </button>
         </p>
       )}
 
       {loading ? (
-        <div className="mt-5 grid min-h-52 place-items-center rounded-xl border border-line">
-          <CircleNotchIcon className="animate-spin text-brand" size={28} />
-        </div>
-      ) : teams.length === 0 ? (
+        <RegistrationSkeleton label={t("common.loading")} />
+      ) : error && teams.length === 0 ? null : teams.length === 0 ? (
         <div className="mt-5 rounded-xl border border-dashed border-line px-6 py-14 text-center">
           <UsersThreeIcon size={30} className="mx-auto text-ink-faint" />
           <p className="mt-3 font-medium text-ink">{t("registration.empty")}</p>
@@ -306,7 +330,16 @@ export default function RegistrationManagement({
                   key={team.id}
                   team={team}
                   selected={team.id === selectedTeamId}
-                  onSelect={() => setSelectedTeamId(team.id)}
+                  onSelect={() => {
+                    if (
+                      working ||
+                      invitingMemberId ||
+                      team.id === selectedTeamId
+                    )
+                      return;
+                    setDetailLoading(true);
+                    setSelectedTeamId(team.id);
+                  }}
                 />
               ))
             ) : (
@@ -318,16 +351,24 @@ export default function RegistrationManagement({
 
           <div className="min-w-0">
             {detailLoading ? (
-              <div className="grid min-h-72 place-items-center rounded-2xl border border-line bg-surface-card">
-                <CircleNotchIcon
-                  className="animate-spin text-brand"
-                  size={26}
-                />
-              </div>
+              <TeamDetailSkeleton label={t("common.loading")} />
             ) : detailError && !detail ? (
-              <p role="alert" className={alertErrorClass}>
-                {detailError}
-              </p>
+              <div>
+                <p role="alert" className={alertErrorClass}>
+                  {detailError}
+                </p>
+                <button
+                  type="button"
+                  className={`${secondaryButtonClass} mt-3`}
+                  onClick={() => {
+                    setDetailError("");
+                    setDetailLoading(true);
+                    setDetailRetryVersion((value) => value + 1);
+                  }}
+                >
+                  {t("common.retry")}
+                </button>
+              </div>
             ) : detail ? (
               <>
                 {detailError && (
@@ -337,6 +378,12 @@ export default function RegistrationManagement({
                 )}
                 <TeamRegistrationDetail
                   team={detail}
+                  canApprove={
+                    tournament.management?.participants.allowed === true
+                  }
+                  approvalLockReason={
+                    tournament.management?.participants.reason ?? null
+                  }
                   positionMode={tournament.game.positionMode}
                   minTeamSize={tournament.minTeamSize}
                   maxTeamSize={tournament.maxTeamSize}

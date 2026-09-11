@@ -17,6 +17,7 @@ import {
   TrophyIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react";
+import TournamentDetailSkeleton from "@/features/tournaments/components/TournamentDetailSkeleton";
 import ResolvedImage from "@/components/ResolvedImage";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { clearSession, useAuth } from "@/features/auth/store";
@@ -90,6 +91,7 @@ export default function TournamentDetailPage({
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
   const [myTeam, setMyTeam] = useState<TeamWithMembers | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retryVersion, setRetryVersion] = useState(0);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -114,7 +116,7 @@ export default function TournamentDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [slug, t]);
+  }, [slug, t, retryVersion]);
 
   useEffect(() => {
     if (!tournament || !user) return;
@@ -137,14 +139,7 @@ export default function TournamentDetailPage({
   }, [slug, tournament, user]);
 
   if (loading) {
-    return (
-      <div className="mx-auto w-full max-w-7xl flex-1 px-4 py-10">
-        <div aria-hidden className="space-y-4">
-          <div className="aspect-[16/6] animate-pulse bg-surface-card" />
-          <div className="h-44 animate-pulse bg-surface-card" />
-        </div>
-      </div>
-    );
+    return <TournamentDetailSkeleton label={t("common.loading")} />;
   }
 
   if (error || !tournament) {
@@ -153,6 +148,17 @@ export default function TournamentDetailPage({
         <p className={alertErrorClass}>
           {error || t("tournament.detail.notFound")}
         </p>
+        <button
+          type="button"
+          className={`${secondaryButtonClass} mt-4 mr-4`}
+          onClick={() => {
+            setError("");
+            setLoading(true);
+            setRetryVersion((value) => value + 1);
+          }}
+        >
+          {t("common.retry")}
+        </button>
         <Link
           href="/tournaments"
           className="mt-4 inline-block text-sm text-brand hover:underline"

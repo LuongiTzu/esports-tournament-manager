@@ -3,7 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, TournamentStatus } from '@prisma/client';
+import {
+  managementReasons,
+  setupStatusReason,
+} from '../../tournaments/domain/tournament-management.policy';
 import { ApplicationErrorCode } from '../errors/application-error-code';
 
 type CompetitionMutationClient = Pick<Prisma.TransactionClient, 'round'>;
@@ -14,6 +18,16 @@ type CompetitionMutationClient = Pick<Prisma.TransactionClient, 'round'>;
  */
 @Injectable()
 export class CompetitionMutationGuardService {
+  assertSetupStatus(status: TournamentStatus): void {
+    const reason = setupStatusReason(status);
+    if (reason)
+      throw new ConflictException({
+        code: ApplicationErrorCode.TOURNAMENT_PARTICIPANTS_LOCKED,
+        message: managementReasons[reason],
+        details: { reason },
+      });
+  }
+
   async assertParticipantSetMutable(
     client: CompetitionMutationClient,
     tournamentId: string,

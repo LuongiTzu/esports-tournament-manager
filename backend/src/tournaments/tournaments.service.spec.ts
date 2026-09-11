@@ -969,6 +969,9 @@ describe('TournamentsService roster snapshots', () => {
     const current = {
       id: 'tournament-1',
       gameId: 'old-game',
+      status: TournamentStatus.DRAFT,
+      _count: { teams: 0 },
+      rounds: [],
       minTeamSize: 5,
       maxTeamSize: 7,
       mode: TournamentMode.ONLINE,
@@ -1017,6 +1020,12 @@ describe('TournamentsService roster snapshots', () => {
         }),
       },
     } as unknown as PrismaService;
+    Object.assign(prisma, {
+      $queryRaw: jest.fn(),
+      $transaction: jest.fn((callback: (client: PrismaService) => unknown) =>
+        callback(prisma),
+      ),
+    });
     const service = createTournamentsService(
       prisma,
       new RoundSettingsService(),
@@ -1051,12 +1060,24 @@ describe('TournamentsService roster snapshots', () => {
 });
 
 describe('TournamentsService lifecycle updates', () => {
-  function updateHarness(status: TournamentStatus) {
+  function updateHarness(
+    status: TournamentStatus,
+    options: {
+      registrationOpen?: boolean;
+      approvedCount?: number;
+      matchCount?: number;
+    } = {},
+  ) {
     const current = {
       id: 'tournament-1',
       status,
+      _count: { teams: 2 },
+      rounds:
+        status === TournamentStatus.DRAFT || options.matchCount === 0
+          ? []
+          : [{ _count: { matches: options.matchCount ?? 1, groups: 0 } }],
       visibility: Visibility.PRIVATE,
-      registrationOpen: false,
+      registrationOpen: options.registrationOpen ?? false,
       gameId: 'game-1',
       minTeamSize: 5,
       maxTeamSize: 7,
@@ -1081,6 +1102,13 @@ describe('TournamentsService lifecycle updates', () => {
         update,
       },
     } as unknown as PrismaService;
+    Object.assign(prisma, {
+      $queryRaw: jest.fn(),
+      team: { count: jest.fn().mockResolvedValue(options.approvedCount ?? 2) },
+      $transaction: jest.fn((callback: (client: PrismaService) => unknown) =>
+        callback(prisma),
+      ),
+    });
     const notifications = {
       createForTournamentEvent: jest.fn().mockResolvedValue(undefined),
     } as unknown as NotificationPublisher;
@@ -1094,6 +1122,8 @@ describe('TournamentsService lifecycle updates', () => {
       ),
       update,
       notifications,
+      prisma,
+      current,
     };
   }
 
@@ -1117,6 +1147,90 @@ describe('TournamentsService lifecycle updates', () => {
           status: TournamentStatus.ONGOING,
         },
       }),
+    );
+  });
+
+  it.each([
+    [{ registrationOpen: true }, 'REGISTRATION_MUST_BE_CLOSED'],
+    [{ approvedCount: 1 }, 'NOT_ENOUGH_TEAMS'],
+    [{ matchCount: 0 }, 'FIRST_ROUND_NOT_GENERATED'],
+  ] as const)(
+    'rejects starting when readiness is missing: %s',
+    async (options, reason) => {
+      const { service, update } = updateHarness(
+        TournamentStatus.REGISTRATION,
+        options,
+      );
+      await expect(
+        service.update('tournament-1', { status: TournamentStatus.ONGOING }),
+      ).rejects.toMatchObject({
+        response: {
+          code: 'TOURNAMENT_START_NOT_READY',
+          details: { reasons: expect.arrayContaining([reason]) },
+        },
+      });
+      expect(update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('reads the current state after acquiring the tournament lock', async () => {
+    const { service, prisma, current, update } = updateHarness(
+      TournamentStatus.REGISTRATION,
+    );
+    Object.assign(prisma, {
+      $queryRaw: jest.fn(() => {
+        current.status = TournamentStatus.CANCELLED;
+        return Promise.resolve([]);
+      }),
+    });
+    await expect(
+      service.update('tournament-1', { status: TournamentStatus.ONGOING }),
+    ).rejects.toMatchObject({
+      response: { code: 'INVALID_TOURNAMENT_STATUS_TRANSITION' },
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    TournamentStatus.ONGOING,
+    TournamentStatus.COMPLETED,
+    TournamentStatus.CANCELLED,
+  ])('cannot reopen registration for %s', async (status) => {
+    const { service, update } = updateHarness(status);
+    await expect(
+      service.update('tournament-1', { registrationOpen: true }),
+    ).rejects.toMatchObject({
+      response: { code: 'TOURNAMENT_REGISTRATION_LOCKED' },
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('cannot reopen registration after the first structure was generated', async () => {
+    const { service, update } = updateHarness(TournamentStatus.REGISTRATION);
+    await expect(
+      service.update('tournament-1', { registrationOpen: true }),
+    ).rejects.toMatchObject({
+      response: { code: 'TOURNAMENT_REGISTRATION_LOCKED' },
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('closes registration when cancelling and publishes after committing', async () => {
+    const { service, update, notifications } = updateHarness(
+      TournamentStatus.REGISTRATION,
+      { registrationOpen: true },
+    );
+    await service.update('tournament-1', {
+      status: TournamentStatus.CANCELLED,
+    });
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ registrationOpen: false }),
+      }),
+    );
+    expect(update.mock.invocationCallOrder[0]).toBeLessThan(
+      jest.mocked(notifications.createForTournamentEvent).mock
+        .invocationCallOrder[0],
     );
   });
 

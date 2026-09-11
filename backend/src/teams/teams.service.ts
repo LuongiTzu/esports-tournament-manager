@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -166,6 +167,7 @@ export class TeamsService {
    */
   async addManual(organizerId: string, slug: string, dto: RegisterTeamDto) {
     const tournament = await this.loadTournamentForRegistration(slug);
+    this.competitionGuard.assertSetupStatus(tournament.status);
     if (tournament.maxTeams) {
       const occupied = await this.countOccupiedSlots(tournament.id);
       if (occupied >= tournament.maxTeams) {
@@ -352,7 +354,7 @@ export class TeamsService {
           status: true,
           captainId: true,
           tournamentId: true,
-          tournament: { select: { organizerId: true } },
+          tournament: { select: { organizerId: true, status: true } },
         },
       });
       if (!team) {
@@ -368,6 +370,7 @@ export class TeamsService {
       }
 
       if (team.status === RegistrationStatus.APPROVED) {
+        this.competitionGuard.assertSetupStatus(team.tournament.status);
         await this.competitionGuard.assertParticipantSetMutable(
           tx,
           team.tournamentId,
@@ -402,6 +405,28 @@ export class TeamsService {
   async getManualRegistrationForm(slug: string, user: AuthenticatedUser) {
     const tournament = await this.loadTournamentForRegistration(slug);
     const form = await this.buildRegistrationForm(tournament, user);
+    try {
+      this.competitionGuard.assertSetupStatus(tournament.status);
+      await this.competitionGuard.assertParticipantSetMutable(
+        this.prisma,
+        tournament.id,
+      );
+      if (
+        tournament.maxTeams &&
+        (await this.countOccupiedSlots(tournament.id)) >= tournament.maxTeams
+      ) {
+        return {
+          ...form,
+          canRegister: false,
+          reason: 'Giải đấu đã đủ số đội tham gia',
+        };
+      }
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        return { ...form, canRegister: false, reason: error.message };
+      }
+      throw error;
+    }
     return { ...form, canRegister: true, reason: null };
   }
 
@@ -484,6 +509,7 @@ export class TeamsService {
         tournament.slug,
         tx,
       );
+      this.competitionGuard.assertSetupStatus(lockedTournament.status);
       await this.competitionGuard.assertParticipantSetMutable(
         tx,
         lockedTournament.id,

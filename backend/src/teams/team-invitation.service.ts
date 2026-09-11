@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import {
   MemberRole,
+  Prisma,
   TeamInvitationPurpose,
   TeamInvitationStatus,
   TournamentStatus,
@@ -17,6 +18,7 @@ import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { RegisterTeamDto } from './dto/register-team.dto';
 import { TeamsService } from './teams.service';
 import { TeamInvitationTokenService } from './team-invitation-token.service';
+import { CompetitionMutationGuardService } from '../common/services/competition-mutation-guard.service';
 import { TournamentManagementAccessService } from '../common/services/tournament-management-access.service';
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -294,17 +296,43 @@ export class TeamInvitationService {
   }) {
     const { token, hash } = this.tokens.create();
     const expiresAt = this.resolveExpiry(input.tournament, input.purpose);
-    const invitation = await this.prisma.teamInvitation.create({
-      data: {
-        tournamentId: input.tournament.id,
-        invitedById: input.organizerId,
-        email: input.email,
-        purpose: input.purpose,
-        tokenHash: hash,
-        expiresAt,
-        teamId: input.teamId,
-        memberId: input.memberId,
-      },
+    const invitation = await this.prisma.$transaction(async (tx) => {
+      if (input.purpose === TeamInvitationPurpose.TEAM_REGISTRATION) {
+        await tx.$queryRaw(
+          Prisma.sql`SELECT "id" FROM "tournaments" WHERE "id" = ${input.tournament.id} FOR UPDATE`,
+        );
+        const current = await tx.tournament.findUnique({
+          where: { id: input.tournament.id },
+        });
+        if (!current) throw new NotFoundException('Không tìm thấy giải đấu');
+        this.assertCanInviteRegistration(current);
+        await new CompetitionMutationGuardService().assertParticipantSetMutable(
+          tx,
+          current.id,
+        );
+        if (current.maxTeams) {
+          const occupied = await tx.team.count({
+            where: {
+              tournamentId: current.id,
+              status: { in: ['PENDING', 'APPROVED'] },
+            },
+          });
+          if (occupied >= current.maxTeams)
+            throw new BadRequestException('Giải đấu đã đủ số đội tham gia');
+        }
+      }
+      return tx.teamInvitation.create({
+        data: {
+          tournamentId: input.tournament.id,
+          invitedById: input.organizerId,
+          email: input.email,
+          purpose: input.purpose,
+          tokenHash: hash,
+          expiresAt,
+          teamId: input.teamId,
+          memberId: input.memberId,
+        },
+      });
     });
 
     const base = this.config.get<string>(

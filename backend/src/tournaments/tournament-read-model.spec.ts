@@ -3,6 +3,7 @@ import {
   GamePositionMode,
   ModerationStatus,
   TeamSizeMode,
+  TournamentStatus,
   Visibility,
 } from '@prisma/client';
 import { RoundSettingsService } from '../brackets/round-settings.service';
@@ -37,6 +38,81 @@ function queryService(prisma: PrismaService) {
 }
 
 describe('TournamentQueryService GF-5 read models', () => {
+  it.each([
+    TournamentStatus.ONGOING,
+    TournamentStatus.COMPLETED,
+    TournamentStatus.CANCELLED,
+  ])(
+    'exposes locked setup actions for %s without requiring generated matches',
+    async (status) => {
+      const prisma = {
+        tournament: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'tournament-1',
+            organizerId: 'organizer-1',
+            visibility: Visibility.PUBLIC,
+            moderationStatus: ModerationStatus.ACTIVE,
+            game: customGame,
+            status,
+            registrationOpen: true,
+            registrationStartDate: null,
+            registrationDeadline: null,
+            startDate: null,
+            maxTeams: null,
+            rounds: [],
+            teams: [],
+            _count: { teams: 0 },
+          }),
+        },
+      } as unknown as PrismaService;
+      const result = await queryService(prisma).findBySlug('cup');
+      expect(result.management.gameConfiguration).toEqual({
+        allowed: false,
+        reason: 'SETUP_CLOSED',
+      });
+      expect(result.management.manualTeam.allowed).toBe(false);
+      expect(result.management.participants.allowed).toBe(false);
+      expect(result.management.registration.allowed).toBe(false);
+      expect(result.management.start.allowed).toBe(false);
+    },
+  );
+
+  it('includes pending teams in capacity and configuration locks', async () => {
+    const count = jest.fn().mockResolvedValue(2);
+    const prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'tournament-1',
+          organizerId: 'organizer-1',
+          visibility: Visibility.PUBLIC,
+          moderationStatus: ModerationStatus.ACTIVE,
+          game: customGame,
+          status: TournamentStatus.REGISTRATION,
+          registrationOpen: true,
+          registrationStartDate: null,
+          registrationDeadline: null,
+          startDate: null,
+          maxTeams: 2,
+          rounds: [],
+          teams: [{ id: 'approved-team' }],
+          _count: { teams: 2 },
+        }),
+      },
+      team: { count },
+    } as unknown as PrismaService;
+    const result = await queryService(prisma).findBySlug('cup');
+    expect(result.management.gameConfiguration.reason).toBe('TEAMS_EXIST');
+    expect(result.management.manualTeam.reason).toBe('CAPACITY_REACHED');
+    expect(result.management.teamInvitation.reason).toBe('CAPACITY_REACHED');
+    expect(result.management.start.reasons).toContain('NOT_ENOUGH_TEAMS');
+    expect(count).toHaveBeenCalledWith({
+      where: {
+        tournamentId: 'tournament-1',
+        status: { in: ['PENDING', 'APPROVED'] },
+      },
+    });
+  });
+
   it('returns detail structural metadata and a derived CUSTOM display name', async () => {
     const findUnique = jest.fn().mockResolvedValue({
       id: 'tournament-1',
@@ -66,14 +142,14 @@ describe('TournamentQueryService GF-5 read models', () => {
           teamSizeMode: TeamSizeMode.FLEXIBLE,
           minSelectableTeamSize: 1,
           maxSelectableTeamSize: 20,
-        }),
+        }) as unknown,
       }),
     );
     expect(findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         include: expect.objectContaining({
           game: { select: TOURNAMENT_GAME_SELECT },
-        }),
+        }) as unknown,
       }),
     );
   });
@@ -99,7 +175,7 @@ describe('TournamentQueryService GF-5 read models', () => {
     ).resolves.toEqual([
       expect.objectContaining({
         displayGameName: 'Chess',
-        game: expect.objectContaining({ code: 'CUSTOM' }),
+        game: expect.objectContaining({ code: 'CUSTOM' }) as unknown,
       }),
     ]);
     expect(findMany).toHaveBeenCalledWith(
@@ -108,7 +184,7 @@ describe('TournamentQueryService GF-5 read models', () => {
           game: {
             select: { id: true, code: true, name: true, iconUrl: true },
           },
-        }),
+        }) as unknown,
       }),
     );
   });

@@ -97,6 +97,7 @@ export class TeamReviewService {
       }
 
       if (dto.status === RegistrationStatus.APPROVED) {
+        this.competitionGuard.assertSetupStatus(team.tournament.status);
         await this.competitionGuard.assertParticipantSetMutable(
           tx,
           team.tournamentId,

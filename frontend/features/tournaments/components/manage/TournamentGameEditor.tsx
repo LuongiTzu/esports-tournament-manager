@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FloppyDiskIcon, GameControllerIcon } from "@phosphor-icons/react";
+import {
+  FloppyDiskIcon,
+  GameControllerIcon,
+  LockKeyIcon,
+} from "@phosphor-icons/react";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { gamesApi } from "@/features/games/api";
 import GameStructureFields, {
@@ -36,23 +40,33 @@ export default function TournamentGameEditor({
   const [value, setValue] = useState(() => structureFromTournament(tournament));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const canEdit = tournament.management?.gameConfiguration.allowed === true;
+  const lockedReason = tournament.management?.gameConfiguration.reason;
 
   useEffect(() => {
-    if (!open || games.length > 0) return;
-    gamesApi.findAll().then(setGames).catch((loadError: unknown) => {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : t("game.structure.catalogLoadError"),
-      );
-    });
-  }, [open, games.length, t]);
+    if (!open || !canEdit || games.length > 0) return;
+    gamesApi
+      .findAll()
+      .then(setGames)
+      .catch((loadError: unknown) => {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : t("game.structure.catalogLoadError"),
+        );
+      });
+  }, [open, canEdit, games.length, t]);
 
   const save = async () => {
+    if (!canEdit || saving) return;
     const game = games.find((item) => item.id === value.gameId);
     const teamSize = Number(value.teamSize);
     const maxTeamSize = Number(value.maxTeamSize);
-    if (!game || !Number.isInteger(teamSize) || !Number.isInteger(maxTeamSize)) {
+    if (
+      !game ||
+      !Number.isInteger(teamSize) ||
+      !Number.isInteger(maxTeamSize)
+    ) {
       setError(t("game.structure.teamSizeInvalid"));
       return;
     }
@@ -64,19 +78,14 @@ export default function TournamentGameEditor({
     setSaving(true);
     setError("");
     try {
-      const updated = await tournamentsApi.update(tournament.id, {
+      await tournamentsApi.update(tournament.id, {
         gameId: value.gameId,
         teamSize,
         maxTeamSize,
         customGameName:
           game.code === "CUSTOM" ? value.customGameName.trim() : undefined,
       });
-      onUpdated({
-        ...tournament,
-        ...updated,
-        game: updated.game ?? tournament.game,
-        teams: tournament.teams,
-      });
+      onUpdated(await tournamentsApi.findBySlug(tournament.slug));
       setOpen(false);
     } catch (saveError) {
       setError(
@@ -84,6 +93,10 @@ export default function TournamentGameEditor({
           ? saveError.message
           : t("game.structure.updateError"),
       );
+      await tournamentsApi
+        .findBySlug(tournament.slug)
+        .then(onUpdated)
+        .catch(() => {});
     } finally {
       setSaving(false);
     }
@@ -99,24 +112,39 @@ export default function TournamentGameEditor({
           </p>
           <p className="mt-1 text-sm text-ink-muted">
             {tournament.displayGameName ?? tournament.game.name} ·{" "}
-            {tournament.minTeamSize}v{tournament.minTeamSize} · {tournament.maxTeamSize}{" "}
-            {t("game.structure.players")}
+            {tournament.minTeamSize}v{tournament.minTeamSize} ·{" "}
+            {tournament.maxTeamSize} {t("game.structure.players")}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setValue(structureFromTournament(tournament));
-            setError("");
-            setOpen((current) => !current);
-          }}
-          className={secondaryButtonClass}
-        >
-          {open ? t("common.close") : t("common.edit")}
-        </button>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={() => {
+              setValue(structureFromTournament(tournament));
+              setError("");
+              setOpen((current) => !current);
+            }}
+            className={secondaryButtonClass}
+            disabled={saving}
+          >
+            {open ? t("common.close") : t("common.edit")}
+          </button>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-lg bg-surface-sub px-3 py-2 text-xs font-medium text-ink-muted">
+            <LockKeyIcon size={14} />
+            {t("manage.locked")}
+          </span>
+        )}
       </div>
 
-      {open && (
+      {!canEdit && (
+        <p className="mt-3 text-xs leading-relaxed text-ink-muted">
+          {lockedReason
+            ? t(`manage.reason.${lockedReason}`)
+            : t("manage.permissionsUnavailable")}
+        </p>
+      )}
+      {open && canEdit && (
         <div className="mt-5 border-t border-line pt-5">
           <GameStructureFields
             games={games}

@@ -175,6 +175,35 @@ export interface FindAllTournamentsParams {
 export interface TournamentDetail extends Omit<Tournament, "game"> {
   game: Game;
   teams: ApprovedTeam[];
+  management?: TournamentManagementState;
+}
+
+export type TournamentManagementReason =
+  | "SETUP_CLOSED"
+  | "TEAMS_EXIST"
+  | "STRUCTURE_EXISTS"
+  | "REGISTRATION_CLOSED"
+  | "REGISTRATION_NOT_STARTED"
+  | "REGISTRATION_EXPIRED"
+  | "TOURNAMENT_STARTED"
+  | "CAPACITY_REACHED"
+  | "STATUS_NOT_REGISTRATION"
+  | "REGISTRATION_MUST_BE_CLOSED"
+  | "NOT_ENOUGH_TEAMS"
+  | "FIRST_ROUND_NOT_GENERATED";
+
+export interface TournamentManagementAction {
+  allowed: boolean;
+  reason: TournamentManagementReason | null;
+}
+
+export interface TournamentManagementState {
+  gameConfiguration: TournamentManagementAction;
+  participants: TournamentManagementAction;
+  manualTeam: TournamentManagementAction;
+  teamInvitation: TournamentManagementAction;
+  registration: TournamentManagementAction;
+  start: { allowed: boolean; reasons: TournamentManagementReason[] };
 }
 
 export interface TournamentMutationResult extends Omit<Tournament, "game"> {

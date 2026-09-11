@@ -1,4 +1,59 @@
 const extendedVi = {
+  "common.saving": "Đang lưu…",
+  "common.refreshing": "Đang cập nhật…",
+  "common.processing": "Đang xử lý…",
+  "common.sending": "Đang gửi…",
+  "competition.manage.generating": "Đang tạo lịch thi đấu…",
+  "competition.manage.advancing": "Đang chuyển vòng…",
+  "invitation.historyTitle": "Lịch sử lời mời",
+  "invitation.historyHint":
+    "Theo dõi các lời mời đã gửi và trạng thái phản hồi.",
+  "manage.locked": "Đã khóa",
+  "manage.permissionsUnavailable":
+    "Chưa tải được quyền thao tác. Vui lòng tải lại trang.",
+  "manage.reason.SETUP_CLOSED":
+    "Giải đã bắt đầu hoặc kết thúc. Cấu hình và danh sách đội đã khóa.",
+  "manage.reason.TEAMS_EXIST": "Cấu hình đã khóa vì đã có hồ sơ đội đăng ký.",
+  "manage.reason.STRUCTURE_EXISTS":
+    "Danh sách đội đã khóa vì đã sinh cấu trúc thi đấu.",
+  "manage.reason.REGISTRATION_CLOSED": "Ban tổ chức đã đóng đăng ký.",
+  "manage.reason.REGISTRATION_NOT_STARTED": "Chưa đến thời điểm nhận đăng ký.",
+  "manage.reason.REGISTRATION_EXPIRED": "Đã hết hạn đăng ký.",
+  "manage.reason.TOURNAMENT_STARTED":
+    "Giải đã đến thời điểm bắt đầu, không nhận thêm đăng ký.",
+  "manage.reason.CAPACITY_REACHED": "Giải đã đủ số đội tham gia.",
+  "manage.reason.STATUS_NOT_REGISTRATION":
+    "Đăng ký đội chỉ khả dụng trong giai đoạn đăng ký.",
+  "manage.reason.REGISTRATION_MUST_BE_CLOSED":
+    "Đóng đăng ký trước khi bắt đầu giải.",
+  "manage.reason.NOT_ENOUGH_TEAMS": "Cần ít nhất hai đội được duyệt.",
+  "manage.reason.FIRST_ROUND_NOT_GENERATED":
+    "Sinh lịch thi đấu vòng đầu trước khi bắt đầu giải.",
+  "lifecycle.stateTitle": "Trạng thái giải đấu",
+  "lifecycle.summary.DRAFT":
+    "Hoàn thiện cấu hình và chuẩn bị đội trước khi phát hành giải.",
+  "lifecycle.summary.REGISTRATION":
+    "Chốt danh sách đội, đóng đăng ký và chuẩn bị lịch thi đấu.",
+  "lifecycle.summary.ONGOING":
+    "Tập trung quản lý lịch, cập nhật kết quả và điều hành các vòng đấu.",
+  "lifecycle.summary.COMPLETED":
+    "Giải đã hoàn tất. Kết quả và bảng xếp hạng được lưu trong phần thi đấu.",
+  "lifecycle.summary.CANCELLED":
+    "Giải đã hủy. Bạn vẫn có thể xem thông tin và lịch sử thi đấu.",
+  "lifecycle.start": "Bắt đầu giải",
+  "lifecycle.startConfirm":
+    "Bắt đầu giải? Danh sách đội và cấu hình thi đấu sẽ bị khóa. Không thể quay lại giai đoạn đăng ký.",
+  "lifecycle.started": "Đã bắt đầu giải đấu.",
+  "lifecycle.beforeStart": "Cần hoàn thành trước khi bắt đầu",
+  "lifecycle.cancel": "Hủy giải",
+  "lifecycle.cancelConfirm":
+    "Hủy giải đấu này? Giải sẽ ngừng nhận đăng ký và cập nhật thi đấu. Hành động này không thể hoàn tác.",
+  "lifecycle.cancelled": "Đã hủy giải đấu.",
+  "lifecycle.cancelHint": "Chỉ hủy khi giải không thể tiếp tục tổ chức.",
+  "lifecycle.acceptingTeams": "Đang nhận đăng ký",
+  "lifecycle.notAcceptingTeams": "Không nhận đăng ký",
+  "lifecycle.publicHint": "Mọi người có thể tìm và xem giải đấu.",
+  "lifecycle.privateHint": "Chỉ người có quyền truy cập mới xem được giải đấu.",
   "swiss.mode": "Cơ chế Swiss",
   "swiss.fixed": "Số lượt cố định",
   "swiss.threshold": "Ngưỡng thắng–thua",

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import {
@@ -6,14 +6,27 @@ import {
   CheckCircleIcon,
   CircleNotchIcon,
   EyeIcon,
+  FlagIcon,
   LockKeyIcon,
+  PlayIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
-import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
+import {
+  alertErrorClass,
+  inputClass,
+  primaryButtonClass,
+} from "@/components/ui";
 import { tournamentsApi } from "@/features/tournaments/api";
-import type { TournamentDetail } from "@/features/tournaments/types";
+import type {
+  TournamentDetail,
+  UpdateTournamentLifecycleRequest,
+} from "@/features/tournaments/types";
 import { formatLocalizedDate } from "@/features/locale/format";
-import { useLocale, type TranslationKey } from "@/features/locale/store";
+import { useLocale } from "@/features/locale/store";
+
+type Action = "publish" | "start" | "cancel" | "visibility" | "registration";
+const controlClass =
+  "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line-strong px-3 py-2 text-xs font-semibold text-ink transition hover:bg-surface-hover disabled:opacity-50";
 
 export default function TournamentLifecycleControls({
   tournament,
@@ -23,284 +36,363 @@ export default function TournamentLifecycleControls({
   onRefresh: () => Promise<void>;
 }) {
   const { locale, t } = useLocale();
-  const [working, setWorking] = useState(false);
+  const [working, setWorking] = useState<Action | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [publishVisibility, setPublishVisibility] = useState<
     "PUBLIC" | "PRIVATE"
   >("PRIVATE");
   const [publishRegistrationOpen, setPublishRegistrationOpen] = useState(false);
-  const canPublishDraft = tournament.status === "DRAFT";
-  const registrationCanBeToggled = tournament.status === "REGISTRATION";
+  const isDraft = tournament.status === "DRAFT";
+  const isRegistration = tournament.status === "REGISTRATION";
+  const canCancel = ["DRAFT", "REGISTRATION", "ONGOING"].includes(
+    tournament.status,
+  );
+  const registration = tournament.management?.registration;
+  const canToggleRegistration =
+    isRegistration &&
+    Boolean(tournament.management) &&
+    (tournament.registrationOpen ||
+      tournament.management?.participants.allowed);
+  const statusTone =
+    tournament.status === "ONGOING"
+      ? "bg-pending/10 text-pending"
+      : tournament.status === "COMPLETED"
+        ? "bg-approved/10 text-approved"
+        : tournament.status === "CANCELLED"
+          ? "bg-rejected/10 text-rejected"
+          : "bg-brand/10 text-brand-hover";
 
-  const publishDraft = async () => {
-    if (working || !canPublishDraft) return;
-    setWorking(true);
+  const mutate = async (
+    data: UpdateTournamentLifecycleRequest,
+    action: Action,
+    message: string,
+  ) => {
+    if (working) return;
+    setWorking(action);
     setError("");
     setNotice("");
     try {
-      await tournamentsApi.updateLifecycle(tournament.id, {
-        status: "REGISTRATION",
-        visibility: publishVisibility,
-        registrationOpen: publishRegistrationOpen,
-      });
+      await tournamentsApi.updateLifecycle(tournament.id, data);
       await onRefresh();
-      setNotice(t("lifecycle.published"));
-    } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : t("lifecycle.publishError"),
-      );
-    } finally {
-      setWorking(false);
-    }
-  };
-
-  const toggleVisibility = async () => {
-    if (working || tournament.status === "DRAFT") return;
-    const nextVisibility =
-      tournament.visibility === "PUBLIC" ? "PRIVATE" : "PUBLIC";
-    if (
-      !window.confirm(
-        t(`lifecycle.visibilityConfirm.${nextVisibility}` as TranslationKey),
-      )
-    ) {
-      return;
-    }
-    setWorking(true);
-    setError("");
-    setNotice("");
-    try {
-      await tournamentsApi.updateLifecycle(tournament.id, {
-        visibility: nextVisibility,
-      });
-      await onRefresh();
-      setNotice(t("lifecycle.visibilityUpdated"));
-    } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : t("lifecycle.visibilityUpdateError"),
-      );
-    } finally {
-      setWorking(false);
-    }
-  };
-
-  const toggleRegistration = async () => {
-    if (working || !registrationCanBeToggled) return;
-    setWorking(true);
-    setError("");
-    setNotice("");
-    try {
-      const nextOpen = !tournament.registrationOpen;
-      await tournamentsApi.updateLifecycle(tournament.id, {
-        registrationOpen: nextOpen,
-      });
-      await onRefresh();
-      setNotice(nextOpen ? t("lifecycle.opened") : t("lifecycle.closed"));
+      setNotice(message);
     } catch (reason) {
       setError(
         reason instanceof Error ? reason.message : t("lifecycle.updateError"),
       );
+      await onRefresh().catch(() => {});
     } finally {
-      setWorking(false);
+      setWorking(null);
     }
   };
+
+  const start = () => {
+    if (!isRegistration || !tournament.management?.start.allowed || working)
+      return;
+    if (!window.confirm(t("lifecycle.startConfirm"))) return;
+    void mutate({ status: "ONGOING" }, "start", t("lifecycle.started"));
+  };
+  const cancel = () => {
+    if (!canCancel || working || !window.confirm(t("lifecycle.cancelConfirm")))
+      return;
+    void mutate({ status: "CANCELLED" }, "cancel", t("lifecycle.cancelled"));
+  };
+  const toggleVisibility = () => {
+    if (isDraft || working) return;
+    const visibility =
+      tournament.visibility === "PUBLIC" ? "PRIVATE" : "PUBLIC";
+    if (!window.confirm(t(`lifecycle.visibilityConfirm.${visibility}`))) return;
+    void mutate({ visibility }, "visibility", t("lifecycle.visibilityUpdated"));
+  };
+  const toggleRegistration = () => {
+    if (!canToggleRegistration || working) return;
+    const registrationOpen = !tournament.registrationOpen;
+    void mutate(
+      { registrationOpen },
+      "registration",
+      t(registrationOpen ? "lifecycle.opened" : "lifecycle.closed"),
+    );
+  };
+  const dateLabel = (value: string | null | undefined) =>
+    value
+      ? formatLocalizedDate(value, locale, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        })
+      : t("common.unlimited");
 
   return (
     <section
       aria-labelledby="lifecycle-heading"
-      className="rounded-2xl border border-line bg-surface-card p-4 sm:p-6"
+      className="overflow-hidden rounded-2xl border border-line bg-surface-card"
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-            {t("lifecycle.eyebrow")}
+      <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-5">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2
+              id="lifecycle-heading"
+              className="flex items-center gap-2 font-bold text-ink"
+            >
+              <FlagIcon size={19} className="text-brand-hover" />
+              {t("lifecycle.stateTitle")}
+            </h2>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${statusTone}`}
+            >
+              <span aria-hidden className="size-1.5 rounded-full bg-current" />
+              {t(`tournament.status.${tournament.status}`)}
+            </span>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+            {t(`lifecycle.summary.${tournament.status}`)}
           </p>
-          <h2
-            id="lifecycle-heading"
-            className="mt-1 text-xl font-bold text-ink"
-          >
-            {t("lifecycle.title")}
-          </h2>
         </div>
-        <span className="rounded-full border border-line bg-surface-sub px-3 py-1.5 text-xs font-semibold text-ink-muted">
-          {t(`tournament.status.${tournament.status}` as TranslationKey)}
-        </span>
+        {isRegistration && (
+          <button
+            type="button"
+            onClick={start}
+            disabled={Boolean(working) || !tournament.management?.start.allowed}
+            className={`${primaryButtonClass} w-full sm:w-auto`}
+          >
+            {working === "start" ? (
+              <CircleNotchIcon className="animate-spin" />
+            ) : (
+              <PlayIcon weight="fill" />
+            )}
+            {t("lifecycle.start")}
+          </button>
+        )}
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-line bg-surface-sub/45 p-4">
-          <div className="flex items-center gap-2">
-            <LockKeyIcon className="text-brand" />
-            <h3 className="font-semibold text-ink">
-              {t("lifecycle.transitionTitle")}
-            </h3>
-          </div>
-          <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-            {canPublishDraft
-              ? t("lifecycle.draftDescription")
-              : t("lifecycle.transitionUnavailable")}
-          </p>
-          {canPublishDraft && (
-            <div className="mt-4 space-y-3">
-              <label className="block text-xs font-medium text-ink-muted">
-                {t("lifecycle.publishVisibility")}
-                <select
-                  value={publishVisibility}
-                  onChange={(event) =>
-                    setPublishVisibility(
-                      event.target.value as "PUBLIC" | "PRIVATE",
-                    )
-                  }
-                  className="mt-1 block w-full rounded-lg border border-line bg-surface-card px-3 py-2 text-sm text-ink"
+      {isRegistration &&
+        Boolean(tournament.management?.start.reasons.length) && (
+          <div className="mx-4 mb-4 rounded-xl border border-pending/20 bg-pending/5 px-3 py-3 sm:mx-5">
+            <p className="text-xs font-semibold text-pending">
+              {t("lifecycle.beforeStart")}
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+              {tournament.management?.start.reasons.map((reason) => (
+                <li
+                  key={reason}
+                  className="flex items-start gap-1.5 text-xs text-ink-muted"
                 >
-                  <option value="PRIVATE">
-                    {t("tournament.visibility.PRIVATE")}
-                  </option>
-                  <option value="PUBLIC">
-                    {t("tournament.visibility.PUBLIC")}
-                  </option>
-                </select>
-              </label>
-              <label className="flex items-center gap-2 text-xs text-ink-muted">
-                <input
-                  type="checkbox"
-                  checked={publishRegistrationOpen}
-                  onChange={(event) =>
-                    setPublishRegistrationOpen(event.target.checked)
-                  }
-                  className="accent-[var(--color-brand)]"
-                />
-                {t("lifecycle.publishRegistrationOpen")}
-              </label>
-              <button
-                type="button"
-                onClick={publishDraft}
-                disabled={working}
-                className={secondaryButtonClass}
-              >
-                {working && <CircleNotchIcon className="animate-spin" />}
-                {t("lifecycle.publishDraft")}
-              </button>
-            </div>
-          )}
-        </div>
+                  <WarningCircleIcon
+                    size={14}
+                    className="mt-0.5 shrink-0 text-pending"
+                  />
+                  {t(`manage.reason.${reason}`)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-        <div className="rounded-xl border border-line bg-surface-sub/45 p-4">
+      {isDraft && (
+        <form
+          className="mx-4 mb-4 grid items-end gap-3 rounded-xl border border-brand/20 bg-brand/5 p-4 sm:mx-5 sm:grid-cols-[1fr_auto]"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!isDraft || working) return;
+            void mutate(
+              {
+                status: "REGISTRATION",
+                visibility: publishVisibility,
+                registrationOpen: publishRegistrationOpen,
+              },
+              "publish",
+              t("lifecycle.published"),
+            );
+          }}
+        >
+          <div>
+            <label className="block text-xs font-medium text-ink-muted">
+              {t("lifecycle.publishVisibility")}
+              <select
+                value={publishVisibility}
+                onChange={(event) =>
+                  setPublishVisibility(
+                    event.target.value as "PUBLIC" | "PRIVATE",
+                  )
+                }
+                disabled={Boolean(working)}
+                className={`${inputClass} mt-1.5`}
+              >
+                <option value="PRIVATE">
+                  {t("tournament.visibility.PRIVATE")}
+                </option>
+                <option value="PUBLIC">
+                  {t("tournament.visibility.PUBLIC")}
+                </option>
+              </select>
+            </label>
+            <label className="mt-3 flex items-center gap-2 text-xs text-ink-muted">
+              <input
+                type="checkbox"
+                checked={publishRegistrationOpen}
+                onChange={(event) =>
+                  setPublishRegistrationOpen(event.target.checked)
+                }
+                disabled={Boolean(working)}
+                className="accent-brand"
+              />
+              {t("lifecycle.publishRegistrationOpen")}
+            </label>
+          </div>
+          <button
+            type="submit"
+            disabled={Boolean(working)}
+            className={primaryButtonClass}
+          >
+            {working === "publish" && (
+              <CircleNotchIcon className="animate-spin" />
+            )}
+            {t("lifecycle.publishDraft")}
+          </button>
+        </form>
+      )}
+
+      <div className="grid border-t border-line md:grid-cols-2">
+        <div className="flex min-w-0 flex-col p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2">
-                <EyeIcon className="text-brand" />
-                <h3 className="font-semibold text-ink">
-                  {t("lifecycle.visibility")}
-                </h3>
-              </div>
-              <p className="mt-2 text-sm font-medium text-ink">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <CalendarBlankIcon size={18} className="text-brand-hover" />
+                {t("lifecycle.registration")}
+              </h3>
+              <p
+                className={`mt-2 text-xs font-medium ${registration?.allowed ? "text-approved" : "text-ink-muted"}`}
+              >
                 {t(
-                  `tournament.visibility.${tournament.visibility}` as TranslationKey,
+                  registration?.allowed
+                    ? "lifecycle.acceptingTeams"
+                    : "lifecycle.notAcceptingTeams",
                 )}
               </p>
             </div>
-            {tournament.status !== "DRAFT" && (
-              <button
-                type="button"
-                onClick={toggleVisibility}
-                disabled={working}
-                className={secondaryButtonClass}
-              >
-                {working && <CircleNotchIcon className="animate-spin" />}
-                {tournament.visibility === "PUBLIC"
-                  ? t("lifecycle.makePrivate")
-                  : t("lifecycle.makePublic")}
-              </button>
-            )}
-          </div>
-          <p className="mt-3 text-xs leading-relaxed text-ink-faint">
-            {t("lifecycle.visibilityRule")}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-line bg-surface-sub/45 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <CalendarBlankIcon className="text-brand" />
-                <h3 className="font-semibold text-ink">
-                  {t("lifecycle.registration")}
-                </h3>
-              </div>
-              <p className="mt-2 text-sm font-medium text-ink">
-                {tournament.registrationOpen
-                  ? t("lifecycle.enabled")
-                  : t("lifecycle.disabled")}
-              </p>
-            </div>
-            {registrationCanBeToggled && (
+            {canToggleRegistration && (
               <button
                 type="button"
                 onClick={toggleRegistration}
-                disabled={working}
-                className={secondaryButtonClass}
+                disabled={Boolean(working)}
+                className={controlClass}
               >
-                {working && <CircleNotchIcon className="animate-spin" />}
-                {tournament.registrationOpen
-                  ? t("lifecycle.closeRegistration")
-                  : t("lifecycle.openRegistration")}
+                {working === "registration" && (
+                  <CircleNotchIcon className="animate-spin" />
+                )}
+                {t(
+                  tournament.registrationOpen
+                    ? "lifecycle.closeRegistration"
+                    : "lifecycle.openRegistration",
+                )}
               </button>
             )}
           </div>
-          <dl className="mt-4 grid gap-2 text-xs text-ink-muted sm:grid-cols-2">
+          <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-2">
             <div>
               <dt className="text-ink-faint">
                 {t("lifecycle.registrationStart")}
               </dt>
-              <dd className="mt-0.5">
-                {tournament.registrationStartDate
-                  ? formatLocalizedDate(
-                      tournament.registrationStartDate,
-                      locale,
-                      { dateStyle: "medium", timeStyle: "short" },
-                    )
-                  : t("common.unlimited")}
+              <dd className="mt-1 leading-relaxed text-ink-muted">
+                {dateLabel(tournament.registrationStartDate)}
               </dd>
             </div>
             <div>
               <dt className="text-ink-faint">
                 {t("lifecycle.registrationDeadline")}
               </dt>
-              <dd className="mt-0.5">
-                {tournament.registrationDeadline
-                  ? formatLocalizedDate(
-                      tournament.registrationDeadline,
-                      locale,
-                      { dateStyle: "medium", timeStyle: "short" },
-                    )
-                  : t("common.unlimited")}
+              <dd className="mt-1 leading-relaxed text-ink-muted">
+                {dateLabel(tournament.registrationDeadline)}
               </dd>
             </div>
           </dl>
-          <p className="mt-3 text-xs leading-relaxed text-ink-faint">
-            {t("lifecycle.registrationRule")}
-          </p>
-          {!registrationCanBeToggled && (
-            <p className="mt-3 flex items-start gap-2 text-xs text-pending">
-              <WarningCircleIcon className="mt-0.5 shrink-0" />{" "}
-              {t("lifecycle.currentStatusClosed")}
+          {registration?.reason && (
+            <p className="mt-3 flex items-start gap-1.5 text-xs leading-relaxed text-ink-faint">
+              <LockKeyIcon size={14} className="mt-0.5 shrink-0" />
+              {t(`manage.reason.${registration.reason}`)}
             </p>
           )}
         </div>
+
+        <div className="flex min-w-0 flex-col border-t border-line p-4 sm:p-5 md:border-t-0 md:border-l">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <EyeIcon size={18} className="text-brand-hover" />
+                {t("lifecycle.visibility")}
+              </h3>
+              <p className="mt-2 text-xs font-medium text-ink-muted">
+                {t(`tournament.visibility.${tournament.visibility}`)}
+              </p>
+            </div>
+            {!isDraft && (
+              <button
+                type="button"
+                onClick={toggleVisibility}
+                disabled={Boolean(working)}
+                className={controlClass}
+              >
+                {working === "visibility" && (
+                  <CircleNotchIcon className="animate-spin" />
+                )}
+                {t(
+                  tournament.visibility === "PUBLIC"
+                    ? "lifecycle.makePrivate"
+                    : "lifecycle.makePublic",
+                )}
+              </button>
+            )}
+          </div>
+          <p className="mt-4 text-xs leading-relaxed text-ink-muted">
+            {t(
+              tournament.visibility === "PUBLIC"
+                ? "lifecycle.publicHint"
+                : "lifecycle.privateHint",
+            )}
+          </p>
+          <p className="mt-2 text-xs leading-relaxed text-ink-faint">
+            {t("lifecycle.visibilityRule")}
+          </p>
+        </div>
       </div>
 
-      {notice && (
-        <p
-          className="mt-4 flex items-center gap-2 text-sm text-approved"
-          role="status"
-        >
-          <CheckCircleIcon weight="fill" /> {notice}
-        </p>
+      {(notice || error || canCancel) && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 sm:px-5">
+          <div className="min-w-0 flex-1">
+            {notice && (
+              <p
+                role="status"
+                className="flex items-start gap-2 text-xs text-approved"
+              >
+                <CheckCircleIcon className="shrink-0" size={16} />
+                {notice}
+              </p>
+            )}
+            {error && (
+              <p role="alert" className={`${alertErrorClass} text-xs`}>
+                {error}
+              </p>
+            )}
+            {!notice && !error && canCancel && (
+              <p className="text-xs text-ink-faint">
+                {t("lifecycle.cancelHint")}
+              </p>
+            )}
+          </div>
+          {canCancel && (
+            <button
+              type="button"
+              onClick={cancel}
+              disabled={Boolean(working)}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-rejected transition hover:bg-rejected/10 disabled:opacity-50"
+            >
+              {working === "cancel" && (
+                <CircleNotchIcon className="animate-spin" />
+              )}
+              {t("lifecycle.cancel")}
+            </button>
+          )}
+        </div>
       )}
-      {error && <p className={`${alertErrorClass} mt-4`}>{error}</p>}
     </section>
   );
 }

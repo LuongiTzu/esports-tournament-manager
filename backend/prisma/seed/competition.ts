@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   MatchOutcome,
   MatchStatus,
@@ -233,10 +234,6 @@ async function completeAvailableMatches(
         teamBId: { not: null },
         ...(options.bracketRound ? { bracketRound: options.bracketRound } : {}),
       },
-      include: {
-        teamA: { select: { seed: true } },
-        teamB: { select: { seed: true } },
-      },
     });
     if (!candidates.length) break;
 
@@ -244,7 +241,19 @@ async function completeAvailableMatches(
       matchPriority(left).localeCompare(matchPriority(right)),
     );
     const match = candidates[0];
-    const useDraw = options.allowDraws && completed % 4 === 3;
+    // Use stable fixture coordinates, not generated match/group IDs. Sorting
+    // teams also keeps the chosen winner independent of the A/B display slots.
+    const teams = [match.teamAId, match.teamBId].sort();
+    const resultKey = JSON.stringify([
+      tournament.id,
+      round.orderIndex,
+      match.bracketRound,
+      match.bracketType,
+      match.matchNumber,
+      teams,
+    ]);
+    const useDraw =
+      options.allowDraws && seededFraction(`${resultKey}:draw`) < 0.25;
     const winsRequired = Math.floor(match.bestOf / 2) + 1;
     const drawScore = Math.floor(match.bestOf / 2);
     const grandFinalResetRequired = Boolean(
@@ -254,20 +263,16 @@ async function completeAvailableMatches(
     );
     const teamAWins = grandFinalResetRequired
       ? false
-      : (match.teamA?.seed ?? 9999) <= (match.teamB?.seed ?? 9999);
+      : match.teamAId ===
+        teams[Math.floor(seededFraction(`${resultKey}:winner`) * teams.length)];
+    const losingScore = Math.floor(
+      seededFraction(`${resultKey}:score`) * winsRequired,
+    );
 
     await services.matches.update(match.id, {
       status: MatchStatus.COMPLETED,
-      scoreA: useDraw
-        ? drawScore
-        : teamAWins
-          ? winsRequired
-          : Math.max(0, winsRequired - 1),
-      scoreB: useDraw
-        ? drawScore
-        : teamAWins
-          ? Math.max(0, winsRequired - 1)
-          : winsRequired,
+      scoreA: useDraw ? drawScore : teamAWins ? winsRequired : losingScore,
+      scoreB: useDraw ? drawScore : teamAWins ? losingScore : winsRequired,
     });
     completed++;
   }
@@ -287,6 +292,11 @@ async function completeAvailableMatches(
       );
     }
   }
+}
+
+function seededFraction(key: string): number {
+  // Separate hash keys for winner, draw and score avoid coupling these choices.
+  return createHash('sha256').update(key).digest().readUInt32BE(0) / 2 ** 32;
 }
 
 async function scheduleUnscheduledMatches(

@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/Loading";
 import TournamentCard from "@/features/tournaments/components/TournamentCard";
 import type {
   Tournament,
@@ -81,13 +82,25 @@ export function TournamentGridSkeleton({
         <div
           key={index}
           aria-hidden
-          className={`animate-pulse overflow-hidden rounded-2xl border border-line bg-surface-card ${
-            view === "grid" ? "h-96" : "h-52 sm:h-48"
+          className={`overflow-hidden rounded-2xl border border-line bg-surface-card ${
+            view === "grid" ? "min-h-96" : "min-h-52 sm:flex sm:min-h-48"
           }`}
         >
-          <div className={view === "grid" ? "h-44 bg-surface-sub" : "h-full w-full bg-surface-sub sm:w-72"} />
-          <div className="sr-only">
-            <div className="h-5 w-2/3 rounded bg-surface-sub" />
+          <Skeleton
+            className={
+              view === "grid"
+                ? "h-44 rounded-none"
+                : "h-28 rounded-none sm:h-auto sm:w-72 sm:shrink-0"
+            }
+          />
+          <div className="flex-1 space-y-4 p-5">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <div className="flex justify-between gap-4">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-6 w-16" />
+            </div>
           </div>
         </div>
       ))}
