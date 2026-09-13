@@ -47,7 +47,8 @@ export interface TeamMember {
   userId?: string | null;
 }
 
-export interface TeamDetail extends TeamWithMembers {
+export interface TeamDetail extends Omit<TeamWithMembers, "contactEmail"> {
+  contactEmail: string | null;
   members: TeamMember[];
   tournament: {
     id: string;

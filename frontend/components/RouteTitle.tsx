@@ -26,6 +26,10 @@ function getRouteTitle(pathname: string): TranslationKey {
   const exactTitle = exactRouteTitles[pathname];
   if (exactTitle) return exactTitle;
 
+  if (/^\/teams\/[^/]+$/.test(pathname)) {
+    return "teamDetail.title";
+  }
+
   if (/^\/tournaments\/[^/]+\/manage$/.test(pathname)) {
     return "pageTitle.manageTournament";
   }

@@ -36,9 +36,9 @@ export default function HeroSection() {
             <LightningIcon size={15} weight="fill" />
             {t("home.hero.badge")}
           </div>
-          <h1 className="mt-5 max-w-3xl text-[clamp(2.4rem,4vw,3.75rem)] font-black uppercase leading-[1.01] tracking-[-0.05em] text-ink">
+          <h1 className="mt-5 max-w-3xl text-balance text-[clamp(2.4rem,3.5vw,2.8rem)] font-black uppercase leading-[1.01] tracking-[-0.05em] text-ink">
             {t("home.hero.title")}
-            <span className="mt-2 block text-[0.86em] text-brand-secondary sm:text-[0.9em]">
+            <span className="mt-2 block text-[0.86em] text-brand-secondary sm:text-[0.9em] lg:text-[1.08em]">
               <RotatingText texts={rotatingHighlights} preventWrap />
             </span>
           </h1>

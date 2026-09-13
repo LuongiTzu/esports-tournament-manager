@@ -27,7 +27,10 @@ export const teamsApi = {
       { auth: true },
     ),
   findOne: (teamId: string) =>
-    request<TeamDetail>(`/teams/${teamId}`, { auth: true }),
+    request<TeamDetail>(`/teams/${encodeURIComponent(teamId)}`, {
+      auth: true,
+      cache: "no-store",
+    }),
   findMine: () => request<MyTeam[]>("/users/me/teams", { auth: true }),
   register: (slug: string, data: TeamRegistration) =>
     request<TeamWithMembers>(`/tournaments/${slug}/register`, {

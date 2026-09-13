@@ -661,27 +661,33 @@ export default function TournamentDetailPage({
           ) : (
             <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {tournament.teams.map((team) => (
-                <li
-                  key={team.id}
-                  className="flex items-center gap-3 border border-line bg-surface-sub/70 p-4 transition hover:border-accent/45"
-                >
-                  <span className="grid size-12 shrink-0 place-items-center overflow-hidden border border-line bg-surface-card font-bold text-accent">
-                    <ResolvedImage
-                      src={team.logoUrl}
-                      alt={`${t("tournament.detail.teamLogoAlt")} ${team.name}`}
-                      className="size-full object-cover object-center"
-                      fallback={team.name.charAt(0).toUpperCase()}
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-bold text-ink">
-                      {team.name}
+                <li key={team.id}>
+                  <Link
+                    href={`/teams/${encodeURIComponent(team.id)}`}
+                    className="flex h-full items-center gap-3 border border-line bg-surface-sub/70 p-4 transition hover:border-accent/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <span className="grid size-12 shrink-0 place-items-center overflow-hidden border border-line bg-surface-card font-bold text-accent">
+                      <ResolvedImage
+                        src={team.logoUrl}
+                        alt={`${t("tournament.detail.teamLogoAlt")} ${team.name}`}
+                        className="size-full object-cover object-center"
+                        fallback={team.name.charAt(0).toUpperCase()}
+                      />
                     </span>
-                    <span className="mt-1 block truncate text-xs text-ink-faint">
-                      {team.captain?.displayName} · {team._count?.members ?? 0}{" "}
-                      {t("tournament.detail.members")}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-bold text-ink">
+                        {team.name}
+                      </span>
+                      <span className="mt-1 block truncate text-xs text-ink-faint">
+                        {team.captain?.displayName} ·{" "}
+                        {team._count?.members ?? 0}{" "}
+                        {t("tournament.detail.members")}
+                      </span>
+                      <span className="mt-2 block text-xs font-semibold text-accent">
+                        {t("teamDetail.view")}
+                      </span>
                     </span>
-                  </span>
+                  </Link>
                 </li>
               ))}
             </ul>
