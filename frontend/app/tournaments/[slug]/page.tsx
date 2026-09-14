@@ -23,6 +23,7 @@ import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { clearSession, useAuth } from "@/features/auth/store";
 import { hasVerifiedEmail } from "@/features/auth/email-verification";
 import TournamentComments from "@/features/comments/components/TournamentComments";
+import TournamentRatings from "@/features/ratings/components/TournamentRatings";
 import { accentVars } from "@/features/games/game-accent";
 import RosterSummary from "@/features/games/components/RosterSummary";
 import { gamePositionLabel } from "@/features/games/position-labels";
@@ -699,6 +700,8 @@ export default function TournamentDetailPage({
             </ul>
           )}
         </section>
+
+        <TournamentRatings slug={slug} />
 
         <TournamentComments
           key={tournament.id}

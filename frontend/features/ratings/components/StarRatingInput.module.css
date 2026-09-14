@@ -1,0 +1,125 @@
+.rating {
+  --stroke: var(--color-ink-muted, #666);
+  --fill: #ffc73a;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+}
+
+.stars {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 15rem;
+  max-width: 100%;
+  margin-top: 0.35rem;
+}
+
+.star {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.label {
+  display: grid;
+  width: 100%;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.label svg {
+  width: 2rem;
+  height: 2rem;
+  overflow: visible;
+  fill: transparent;
+  stroke: var(--stroke);
+  stroke-linejoin: bevel;
+  stroke-dasharray: 12;
+  animation: idle 4s linear infinite;
+  transition:
+    stroke 0.2s,
+    fill 0.5s;
+}
+
+.input:focus-visible + .label {
+  outline: 2px solid var(--fill);
+  outline-offset: 2px;
+}
+
+.input:not(:disabled) + .label:hover svg {
+  stroke: var(--fill);
+}
+
+.star[data-filled="true"] svg {
+  transition: none;
+  animation:
+    idle 4s linear infinite,
+    yippee 0.75s backwards;
+  fill: var(--fill);
+  stroke: var(--fill);
+  stroke-opacity: 0;
+  stroke-dasharray: 0;
+  stroke-linejoin: miter;
+  stroke-width: 8px;
+}
+
+.input:disabled + .label {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@keyframes idle {
+  from {
+    stroke-dashoffset: 24;
+  }
+}
+
+@keyframes yippee {
+  0%,
+  30% {
+    fill: var(--fill);
+    fill-opacity: 0;
+    stroke-opacity: 1;
+    stroke: var(--stroke);
+    stroke-dasharray: 10;
+    stroke-width: 1px;
+    stroke-linejoin: bevel;
+  }
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(0);
+  }
+  30.1% {
+    stroke: var(--fill);
+    stroke-dasharray: 0;
+    stroke-linejoin: miter;
+    stroke-width: 8px;
+  }
+  60% {
+    transform: scale(1.2);
+    fill: var(--fill);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .label svg,
+  .star[data-filled="true"] svg {
+    animation: none;
+    transition: none;
+  }
+}

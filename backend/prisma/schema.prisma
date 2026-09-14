@@ -260,6 +260,7 @@ model User {
   comments                 Comment[]                 @relation("CommentAuthor")
   commentReplyTargets      Comment[]                 @relation("CommentReplyTarget")
   notifications            Notification[]
+  ratings                  TournamentRating[]
   tournamentFavorites      TournamentFavorite[]
   reportedReports          Report[]                  @relation("ReporterReports")
   reviewedReports          Report[]                  @relation("ReviewedReports")
@@ -353,6 +354,7 @@ model Tournament {
   reports              Report[]
   notifications        Notification[]
   favorites            TournamentFavorite[]
+  ratings              TournamentRating[]
   teamInvitations      TeamInvitation[]
   competitionAuditLogs CompetitionAuditLog[]
   adminOverrides       TournamentAdminOverride[]
@@ -363,6 +365,26 @@ model Tournament {
 }
 
 /// A saved Tournament and its important Tournament-wide notification subscription.
+model TournamentRating {
+  id String @id @default(cuid())
+  tournamentId String @map("tournament_id")
+  authorId String @map("author_id")
+  score Int
+  content String? @db.VarChar(2000)
+  isHidden Boolean @default(false) @map("is_hidden")
+  moderationReason String? @map("moderation_reason")
+  moderatedBy String? @map("moderated_by")
+  moderatedAt DateTime? @map("moderated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, authorId])
+  @@index([tournamentId, isHidden, createdAt])
+  @@map("tournament_ratings")
+}
+
 model TournamentFavorite {
   userId       String   @map("user_id")
   tournamentId String   @map("tournament_id")

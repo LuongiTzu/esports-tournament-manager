@@ -1,6 +1,43 @@
 import type extendedVi from "@/features/locale/dictionaries/extended-vi";
 
 const extendedEn = {
+  "ratings.title": "Tournament ratings",
+  "ratings.score": "Rating score",
+  "ratings.content": "Review (optional)",
+  "ratings.submit": "Submit rating",
+  "ratings.update": "Update rating",
+  "ratings.count": "ratings",
+  "ratings.yours": "Your rating",
+  "ratings.hidden": "This rating is hidden and excluded from the average.",
+  "ratings.delete": "Delete my rating",
+  "ratings.deleteConfirm": "Delete your rating?",
+  "ratings.saved": "Rating changes saved.",
+  "ratings.loadError": "Could not load ratings.",
+  "ratings.saveError": "Could not save the rating.",
+  "ratings.refreshError":
+    "Saved, but data could not be refreshed. Retry to update the view.",
+  "ratings.empty": "No ratings to display.",
+  "ratings.previous": "Previous page",
+  "ratings.next": "Next page",
+  "ratings.moderation": "Tournament rating moderation",
+  "ratings.filter": "Filter rating visibility",
+  "ratings.all": "All",
+  "ratings.visible": "Visible",
+  "ratings.hiddenLabel": "Hidden",
+  "ratings.hide": "Hide rating",
+  "ratings.restore": "Restore rating",
+  "ratings.hideReason": "Enter a reason for hiding this rating (required).",
+  "ratings.reasonLength": "Reason must not exceed 500 characters.",
+  "ratings.restoreConfirm":
+    "Restore this rating and include it in the average?",
+  "ratings.reason.ALLOWED": "You have already rated this tournament.",
+  "ratings.reason.LOGIN_REQUIRED": "Sign in to check your rating eligibility.",
+  "ratings.reason.VERIFY_EMAIL": "Verify your email before rating.",
+  "ratings.reason.ORGANIZER": "Organizers cannot rate their own tournaments.",
+  "ratings.reason.NOT_COMPLETED":
+    "Ratings open once the tournament is completed.",
+  "ratings.reason.NOT_PARTICIPANT":
+    "Only captains and linked members of approved teams can rate.",
   "deleteTournament.title": "Delete tournament",
   "deleteTournament.hint":
     "Permanently delete this tournament and related data, including teams, rounds and matches. Deletion is allowed only before competition starts and when system requirements are met.",

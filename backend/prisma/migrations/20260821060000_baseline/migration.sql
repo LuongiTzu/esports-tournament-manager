@@ -679,3 +679,23 @@ ALTER TABLE "tournament_admin_overrides" ADD CONSTRAINT "tournament_admin_overri
 
 -- AddForeignKey
 ALTER TABLE "tournament_admin_overrides" ADD CONSTRAINT "tournament_admin_overrides_admin_id_fkey" FOREIGN KEY ("admin_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- Tournament ratings (UC6)
+CREATE TABLE "tournament_ratings" (
+  "id" TEXT NOT NULL,
+  "tournament_id" TEXT NOT NULL,
+  "author_id" TEXT NOT NULL,
+  "score" INTEGER NOT NULL CHECK ("score" BETWEEN 1 AND 5),
+  "content" VARCHAR(2000),
+  "is_hidden" BOOLEAN NOT NULL DEFAULT false,
+  "moderation_reason" TEXT,
+  "moderated_by" TEXT,
+  "moderated_at" TIMESTAMP(3),
+  "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(3) NOT NULL,
+  CONSTRAINT "tournament_ratings_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "tournament_ratings_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "tournament_ratings_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE UNIQUE INDEX "tournament_ratings_tournament_id_author_id_key" ON "tournament_ratings"("tournament_id", "author_id");
+CREATE INDEX "tournament_ratings_tournament_id_is_hidden_created_at_idx" ON "tournament_ratings"("tournament_id", "is_hidden", "created_at");
