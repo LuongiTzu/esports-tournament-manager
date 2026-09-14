@@ -616,6 +616,18 @@ export interface CreateTournamentRequest {
   rounds: CreateRoundRequest[];
 }
 
+type NullableTournamentInfoField =
+  | "prizePool"
+  | "location"
+  | "contactEmail"
+  | "contactPhone"
+  | "contactLink"
+  | "bannerUrl";
+
 export type UpdateTournamentRequest = Partial<
-  Omit<CreateTournamentRequest, "rounds" | "isOfficial">
->;
+  Omit<
+    CreateTournamentRequest,
+    "rounds" | "isOfficial" | NullableTournamentInfoField
+  >
+> &
+  Partial<Record<NullableTournamentInfoField, string | null>>;

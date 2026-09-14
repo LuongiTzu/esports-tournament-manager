@@ -1,4 +1,17 @@
 const extendedVi = {
+  "infoEditor.title": "Thông tin giải đấu",
+  "infoEditor.required": "Vui lòng nhập tên giải đấu.",
+  "infoEditor.banner": "Banner giải đấu",
+  "infoEditor.removeBanner": "Xóa banner hiện tại khi lưu",
+  "infoEditor.save": "Lưu thông tin",
+  "infoEditor.unchanged": "Chưa có thay đổi cần lưu.",
+  "infoEditor.contentSaved": "Đã lưu thông tin giải đấu.",
+  "infoEditor.saved": "Đã lưu các thay đổi thành công.",
+  "infoEditor.failed": "Không thể lưu thông tin giải đấu.",
+  "infoEditor.bannerFailed":
+    "Chưa tải được banner. Bạn có thể thử lưu lại để tải ảnh.",
+  "infoEditor.refreshFailed":
+    "Thay đổi đã được lưu nhưng chưa tải lại được dữ liệu. Hãy tải lại trang để xem kết quả.",
   "teamManage.eyebrow": "Quản lý đội",
   "teamManage.title": "Hồ sơ và đội hình",
   "teamManage.captainHint":

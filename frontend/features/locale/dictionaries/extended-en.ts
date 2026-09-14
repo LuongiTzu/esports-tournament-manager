@@ -1,6 +1,19 @@
 import type extendedVi from "@/features/locale/dictionaries/extended-vi";
 
 const extendedEn = {
+  "infoEditor.title": "Tournament information",
+  "infoEditor.required": "Enter a tournament name.",
+  "infoEditor.banner": "Tournament banner",
+  "infoEditor.removeBanner": "Remove current banner when saving",
+  "infoEditor.save": "Save information",
+  "infoEditor.unchanged": "There are no changes to save.",
+  "infoEditor.contentSaved": "Tournament information saved.",
+  "infoEditor.saved": "Changes saved successfully.",
+  "infoEditor.failed": "Tournament information could not be saved.",
+  "infoEditor.bannerFailed":
+    "Banner upload failed. Save again to retry the upload.",
+  "infoEditor.refreshFailed":
+    "Changes were saved, but data could not be refreshed. Reload the page to see the result.",
   "teamManage.eyebrow": "Team management",
   "teamManage.title": "Profile and roster",
   "teamManage.captainHint":
