@@ -1,4 +1,22 @@
 const extendedVi = {
+  "announcement.title": "Gửi thông báo cho người tham gia",
+  "announcement.hint":
+    "Gửi toàn giải tới các đội đã duyệt, hoặc chọn một đội cụ thể. Người nhận là đội trưởng và thành viên đã liên kết tài khoản.",
+  "announcement.scope": "Phạm vi nhận",
+  "announcement.whole": "Toàn giải — các đội đã duyệt",
+  "announcement.team": "Một đội cụ thể",
+  "announcement.selectTeam": "Chọn đội nhận thông báo",
+  "announcement.teamError": "Không tải được danh sách đội.",
+  "announcement.noTeams": "Giải chưa có đội để gửi thông báo.",
+  "announcement.content": "Nội dung thông báo",
+  "announcement.required": "Vui lòng nhập nội dung thông báo.",
+  "announcement.send": "Gửi thông báo",
+  "announcement.sending": "Đang gửi…",
+  "announcement.sent": "Đã gửi thông báo tới {count} tài khoản.",
+  "announcement.noRecipients":
+    "Không có tài khoản nhận trong phạm vi đã chọn. Chưa có thông báo nào được tạo.",
+  "announcement.uncertain":
+    "Chưa xác nhận được kết quả gửi. Thông báo có thể đã được lưu; hãy kiểm tra với người nhận trước khi gửi lại để tránh trùng.",
   "infoEditor.title": "Thông tin giải đấu",
   "infoEditor.required": "Vui lòng nhập tên giải đấu.",
   "infoEditor.banner": "Banner giải đấu",

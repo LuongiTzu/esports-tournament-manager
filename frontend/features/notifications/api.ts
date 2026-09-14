@@ -1,4 +1,6 @@
 import type {
+  TournamentNotificationRequest,
+  TournamentNotificationResult,
   MarkAllNotificationsReadResult,
   NotificationRecord,
   NotificationListQuery,
@@ -8,6 +10,15 @@ import type {
 import { request } from "@/lib/api/client";
 
 export const notificationsApi = {
+  sendToTournament: (slug: string, data: TournamentNotificationRequest) =>
+    request<TournamentNotificationResult>(
+      `/tournaments/${encodeURIComponent(slug)}/notifications`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+        auth: true,
+      },
+    ),
   findMine: (query: NotificationListQuery = {}) => {
     const params = new URLSearchParams();
     if (query.page) params.set("page", String(query.page));

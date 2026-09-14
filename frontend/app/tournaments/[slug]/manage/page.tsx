@@ -13,6 +13,7 @@ import CompetitionManager from "@/features/tournaments/components/manage/Competi
 import TournamentLifecycleControls from "@/features/tournaments/components/manage/TournamentLifecycleControls";
 import TournamentGameEditor from "@/features/tournaments/components/manage/TournamentGameEditor";
 import TournamentInfoEditor from "@/features/tournaments/components/manage/TournamentInfoEditor";
+import TournamentAnnouncementForm from "@/features/notifications/components/TournamentAnnouncementForm";
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { ManagementPageSkeleton } from "@/features/tournaments/components/manage/ManagementSkeletons";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
@@ -262,6 +263,10 @@ export default function ManagePage({
             tournament={tournament}
             onTournamentRefresh={refreshTournament}
           />
+        </div>
+
+        <div className="mt-12 border-t border-line pt-10">
+          <TournamentAnnouncementForm key={tournament.id} slug={slug} />
         </div>
 
         <div className="mt-12 border-t border-line pt-10">

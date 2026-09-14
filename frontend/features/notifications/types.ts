@@ -1,5 +1,19 @@
 import type { Pagination } from "@/shared/types/pagination";
 
+export type TournamentNotificationRequest = {
+  type: "SYSTEM";
+  content: string;
+} & (
+  | { scope: "WHOLE_TOURNAMENT"; teamId?: never }
+  | { scope: "TEAM"; teamId: string }
+);
+
+export interface TournamentNotificationResult {
+  scope: TournamentNotificationRequest["scope"];
+  recipientCount: number;
+  notifications: NotificationRecord[];
+}
+
 export const NOTIFICATION_TYPES = [
   "SCHEDULE_CHANGE",
   "SCORE_UPDATE",

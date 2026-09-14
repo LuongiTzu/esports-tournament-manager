@@ -1,6 +1,24 @@
 import type extendedVi from "@/features/locale/dictionaries/extended-vi";
 
 const extendedEn = {
+  "announcement.title": "Send participant announcement",
+  "announcement.hint":
+    "Send to approved teams across the tournament, or select one team. Recipients are captains and members with linked accounts.",
+  "announcement.scope": "Recipient scope",
+  "announcement.whole": "Whole tournament — approved teams",
+  "announcement.team": "One team",
+  "announcement.selectTeam": "Select a recipient team",
+  "announcement.teamError": "Could not load teams.",
+  "announcement.noTeams": "This tournament has no teams to notify.",
+  "announcement.content": "Announcement content",
+  "announcement.required": "Enter announcement content.",
+  "announcement.send": "Send announcement",
+  "announcement.sending": "Sending…",
+  "announcement.sent": "Announcement sent to {count} accounts.",
+  "announcement.noRecipients":
+    "No recipient accounts in the selected scope. No notifications were created.",
+  "announcement.uncertain":
+    "The send result could not be confirmed. The announcement may have been saved; check with recipients before sending again to avoid duplicates.",
   "infoEditor.title": "Tournament information",
   "infoEditor.required": "Enter a tournament name.",
   "infoEditor.banner": "Tournament banner",
