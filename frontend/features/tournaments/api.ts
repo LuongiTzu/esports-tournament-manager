@@ -24,6 +24,14 @@ import { request } from "@/lib/api/client";
 import { uploadImage } from "@/lib/api/upload";
 
 export const tournamentsApi = {
+  remove: (tournamentId: string) =>
+    request<{ message: string }>(
+      `/tournaments/${encodeURIComponent(tournamentId)}`,
+      {
+        method: "DELETE",
+        auth: true,
+      },
+    ),
   updateRoundSettings: (roundId: string, settings: Record<string, unknown>) =>
     request<unknown>(`/rounds/${roundId}/settings`, {
       method: "PATCH",

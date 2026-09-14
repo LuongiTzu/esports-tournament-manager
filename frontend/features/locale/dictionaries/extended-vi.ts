@@ -1,4 +1,11 @@
 const extendedVi = {
+  "deleteTournament.title": "Xóa giải đấu",
+  "deleteTournament.hint":
+    "Xóa vĩnh viễn giải cùng dữ liệu liên quan như đội, vòng đấu và trận đấu. Chỉ xóa được khi giải chưa bắt đầu và đáp ứng điều kiện của hệ thống.",
+  "deleteTournament.confirm":
+    "Xóa vĩnh viễn giải “{name}” cùng dữ liệu liên quan? Thao tác này không thể hoàn tác.",
+  "deleteTournament.deleting": "Đang xóa…",
+  "deleteTournament.error": "Không thể xóa giải đấu. Vui lòng thử lại.",
   "announcement.title": "Gửi thông báo cho người tham gia",
   "announcement.hint":
     "Gửi toàn giải tới các đội đã duyệt, hoặc chọn một đội cụ thể. Người nhận là đội trưởng và thành viên đã liên kết tài khoản.",

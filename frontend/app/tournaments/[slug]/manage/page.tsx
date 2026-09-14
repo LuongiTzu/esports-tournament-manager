@@ -13,6 +13,7 @@ import CompetitionManager from "@/features/tournaments/components/manage/Competi
 import TournamentLifecycleControls from "@/features/tournaments/components/manage/TournamentLifecycleControls";
 import TournamentGameEditor from "@/features/tournaments/components/manage/TournamentGameEditor";
 import TournamentInfoEditor from "@/features/tournaments/components/manage/TournamentInfoEditor";
+import TournamentDeleteSection from "@/features/tournaments/components/manage/TournamentDeleteSection";
 import TournamentAnnouncementForm from "@/features/notifications/components/TournamentAnnouncementForm";
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { ManagementPageSkeleton } from "@/features/tournaments/components/manage/ManagementSkeletons";
@@ -275,6 +276,14 @@ export default function ManagePage({
             onTournamentRefresh={refreshTournament}
           />
         </div>
+        {user?.id === tournament.organizer?.id && (
+          <div className="mt-12 border-t border-line pt-10">
+            <TournamentDeleteSection
+              key={tournament.id}
+              tournament={tournament}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

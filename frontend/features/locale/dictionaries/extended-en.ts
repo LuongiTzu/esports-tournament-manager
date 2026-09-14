@@ -1,6 +1,14 @@
 import type extendedVi from "@/features/locale/dictionaries/extended-vi";
 
 const extendedEn = {
+  "deleteTournament.title": "Delete tournament",
+  "deleteTournament.hint":
+    "Permanently delete this tournament and related data, including teams, rounds and matches. Deletion is allowed only before competition starts and when system requirements are met.",
+  "deleteTournament.confirm":
+    "Permanently delete “{name}” and its related data? This cannot be undone.",
+  "deleteTournament.deleting": "Deleting…",
+  "deleteTournament.error":
+    "Could not delete the tournament. Please try again.",
   "announcement.title": "Send participant announcement",
   "announcement.hint":
     "Send to approved teams across the tournament, or select one team. Recipients are captains and members with linked accounts.",
