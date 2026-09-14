@@ -10,6 +10,7 @@ const exactRouteTitles: Record<string, TranslationKey> = {
   "/register": "pageTitle.register",
   "/profile": "pageTitle.profile",
   "/users/me": "pageTitle.myTournaments",
+  "/users/me/teams": "pageTitle.myTeams",
   "/tournaments": "pageTitle.tournaments",
   "/tournaments/new": "pageTitle.createTournament",
   "/admin": "pageTitle.admin",

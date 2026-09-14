@@ -10,8 +10,15 @@ import type { TeamDetail } from "@/features/teams/types";
 import { ApiError } from "@/lib/api/client";
 import TeamDetailLoading from "./TeamDetailLoading";
 import TeamProfile from "./TeamProfile";
+import type { User } from "@/features/auth/types";
 
-function TeamDetailContent({ teamId }: { teamId: string }) {
+function TeamDetailContent({
+  teamId,
+  user,
+}: {
+  teamId: string;
+  user: User | null;
+}) {
   const { t } = useLocale();
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<
@@ -36,7 +43,22 @@ function TeamDetailContent({ teamId }: { teamId: string }) {
   }, [teamId, attempt]);
 
   if (!result) return <TeamDetailLoading />;
-  if (result.team) return <TeamProfile team={result.team} />;
+  if (result.team) {
+    return (
+      <TeamProfile
+        team={result.team}
+        user={user}
+        onChanged={async (updatedTeam) => {
+          if (updatedTeam) {
+            setResult({ team: updatedTeam });
+            return;
+          }
+          const team = await teamsApi.findOne(teamId);
+          setResult({ team });
+        }}
+      />
+    );
+  }
 
   const status =
     result.error instanceof ApiError ? result.error.status : undefined;
@@ -92,6 +114,7 @@ export default function TeamDetailPage({ teamId }: { teamId: string }) {
     <TeamDetailContent
       key={`${teamId}:${user?.id ?? "guest"}:${user?.role ?? ""}`}
       teamId={teamId}
+      user={user}
     />
   );
 }

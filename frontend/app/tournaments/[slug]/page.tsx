@@ -508,6 +508,12 @@ export default function TournamentDetailPage({
                     {t("tournament.detail.rejectedHelp")}
                   </p>
                 )}
+                <Link
+                  href={`/teams/${encodeURIComponent(ownTeam.id)}`}
+                  className="mt-4 inline-block text-sm font-semibold text-accent hover:underline"
+                >
+                  {t("teamManage.openProfile")}
+                </Link>
               </EventCard>
             )}
           </div>

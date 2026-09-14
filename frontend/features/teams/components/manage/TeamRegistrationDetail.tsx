@@ -1,6 +1,7 @@
 "use client";
 
 import { CircleNotchIcon } from "@phosphor-icons/react";
+import Link from "next/link";
 
 import ResolvedImage from "@/components/ResolvedImage";
 import StatusBadge from "@/features/teams/components/StatusBadge";
@@ -191,6 +192,12 @@ export default function TeamRegistrationDetail({
               {team.description}
             </p>
           )}
+          <Link
+            href={`/teams/${encodeURIComponent(team.id)}`}
+            className="mt-3 inline-block text-xs font-semibold text-brand hover:underline"
+          >
+            {t("teamManage.openProfile")}
+          </Link>
         </div>
       </div>
 

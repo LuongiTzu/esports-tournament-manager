@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { HeartIcon } from "@phosphor-icons/react";
+import { HeartIcon, UsersThreeIcon } from "@phosphor-icons/react";
 import { alertErrorClass } from "@/components/ui";
 import { useAuth } from "@/features/auth/store";
 import { useLocale } from "@/features/locale/store";
@@ -142,9 +142,18 @@ export default function MyProfilePage() {
   return (
     <div className="my-tournaments-page home-sections w-full flex-1">
       <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <h1 className="text-2xl font-black text-ink sm:text-3xl">
-          {t("profile.myTournaments")}
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="text-2xl font-black text-ink sm:text-3xl">
+            {t("profile.myTournaments")}
+          </h1>
+          <Link
+            href="/users/me/teams"
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink-muted hover:border-brand hover:text-brand"
+          >
+            <UsersThreeIcon aria-hidden />
+            {t("myTeams.title")}
+          </Link>
+        </div>
         <div
           role="tablist"
           aria-label={t("profile.myTournaments")}

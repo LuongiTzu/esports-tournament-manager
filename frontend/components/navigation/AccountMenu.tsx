@@ -9,6 +9,7 @@ import {
   ShieldCheckIcon,
   SignOutIcon,
   TrophyIcon,
+  UsersThreeIcon,
   UserCircleIcon,
 } from "@phosphor-icons/react";
 import ResolvedImage from "@/components/ResolvedImage";
@@ -73,6 +74,11 @@ export default function AccountMenu({
       href: "/users/me",
       label: t("nav.myTournaments"),
       icon: TrophyIcon,
+    },
+    {
+      href: "/users/me/teams",
+      label: t("myTeams.title"),
+      icon: UsersThreeIcon,
     },
     {
       href: "/tournaments/new",
@@ -148,7 +154,9 @@ export default function AccountMenu({
             {menuLinks.map((item) => {
               const Icon = item.icon;
               const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
+                pathname === item.href ||
+                (item.href !== "/users/me" &&
+                  pathname.startsWith(`${item.href}/`));
               return (
                 <Link
                   key={item.href}

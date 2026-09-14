@@ -1,4 +1,61 @@
 const extendedVi = {
+  "teamManage.eyebrow": "Quản lý đội",
+  "teamManage.title": "Hồ sơ và đội hình",
+  "teamManage.captainHint":
+    "Cập nhật thông tin đội trong thời gian đăng ký còn mở.",
+  "teamManage.organizerHint": "Quản lý hồ sơ đội thay mặt ban tổ chức.",
+  "teamManage.editProfile": "Sửa hồ sơ",
+  "teamManage.saveProfile": "Lưu hồ sơ",
+  "teamManage.profileSaved": "Đã cập nhật hồ sơ đội.",
+  "teamManage.profileSaveError": "Không thể cập nhật hồ sơ đội.",
+  "teamManage.name": "Tên đội",
+  "teamManage.shortName": "Tên viết tắt",
+  "teamManage.description": "Giới thiệu đội",
+  "teamManage.logo": "Thay logo đội",
+  "teamManage.rosterTitle": "Quản lý thành viên",
+  "teamManage.rosterHint":
+    "Mỗi thay đổi phải giữ đội hình hợp lệ theo quy định của giải.",
+  "teamManage.rosterValidationHint":
+    "Hệ thống sẽ kiểm tra lại toàn bộ đội hình khi lưu.",
+  "teamManage.addMember": "Thêm thành viên",
+  "teamManage.editMember": "Sửa thành viên",
+  "teamManage.saveMember": "Lưu thành viên",
+  "teamManage.memberRole": "Vai trò trong đội",
+  "teamManage.memberAvatar": "Ảnh thành viên",
+  "teamManage.memberSaveError": "Không thể lưu thông tin thành viên.",
+  "teamManage.avatarUploadPartial":
+    "Đã lưu thành viên nhưng chưa cập nhật được ảnh đại diện. Hãy mở chỉnh sửa thành viên để thử tải ảnh lại.",
+  "teamManage.avatarTargetError":
+    "Đã thêm thành viên nhưng chưa thể tải ảnh lên. Hãy sửa thành viên để tải lại ảnh.",
+  "teamManage.removeMemberConfirm": "Xóa thành viên “{name}” khỏi đội?",
+  "teamManage.memberRemoved": "Đã xóa thành viên khỏi đội.",
+  "teamManage.memberRemoveError": "Không thể xóa thành viên.",
+  "teamManage.configLoadError": "Không tải được quy định đội hình của giải.",
+  "teamManage.registrationLocked":
+    "Đăng ký đã khóa. Hồ sơ và đội hình hiện không thể chỉnh sửa.",
+  "teamManage.dangerTitle": "Thao tác với đội",
+  "teamManage.withdraw": "Rút đăng ký",
+  "teamManage.withdrawHint":
+    "Đội trưởng chỉ có thể tự rút hồ sơ đang chờ duyệt.",
+  "teamManage.withdrawConfirm":
+    "Rút đăng ký của đội “{name}”? Hồ sơ đội sẽ bị xóa khỏi giải.",
+  "teamManage.withdrawLocked":
+    "Đội đã được xử lý. Hãy liên hệ ban tổ chức nếu cần rút khỏi giải.",
+  "teamManage.delete": "Xóa đội khỏi giải",
+  "teamManage.deleteHint":
+    "Ban tổ chức có thể xóa đội khi cấu trúc thi đấu chưa khóa danh sách tham gia.",
+  "teamManage.deleteConfirm":
+    "Xóa đội “{name}” khỏi giải? Thao tác này không thể hoàn tác.",
+  "teamManage.removeTeamError": "Không thể xóa đội khỏi giải.",
+  "teamManage.openProfile": "Mở hồ sơ và quản lý đội",
+  "myTeams.title": "Đội của tôi",
+  "myTeams.description":
+    "Xem hồ sơ và quản lý các đội bạn đang đại diện hoặc tham gia.",
+  "myTeams.empty": "Bạn chưa có đội nào.",
+  "myTeams.emptyHint": "Đăng ký một giải đấu để đội của bạn xuất hiện tại đây.",
+  "myTeams.loadError": "Không tải được danh sách đội. Vui lòng thử lại.",
+  "myTeams.manage": "Xem và quản lý đội →",
+  "myTeams.memberCount": "thành viên",
   "teamDetail.title": "Hồ sơ đội",
   "teamDetail.view": "Xem hồ sơ đội →",
   "teamDetail.captain": "Đội trưởng / đại diện",
@@ -19,9 +76,11 @@ const extendedVi = {
   "teamDetail.draw": "Kết quả hòa",
   "teamDetail.competition": "Xem lịch thi đấu và kết quả giải →",
   "teamDetail.browse": "Danh sách giải đấu",
-  "teamDetail.notFound": "Không tìm thấy đội hoặc đội không công khai với tài khoản hiện tại.",
+  "teamDetail.notFound":
+    "Không tìm thấy đội hoặc đội không công khai với tài khoản hiện tại.",
   "teamDetail.forbidden": "Bạn không có quyền xem hồ sơ đội này.",
-  "teamDetail.unauthorized": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+  "teamDetail.unauthorized":
+    "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
   "teamDetail.loadError": "Không tải được hồ sơ đội. Vui lòng thử lại.",
   "common.saving": "Đang lưu…",
   "common.refreshing": "Đang cập nhật…",
@@ -1631,6 +1690,7 @@ const extendedVi = {
   "pageTitle.register": "Đăng ký tài khoản",
   "pageTitle.profile": "Thông tin cá nhân",
   "pageTitle.myTournaments": "Giải của tôi",
+  "pageTitle.myTeams": "Đội của tôi",
   "pageTitle.tournaments": "Danh sách giải đấu",
   "pageTitle.createTournament": "Tạo giải đấu",
   "pageTitle.tournamentDetail": "Chi tiết giải đấu",

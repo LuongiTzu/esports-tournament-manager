@@ -1,6 +1,66 @@
 import type extendedVi from "@/features/locale/dictionaries/extended-vi";
 
 const extendedEn = {
+  "teamManage.eyebrow": "Team management",
+  "teamManage.title": "Profile and roster",
+  "teamManage.captainHint":
+    "Update team information while registration remains open.",
+  "teamManage.organizerHint":
+    "Manage this team on behalf of the tournament organizer.",
+  "teamManage.editProfile": "Edit profile",
+  "teamManage.saveProfile": "Save profile",
+  "teamManage.profileSaved": "Team profile updated.",
+  "teamManage.profileSaveError": "The team profile could not be updated.",
+  "teamManage.name": "Team name",
+  "teamManage.shortName": "Short name",
+  "teamManage.description": "Team description",
+  "teamManage.logo": "Change team logo",
+  "teamManage.rosterTitle": "Manage members",
+  "teamManage.rosterHint":
+    "Every change must keep the roster valid under tournament rules.",
+  "teamManage.rosterValidationHint":
+    "The complete roster will be validated when you save.",
+  "teamManage.addMember": "Add member",
+  "teamManage.editMember": "Edit member",
+  "teamManage.saveMember": "Save member",
+  "teamManage.memberRole": "Team role",
+  "teamManage.memberAvatar": "Member photo",
+  "teamManage.memberSaveError": "The member could not be saved.",
+  "teamManage.avatarUploadPartial":
+    "Member saved, but the avatar could not be updated. Edit the member to retry the upload.",
+  "teamManage.avatarTargetError":
+    "The member was added, but the photo could not be uploaded. Edit the member to retry.",
+  "teamManage.removeMemberConfirm": "Remove “{name}” from the team?",
+  "teamManage.memberRemoved": "Member removed from the team.",
+  "teamManage.memberRemoveError": "The member could not be removed.",
+  "teamManage.configLoadError": "Tournament roster rules could not be loaded.",
+  "teamManage.registrationLocked":
+    "Registration is locked. The profile and roster cannot currently be edited.",
+  "teamManage.dangerTitle": "Team actions",
+  "teamManage.withdraw": "Withdraw registration",
+  "teamManage.withdrawHint":
+    "The captain can only withdraw a registration that is awaiting review.",
+  "teamManage.withdrawConfirm":
+    "Withdraw “{name}”? The team profile will be removed from the tournament.",
+  "teamManage.withdrawLocked":
+    "This team has already been reviewed. Contact the organizer to withdraw.",
+  "teamManage.delete": "Remove team from tournament",
+  "teamManage.deleteHint":
+    "The organizer can remove a team while the competition structure still permits participant changes.",
+  "teamManage.deleteConfirm":
+    "Remove “{name}” from the tournament? This cannot be undone.",
+  "teamManage.removeTeamError":
+    "The team could not be removed from the tournament.",
+  "teamManage.openProfile": "Open team profile and management",
+  "myTeams.title": "My teams",
+  "myTeams.description":
+    "View and manage teams you represent or participate in.",
+  "myTeams.empty": "You do not have any teams yet.",
+  "myTeams.emptyHint":
+    "Register for a tournament and your team will appear here.",
+  "myTeams.loadError": "Your teams could not be loaded. Please try again.",
+  "myTeams.manage": "View and manage team →",
+  "myTeams.memberCount": "members",
   "teamDetail.title": "Team profile",
   "teamDetail.view": "View team profile →",
   "teamDetail.captain": "Captain / representative",
@@ -14,14 +74,16 @@ const extendedEn = {
   "teamDetail.losses": "Losses",
   "teamDetail.rank": "Final rank",
   "teamDetail.history": "Recent matches",
-  "teamDetail.historyHint": "Up to 10 most recently completed matches in this tournament.",
+  "teamDetail.historyHint":
+    "Up to 10 most recently completed matches in this tournament.",
   "teamDetail.noMembers": "No member information available.",
   "teamDetail.noMatches": "This team has no completed matches yet.",
   "teamDetail.unknownTeam": "Team unavailable",
   "teamDetail.draw": "Draw",
   "teamDetail.competition": "View tournament schedule and results →",
   "teamDetail.browse": "Browse tournaments",
-  "teamDetail.notFound": "Team not found or unavailable to the current account.",
+  "teamDetail.notFound":
+    "Team not found or unavailable to the current account.",
   "teamDetail.forbidden": "You do not have permission to view this team.",
   "teamDetail.unauthorized": "Your session has expired. Please sign in again.",
   "teamDetail.loadError": "Could not load the team profile. Please try again.",
@@ -1668,6 +1730,7 @@ const extendedEn = {
   "pageTitle.register": "Create an account",
   "pageTitle.profile": "Profile",
   "pageTitle.myTournaments": "My tournaments",
+  "pageTitle.myTeams": "My teams",
   "pageTitle.tournaments": "Tournament directory",
   "pageTitle.createTournament": "Create tournament",
   "pageTitle.tournamentDetail": "Tournament details",

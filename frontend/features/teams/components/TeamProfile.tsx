@@ -10,7 +10,10 @@ import {
 } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import type { TeamDetail, TeamMember } from "@/features/teams/types";
+import type { User } from "@/features/auth/types";
+import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
 import StatusBadge from "./StatusBadge";
+import TeamManagementPanel from "./manage/TeamManagementPanel";
 
 function MemberCard({
   member,
@@ -99,9 +102,21 @@ function MemberCard({
   );
 }
 
-export default function TeamProfile({ team }: { team: TeamDetail }) {
+export default function TeamProfile({
+  team,
+  user,
+  onChanged,
+}: {
+  team: TeamDetail;
+  user: User | null;
+  onChanged: (team?: TeamDetail) => Promise<void>;
+}) {
   const { locale, t } = useLocale();
   const tournamentHref = `/tournaments/${encodeURIComponent(team.tournament.slug)}`;
+  const canManageIdentity = Boolean(
+    user &&
+    (user.id === team.captainId || user.id === team.tournament.organizerId),
+  );
   const stats: Array<[TranslationKey, number | null]> = [
     ["teamDetail.played", team.history.completedMatches],
     ["teamDetail.wins", team.history.wins],
@@ -155,6 +170,13 @@ export default function TeamProfile({ team }: { team: TeamDetail }) {
           </p>
         )}
       </header>
+
+      {user && canManageIdentity && !user.emailVerifiedAt && (
+        <EmailVerificationNotice email={user.email} className="mt-8" />
+      )}
+      {user?.emailVerifiedAt && canManageIdentity && (
+        <TeamManagementPanel team={team} user={user} onChanged={onChanged} />
+      )}
 
       <section aria-labelledby="team-stats" className="mt-8">
         <h2 id="team-stats" className="text-xl font-bold">

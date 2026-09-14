@@ -106,6 +106,14 @@ export interface TeamRegistration {
   members: TeamMemberRegistration[];
 }
 
+export type UpdateTeamRequest = Partial<Omit<TeamRegistration, "members">>;
+
+export type UpdateTeamMemberRequest = Partial<TeamMemberRegistration>;
+
+export interface DeleteTeamResult {
+  message: string;
+}
+
 export interface TeamRegistrationForm {
   canRegister: boolean;
   reason: string | null;

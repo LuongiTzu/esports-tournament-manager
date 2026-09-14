@@ -7,7 +7,11 @@ import type {
   TeamWithMembers,
   TeamInvitation,
   TeamInvitationPreview,
+  TeamMemberRegistration,
+  UpdateTeamMemberRequest,
+  UpdateTeamRequest,
   UpdateTeamStatusRequest,
+  DeleteTeamResult,
 } from "@/features/teams/types";
 import { request } from "@/lib/api/client";
 import { uploadImage } from "@/lib/api/upload";
@@ -95,6 +99,41 @@ export const teamsApi = {
     uploadImage(`/teams/${teamId}/logo`, file),
   uploadMemberAvatar: (teamId: string, memberId: string, file: File) =>
     uploadImage(`/teams/${teamId}/members/${memberId}/avatar`, file),
+  update: (teamId: string, data: UpdateTeamRequest) =>
+    request<TeamWithMembers>(`/teams/${encodeURIComponent(teamId)}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+      auth: true,
+    }),
+  addMember: (teamId: string, data: TeamMemberRegistration) =>
+    request<TeamDetail>(`/teams/${encodeURIComponent(teamId)}/members`, {
+      method: "POST",
+      body: JSON.stringify(data),
+      auth: true,
+    }),
+  updateMember: (
+    teamId: string,
+    memberId: string,
+    data: UpdateTeamMemberRequest,
+  ) =>
+    request<TeamDetail>(
+      `/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(memberId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+        auth: true,
+      },
+    ),
+  removeMember: (teamId: string, memberId: string) =>
+    request<TeamDetail>(
+      `/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(memberId)}`,
+      { method: "DELETE", auth: true },
+    ),
+  remove: (teamId: string) =>
+    request<DeleteTeamResult>(`/teams/${encodeURIComponent(teamId)}`, {
+      method: "DELETE",
+      auth: true,
+    }),
   updateStatus: (teamId: string, data: UpdateTeamStatusRequest) =>
     request<TeamWithMembers>(`/teams/${teamId}/status`, {
       method: "PATCH",
