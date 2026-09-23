@@ -8,6 +8,7 @@ export type { Paginated } from "@/shared/types/pagination";
 export type TournamentVisibility = "PUBLIC" | "PRIVATE";
 export type TournamentMode = "ONLINE" | "OFFLINE" | "HYBRID";
 export type MatchScoringMode = "SERIES_SCORE" | "POINT_SCORE";
+export type TournamentSort = "recommended" | "name" | "newest" | "teams";
 
 export interface RoundRobinSettings {
   scoringMode?: MatchScoringMode;
@@ -168,6 +169,7 @@ export interface FindAllTournamentsParams {
   search?: string;
   gameId?: string;
   status?: Tournament["status"];
+  sort?: TournamentSort;
   page?: number;
   limit?: number;
 }

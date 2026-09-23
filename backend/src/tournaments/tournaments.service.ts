@@ -10,6 +10,7 @@ import { TournamentQueryService } from './tournament-query.service';
 import { TournamentFavoriteService } from './tournament-favorite.service';
 import { TournamentFinalizationService } from './tournament-finalization.service';
 import { ConfirmFinalStandingsDto } from './dto/finalize-tournament.dto';
+import { TournamentListSort } from './dto/tournament-list-query.dto';
 
 @Injectable()
 export class TournamentsService {
@@ -29,6 +30,7 @@ export class TournamentsService {
       status?: TournamentStatus;
       mode?: TournamentMode;
       isVerified?: boolean;
+      sort?: TournamentListSort;
       page?: number;
       limit?: number;
     },

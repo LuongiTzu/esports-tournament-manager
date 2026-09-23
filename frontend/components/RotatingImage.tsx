@@ -120,7 +120,7 @@ export default function RotatingImage({
               onClick={() => setActiveIndex(index)}
               className={`h-1.5 rounded-full transition-[width,background-color] duration-300 focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] ${
                 activeIndex === index
-                  ? "w-8 bg-gradient-brand"
+                  ? "w-8 bg-brand"
                   : "w-3 bg-white/45 hover:bg-white/75"
               }`}
             />

@@ -159,7 +159,7 @@ export default function TournamentGameEditor({
               type="button"
               disabled={saving || games.length === 0}
               onClick={save}
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-brand px-4 py-2.5 text-sm font-semibold text-on-brand disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-hover disabled:opacity-50"
             >
               <FloppyDiskIcon size={17} />
               {saving ? t("game.structure.saving") : t("common.save")}

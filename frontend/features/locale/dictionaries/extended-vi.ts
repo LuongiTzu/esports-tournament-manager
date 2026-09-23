@@ -1,5 +1,7 @@
 const extendedVi = {
   "ratings.title": "Đánh giá giải đấu",
+  "ratings.action": "Đánh giá",
+  "ratings.noRatingsShort": "Chưa có đánh giá",
   "ratings.score": "Điểm đánh giá",
   "ratings.content": "Nhận xét (không bắt buộc)",
   "ratings.submit": "Gửi đánh giá",
@@ -33,8 +35,6 @@ const extendedVi = {
   "ratings.reason.ORGANIZER": "BTC không được đánh giá giải do mình tổ chức.",
   "ratings.reason.NOT_COMPLETED":
     "Chỉ có thể đánh giá sau khi giải hoàn thành.",
-  "ratings.reason.NOT_PARTICIPANT":
-    "Chỉ đội trưởng và thành viên đã liên kết tài khoản thuộc đội được duyệt mới được đánh giá.",
   "deleteTournament.title": "Xóa giải đấu",
   "deleteTournament.hint":
     "Xóa vĩnh viễn giải cùng dữ liệu liên quan như đội, vòng đấu và trận đấu. Chỉ xóa được khi giải chưa bắt đầu và đáp ứng điều kiện của hệ thống.",
@@ -1576,7 +1576,10 @@ const extendedVi = {
   "admin.reports.newestFirst": "mới nhất trước",
   "admin.moderation.title": "Kiểm duyệt nội dung",
   "admin.moderation.description":
-    "Quản lý trạng thái hiển thị bình luận và danh sách từ khóa mà bộ lọc backend đang áp dụng.",
+    "Kiểm duyệt bình luận, đánh giá giải đấu và danh sách từ khóa mà bộ lọc backend đang áp dụng.",
+  "admin.moderation.commentsTab": "Bình luận",
+  "admin.moderation.ratingsTab": "Đánh giá",
+  "admin.moderation.keywordsTab": "Từ khóa cấm",
   "admin.comments.loadError": "Không tải được bình luận.",
   "admin.comments.hideConfirm": "Ẩn bình luận này nhưng vẫn giữ dữ liệu?",
   "admin.comments.unhideConfirm": "Khôi phục hiển thị bình luận này?",

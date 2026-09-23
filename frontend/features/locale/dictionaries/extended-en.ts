@@ -2,6 +2,8 @@ import type extendedVi from "@/features/locale/dictionaries/extended-vi";
 
 const extendedEn = {
   "ratings.title": "Tournament ratings",
+  "ratings.action": "Ratings",
+  "ratings.noRatingsShort": "No ratings yet",
   "ratings.score": "Rating score",
   "ratings.content": "Review (optional)",
   "ratings.submit": "Submit rating",
@@ -36,8 +38,6 @@ const extendedEn = {
   "ratings.reason.ORGANIZER": "Organizers cannot rate their own tournaments.",
   "ratings.reason.NOT_COMPLETED":
     "Ratings open once the tournament is completed.",
-  "ratings.reason.NOT_PARTICIPANT":
-    "Only captains and linked members of approved teams can rate.",
   "deleteTournament.title": "Delete tournament",
   "deleteTournament.hint":
     "Permanently delete this tournament and related data, including teams, rounds and matches. Deletion is allowed only before competition starts and when system requirements are met.",
@@ -1615,7 +1615,10 @@ const extendedEn = {
   "admin.reports.newestFirst": "newest first",
   "admin.moderation.title": "Content moderation",
   "admin.moderation.description":
-    "Manage comment visibility and the banned-keyword list enforced by the backend filter.",
+    "Moderate comments, tournament ratings, and the banned-keyword list enforced by the backend filter.",
+  "admin.moderation.commentsTab": "Comments",
+  "admin.moderation.ratingsTab": "Ratings",
+  "admin.moderation.keywordsTab": "Banned keywords",
   "admin.comments.loadError": "Could not load comments.",
   "admin.comments.hideConfirm": "Hide this comment while preserving its data?",
   "admin.comments.unhideConfirm": "Restore this comment's visibility?",

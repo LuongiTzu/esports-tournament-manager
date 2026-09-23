@@ -39,6 +39,7 @@ function addRoundPrisma(round: Record<string, jest.Mock>) {
 }
 import { TournamentsService } from './tournaments.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
+import { TournamentListSort } from './dto/tournament-list-query.dto';
 
 function createTournamentsService(
   prisma: PrismaService,
@@ -189,7 +190,7 @@ describe('TournamentsService public listing', () => {
     );
   });
 
-  it('sorts verified tournaments first and then by start date', async () => {
+  it('uses the recommended order by default', async () => {
     const { service, findMany } = harness();
 
     await service.findAllPublic({});
@@ -201,9 +202,28 @@ describe('TournamentsService public listing', () => {
           { isVerified: 'desc' },
           { startDate: 'asc' },
           { createdAt: 'desc' },
+          { id: 'asc' },
         ],
       }),
     );
+  });
+
+  it.each([
+    [
+      TournamentListSort.NAME,
+      [{ name: 'asc' }, { createdAt: 'desc' }, { id: 'asc' }],
+    ],
+    [TournamentListSort.NEWEST, [{ createdAt: 'desc' }, { id: 'asc' }]],
+    [
+      TournamentListSort.TEAMS,
+      [{ teams: { _count: 'desc' } }, { createdAt: 'desc' }, { id: 'asc' }],
+    ],
+  ])('applies the %s order before pagination', async (sort, orderBy) => {
+    const { service, findMany } = harness();
+
+    await service.findAllPublic({ sort });
+
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ orderBy }));
   });
 });
 

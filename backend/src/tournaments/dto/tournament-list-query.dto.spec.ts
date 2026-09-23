@@ -2,7 +2,10 @@ import 'reflect-metadata';
 import { TournamentMode, TournamentStatus } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { TournamentListQueryDto } from './tournament-list-query.dto';
+import {
+  TournamentListQueryDto,
+  TournamentListSort,
+} from './tournament-list-query.dto';
 
 describe('TournamentListQueryDto', () => {
   it.each([
@@ -15,6 +18,7 @@ describe('TournamentListQueryDto', () => {
         status: TournamentStatus.ONGOING,
         mode: TournamentMode.ONLINE,
         isVerified: raw,
+        sort: TournamentListSort.NEWEST,
       });
 
       await expect(validate(query)).resolves.toHaveLength(0);
@@ -26,6 +30,7 @@ describe('TournamentListQueryDto', () => {
     [{ isVerified: 'yes' }],
     [{ status: 'ongoing' }],
     [{ mode: 'remote' }],
+    [{ sort: 'oldest' }],
   ])('rejects invalid canonical filters', async (input) => {
     const errors = await validate(
       plainToInstance(TournamentListQueryDto, input),

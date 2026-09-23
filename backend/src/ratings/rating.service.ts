@@ -47,27 +47,15 @@ export class RatingService {
     return value;
   }
 
-  private async eligibility(
-    tx: Prisma.TransactionClient,
-    tournament: { id: string; status: string; organizerId: string },
+  private eligibility(
+    tournament: { status: string; organizerId: string },
     user?: AuthenticatedUser,
   ) {
     if (!user) return 'LOGIN_REQUIRED';
     if (!user.emailVerifiedAt) return 'VERIFY_EMAIL';
     if (user.id === tournament.organizerId) return 'ORGANIZER';
     if (tournament.status !== 'COMPLETED') return 'NOT_COMPLETED';
-    const team = await tx.team.findFirst({
-      where: {
-        tournamentId: tournament.id,
-        status: 'APPROVED',
-        OR: [
-          { captainId: user.id },
-          { members: { some: { userId: user.id } } },
-        ],
-      },
-      select: { id: true },
-    });
-    return team ? 'ALLOWED' : 'NOT_PARTICIPANT';
+    return 'ALLOWED';
   }
 
   list(
@@ -80,7 +68,8 @@ export class RatingService {
         const tournament = await this.tournament(tx, slug);
         const where = { tournamentId: tournament.id, isHidden: false };
         const { page, limit, skip } = pagination(query);
-        const [data, aggregate, mine, reason] = await Promise.all([
+        const reason = this.eligibility(tournament, user);
+        const [data, aggregate, mine] = await Promise.all([
           tx.tournamentRating.findMany({
             where,
             select: publicSelect,
@@ -108,7 +97,6 @@ export class RatingService {
                 },
               })
             : null,
-          this.eligibility(tx, tournament, user),
         ]);
         return {
           data,
@@ -145,7 +133,7 @@ export class RatingService {
           Prisma.sql`SELECT "id" FROM "tournaments" WHERE "slug" = ${slug} FOR UPDATE`,
         );
         const tournament = await this.tournament(tx, slug);
-        const reason = await this.eligibility(tx, tournament, user);
+        const reason = this.eligibility(tournament, user);
         if (reason !== 'ALLOWED')
           throw new ForbiddenException({
             message: 'You are not eligible to rate this tournament',

@@ -975,7 +975,7 @@ export default function TournamentCreateForm() {
               type="button"
               disabled={loading}
               onClick={retryBannerUpload}
-              className="inline-flex rounded-lg bg-gradient-brand px-5 py-2.5 text-sm font-semibold text-on-brand disabled:opacity-50"
+              className="inline-flex rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-hover disabled:opacity-50"
             >
               {loading
                 ? t("tournament.create.retryingBanner")

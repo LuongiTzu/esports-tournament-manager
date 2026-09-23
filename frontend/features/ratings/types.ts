@@ -17,8 +17,7 @@ export type RatingReason =
   | "LOGIN_REQUIRED"
   | "VERIFY_EMAIL"
   | "ORGANIZER"
-  | "NOT_COMPLETED"
-  | "NOT_PARTICIPANT";
+  | "NOT_COMPLETED";
 export interface RatingList {
   data: Rating[];
   summary: { average: number | null; count: number };

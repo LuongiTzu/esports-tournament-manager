@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState, type ReactNode } from "react";
+import { use, useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   CalendarBlankIcon,
@@ -14,6 +14,7 @@ import {
   PhoneIcon,
   SealCheckIcon,
   ShieldCheckIcon,
+  StarIcon,
   TrophyIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react";
@@ -24,6 +25,7 @@ import { clearSession, useAuth } from "@/features/auth/store";
 import { hasVerifiedEmail } from "@/features/auth/email-verification";
 import TournamentComments from "@/features/comments/components/TournamentComments";
 import TournamentRatings from "@/features/ratings/components/TournamentRatings";
+import type { RatingList } from "@/features/ratings/types";
 import { accentVars } from "@/features/games/game-accent";
 import RosterSummary from "@/features/games/components/RosterSummary";
 import { gamePositionLabel } from "@/features/games/position-labels";
@@ -94,6 +96,16 @@ export default function TournamentDetailPage({
   const [loading, setLoading] = useState(true);
   const [retryVersion, setRetryVersion] = useState(0);
   const [error, setError] = useState("");
+  const [ratingSnapshot, setRatingSnapshot] = useState<{
+    slug: string;
+    summary: RatingList["summary"];
+  } | null>(null);
+  const ratingSummary =
+    ratingSnapshot?.slug === slug ? ratingSnapshot.summary : null;
+  const updateRatingSummary = useCallback(
+    (summary: RatingList["summary"]) => setRatingSnapshot({ slug, summary }),
+    [slug],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -317,27 +329,44 @@ export default function TournamentDetailPage({
                   slug={slug}
                   tournamentName={tournament.name}
                 />
-                <TournamentFavoriteButton
-                  slug={slug}
-                  isFavorited={tournament.isFavorited}
-                  favoriteCount={tournament.favoriteCount}
-                  className="justify-self-end"
-                  onOptimisticChange={(favoriteState) =>
-                    setTournament((current) =>
-                      current ? { ...current, ...favoriteState } : current,
-                    )
-                  }
-                  onReconciled={(favoriteState) =>
-                    setTournament((current) =>
-                      current ? { ...current, ...favoriteState } : current,
-                    )
-                  }
-                  onRollback={(favoriteState) =>
-                    setTournament((current) =>
-                      current ? { ...current, ...favoriteState } : current,
-                    )
-                  }
-                />
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <a
+                    href="#ratings"
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line bg-surface-card/90 px-3.5 text-sm font-semibold text-ink-muted shadow-sm backdrop-blur-md transition hover:border-accent/45 hover:text-accent focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+                  >
+                    <StarIcon
+                      aria-hidden
+                      size={20}
+                      weight={ratingSummary?.count ? "fill" : "bold"}
+                      className="text-accent"
+                    />
+                    {ratingSummary
+                      ? ratingSummary.count > 0 && ratingSummary.average !== null
+                        ? `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(ratingSummary.average)} (${ratingSummary.count})`
+                        : t("ratings.noRatingsShort")
+                      : t("ratings.action")}
+                  </a>
+                  <TournamentFavoriteButton
+                    slug={slug}
+                    isFavorited={tournament.isFavorited}
+                    favoriteCount={tournament.favoriteCount}
+                    onOptimisticChange={(favoriteState) =>
+                      setTournament((current) =>
+                        current ? { ...current, ...favoriteState } : current,
+                      )
+                    }
+                    onReconciled={(favoriteState) =>
+                      setTournament((current) =>
+                        current ? { ...current, ...favoriteState } : current,
+                      )
+                    }
+                    onRollback={(favoriteState) =>
+                      setTournament((current) =>
+                        current ? { ...current, ...favoriteState } : current,
+                      )
+                    }
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -355,6 +384,9 @@ export default function TournamentDetailPage({
               </a>
               <a href="#participants" className="tournament-detail-tab">
                 {t("tournament.detail.participants")}
+              </a>
+              <a href="#ratings" className="tournament-detail-tab">
+                {t("ratings.action")}
               </a>
               <a href="#comments" className="tournament-detail-tab">
                 {t("comments.title")}
@@ -701,7 +733,10 @@ export default function TournamentDetailPage({
           )}
         </section>
 
-        <TournamentRatings slug={slug} />
+        <TournamentRatings
+          slug={slug}
+          onSummaryChange={updateRatingSummary}
+        />
 
         <TournamentComments
           key={tournament.id}

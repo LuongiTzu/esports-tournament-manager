@@ -67,7 +67,13 @@ function RatingEditor({
   );
 }
 
-function RatingsContent({ slug }: { slug: string }) {
+function RatingsContent({
+  slug,
+  onSummaryChange,
+}: {
+  slug: string;
+  onSummaryChange?: (summary: RatingList["summary"]) => void;
+}) {
   const { t, locale } = useLocale();
   const [page, setPage] = useState(1),
     [attempt, setAttempt] = useState(0);
@@ -84,6 +90,7 @@ function RatingsContent({ slug }: { slug: string }) {
       (value) => {
         if (!cancelled) {
           setResult(value);
+          onSummaryChange?.(value.summary);
           setLoadError("");
           setNeedsReload(false);
         }
@@ -98,7 +105,7 @@ function RatingsContent({ slug }: { slug: string }) {
     return () => {
       cancelled = true;
     };
-  }, [slug, page, attempt, t]);
+  }, [slug, page, attempt, t, onSummaryChange]);
   const mutate = async (action: () => Promise<unknown>) => {
     if (pending.current || needsReload) return;
     pending.current = true;
@@ -110,7 +117,9 @@ function RatingsContent({ slug }: { slug: string }) {
       setNotice(t("ratings.saved"));
       setNeedsReload(true);
       try {
-        setResult(await ratingsApi.list(slug, page));
+        const refreshed = await ratingsApi.list(slug, page);
+        setResult(refreshed);
+        onSummaryChange?.(refreshed.summary);
         setNeedsReload(false);
       } catch {
         setError(t("ratings.refreshError"));
@@ -294,13 +303,20 @@ function RatingsContent({ slug }: { slug: string }) {
   );
 }
 
-export default function TournamentRatings({ slug }: { slug: string }) {
+export default function TournamentRatings({
+  slug,
+  onSummaryChange,
+}: {
+  slug: string;
+  onSummaryChange?: (summary: RatingList["summary"]) => void;
+}) {
   const { user, ready } = useAuth();
   if (!ready) return null;
   return (
     <RatingsContent
       key={`${slug}:${user?.id ?? "guest"}:${user?.emailVerifiedAt ?? ""}`}
       slug={slug}
+      onSummaryChange={onSummaryChange}
     />
   );
 }

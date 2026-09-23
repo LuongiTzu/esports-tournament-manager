@@ -5,6 +5,13 @@ import {
   PaginationQueryDto,
 } from '../../common/dto/pagination-query.dto';
 
+export enum TournamentListSort {
+  RECOMMENDED = 'recommended',
+  NAME = 'name',
+  NEWEST = 'newest',
+  TEAMS = 'teams',
+}
+
 export class TournamentListQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
@@ -28,4 +35,8 @@ export class TournamentListQueryDto extends PaginationQueryDto {
 
   @BooleanQueryField()
   isVerified?: boolean;
+
+  @IsOptional()
+  @IsEnum(TournamentListSort)
+  sort?: TournamentListSort;
 }

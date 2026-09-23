@@ -27,6 +27,7 @@ import {
 } from './tournament-prisma.select';
 import { withTournamentGameDisplayName } from './domain/tournament-game-display';
 import { resolveTournamentFinalizationMode } from './domain/tournament-finalization.policy';
+import { TournamentListSort } from './dto/tournament-list-query.dto';
 import {
   gameConfigurationLockReason,
   managementAction,
@@ -50,6 +51,7 @@ export class TournamentQueryService {
       status?: TournamentStatus;
       mode?: TournamentMode;
       isVerified?: boolean;
+      sort?: TournamentListSort;
       page?: number;
       limit?: number;
     },
@@ -102,12 +104,7 @@ export class TournamentQueryService {
         where,
         skip,
         take: limit,
-        orderBy: [
-          { isOfficial: 'desc' },
-          { isVerified: 'desc' },
-          { startDate: 'asc' },
-          { createdAt: 'desc' },
-        ],
+        orderBy: publicTournamentOrderBy(query.sort),
         include: {
           game: { select: TOURNAMENT_GAME_SELECT },
           favorites: viewerFavoriteSelection(userId),
@@ -747,6 +744,32 @@ export class TournamentQueryService {
       user,
       isRelatedParticipant: team !== null,
     });
+  }
+}
+
+function publicTournamentOrderBy(
+  sort: TournamentListSort = TournamentListSort.RECOMMENDED,
+): Prisma.TournamentOrderByWithRelationInput[] {
+  switch (sort) {
+    case TournamentListSort.NAME:
+      return [{ name: 'asc' }, { createdAt: 'desc' }, { id: 'asc' }];
+    case TournamentListSort.NEWEST:
+      return [{ createdAt: 'desc' }, { id: 'asc' }];
+    case TournamentListSort.TEAMS:
+      return [
+        { teams: { _count: 'desc' } },
+        { createdAt: 'desc' },
+        { id: 'asc' },
+      ];
+    case TournamentListSort.RECOMMENDED:
+    default:
+      return [
+        { isOfficial: 'desc' },
+        { isVerified: 'desc' },
+        { startDate: 'asc' },
+        { createdAt: 'desc' },
+        { id: 'asc' },
+      ];
   }
 }
 

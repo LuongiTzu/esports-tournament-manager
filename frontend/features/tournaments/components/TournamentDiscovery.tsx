@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   FunnelSimpleIcon,
   ListBulletsIcon,
@@ -21,29 +22,84 @@ import type {
   Paginated,
   Tournament,
   TournamentFavoriteMutationResult,
+  TournamentSort,
 } from "@/features/tournaments/types";
 
 const PAGE_SIZE = 12;
-type TournamentSort = "recommended" | "name" | "newest" | "teams";
+const PUBLIC_STATUSES = [
+  "REGISTRATION",
+  "ONGOING",
+  "COMPLETED",
+  "CANCELLED",
+] as const satisfies readonly Tournament["status"][];
+const TOURNAMENT_SORTS = ["recommended", "name", "newest", "teams"] as const;
+
+function readStatus(value: string | null): Tournament["status"] | "" {
+  return PUBLIC_STATUSES.includes(value as (typeof PUBLIC_STATUSES)[number])
+    ? (value as Tournament["status"])
+    : "";
+}
+
+function readSort(value: string | null): TournamentSort {
+  return TOURNAMENT_SORTS.includes(value as TournamentSort)
+    ? (value as TournamentSort)
+    : "recommended";
+}
+
+function readPage(value: string | null) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+}
 
 export default function TournamentDiscovery() {
   const { t } = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams.get("search")?.trim() ?? "";
+  const gameId = searchParams.get("gameId")?.trim() ?? "";
+  const status = readStatus(searchParams.get("status"));
+  const sort = readSort(searchParams.get("sort"));
+  const view: TournamentView =
+    searchParams.get("view") === "list" ? "list" : "grid";
+  const page = readPage(searchParams.get("page"));
   const [games, setGames] = useState<Game[]>([]);
   const [gamesError, setGamesError] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [gameId, setGameId] = useState("");
-  const [status, setStatus] = useState<Tournament["status"] | "">("");
-  const [sort, setSort] = useState<TournamentSort>("recommended");
-  const [view, setView] = useState<TournamentView>("grid");
-  const [page, setPage] = useState(1);
+  const [searchDraft, setSearchDraft] = useState(() => ({
+    value: search,
+    source: search,
+  }));
+  const searchInput =
+    searchDraft.source === search ? searchDraft.value : search;
   const [retryCount, setRetryCount] = useState(0);
-  const queryKey = JSON.stringify({ search, gameId, status, page, retryCount });
+  const queryKey = JSON.stringify({
+    search,
+    gameId,
+    status,
+    sort,
+    page,
+    retryCount,
+  });
   const [result, setResult] = useState<{
     key: string;
     response: Paginated<Tournament> | null;
     error: string;
   } | null>(null);
+
+  const updateQuery = useCallback(
+    (patch: Record<string, string | null>) => {
+      const next = new URLSearchParams(searchParams.toString());
+      Object.entries(patch).forEach(([key, value]) => {
+        if (value) next.set(key, value);
+        else next.delete(key);
+      });
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, {
+        scroll: false,
+      });
+    },
+    [pathname, router, searchParams],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -61,12 +117,14 @@ export default function TournamentDiscovery() {
   }, []);
 
   useEffect(() => {
+    const normalizedSearch = searchInput.trim();
+    if (normalizedSearch === search) return;
+
     const timeout = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-      setPage(1);
+      updateQuery({ search: normalizedSearch || null, page: null });
     }, 300);
     return () => window.clearTimeout(timeout);
-  }, [searchInput]);
+  }, [search, searchInput, updateQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +133,7 @@ export default function TournamentDiscovery() {
         search: search || undefined,
         gameId: gameId || undefined,
         status: status || undefined,
+        sort,
         page,
         limit: PAGE_SIZE,
       })
@@ -96,27 +155,11 @@ export default function TournamentDiscovery() {
     return () => {
       cancelled = true;
     };
-  }, [gameId, page, queryKey, search, status, t]);
+  }, [gameId, page, queryKey, search, sort, status, t]);
 
   const loading = result?.key !== queryKey;
   const response = result?.response;
   const tournaments = useMemo(() => response?.data ?? [], [response?.data]);
-  const sortedTournaments = useMemo(() => {
-    if (sort === "recommended") return tournaments;
-
-    return [...tournaments].sort((left, right) => {
-      if (sort === "name") {
-        return left.name.localeCompare(right.name);
-      }
-      if (sort === "newest") {
-        return (
-          new Date(right.createdAt).getTime() -
-          new Date(left.createdAt).getTime()
-        );
-      }
-      return (right._count?.teams ?? 0) - (left._count?.teams ?? 0);
-    });
-  }, [sort, tournaments]);
   const pagination = response?.pagination;
   const error = result?.error ?? "";
   const filtering = Boolean(search || gameId || status);
@@ -136,11 +179,8 @@ export default function TournamentDiscovery() {
   ];
 
   const clearFilters = () => {
-    setSearchInput("");
-    setSearch("");
-    setGameId("");
-    setStatus("");
-    setPage(1);
+    setSearchDraft({ value: "", source: search });
+    updateQuery({ search: null, gameId: null, status: null, page: null });
   };
 
   const updateFavoriteState = (
@@ -215,7 +255,9 @@ export default function TournamentDiscovery() {
                   id="tournament-search"
                   type="search"
                   value={searchInput}
-                  onChange={(event) => setSearchInput(event.target.value)}
+                  onChange={(event) =>
+                    setSearchDraft({ value: event.target.value, source: search })
+                  }
                   placeholder={t("tournaments.discovery.searchPlaceholder")}
                   className={`${inputClass} h-11 bg-surface pl-10`}
                 />
@@ -232,8 +274,10 @@ export default function TournamentDiscovery() {
                 id="tournament-game"
                 value={gameId}
                 onChange={(event) => {
-                  setGameId(event.target.value);
-                  setPage(1);
+                  updateQuery({
+                    gameId: event.target.value || null,
+                    page: null,
+                  });
                 }}
                 className={`${inputClass} h-11 bg-surface`}
               >
@@ -256,8 +300,10 @@ export default function TournamentDiscovery() {
                 id="tournament-status"
                 value={status}
                 onChange={(event) => {
-                  setStatus(event.target.value as Tournament["status"] | "");
-                  setPage(1);
+                  updateQuery({
+                    status: event.target.value || null,
+                    page: null,
+                  });
                 }}
                 className={`${inputClass} h-11 bg-surface`}
               >
@@ -278,9 +324,13 @@ export default function TournamentDiscovery() {
               <select
                 id="tournament-sort"
                 value={sort}
-                onChange={(event) =>
-                  setSort(event.target.value as TournamentSort)
-                }
+                onChange={(event) => {
+                  const nextSort = event.target.value as TournamentSort;
+                  updateQuery({
+                    sort: nextSort === "recommended" ? null : nextSort,
+                    page: null,
+                  });
+                }}
                 className={`${inputClass} h-11 bg-surface`}
               >
                 <option value="recommended">
@@ -347,10 +397,10 @@ export default function TournamentDiscovery() {
                   type="button"
                   aria-label={t("tournaments.discovery.gridView")}
                   aria-pressed={view === "grid"}
-                  onClick={() => setView("grid")}
+                  onClick={() => updateQuery({ view: null })}
                   className={`grid size-9 place-items-center rounded-md transition ${
                     view === "grid"
-                      ? "tournament-view-active bg-gradient-brand text-on-brand shadow-md shadow-brand/20"
+                      ? "tournament-view-active bg-brand text-on-brand shadow-md shadow-brand/20"
                       : "text-ink-faint hover:bg-surface-sub hover:text-ink"
                   }`}
                 >
@@ -360,10 +410,10 @@ export default function TournamentDiscovery() {
                   type="button"
                   aria-label={t("tournaments.discovery.listView")}
                   aria-pressed={view === "list"}
-                  onClick={() => setView("list")}
+                  onClick={() => updateQuery({ view: "list" })}
                   className={`grid size-9 place-items-center rounded-md transition ${
                     view === "list"
-                      ? "tournament-view-active bg-gradient-brand text-on-brand shadow-md shadow-brand/20"
+                      ? "tournament-view-active bg-brand text-on-brand shadow-md shadow-brand/20"
                       : "text-ink-faint hover:bg-surface-sub hover:text-ink"
                   }`}
                 >
@@ -418,7 +468,7 @@ export default function TournamentDiscovery() {
             </div>
           ) : (
             <TournamentGrid
-              tournaments={sortedTournaments}
+              tournaments={tournaments}
               view={view}
               onFavoriteOptimisticChange={updateFavoriteState}
               onFavoriteReconciled={updateFavoriteState}
@@ -434,7 +484,12 @@ export default function TournamentDiscovery() {
               <button
                 type="button"
                 disabled={pagination.page <= 1}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                onClick={() => {
+                  const previousPage = Math.max(1, pagination.page - 1);
+                  updateQuery({
+                    page: previousPage === 1 ? null : String(previousPage),
+                  });
+                }}
                 className="rounded-lg border border-line bg-surface-card px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/45 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {t("tournaments.discovery.previous")}
@@ -447,9 +502,11 @@ export default function TournamentDiscovery() {
                 type="button"
                 disabled={pagination.page >= pagination.totalPages}
                 onClick={() =>
-                  setPage((current) =>
-                    Math.min(pagination.totalPages, current + 1),
-                  )
+                  updateQuery({
+                    page: String(
+                      Math.min(pagination.totalPages, pagination.page + 1),
+                    ),
+                  })
                 }
                 className="rounded-lg border border-line bg-surface-card px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/45 disabled:cursor-not-allowed disabled:opacity-40"
               >

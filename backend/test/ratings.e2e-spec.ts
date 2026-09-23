@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
@@ -107,9 +107,9 @@ databaseDescribe('tournament ratings (real PostgreSQL)', () => {
       .send({ score, content: 'Good tournament' });
   const list = () => request(app.getHttpServer()).get(endpoint());
 
-  it('allows approved captains and linked members, and rejects ineligible accounts', async () => {
+  it('allows verified accounts and rejects organizer, guest, unverified and unfinished access', async () => {
     await post('organizer').expect(403);
-    await post('outsider').expect(403);
+    await post('outsider', 5).expect(201);
     await request(app.getHttpServer())
       .post(endpoint())
       .send({ score: 5 })
@@ -127,25 +127,20 @@ databaseDescribe('tournament ratings (real PostgreSQL)', () => {
       where: { id: teamId },
       data: { status: 'PENDING' },
     });
-    await post('captain').expect(403);
-    await prisma.team.update({
-      where: { id: teamId },
-      data: { status: 'APPROVED' },
-    });
+    await post('captain', 4).expect(201);
     await prisma.tournament.update({
       where: { id: tournamentId },
       data: { status: 'ONGOING' },
     });
-    await post('captain').expect(403);
+    await post('member').expect(403);
     await prisma.tournament.update({
       where: { id: tournamentId },
       data: { status: 'COMPLETED' },
     });
-    await post('captain', 5).expect(201);
     await post('member', 3).expect(201);
     expect((await list().expect(200)).body.data.summary).toEqual({
       average: 4,
-      count: 2,
+      count: 3,
     });
   });
   it('enforces one rating under concurrent requests and validates score/content', async () => {
@@ -174,7 +169,7 @@ databaseDescribe('tournament ratings (real PostgreSQL)', () => {
       .patch(`${endpoint()}/me`)
       .auth(users.outsider.token, { type: 'bearer' })
       .send({ score: 4 })
-      .expect(403);
+      .expect(404);
     await request(app.getHttpServer())
       .delete(`${endpoint()}/me`)
       .auth(users.outsider.token, { type: 'bearer' })

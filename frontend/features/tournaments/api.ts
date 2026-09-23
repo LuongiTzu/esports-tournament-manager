@@ -43,6 +43,7 @@ export const tournamentsApi = {
     if (params.search) query.set("search", params.search);
     if (params.gameId) query.set("gameId", params.gameId);
     if (params.status) query.set("status", params.status);
+    if (params.sort) query.set("sort", params.sort);
     if (params.page) query.set("page", String(params.page));
     if (params.limit) query.set("limit", String(params.limit));
     const search = query.toString();
