@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
+  CaretDownIcon,
   CheckCircleIcon,
   CircleNotchIcon,
+  LockSimpleIcon,
   NotePencilIcon,
   PlusIcon,
   TrashIcon,
-  UsersThreeIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react";
 import ImageUploadPicker from "@/components/ImageUploadPicker";
@@ -33,6 +34,8 @@ import type {
 import { tournamentsApi } from "@/features/tournaments/api";
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { ApiError } from "@/lib/api/client";
+import TeamRoster from "../TeamRoster";
+import styles from "../TeamProfile.module.css";
 
 type EditorMode = { kind: "add" } | { kind: "edit"; member: TeamMember };
 
@@ -102,6 +105,7 @@ function MemberEditor({
 }) {
   const { locale, t } = useLocale();
   const member = mode.kind === "edit" ? mode.member : undefined;
+  const formRef = useRef<HTMLFormElement>(null);
   const [form, setForm] = useState(() => memberForm(member));
   const [avatar, setAvatar] = useState<File | null>(null);
   const [working, setWorking] = useState(false);
@@ -119,6 +123,11 @@ function MemberEditor({
   const genderOptions = tournament.allowedGenders?.length
     ? tournament.allowedGenders
     : GENDERS;
+
+  useEffect(() => {
+    formRef.current?.scrollIntoView({ block: "nearest" });
+    formRef.current?.querySelector("input")?.focus({ preventScroll: true });
+  }, []);
 
   const setField = (field: keyof MemberFormState, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -175,8 +184,9 @@ function MemberEditor({
 
   return (
     <form
+      ref={formRef}
       onSubmit={submit}
-      className="mt-5 rounded-xl border border-brand/25 bg-surface-sub/45 p-4 sm:p-5"
+      className="mb-6 scroll-mt-24 rounded-lg border border-accent/30 bg-surface-sub/45 p-4 sm:p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -507,18 +517,20 @@ export default function TeamManagementPanel({
 
   return (
     <section
+      id="team-roster"
       aria-labelledby="team-management"
-      className="mt-8 rounded-2xl border border-brand/30 bg-surface-card p-5 sm:p-6"
+      className={`${styles.panel} p-5 sm:p-6`}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-brand">
-            {t("teamManage.eyebrow")}
-          </p>
+          <p className={styles.eyebrow}>{t("teamManage.eyebrow")}</p>
           <h2 id="team-management" className="mt-1 text-xl font-bold text-ink">
-            {t("teamManage.title")}
+            {t("teamDetail.roster")}
+            <span className="ml-2 font-mono text-sm font-normal text-ink-faint">
+              {team.members.length}
+            </span>
           </h2>
-          <p className="mt-1 text-sm text-ink-muted">
+          <p className="mt-2 text-xs leading-5 text-ink-muted">
             {t(
               isOrganizer
                 ? "teamManage.organizerHint"
@@ -526,11 +538,30 @@ export default function TeamManagementPanel({
             )}
           </p>
         </div>
+      </div>
+      <div className="mt-5 flex flex-wrap gap-2 border-b border-line pb-5">
         <button
           type="button"
-          className={secondaryButtonClass}
-          disabled={!registrationEditable || Boolean(working)}
-          onClick={() => setProfileOpen((value) => !value)}
+          className={styles.button}
+          disabled={
+            !registrationEditable || Boolean(working) || Boolean(editor)
+          }
+          aria-expanded={profileOpen}
+          aria-controls="team-profile-editor"
+          onClick={() => {
+            if (!profileOpen) {
+              setProfile({
+                name: team.name,
+                shortName: team.shortName ?? "",
+                description: team.description ?? "",
+                contactName: team.contactName,
+                contactEmail: team.contactEmail ?? "",
+                contactPhone: team.contactPhone ?? "",
+              });
+              setLogo(null);
+            }
+            setProfileOpen((value) => !value);
+          }}
           title={
             tournament && !registrationEditable
               ? t("teamManage.registrationLocked")
@@ -539,6 +570,20 @@ export default function TeamManagementPanel({
         >
           <NotePencilIcon aria-hidden />
           {t("teamManage.editProfile")}
+        </button>
+        <button
+          type="button"
+          disabled={
+            !registrationEditable ||
+            Boolean(working) ||
+            Boolean(editor) ||
+            profileOpen
+          }
+          onClick={() => setEditor({ kind: "add" })}
+          className={`${styles.button} ${styles.primary}`}
+        >
+          <PlusIcon aria-hidden />
+          {t("teamManage.addMember")}
         </button>
       </div>
 
@@ -559,7 +604,14 @@ export default function TeamManagementPanel({
       )}
 
       {profileOpen && (
-        <form onSubmit={saveProfile} className="mt-5 border-t border-line pt-5">
+        <form
+          id="team-profile-editor"
+          onSubmit={saveProfile}
+          className="mt-5 rounded-lg border border-accent/30 bg-surface-sub/45 p-4 sm:p-5"
+        >
+          <h3 className="mb-5 font-bold text-ink">
+            {t("teamManage.editProfile")}
+          </h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={labelClass}>
               {t("teamManage.name")}
@@ -689,31 +741,12 @@ export default function TeamManagementPanel({
         </form>
       )}
 
-      <div className="mt-6 border-t border-line pt-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 className="flex items-center gap-2 font-bold">
-              <UsersThreeIcon />
-              {t("teamManage.rosterTitle")}
-            </h3>
-            <p className="mt-1 text-xs text-ink-muted">
-              {t("teamManage.rosterHint")}
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={
-              !registrationEditable || Boolean(working) || Boolean(editor)
-            }
-            onClick={() => setEditor({ kind: "add" })}
-            className={secondaryButtonClass}
-          >
-            <PlusIcon />
-            {t("teamManage.addMember")}
-          </button>
-        </div>
+      <div className="mt-5">
         {configError && (
-          <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-rejected">
+          <div
+            role="alert"
+            className="mb-5 flex flex-wrap items-center gap-3 text-sm text-rejected"
+          >
             <span>{configError}</span>
             <button
               type="button"
@@ -727,57 +760,32 @@ export default function TeamManagementPanel({
             </button>
           </div>
         )}
-        {tournament && !registrationEditable && (
-          <p className="mt-4 rounded-lg border border-pending/30 bg-pending/10 p-3 text-sm text-pending">
-            {t("teamManage.registrationLocked")}
+        {!tournament && !configError && (
+          <p
+            role="status"
+            className="mb-5 flex items-center gap-2 text-xs text-ink-muted"
+          >
+            <CircleNotchIcon className="motion-safe:animate-spin" aria-hidden />
+            {t("common.loading")}
           </p>
         )}
-        <ul className="mt-4 space-y-3">
-          {team.members.map((member) => (
-            <li
-              key={member.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-sub/45 p-4"
-            >
-              <div className="min-w-0">
-                <p className="break-words font-semibold">
-                  {member.ign || member.realName}
-                </p>
-                <p className="mt-1 text-xs text-ink-muted">
-                  {member.realName} ·{" "}
-                  {t(
-                    `registration.role.${member.memberRole}` as TranslationKey,
-                  )}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={
-                    !registrationEditable || Boolean(working) || Boolean(editor)
-                  }
-                  onClick={() => setEditor({ kind: "edit", member })}
-                  className="rounded-lg border border-line px-3 py-2 text-xs font-semibold hover:border-brand"
-                >
-                  {t("common.edit")}
-                </button>
-                <button
-                  type="button"
-                  aria-label={`${t("teamManage.removeMemberConfirm").replace("{name}", member.ign || member.realName)}`}
-                  disabled={
-                    !registrationEditable ||
-                    member.memberRole === "CAPTAIN" ||
-                    Boolean(working) ||
-                    Boolean(editor)
-                  }
-                  onClick={() => void removeMember(member)}
-                  className="rounded-lg border border-rejected/35 px-3 py-2 text-xs font-semibold text-rejected disabled:opacity-40"
-                >
-                  <TrashIcon aria-hidden />
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {tournament && !registrationEditable && (
+          <div className="mb-5 flex gap-3 rounded-lg border border-line bg-surface-sub/60 p-3.5 text-ink-muted">
+            <LockSimpleIcon
+              size={18}
+              aria-hidden
+              className="mt-0.5 shrink-0 text-accent"
+            />
+            <div>
+              <p className="text-xs font-semibold text-ink">
+                {t("teamManage.readOnly")}
+              </p>
+              <p className="mt-1 text-xs leading-5">
+                {t("teamManage.registrationLocked")}
+              </p>
+            </div>
+          </div>
+        )}
         {editor && tournament && (
           <MemberEditor
             key={editor.kind === "edit" ? editor.member.id : "add"}
@@ -789,19 +797,72 @@ export default function TeamManagementPanel({
             onCancel={() => setEditor(null)}
           />
         )}
+        <TeamRoster
+          members={team.members}
+          sensitive={team.canViewSensitiveInfo}
+          renderActions={
+            registrationEditable
+              ? (member) => (
+                  <>
+                    <button
+                      type="button"
+                      disabled={
+                        Boolean(working) || Boolean(editor) || profileOpen
+                      }
+                      aria-label={`${t("common.edit")}: ${member.ign || member.realName}`}
+                      onClick={() => setEditor({ kind: "edit", member })}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-3 text-xs font-semibold text-ink-muted transition-colors hover:bg-surface-card hover:text-accent focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <NotePencilIcon size={15} aria-hidden />
+                      {t("common.edit")}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={t("teamManage.removeMemberConfirm").replace(
+                        "{name}",
+                        member.ign || member.realName,
+                      )}
+                      disabled={
+                        member.memberRole === "CAPTAIN" ||
+                        Boolean(working) ||
+                        Boolean(editor) ||
+                        profileOpen
+                      }
+                      onClick={() => void removeMember(member)}
+                      className="grid size-10 place-items-center rounded-md text-ink-faint transition-colors hover:bg-rejected/10 hover:text-rejected focus-visible:outline-2 focus-visible:outline-rejected disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      {working === member.id ? (
+                        <CircleNotchIcon
+                          aria-hidden
+                          className="motion-safe:animate-spin"
+                        />
+                      ) : (
+                        <TrashIcon size={16} aria-hidden />
+                      )}
+                    </button>
+                  </>
+                )
+              : undefined
+          }
+        />
       </div>
 
-      <div className="mt-7 border-t border-rejected/25 pt-5">
-        <h3 className="font-bold text-rejected">
+      <details className="mt-6 border-t border-line pt-2">
+        <summary className={styles.detailSummary}>
+          <WarningCircleIcon size={16} aria-hidden />
           {t("teamManage.dangerTitle")}
-        </h3>
+          <CaretDownIcon size={14} aria-hidden />
+        </summary>
         <p className="mt-1 text-sm text-ink-muted">
           {t(isOrganizer ? "teamManage.deleteHint" : "teamManage.withdrawHint")}
         </p>
         <button
           type="button"
           disabled={
-            Boolean(working) || (isCaptain && team.status !== "PENDING")
+            Boolean(working) ||
+            Boolean(editor) ||
+            profileOpen ||
+            (isCaptain && team.status !== "PENDING")
           }
           onClick={() => void removeTeam()}
           className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg border border-rejected/40 px-4 py-2 text-sm font-semibold text-rejected hover:bg-rejected/10 disabled:opacity-40"
@@ -818,7 +879,7 @@ export default function TeamManagementPanel({
             {t("teamManage.withdrawLocked")}
           </p>
         )}
-      </div>
+      </details>
     </section>
   );
 }

@@ -4,14 +4,18 @@ import { use, useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   CalendarBlankIcon,
+  CalendarCheckIcon,
+  CalendarPlusIcon,
   ClockIcon,
   CrownIcon,
   EnvelopeSimpleIcon,
+  FlagCheckeredIcon,
   GameControllerIcon,
   GearSixIcon,
   GlobeHemisphereWestIcon,
   LinkSimpleIcon,
   PhoneIcon,
+  PlayIcon,
   SealCheckIcon,
   ShieldCheckIcon,
   StarIcon,
@@ -80,6 +84,36 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
       </dt>
       <dd className="mt-1 text-sm font-semibold text-ink">{value}</dd>
     </div>
+  );
+}
+
+function ScheduleMilestone({
+  icon,
+  label,
+  value,
+  isLast = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+  isLast?: boolean;
+}) {
+  return (
+    <li className="relative flex gap-4 pb-6 last:pb-0">
+      {!isLast && (
+        <span
+          aria-hidden="true"
+          className="absolute bottom-0 left-[17px] top-9 border-l border-dashed border-accent/35"
+        />
+      )}
+      <span className="relative z-10 grid size-9 shrink-0 place-items-center rounded-full border border-accent/35 bg-surface-card text-accent">
+        {icon}
+      </span>
+      <div className="min-w-0 pt-0.5">
+        <p className="text-sm font-bold text-ink">{label}</p>
+        <p className="mt-1 text-sm text-ink-muted">{value}</p>
+      </div>
+    </li>
   );
 }
 
@@ -556,12 +590,9 @@ export default function TournamentDetailPage({
               title={t("tournament.detail.schedule")}
               icon={<CalendarBlankIcon size={19} weight="duotone" />}
             >
-              <dl className="space-y-5 text-sm">
-                <Fact
-                  label={t("tournament.detail.tournamentDates")}
-                  value={eventDates}
-                />
-                <Fact
+              <ol>
+                <ScheduleMilestone
+                  icon={<CalendarPlusIcon size={17} weight="duotone" />}
                   label={t("tournament.detail.registrationStarts")}
                   value={
                     tournament.registrationStartDate
@@ -569,7 +600,8 @@ export default function TournamentDetailPage({
                       : t("common.notSet")
                   }
                 />
-                <Fact
+                <ScheduleMilestone
+                  icon={<CalendarCheckIcon size={17} weight="duotone" />}
                   label={t("tournament.detail.registrationDeadline")}
                   value={
                     tournament.registrationDeadline
@@ -577,7 +609,26 @@ export default function TournamentDetailPage({
                       : t("tournament.detail.registrationNoDeadline")
                   }
                 />
-              </dl>
+                <ScheduleMilestone
+                  icon={<PlayIcon size={17} weight="fill" />}
+                  label={t("tournament.detail.tournamentStarts")}
+                  value={
+                    tournament.startDate
+                      ? formatDateTime(tournament.startDate)
+                      : t("common.notSet")
+                  }
+                />
+                <ScheduleMilestone
+                  icon={<FlagCheckeredIcon size={17} weight="duotone" />}
+                  label={t("tournament.detail.tournamentEnds")}
+                  value={
+                    tournament.endDate
+                      ? formatDateTime(tournament.endDate)
+                      : t("common.notSet")
+                  }
+                  isLast
+                />
+              </ol>
             </EventCard>
 
             {tournament.prizePool && (
