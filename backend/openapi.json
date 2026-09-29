@@ -304,7 +304,51 @@
     "/api/admin/tournaments": {
       "get": {
         "operationId": "AdminController_listTournaments",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "gameId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "REGISTRATION",
+                "ONGOING",
+                "COMPLETED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "moderationStatus",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "HIDDEN_BY_ADMIN"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -351,10 +395,31 @@
     "/api/admin/reports": {
       "get": {
         "operationId": "AdminController_listReports",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "REVIEWED",
+                "DISMISSED"
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -398,10 +463,34 @@
     "/api/admin/comments": {
       "get": {
         "operationId": "AdminController_listComments",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "isHidden",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -481,7 +570,20 @@
     "/api/admin/stats": {
       "get": {
         "operationId": "AdminController_stats",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "periodDays",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "enum": [
+                7,
+                30
+              ]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -641,7 +743,14 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -728,7 +837,54 @@
     "/api/admin/users": {
       "get": {
         "operationId": "AdminController_listUsers",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isLocked",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ADMIN",
+                "SIGNED_UP_USER"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -753,7 +909,7 @@
           },
           {
             "name": "isLocked",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "type": "string"
@@ -822,7 +978,7 @@
         "parameters": [
           {
             "name": "tab",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "type": "string"
@@ -831,7 +987,17 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -872,7 +1038,100 @@
     "/api/tournaments": {
       "get": {
         "operationId": "TournamentsController_findAll",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "gameId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "REGISTRATION",
+                "ONGOING",
+                "COMPLETED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "mode",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ONLINE",
+                "OFFLINE",
+                "HYBRID"
+              ]
+            }
+          },
+          {
+            "name": "isVerified",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "recommended",
+                "name",
+                "newest",
+                "teams"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Public Tournament page; every item includes derived favoriteCount and viewer-specific isFavorited.",
@@ -913,7 +1172,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -1101,6 +1367,45 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "action",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ROUND_STRUCTURE_GENERATED",
+                "ROUND_STRUCTURE_REGENERATED",
+                "ROUND_SEEDS_UPDATED",
+                "ROUND_ADVANCEMENT_CONFIRMED",
+                "SWISS_ITERATION_GENERATED",
+                "MATCH_RESULT_RECORDED",
+                "MATCH_RESULT_CORRECTED",
+                "DOWNSTREAM_RESET",
+                "ROUND_DELETED",
+                "FINAL_STANDINGS_CONFIRMED",
+                "ADMIN_OVERRIDE_ACTION"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
           }
         ],
         "responses": {
@@ -1174,7 +1479,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -1275,6 +1587,39 @@
         ]
       }
     },
+    "/api/rounds/{id}/settings": {
+      "patch": {
+        "operationId": "BracketsController_updateSettings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoundSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "brackets"
+        ]
+      }
+    },
     "/api/rounds/{id}/generate": {
       "post": {
         "operationId": "BracketsController_generate",
@@ -1286,6 +1631,12 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "force",
+            "required": false,
+            "in": "query",
+            "schema": {}
           }
         ],
         "requestBody": {
@@ -1319,6 +1670,12 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "force",
+            "required": false,
+            "in": "query",
+            "schema": {}
           }
         ],
         "responses": {
@@ -1388,6 +1745,16 @@
           }
         },
         "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
           "409": {
             "description": "A manual organizer decision is required at a qualification tie boundary"
           }
@@ -1444,6 +1811,9 @@
           }
         },
         "responses": {
+          "201": {
+            "description": ""
+          },
           "409": {
             "description": "The reset preview is stale, no downstream data exists, or the Tournament is locked"
           }
@@ -1527,6 +1897,9 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": ""
+          },
           "409": {
             "description": "Round is not the unused final Round, or its Tournament is no longer mutable"
           }
@@ -1551,7 +1924,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -1595,7 +1975,34 @@
     "/api/users/me/notifications": {
       "get": {
         "operationId": "NotificationController_findMine",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "isRead",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -1732,6 +2139,24 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
           }
         ],
         "responses": {
@@ -1782,7 +2207,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -1898,7 +2330,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -1920,7 +2359,7 @@
           },
           {
             "name": "status",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "type": "string"
@@ -1929,7 +2368,17 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -1960,7 +2409,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -1983,7 +2439,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2107,7 +2570,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2191,7 +2661,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2222,7 +2699,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2276,7 +2760,14 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2348,7 +2839,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2377,7 +2875,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2410,7 +2915,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2433,7 +2945,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2521,7 +3040,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2748,6 +3274,206 @@
           "uploads"
         ]
       }
+    },
+    "/api/tournaments/{slug}/ratings": {
+      "get": {
+        "operationId": "RatingController_list",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Rating"
+        ]
+      },
+      "post": {
+        "operationId": "RatingController_create",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRatingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Rating"
+        ]
+      }
+    },
+    "/api/tournaments/{slug}/ratings/me": {
+      "patch": {
+        "operationId": "RatingController_update",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRatingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Rating"
+        ]
+      },
+      "delete": {
+        "operationId": "RatingController_remove",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Rating"
+        ]
+      }
+    },
+    "/api/admin/ratings": {
+      "get": {
+        "operationId": "AdminRatingController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "isHidden",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdminRating"
+        ]
+      }
+    },
+    "/api/admin/ratings/{id}/moderation": {
+      "patch": {
+        "operationId": "AdminRatingController_moderate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModerateRatingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdminRating"
+        ]
+      }
     }
   },
   "info": {
@@ -2769,13 +3495,58 @@
     "schemas": {
       "RegisterDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 50
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50
+          },
+          "birthDate": {
+            "type": "string"
+          },
+          "currentAddress": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "phoneNumber": {
+            "type": "string",
+            "pattern": "^[0-9+\\-\\s]{9,15}$"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "OTHER"
+            ]
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "displayName"
+        ]
       },
       "VerifyEmailDto": {
         "type": "object",
         "properties": {
           "token": {
             "type": "string",
+            "minLength": 40,
+            "maxLength": 200,
             "description": "Token một lần nhận trong email xác minh"
           }
         },
@@ -2788,6 +3559,7 @@
         "properties": {
           "email": {
             "type": "string",
+            "format": "email",
             "example": "player@example.com"
           }
         },
@@ -2797,33 +3569,93 @@
       },
       "LoginDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
       },
       "GoogleLoginDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "credential": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "credential"
+        ]
       },
       "ChangePasswordDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 6
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 50,
+            "pattern": "^(?=.*[A-Za-z])(?=.*\\d).+$"
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
       },
       "ForgotPasswordDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
       },
       "ResetPasswordDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 50,
+            "pattern": "^(?=.*[A-Za-z])(?=.*\\d).+$"
+          }
+        },
+        "required": [
+          "token",
+          "newPassword"
+        ]
       },
       "RequestEmailChangeDto": {
         "type": "object",
         "properties": {
           "newEmail": {
             "type": "string",
+            "format": "email",
             "example": "new-email@example.com"
           },
           "currentPassword": {
             "type": "string",
+            "minLength": 6,
+            "maxLength": 50,
             "description": "Bắt buộc với tài khoản có mật khẩu"
           }
         },
@@ -2836,6 +3668,8 @@
         "properties": {
           "token": {
             "type": "string",
+            "minLength": 40,
+            "maxLength": 200,
             "description": "Token một lần nhận tại email mới"
           }
         },
@@ -2845,35 +3679,116 @@
       },
       "ModerateTournamentDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "moderationStatus": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "HIDDEN_BY_ADMIN"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "moderationStatus"
+        ]
       },
       "ReviewReportDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "REVIEWED",
+              "DISMISSED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
       },
       "VerifyTournamentDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "isVerified": {
+            "type": "boolean"
+          }
+        }
       },
       "SetTournamentOfficialDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "isOfficial": {
+            "type": "boolean"
+          }
+        }
       },
       "StartTournamentAdminOverrideDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ]
       },
       "CreateBannedKeywordDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "GAMBLING",
+              "PROFANITY",
+              "MALICIOUS_LINK"
+            ]
+          }
+        },
+        "required": [
+          "keyword",
+          "category"
+        ]
       },
       "UpdateBannedKeywordDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "GAMBLING",
+              "PROFANITY",
+              "MALICIOUS_LINK"
+            ]
+          }
+        }
       },
       "LockUserDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "isLocked": {
+            "type": "boolean"
+          }
+        }
       },
       "TournamentFavoriteViewFieldsDto": {
         "type": "object",
@@ -2895,7 +3810,40 @@
       },
       "UpdateProfileDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50
+          },
+          "avatarUrl": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "birthDate": {
+            "type": "string"
+          },
+          "currentAddress": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "phoneNumber": {
+            "type": "string",
+            "pattern": "^[0-9+\\-\\s]{9,15}$"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "OTHER"
+            ]
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
       },
       "TournamentFavoriteMutationResultDto": {
         "type": "object",
@@ -2915,6 +3863,45 @@
           "favoriteCount"
         ]
       },
+      "CreateRoundDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "format": {
+            "enum": [
+              "ROUND_ROBIN",
+              "GROUP_STAGE",
+              "SWISS",
+              "PLAYOFF",
+              "DOUBLE_ELIM"
+            ],
+            "type": "string"
+          },
+          "bestOf": {
+            "type": "number",
+            "enum": [
+              1,
+              3,
+              5,
+              7,
+              9
+            ],
+            "minimum": 1,
+            "maximum": 9
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "name",
+          "format"
+        ]
+      },
       "CreateTournamentDto": {
         "type": "object",
         "properties": {
@@ -2924,30 +3911,279 @@
           },
           "teamSize": {
             "type": "number",
-            "description": "Số người thi đấu chính mỗi bên; backend kiểm tra theo metadata của Game",
             "minimum": 1,
-            "maximum": 50
+            "maximum": 50,
+            "description": "Số người thi đấu chính mỗi bên; backend kiểm tra theo metadata của Game"
           },
           "customGameName": {
             "type": "string",
-            "description": "Tên game do organizer đặt khi chọn canonical game CUSTOM",
-            "maxLength": 100
+            "maxLength": 100,
+            "description": "Tên game do organizer đặt khi chọn canonical game CUSTOM"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "gameId": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "rules": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "bannerUrl": {
+            "type": "string",
+            "maxLength": 500,
+            "format": "uri"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "OFFLINE",
+              "HYBRID"
+            ]
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "REGISTRATION",
+              "ONGOING",
+              "COMPLETED",
+              "CANCELLED"
+            ]
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "PRIVATE"
+            ]
+          },
+          "registrationOpen": {
+            "type": "boolean"
+          },
+          "maxTeams": {
+            "type": "number",
+            "minimum": 2,
+            "maximum": 256
+          },
+          "maxTeamSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "minAge": {
+            "type": "number",
+            "minimum": 5,
+            "maximum": 100
+          },
+          "maxAge": {
+            "type": "number",
+            "minimum": 5,
+            "maximum": 100
+          },
+          "allowedGenders": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "MALE",
+                "FEMALE",
+                "OTHER"
+              ]
+            }
+          },
+          "registrationStartDate": {
+            "type": "string"
+          },
+          "registrationDeadline": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "autoApproveTeams": {
+            "type": "boolean"
+          },
+          "requireMemberFullInfo": {
+            "type": "boolean"
+          },
+          "prizePool": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "contactEmail": {
+            "type": "string",
+            "format": "email"
+          },
+          "contactPhone": {
+            "type": "string",
+            "pattern": "^(0|\\+84)[0-9]{9}$"
+          },
+          "contactLink": {
+            "type": "string",
+            "maxLength": 500,
+            "format": "uri"
+          },
+          "rounds": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateRoundDto"
+            }
           }
-        }
+        },
+        "required": [
+          "name",
+          "gameId"
+        ]
       },
       "UpdateTournamentDto": {
         "type": "object",
         "properties": {
           "teamSize": {
             "type": "number",
-            "description": "Số người thi đấu chính mỗi bên; backend kiểm tra theo metadata của Game",
             "minimum": 1,
-            "maximum": 50
+            "maximum": 50,
+            "description": "Số người thi đấu chính mỗi bên; backend kiểm tra theo metadata của Game"
           },
           "customGameName": {
             "type": "string",
-            "description": "Tên game do organizer đặt khi chọn canonical game CUSTOM",
-            "maxLength": 100
+            "maxLength": 100,
+            "description": "Tên game do organizer đặt khi chọn canonical game CUSTOM"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 150
+          },
+          "gameId": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "rules": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "bannerUrl": {
+            "type": "string",
+            "maxLength": 500,
+            "format": "uri"
+          },
+          "mode": {
+            "enum": [
+              "ONLINE",
+              "OFFLINE",
+              "HYBRID"
+            ],
+            "type": "string"
+          },
+          "location": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "REGISTRATION",
+              "ONGOING",
+              "COMPLETED",
+              "CANCELLED"
+            ],
+            "type": "string"
+          },
+          "visibility": {
+            "enum": [
+              "PUBLIC",
+              "PRIVATE"
+            ],
+            "type": "string"
+          },
+          "registrationOpen": {
+            "type": "boolean"
+          },
+          "maxTeams": {
+            "type": "number",
+            "minimum": 2,
+            "maximum": 256
+          },
+          "maxTeamSize": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "minAge": {
+            "type": "number",
+            "minimum": 5,
+            "maximum": 100
+          },
+          "maxAge": {
+            "type": "number",
+            "minimum": 5,
+            "maximum": 100
+          },
+          "allowedGenders": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "MALE",
+                "FEMALE",
+                "OTHER"
+              ]
+            }
+          },
+          "registrationStartDate": {
+            "type": "string"
+          },
+          "registrationDeadline": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "autoApproveTeams": {
+            "type": "boolean"
+          },
+          "requireMemberFullInfo": {
+            "type": "boolean"
+          },
+          "prizePool": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "contactEmail": {
+            "type": "string",
+            "format": "email"
+          },
+          "contactPhone": {
+            "type": "string",
+            "pattern": "^(0|\\+84)[0-9]{9}$"
+          },
+          "contactLink": {
+            "type": "string",
+            "maxLength": 500,
+            "format": "uri"
           }
         }
       },
@@ -2960,59 +4196,321 @@
           }
         }
       },
-      "CreateRoundDto": {
+      "UpdateRoundSettingsDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "settings": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "settings"
+        ]
       },
       "GenerateRoundDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "previewToken": {
+            "type": "string",
+            "maxLength": 64
+          }
+        }
+      },
+      "SeedAssignmentDto": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string"
+          },
+          "seed": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "teamId",
+          "seed"
+        ]
       },
       "UpdateSeedsDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "seeds": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SeedAssignmentDto"
+            }
+          }
+        },
+        "required": [
+          "seeds"
+        ]
       },
       "AdvanceRoundDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "qualifiedTeamIds": {
+            "uniqueItems": true,
+            "minItems": 1,
+            "maxItems": 256,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       },
       "ResetDownstreamDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "previewToken": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "previewToken"
+        ]
       },
       "CreateTournamentNotificationDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "SCHEDULE_CHANGE",
+              "SCORE_UPDATE",
+              "TEAM_REGISTERED",
+              "TEAM_APPROVED",
+              "TEAM_REJECTED",
+              "TOURNAMENT_STATUS",
+              "REPORT_THRESHOLD",
+              "ADMIN_WARNING",
+              "COMMENT_REPLY",
+              "SYSTEM"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "WHOLE_TOURNAMENT",
+              "TEAM"
+            ]
+          },
+          "teamId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "content",
+          "scope"
+        ]
       },
       "CreateReportDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "OTHER",
+              "GAMBLING",
+              "MINOR_SAFETY",
+              "HARASSMENT_OR_HATE",
+              "VIOLENCE_OR_SELF_HARM",
+              "RESTRICTED_GOODS",
+              "ADULT_CONTENT",
+              "SCAM",
+              "INTELLECTUAL_PROPERTY",
+              "SPAM_OR_MALICIOUS_LINKS",
+              "INAPPROPRIATE_CONTENT"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "reason"
+        ]
       },
       "CreateCommentDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "replyToCommentId": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "TeamMemberInputDto": {
+        "type": "object",
+        "properties": {
+          "realName": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "ign": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "inGameId": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "birthDate": {
+            "type": "string"
+          },
+          "gender": {
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "OTHER"
+            ],
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "position": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "memberRole": {
+            "enum": [
+              "CAPTAIN",
+              "PLAYER",
+              "SUBSTITUTE",
+              "COACH",
+              "MANAGER"
+            ],
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "orderIndex": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "realName",
+          "ign"
+        ]
       },
       "RegisterTeamDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "shortName": {
+            "type": "string",
+            "maxLength": 10
+          },
+          "logoUrl": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "contactName": {
+            "type": "string",
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "contactEmail": {
+            "type": "string",
+            "format": "email"
+          },
+          "contactPhone": {
+            "type": "string",
+            "maxLength": 20,
+            "pattern": "\\S"
+          },
+          "members": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberInputDto"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "contactName",
+          "contactEmail",
+          "contactPhone",
+          "members"
+        ]
       },
       "CreateTeamInvitationDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 320,
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
       },
       "AcceptTeamInvitationDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "team": {
+            "$ref": "#/components/schemas/RegisterTeamDto"
+          }
+        },
+        "required": [
+          "token",
+          "team"
+        ]
       },
       "AcceptAccountLinkInvitationDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ]
       },
       "UpdateTeamDto": {
-        "type": "object",
-        "properties": {}
-      },
-      "TeamMemberInputDto": {
         "type": "object",
         "properties": {}
       },
@@ -3022,23 +4520,179 @@
       },
       "UpdateTeamStatusDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "rejectReason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "BulkScheduleItemDto": {
+        "type": "object",
+        "properties": {
+          "matchId": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "matchId",
+          "scheduledAt"
+        ]
       },
       "BulkScheduleDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "matches": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkScheduleItemDto"
+            }
+          }
+        },
+        "required": [
+          "matches"
+        ]
       },
       "UpdateMatchDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "scoreA": {
+            "type": "number",
+            "minimum": 0
+          },
+          "scoreB": {
+            "type": "number",
+            "minimum": 0
+          },
+          "scheduledAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "discordLink": {
+            "type": "string",
+            "nullable": true,
+            "format": "uri"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "ONGOING",
+              "COMPLETED"
+            ]
+          }
+        }
+      },
+      "MatchScoreDto": {
+        "type": "object",
+        "properties": {
+          "setNumber": {
+            "type": "number",
+            "minimum": 1
+          },
+          "teamAScore": {
+            "type": "number",
+            "minimum": 0
+          },
+          "teamBScore": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "setNumber",
+          "teamAScore",
+          "teamBScore"
+        ]
       },
       "PutMatchScoresDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "scores": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchScoreDto"
+            }
+          }
+        },
+        "required": [
+          "scores"
+        ]
       },
       "CreateManualMatchDto": {
         "type": "object",
-        "properties": {}
+        "properties": {
+          "teamAId": {
+            "type": "string"
+          },
+          "teamBId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "bestOf": {
+            "type": "number",
+            "minimum": 1
+          },
+          "scheduledAt": {
+            "type": "string"
+          },
+          "discordLink": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "SaveRatingDto": {
+        "type": "object",
+        "properties": {
+          "score": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "score"
+        ]
+      },
+      "ModerateRatingDto": {
+        "type": "object",
+        "properties": {
+          "isHidden": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "isHidden"
+        ]
       }
     }
   }

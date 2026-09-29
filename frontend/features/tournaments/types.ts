@@ -2,6 +2,10 @@ import type { Game, GameRef } from "@/features/games/types";
 import type { ApprovedTeam } from "@/features/teams/types";
 import type { Gender } from "@/shared/types/gender";
 import type { TournamentStatus } from "@/shared/types/tournament-status";
+import type {
+  CreateRoundContract,
+  CreateTournamentContract,
+} from "@/lib/api/contracts";
 
 export type { Paginated } from "@/shared/types/pagination";
 
@@ -50,35 +54,37 @@ export interface DoubleElimSettings {
   grandFinalReset: boolean;
 }
 
+type BestOf = NonNullable<CreateRoundContract["bestOf"]>;
+
 export type CreateRoundRequest =
   | {
       name: string;
       format: "ROUND_ROBIN";
-      bestOf: number;
+      bestOf: BestOf;
       settings: RoundRobinSettings;
     }
   | {
       name: string;
       format: "GROUP_STAGE";
-      bestOf: number;
+      bestOf: BestOf;
       settings: GroupStageSettings;
     }
   | {
       name: string;
       format: "SWISS";
-      bestOf: number;
+      bestOf: BestOf;
       settings: SwissSettings;
     }
   | {
       name: string;
       format: "PLAYOFF";
-      bestOf: number;
+      bestOf: BestOf;
       settings: PlayoffSettings;
     }
   | {
       name: string;
       format: "DOUBLE_ELIM";
-      bestOf: number;
+      bestOf: BestOf;
       settings: DoubleElimSettings;
     };
 
@@ -586,7 +592,18 @@ export interface UpdateTournamentLifecycleRequest {
   visibility?: TournamentVisibility;
 }
 
-export interface CreateTournamentRequest {
+export interface CreateTournamentRequest
+  extends Omit<
+    CreateTournamentContract,
+    | "visibility"
+    | "status"
+    | "mode"
+    | "maxTeamSize"
+    | "registrationOpen"
+    | "autoApproveTeams"
+    | "requireMemberFullInfo"
+    | "rounds"
+  > {
   isOfficial?: boolean;
   name: string;
   gameId: string;

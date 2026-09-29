@@ -1,6 +1,10 @@
 import type { GameGenre, GamePositionMode } from "@/features/games/types";
 import type { Gender } from "@/shared/types/gender";
 import type { TournamentStatus } from "@/shared/types/tournament-status";
+import type {
+  RegisterTeamContract,
+  TeamMemberInputContract,
+} from "@/lib/api/contracts";
 
 export type { Gender } from "@/shared/types/gender";
 
@@ -81,28 +85,10 @@ export interface TeamDetail extends Omit<TeamWithMembers, "contactEmail"> {
 
 export type ApprovedTeam = Omit<TeamWithMembers, "members">;
 
-export interface TeamMemberRegistration {
-  realName: string;
-  ign: string;
-  inGameId?: string;
-  birthDate?: string;
-  gender?: Gender;
-  email?: string;
-  phoneNumber?: string;
-  position?: string;
-  memberRole?: MemberRole;
-  avatarUrl?: string;
-  orderIndex?: number;
-}
+export type TeamMemberRegistration = TeamMemberInputContract;
 
-export interface TeamRegistration {
-  name: string;
-  shortName?: string;
-  logoUrl?: string;
-  description?: string;
-  contactName: string;
-  contactEmail: string;
-  contactPhone: string;
+export interface TeamRegistration
+  extends Omit<RegisterTeamContract, "members"> {
   members: TeamMemberRegistration[];
 }
 

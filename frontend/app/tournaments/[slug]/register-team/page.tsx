@@ -9,11 +9,8 @@ import {
   EnvelopeSimpleIcon,
   GameControllerIcon,
   PhoneIcon,
-  PlusIcon,
   ShieldCheckIcon,
-  TrashIcon,
   UserCircleIcon,
-  UsersThreeIcon,
 } from "@phosphor-icons/react";
 import ImageUploadPicker from "@/components/ImageUploadPicker";
 import ResolvedImage from "@/components/ResolvedImage";
@@ -28,101 +25,18 @@ import { useAuth } from "@/features/auth/store";
 import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
 import { isEmailNotVerifiedError } from "@/features/auth/email-verification";
 import { accentVars } from "@/features/games/game-accent";
-import { gamePositionLabel } from "@/features/games/position-labels";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { teamsApi } from "@/features/teams/api";
-import type {
-  Gender,
-  MemberRole,
-  TeamRegistrationForm,
-} from "@/features/teams/types";
+import TeamRosterFields from "@/features/teams/components/TeamRosterFields";
+import RegistrationFormSection from "@/features/teams/components/RegistrationFormSection";
+import {
+  initialMembers,
+  type MemberForm,
+} from "@/features/teams/registration-form";
+import type { TeamRegistrationForm } from "@/features/teams/types";
 import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 import { ApiError } from "@/lib/api/client";
-
-interface MemberForm {
-  realName: string;
-  ign: string;
-  email: string;
-  phoneNumber: string;
-  birthDate: string;
-  gender: "" | Gender;
-  position: string;
-  memberRole: Extract<MemberRole, "CAPTAIN" | "PLAYER" | "SUBSTITUTE">;
-}
-
-const GENDER_OPTIONS: Gender[] = ["MALE", "FEMALE", "OTHER"];
-
-function emptyMember(
-  memberRole: MemberForm["memberRole"] = "SUBSTITUTE",
-): MemberForm {
-  return {
-    realName: "",
-    ign: "",
-    email: "",
-    phoneNumber: "",
-    birthDate: "",
-    gender: "",
-    position: "",
-    memberRole,
-  };
-}
-
-function toDateInput(value: string | null): string {
-  return value ? value.slice(0, 10) : "";
-}
-
-function initialMembers(config: TeamRegistrationForm): MemberForm[] {
-  const captain = config.prefill.captainMember;
-  const firstMember: MemberForm = {
-    ...emptyMember("CAPTAIN"),
-    realName: captain.realName,
-    email: captain.email,
-    phoneNumber: captain.phoneNumber ?? "",
-    birthDate: toDateInput(captain.birthDate),
-    gender: captain.gender ?? "",
-  };
-
-  return Array.from({ length: config.tournament.minTeamSize }, (_, index) =>
-    index === 0 ? firstMember : emptyMember("PLAYER"),
-  );
-}
-
-function FormSection({
-  icon,
-  title,
-  description,
-  action,
-  children,
-}: {
-  icon: ReactNode;
-  title: string;
-  description?: string;
-  action?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="border border-line bg-surface-card/95 shadow-[0_14px_36px_rgb(0_0_0/0.1)]">
-      <div className="flex flex-col gap-4 border-b border-line bg-surface-sub/45 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center border border-accent/25 bg-accent/10 text-accent">
-            {icon}
-          </span>
-          <div className="min-w-0">
-            <h2 className="font-bold text-ink">{title}</h2>
-            {description && (
-              <p className="mt-1 text-sm leading-5 text-ink-muted">
-                {description}
-              </p>
-            )}
-          </div>
-        </div>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
 
 function Requirement({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -215,18 +129,6 @@ export default function RegisterTeamPage({
       cancelled = true;
     };
   }, [slug, invitationToken, manualMode, ready, user, router, t]);
-
-  const updateMember = (
-    index: number,
-    field: keyof MemberForm,
-    value: string,
-  ) => {
-    setMembers((current) =>
-      current.map((member, memberIndex) =>
-        memberIndex === index ? { ...member, [field]: value } : member,
-      ),
-    );
-  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -400,17 +302,6 @@ export default function RegisterTeamPage({
   }
 
   const rules = config.tournament;
-  const requiresBirthDate =
-    rules.requireMemberFullInfo ||
-    rules.minAge !== null ||
-    rules.maxAge !== null;
-  const requiresGender =
-    rules.requireMemberFullInfo || Boolean(rules.allowedGenders?.length);
-  const showsPosition =
-    config.game.positionMode !== "NONE" && config.game.positions.length > 0;
-  const genderOptions = rules.allowedGenders?.length
-    ? GENDER_OPTIONS.filter((option) => rules.allowedGenders?.includes(option))
-    : GENDER_OPTIONS;
   const bannerUrl = getTournamentBannerUrl(
     null,
     config.game.name,
@@ -602,7 +493,7 @@ export default function RegisterTeamPage({
           className="mx-auto mt-8 grid w-full max-w-7xl items-start gap-7 px-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_21rem] lg:px-8"
         >
           <main className="min-w-0 space-y-7">
-            <FormSection
+            <RegistrationFormSection
               icon={<UserCircleIcon size={21} weight="duotone" />}
               title={t("team.register.teamInfo")}
               description={t("team.register.subtitle")}
@@ -703,238 +594,13 @@ export default function RegisterTeamPage({
                   </div>
                 </div>
               </div>
-            </FormSection>
+            </RegistrationFormSection>
 
-            <FormSection
-              icon={<UsersThreeIcon size={21} weight="duotone" />}
-              title={t("team.register.memberList")}
-              description={`${t("team.register.rosterRequirement")}: ${rules.minTeamSize} - ${rules.maxTeamSize} ${t("team.register.rosterRangeSuffix")}`}
-              action={
-                members.length < rules.maxTeamSize ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setMembers((current) => [
-                        ...current,
-                        emptyMember("SUBSTITUTE"),
-                      ])
-                    }
-                    className={`${secondaryButtonClass} shrink-0 px-3 py-2 text-xs`}
-                  >
-                    <PlusIcon size={14} weight="bold" />
-                    {t("team.register.addMember")}
-                  </button>
-                ) : (
-                  <span className="shrink-0 border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink-muted">
-                    {t("team.register.full")} {rules.maxTeamSize}{" "}
-                    {t("team.register.rosterRangeSuffix")}
-                  </span>
-                )
-              }
-            >
-              <div className="space-y-4 p-5 sm:p-6">
-                {members.map((member, index) => (
-                  <article
-                    key={index}
-                    className="border border-line bg-surface-sub/55"
-                  >
-                    <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="grid size-8 shrink-0 place-items-center bg-accent text-xs font-black text-on-accent">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0">
-                          <h3 className="truncate text-sm font-bold text-ink">
-                            {index === 0
-                              ? t("team.register.captain")
-                              : `${t("team.register.member")} ${index + 1}`}
-                          </h3>
-                          <p className="mt-0.5 text-xs text-ink-faint">
-                            {t("team.register.memberDetails")}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="border border-line bg-surface px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
-                          {t(
-                            `registration.role.${member.memberRole}` as TranslationKey,
-                          )}
-                        </span>
-                        {index > 0 && members.length > rules.minTeamSize && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setMembers((current) =>
-                                current.filter(
-                                  (_, memberIndex) => memberIndex !== index,
-                                ),
-                              )
-                            }
-                            aria-label={`${t("team.register.removeMember")} ${index + 1}`}
-                            className="p-2 text-ink-faint transition-colors hover:bg-rejected/10 hover:text-rejected focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
-                          >
-                            <TrashIcon size={16} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
-                      <label className={labelClass}>
-                        {t("team.register.realName")}
-                        <input
-                          type="text"
-                          required
-                          maxLength={100}
-                          value={member.realName}
-                          onChange={(event) =>
-                            updateMember(index, "realName", event.target.value)
-                          }
-                          className={`${inputClass} mt-1 bg-surface`}
-                        />
-                      </label>
-                      <label className={labelClass}>
-                        {t("team.register.ign")}
-                        <input
-                          type="text"
-                          required
-                          maxLength={30}
-                          value={member.ign}
-                          onChange={(event) =>
-                            updateMember(index, "ign", event.target.value)
-                          }
-                          className={`${inputClass} mt-1 bg-surface`}
-                        />
-                      </label>
-                      <label className={labelClass}>
-                        {t("team.register.contactEmail")}
-                        <input
-                          type="email"
-                          value={member.email}
-                          onChange={(event) =>
-                            updateMember(index, "email", event.target.value)
-                          }
-                          className={`${inputClass} mt-1 bg-surface`}
-                        />
-                      </label>
-                      <label className={labelClass}>
-                        {t("team.register.contactPhone")}
-                        <input
-                          type="tel"
-                          maxLength={20}
-                          value={member.phoneNumber}
-                          onChange={(event) =>
-                            updateMember(
-                              index,
-                              "phoneNumber",
-                              event.target.value,
-                            )
-                          }
-                          className={`${inputClass} mt-1 bg-surface`}
-                        />
-                      </label>
-
-                      {requiresBirthDate && (
-                        <label className={labelClass}>
-                          {t("team.register.birthDateAria")}
-                          <input
-                            type="date"
-                            required
-                            value={member.birthDate}
-                            onChange={(event) =>
-                              updateMember(
-                                index,
-                                "birthDate",
-                                event.target.value,
-                              )
-                            }
-                            className={`${inputClass} mt-1 bg-surface`}
-                          />
-                        </label>
-                      )}
-
-                      {requiresGender && (
-                        <label className={labelClass}>
-                          {t("team.register.genderAria")}
-                          <select
-                            required
-                            value={member.gender}
-                            onChange={(event) =>
-                              updateMember(index, "gender", event.target.value)
-                            }
-                            className={`${inputClass} mt-1 bg-surface`}
-                          >
-                            <option value="">
-                              {t("team.register.selectGender")}
-                            </option>
-                            {genderOptions.map((option) => (
-                              <option key={option} value={option}>
-                                {t(
-                                  `auth.register.gender.${option.toLowerCase()}` as TranslationKey,
-                                )}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      )}
-
-                      {showsPosition && (
-                        <label className={labelClass}>
-                          {t("team.register.positionAria")}
-                          <select
-                            required={
-                              config.game.positionMode === "FIXED" &&
-                              member.memberRole !== "SUBSTITUTE"
-                            }
-                            value={member.position}
-                            onChange={(event) =>
-                              updateMember(
-                                index,
-                                "position",
-                                event.target.value,
-                              )
-                            }
-                            className={`${inputClass} mt-1 bg-surface`}
-                          >
-                            <option value="">
-                              {config.game.positionMode === "FIXED" &&
-                              member.memberRole !== "SUBSTITUTE"
-                                ? t("team.register.selectPosition")
-                                : t("team.register.noPosition")}
-                            </option>
-                            {config.game.positions.map((position) => {
-                              const usedByOtherActive = members.some(
-                                (other, otherIndex) =>
-                                  otherIndex !== index &&
-                                  other.memberRole !== "SUBSTITUTE" &&
-                                  other.position === position,
-                              );
-                              return (
-                                <option
-                                  key={position}
-                                  value={position}
-                                  disabled={
-                                    config.game.positionMode === "FIXED" &&
-                                    member.memberRole !== "SUBSTITUTE" &&
-                                    usedByOtherActive
-                                  }
-                                >
-                                  {gamePositionLabel(position, locale)}
-                                </option>
-                              );
-                            })}
-                          </select>
-                        </label>
-                      )}
-
-                      <p className={`${hintClass} sm:col-span-2`}>
-                        {t("team.register.optionalContacts")}
-                      </p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </FormSection>
+            <TeamRosterFields
+              config={config}
+              members={members}
+              onChange={setMembers}
+            />
           </main>
 
           <aside className="space-y-5 lg:sticky lg:top-24">

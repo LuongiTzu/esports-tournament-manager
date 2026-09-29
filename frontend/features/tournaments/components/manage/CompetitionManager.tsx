@@ -47,141 +47,19 @@ import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { useCompetitionInvalidation } from "@/features/tournaments/realtime";
 import CompetitionStageNavigation from "../competition/CompetitionStageNavigation";
 import { getTournamentBannerUrl } from "@/features/tournaments/banner";
+import CompetitionTieBreakPanels from "./CompetitionTieBreakPanels";
+import {
+  advancementErrorTranslationByCode,
+  downstreamResetErrorTranslationByCode,
+  finalizationErrorTranslationByCode,
+  generationErrorTranslationByCode,
+  parseChampionshipTieBreakDetails,
+  parseQualificationTieBreakDetails,
+  swissErrorTranslationByCode,
+} from "./competition-manager-errors";
 
 const generateStructureButtonClass =
   "inline-flex min-h-12 items-center justify-center gap-2.5 rounded-md bg-brand px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-brand shadow-[0_12px_30px_-14px_var(--color-brand)] transition hover:brightness-110 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50";
-
-const swissErrorTranslationByCode: Partial<Record<string, TranslationKey>> = {
-  TOURNAMENT_NOT_MUTABLE: "swiss.blocked.TOURNAMENT_NOT_MUTABLE",
-  ROUND_NOT_MUTABLE: "swiss.blocked.ROUND_NOT_MUTABLE",
-  SWISS_ITERATION_NOT_COMPLETE: "swiss.blocked.CURRENT_ITERATION_INCOMPLETE",
-  SWISS_ALL_ITERATIONS_COMPLETE: "swiss.blocked.ALL_ITERATIONS_COMPLETE",
-  SWISS_STRUCTURE_INVALID: "swiss.blocked.STRUCTURE_INVALID",
-};
-
-const generationErrorTranslationByCode: Partial<
-  Record<string, TranslationKey>
-> = {
-  TOURNAMENT_NOT_MUTABLE: "generation.blocked.TOURNAMENT_NOT_MUTABLE",
-  REGISTRATION_MUST_BE_CLOSED: "generation.blocked.REGISTRATION_MUST_BE_CLOSED",
-  PREVIOUS_ROUND_NOT_COMPLETE: "generation.blocked.PREVIOUS_ROUND_NOT_COMPLETE",
-  ROUND_PARTICIPANTS_NOT_READY:
-    "generation.blocked.ROUND_PARTICIPANTS_NOT_READY",
-  ROUND_PARTICIPANTS_INELIGIBLE:
-    "generation.blocked.ROUND_PARTICIPANTS_INELIGIBLE",
-  ROUND_SEQUENCE_INVALID: "generation.blocked.ROUND_SEQUENCE_INVALID",
-  ELIMINATION_MUST_BE_TERMINAL:
-    "generation.blocked.ELIMINATION_MUST_BE_TERMINAL",
-  ROUND_PREVIEW_STALE: "generation.blocked.ROUND_PREVIEW_STALE",
-};
-
-const advancementErrorTranslationByCode: Partial<
-  Record<string, TranslationKey>
-> = {
-  TOURNAMENT_NOT_MUTABLE: "advancement.error.TOURNAMENT_NOT_MUTABLE",
-  ROUND_NOT_MUTABLE: "advancement.error.ROUND_NOT_MUTABLE",
-  PREVIOUS_ROUND_NOT_COMPLETE: "advancement.error.PREVIOUS_ROUND_NOT_COMPLETE",
-  ROUND_ADVANCEMENT_SNAPSHOT_CHANGED:
-    "advancement.error.ROUND_ADVANCEMENT_SNAPSHOT_CHANGED",
-  ROUND_ADVANCEMENT_ALREADY_PERSISTED:
-    "advancement.error.ROUND_ADVANCEMENT_ALREADY_PERSISTED",
-  NEXT_ROUND_ALREADY_GENERATED:
-    "advancement.error.NEXT_ROUND_ALREADY_GENERATED",
-  ROUND_ADVANCEMENT_TARGET_INVALID:
-    "advancement.error.ROUND_ADVANCEMENT_TARGET_INVALID",
-  ROUND_TIE_BREAK_SELECTION_INVALID:
-    "advancement.error.ROUND_TIE_BREAK_SELECTION_INVALID",
-};
-
-const finalizationErrorTranslationByCode: Partial<
-  Record<string, TranslationKey>
-> = {
-  TOURNAMENT_NOT_MUTABLE: "finalization.error.TOURNAMENT_NOT_MUTABLE",
-  TOURNAMENT_FINALIZATION_NOT_READY:
-    "finalization.error.TOURNAMENT_FINALIZATION_NOT_READY",
-  TOURNAMENT_FINALIZATION_UNSUPPORTED_FORMAT:
-    "finalization.error.TOURNAMENT_FINALIZATION_UNSUPPORTED_FORMAT",
-  TOURNAMENT_FINALIZATION_STANDINGS_INVALID:
-    "finalization.error.TOURNAMENT_FINALIZATION_STANDINGS_INVALID",
-  TOURNAMENT_CHAMPION_SELECTION_INVALID:
-    "finalization.error.TOURNAMENT_CHAMPION_SELECTION_INVALID",
-};
-
-const downstreamResetErrorTranslationByCode: Partial<
-  Record<string, TranslationKey>
-> = {
-  DOWNSTREAM_RESET_NOT_AVAILABLE:
-    "competition.reset.error.DOWNSTREAM_RESET_NOT_AVAILABLE",
-  DOWNSTREAM_RESET_TOURNAMENT_LOCKED:
-    "competition.reset.error.DOWNSTREAM_RESET_TOURNAMENT_LOCKED",
-  DOWNSTREAM_RESET_PREVIEW_STALE:
-    "competition.reset.error.DOWNSTREAM_RESET_PREVIEW_STALE",
-};
-
-function parseQualificationTieBreakDetails(
-  value: Record<string, unknown> | undefined,
-): QualificationTieBreakDetails | null {
-  if (!value || !Number.isInteger(value.advanceCount)) return null;
-  if (
-    !Array.isArray(value.fixedQualifiedTeams) ||
-    !Array.isArray(value.tieBreaks)
-  ) {
-    return null;
-  }
-  const teams = value.fixedQualifiedTeams.filter(isQualificationDecisionTeam);
-  const tieBreaks = value.tieBreaks.filter(
-    (item): item is QualificationTieBreakDetails["tieBreaks"][number] => {
-      if (!item || typeof item !== "object") return false;
-      const candidate = item as Record<string, unknown>;
-      return (
-        (candidate.scope === "ROUND" || candidate.scope === "GROUP") &&
-        (typeof candidate.groupId === "string" || candidate.groupId === null) &&
-        (typeof candidate.groupName === "string" ||
-          candidate.groupName === null) &&
-        Number.isInteger(candidate.requiredSelections) &&
-        Number(candidate.requiredSelections) > 0 &&
-        Array.isArray(candidate.candidates) &&
-        candidate.candidates.every(isQualificationDecisionTeam)
-      );
-    },
-  );
-  if (
-    teams.length !== value.fixedQualifiedTeams.length ||
-    tieBreaks.length !== value.tieBreaks.length ||
-    tieBreaks.length === 0
-  ) {
-    return null;
-  }
-  return {
-    advanceCount: Number(value.advanceCount),
-    fixedQualifiedTeams: teams,
-    tieBreaks,
-  };
-}
-
-function isQualificationDecisionTeam(value: unknown): value is {
-  teamId: string;
-  name: string;
-  seed: number | null;
-} {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.teamId === "string" &&
-    typeof candidate.name === "string" &&
-    (typeof candidate.seed === "number" || candidate.seed === null)
-  );
-}
-
-function parseChampionshipTieBreakDetails(
-  value: Record<string, unknown> | undefined,
-): ChampionshipTieBreakDetails | null {
-  if (!value || !Array.isArray(value.candidates)) return null;
-  const candidates = value.candidates.filter(isQualificationDecisionTeam);
-  return candidates.length === value.candidates.length && candidates.length > 1
-    ? { candidates }
-    : null;
-}
 
 export default function CompetitionManager({
   tournament,
@@ -920,175 +798,19 @@ export default function CompetitionManager({
             </p>
           )}
 
-          {tieBreakDecision && (
-            <div className="mt-4 rounded-xl border border-pending/35 bg-pending/10 p-4">
-              <div className="flex items-start gap-2">
-                <WarningCircleIcon className="mt-0.5 shrink-0 text-pending" />
-                <div>
-                  <h4 className="font-semibold text-ink">
-                    {t("competition.manage.tieBreakTitle")}
-                  </h4>
-                  <p className="mt-1 text-sm text-ink-muted">
-                    {t("competition.manage.tieBreakDescription")}
-                  </p>
-                </div>
-              </div>
-
-              {tieBreakDecision.fixedQualifiedTeams.length > 0 && (
-                <p className="mt-3 text-xs text-ink-muted">
-                  {t("competition.manage.fixedQualified")}:{" "}
-                  <strong className="text-ink">
-                    {tieBreakDecision.fixedQualifiedTeams
-                      .map((team) => team.name)
-                      .join(", ")}
-                  </strong>
-                </p>
-              )}
-
-              <div className="mt-4 space-y-4">
-                {tieBreakDecision.tieBreaks.map((tieBreak, tieBreakIndex) => {
-                  const candidateIds = new Set(
-                    tieBreak.candidates.map((candidate) => candidate.teamId),
-                  );
-                  const selectedCount = selectedTieTeamIds.filter((teamId) =>
-                    candidateIds.has(teamId),
-                  ).length;
-                  return (
-                    <fieldset
-                      key={tieBreak.groupId ?? `round-${tieBreakIndex}`}
-                      className="rounded-lg border border-line bg-surface-card p-3"
-                    >
-                      <legend className="px-1 text-sm font-semibold text-ink">
-                        {tieBreak.groupName ??
-                          t("competition.manage.overallStandings")}
-                      </legend>
-                      <p className="mb-3 text-xs text-ink-muted">
-                        {t("competition.manage.selectTieTeams")}{" "}
-                        {tieBreak.requiredSelections} · {selectedCount}/
-                        {tieBreak.requiredSelections}
-                      </p>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        {tieBreak.candidates.map((candidate) => {
-                          const checked = selectedTieTeamIds.includes(
-                            candidate.teamId,
-                          );
-                          const disabled =
-                            !checked &&
-                            selectedCount >= tieBreak.requiredSelections;
-                          return (
-                            <label
-                              key={candidate.teamId}
-                              className={`flex min-h-11 items-center gap-3 rounded-lg border px-3 py-2 text-sm ${
-                                checked
-                                  ? "border-brand bg-brand/10 text-ink"
-                                  : "border-line bg-surface text-ink-muted"
-                              } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                disabled={disabled || Boolean(working)}
-                                onChange={() =>
-                                  toggleTieBreakTeam(
-                                    candidate.teamId,
-                                    tieBreakIndex,
-                                  )
-                                }
-                                className="size-4 accent-brand"
-                              />
-                              <span className="font-medium">
-                                {candidate.name}
-                              </span>
-                              {candidate.seed !== null && (
-                                <span className="ml-auto text-xs text-ink-faint">
-                                  Seed {candidate.seed}
-                                </span>
-                              )}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </fieldset>
-                  );
-                })}
-              </div>
-
-              <button
-                type="button"
-                onClick={confirmTieBreak}
-                disabled={!tieBreakSelectionComplete || Boolean(working)}
-                className={`${primaryButtonClass} mt-4`}
-              >
-                {working === "advance" ? (
-                  <CircleNotchIcon
-                    aria-hidden="true"
-                    className="motion-safe:animate-spin"
-                  />
-                ) : (
-                  <ArrowRightIcon weight="bold" />
-                )}
-                {t("competition.manage.confirmTieBreak")}
-              </button>
-            </div>
-          )}
-
-          {championshipTieBreak && (
-            <fieldset className="mt-4 rounded-xl border border-pending/35 bg-pending/10 p-4">
-              <legend className="px-1 font-semibold text-ink">
-                {t("competition.manage.championTieTitle")}
-              </legend>
-              <p className="mt-1 text-sm text-ink-muted">
-                {t("competition.manage.championTieDescription")}
-              </p>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {championshipTieBreak.candidates.map((candidate) => (
-                  <label
-                    key={candidate.teamId}
-                    className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 text-sm ${
-                      selectedChampionTeamId === candidate.teamId
-                        ? "border-brand bg-brand/10 text-ink"
-                        : "border-line bg-surface-card text-ink-muted"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="championTeamId"
-                      value={candidate.teamId}
-                      checked={selectedChampionTeamId === candidate.teamId}
-                      disabled={Boolean(working) || loading}
-                      onChange={() =>
-                        setSelectedChampionTeamId(candidate.teamId)
-                      }
-                      className="size-4 accent-brand"
-                    />
-                    <span className="font-medium">{candidate.name}</span>
-                    {candidate.seed !== null && (
-                      <span className="ml-auto text-xs text-ink-faint">
-                        Seed {candidate.seed}
-                      </span>
-                    )}
-                  </label>
-                ))}
-              </div>
-              <button
-                type="button"
-                disabled={!selectedChampionTeamId || Boolean(working)}
-                onClick={() => void finalizeStandings(selectedChampionTeamId)}
-                className={`${primaryButtonClass} mt-4`}
-              >
-                {working === "finalize" ? (
-                  <CircleNotchIcon
-                    aria-hidden="true"
-                    className="motion-safe:animate-spin"
-                  />
-                ) : (
-                  <TrophyIcon weight="fill" />
-                )}
-                {t("competition.manage.confirmChampion")}
-              </button>
-            </fieldset>
-          )}
-
+          <CompetitionTieBreakPanels
+            tieBreakDecision={tieBreakDecision}
+            selectedTieTeamIds={selectedTieTeamIds}
+            tieBreakSelectionComplete={tieBreakSelectionComplete}
+            championshipTieBreak={championshipTieBreak}
+            selectedChampionTeamId={selectedChampionTeamId}
+            loading={loading}
+            working={working}
+            onToggleTieBreakTeam={toggleTieBreakTeam}
+            onConfirmTieBreak={confirmTieBreak}
+            onSelectChampion={setSelectedChampionTeamId}
+            onFinalizeStandings={(teamId) => void finalizeStandings(teamId)}
+          />
           <div className="mt-6">
             {loading && !bracket ? (
               <CompetitionSkeleton

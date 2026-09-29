@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "api:types": "openapi-typescript ../backend/openapi.json -o lib/api/generated/schema.ts",
+    "api:types:check": "npm run api:types && git diff --exit-code -- ../backend/openapi.json lib/api/generated/schema.ts",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:bracket": "node --experimental-strip-types --test tests/bracket-presentation.test.mjs tests/swiss-presentation.test.mjs",
     "test:e2e": "node tests/e2e/run.mjs"
@@ -29,6 +31,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

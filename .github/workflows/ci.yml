@@ -34,7 +34,11 @@ jobs:
           npm run prisma:generate
           npm run typecheck
           npm test -- --runInBand
-          npm run build
+          npm run openapi:export
+
+      - name: OpenAPI type drift check
+        working-directory: frontend
+        run: npm run api:types:check
 
       - name: Frontend checks
         working-directory: frontend
