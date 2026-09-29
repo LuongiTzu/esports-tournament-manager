@@ -17,6 +17,7 @@ function socket(token?: string) {
     emit: jest.fn(),
     disconnect: jest.fn(),
     join: jest.fn().mockResolvedValue(undefined),
+    leave: jest.fn().mockResolvedValue(undefined),
   } as unknown as Socket;
 }
 
@@ -244,6 +245,27 @@ describe('TournamentGateway', () => {
     expect(TournamentGateway.userRoom('user-1')).toBe('user:user-1');
   });
 
+  it('leaves only the requested tournament room', async () => {
+    const { gateway } = harness();
+    const client = socket();
+
+    await expect(
+      gateway.leaveTournament(client, { tournamentId: 't-1' }),
+    ).resolves.toEqual({
+      tournamentId: 't-1',
+      room: 'tournament:t-1',
+    });
+    expect(client.leave).toHaveBeenCalledWith('tournament:t-1');
+  });
+
+  it('rejects a leave request without a tournament id', async () => {
+    const { gateway } = harness();
+
+    await expect(gateway.leaveTournament(socket(), {})).rejects.toThrow(
+      'tournamentId is required',
+    );
+  });
+
   it('emits created notifications to the recipient user room', () => {
     const { gateway, notificationEvents } = harness();
     const emit = jest.fn();
@@ -282,7 +304,10 @@ describe('TournamentGateway', () => {
       events.publish({ tournamentId: 't-1', event, payload });
 
       expect(to).toHaveBeenCalledWith('tournament:t-1');
-      expect(emit).toHaveBeenCalledWith(event, payload);
+      expect(emit).toHaveBeenCalledWith(event, {
+        tournamentId: 't-1',
+        data: payload,
+      });
       gateway.onModuleDestroy();
     },
   );

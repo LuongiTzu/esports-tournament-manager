@@ -14,6 +14,8 @@ import { io, type Socket } from "socket.io-client";
 import { useAuth } from "@/features/auth/store";
 import type { NotificationRecord } from "@/features/notifications/types";
 import {
+  dispatchTournamentRealtimeEvent,
+  isTournamentRealtimeEnvelope,
   TOURNAMENT_REALTIME_EVENTS,
   type NotificationRealtimeListener,
   type TournamentRealtimeListener,
@@ -88,11 +90,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     };
     const tournamentHandlers = TOURNAMENT_REALTIME_EVENTS.map((event) => {
       const handler = (payload: unknown) => {
-        // Room membership scopes delivery on the server. Views that can verify
-        // tournament context from a payload should additionally do so.
-        tournamentListeners.current.forEach((listeners) => {
-          listeners.forEach((listener) => listener(event, payload));
-        });
+        if (!isTournamentRealtimeEnvelope(payload)) return;
+        dispatchTournamentRealtimeEvent(
+          event,
+          payload,
+          tournamentListeners.current,
+        );
       };
       socket.on(event, handler);
       return [event, handler] as const;
@@ -136,8 +139,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       return () => {
         const current = tournamentListeners.current.get(tournamentId);
         current?.delete(listener);
-        if (current?.size === 0)
+        if (current?.size === 0) {
           tournamentListeners.current.delete(tournamentId);
+          if (socketRef.current?.connected) {
+            socketRef.current.emit("leaveTournament", { tournamentId });
+          }
+        }
       };
     },
     [],

@@ -29,7 +29,13 @@ interface TournamentSocketData {
   readOnly: boolean;
 }
 
-@WebSocketGateway({ namespace: '/tournaments', cors: true })
+@WebSocketGateway({
+  namespace: '/tournaments',
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+  },
+})
 export class TournamentGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
 {
@@ -50,7 +56,10 @@ export class TournamentGateway
     this.eventSubscription = this.events.events$.subscribe((message) => {
       this.server
         .to(TournamentGateway.room(message.tournamentId))
-        .emit(message.event, message.payload);
+        .emit(message.event, {
+          tournamentId: message.tournamentId,
+          data: message.payload,
+        });
     });
     this.notificationSubscription = this.notificationEvents.events$.subscribe(
       (notification) => {
@@ -151,6 +160,19 @@ export class TournamentGateway
     const room = TournamentGateway.room(tournamentId);
     await client.join(room);
     return { tournamentId, room, readOnly: true };
+  }
+
+  @SubscribeMessage('leaveTournament')
+  async leaveTournament(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: { tournamentId?: string },
+  ) {
+    const tournamentId = body?.tournamentId;
+    if (!tournamentId) throw new WsException('tournamentId is required');
+
+    const room = TournamentGateway.room(tournamentId);
+    await client.leave(room);
+    return { tournamentId, room };
   }
 
   static room(tournamentId: string): string {

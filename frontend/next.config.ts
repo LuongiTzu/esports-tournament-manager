@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  images: {
+    qualities: [50, 75, 95],
+  },
   async headers() {
     return [
       {

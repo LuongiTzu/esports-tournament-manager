@@ -24,6 +24,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "openapi:export": "ts-node scripts/export-openapi.ts",
     "prisma:migrate": "node_modules\\.bin\\prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "node_modules\\.bin\\prisma studio",
     "prisma:generate": "node_modules\\.bin\\prisma generate",
     "competition:audit": "ts-node scripts/audit-competition-progression.ts",
@@ -31,7 +32,8 @@
     "prisma:reset": "ts-node scripts/reset-development-database.ts --execute",
     "prisma:reset:check": "ts-node scripts/reset-development-database.ts --check",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "prisma:seed:check": "ts-node prisma/seed.ts --validate-only"
+    "prisma:seed:check": "ts-node prisma/seed.ts --validate-only",
+    "prisma:ui-smoke:seed": "ts-node scripts/seed-ui-smoke-e2e.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Backend checks
+        working-directory: backend
+        run: |
+          npm run prisma:generate
+          npm run typecheck
+          npm test -- --runInBand
+          npm run build
+
+      - name: Frontend checks
+        working-directory: frontend
+        run: |
+          npm run lint
+          npm test
+          npm run build
+
+  database-and-browser-e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: arenaverse_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d arenaverse_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/arenaverse_e2e?schema=public
+      E2E_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/arenaverse_e2e?schema=public
+      RUN_DATABASE_E2E: "true"
+      FRONTEND_URL: http://127.0.0.1:3100
+      JWT_SECRET: ci-access-secret-at-least-32-characters
+      JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-characters
+      JWT_RESET_SECRET: ci-reset-secret-at-least-32-characters
+      SMTP_HOST: 127.0.0.1
+      SMTP_PORT: "2525"
+      SMTP_SECURE: "false"
+      SMTP_USER: ci
+      SMTP_APP_PASSWORD: ci
+      EMAIL_FROM: ArenaVerse CI <ci@e2e.test>
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare database
+        working-directory: backend
+        run: |
+          npm run prisma:generate
+          npm run prisma:migrate:deploy
+      - name: Backend database E2E
+        working-directory: backend
+        run: npm run test:e2e
+      - name: Browser smoke E2E
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Upload browser test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          retention-days: 7

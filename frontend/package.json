@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:bracket": "node --experimental-strip-types --test tests/bracket-presentation.test.mjs tests/swiss-presentation.test.mjs"
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:bracket": "node --experimental-strip-types --test tests/bracket-presentation.test.mjs tests/swiss-presentation.test.mjs",
+    "test:e2e": "node tests/e2e/run.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -20,6 +22,7 @@
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

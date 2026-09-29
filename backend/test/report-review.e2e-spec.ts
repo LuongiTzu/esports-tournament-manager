@@ -2,6 +2,7 @@
 import { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
+import { getStorageToken, ThrottlerStorageService } from '@nestjs/throttler';
 import { ReportReason, ReportStatus, Role } from '@prisma/client';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
@@ -16,6 +17,7 @@ describeDatabase('report submission and admin review (database E2E)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let jwt: JwtService;
+  let throttlerStorage: ThrottlerStorageService;
   let gameId: string;
   let tournamentId: string;
   let slug: string;
@@ -34,6 +36,8 @@ describeDatabase('report submission and admin review (database E2E)', () => {
     app = moduleRef.createNestApplication();
     prisma = moduleRef.get(PrismaService);
     jwt = moduleRef.get(JwtService);
+    throttlerStorage =
+      moduleRef.get<ThrottlerStorageService>(getStorageToken());
     configureApp(app);
     await app.init();
 
@@ -78,6 +82,7 @@ describeDatabase('report submission and admin review (database E2E)', () => {
 
   let organizerId: string;
   beforeEach(async () => {
+    throttlerStorage.storage.clear();
     slug = `report-e2e-${stamp}-${sequence++}`;
     const tournament = await prisma.tournament.create({
       data: {
