@@ -1,4 +1,5 @@
 export const LOCALES = ["vi", "en"] as const;
+export const LOCALE_COOKIE = "etm-locale";
 
 export type Locale = (typeof LOCALES)[number];
 

@@ -6,28 +6,43 @@ import RouteTitle from "@/components/RouteTitle";
 import { LocaleProvider } from "@/features/locale/store";
 import { ThemeProvider } from "@/features/theme/store";
 import { RealtimeProvider } from "@/features/realtime/provider";
+import { getSiteUrl } from "@/lib/site-url";
 
 const themeBootstrapScript = `
 (() => {
-  const key = "etm-theme";
-  const valid = ["light", "dark", "system"];
+  const root = document.documentElement;
   try {
+    const key = "etm-theme";
+    const valid = ["light", "dark", "system"];
     const saved = localStorage.getItem(key);
     const preference = valid.includes(saved) ? saved : "dark";
     const resolved = preference === "system"
       ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
       : preference;
-    const root = document.documentElement;
     root.dataset.theme = resolved;
     root.dataset.themePreference = preference;
     root.style.colorScheme = resolved;
   } catch {
-    document.documentElement.dataset.theme = "dark";
-    document.documentElement.dataset.themePreference = "dark";
+    root.dataset.theme = "dark";
+    root.dataset.themePreference = "dark";
+  }
+  try {
+    const cookieLocale = document.cookie
+      .split(";")
+      .map((item) => item.trim())
+      .find((item) => item.startsWith("etm-locale="))
+      ?.slice("etm-locale=".length);
+    const savedLocale = localStorage.getItem("etm-locale") || cookieLocale;
+    if (savedLocale === "vi" || savedLocale === "en") {
+      root.lang = savedLocale;
+    }
+  } catch {
+    // Keep the server default when storage is unavailable.
   }
 })();`;
 
 export const metadata: Metadata = {
+  metadataBase: getSiteUrl(),
   title: "ArenaVerse — Quản lý giải đấu thể thao điện tử",
   description:
     "Nền tảng tổ chức và quản lý giải đấu thể thao điện tử: Tạo giải, đăng ký đội, theo dõi kết quả.",
@@ -48,6 +63,7 @@ export default function RootLayout({
       lang="vi"
       data-theme="dark"
       data-theme-preference="dark"
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
       className="h-full antialiased"
     >

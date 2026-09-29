@@ -11,9 +11,13 @@ import {
 } from "react";
 import en from "@/features/locale/dictionaries/en";
 import vi from "@/features/locale/dictionaries/vi";
-import { isLocale, type Locale } from "@/features/locale/types";
+import {
+  isLocale,
+  LOCALE_COOKIE,
+  type Locale,
+} from "@/features/locale/types";
 
-const STORAGE_KEY = "etm-locale";
+const STORAGE_KEY = LOCALE_COOKIE;
 const dictionaries = { vi, en };
 const listeners = new Set<() => void>();
 
@@ -24,11 +28,14 @@ function subscribe(listener: () => void) {
 
 function getLocaleSnapshot(): Locale {
   const savedLocale = window.localStorage.getItem(STORAGE_KEY);
-  return isLocale(savedLocale) ? savedLocale : "vi";
-}
-
-function getServerLocaleSnapshot(): Locale {
-  return "vi";
+  if (isLocale(savedLocale)) return savedLocale;
+  const cookieLocale = document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${LOCALE_COOKIE}=`))
+    ?.slice(LOCALE_COOKIE.length + 1);
+  const normalizedCookieLocale = cookieLocale ?? null;
+  return isLocale(normalizedCookieLocale) ? normalizedCookieLocale : "vi";
 }
 
 export type TranslationKey = keyof typeof vi;
@@ -41,19 +48,28 @@ interface LocaleContextValue {
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
-export function LocaleProvider({ children }: { children: ReactNode }) {
+export function LocaleProvider({
+  children,
+  initialLocale = "vi",
+}: {
+  children: ReactNode;
+  initialLocale?: Locale;
+}) {
   const locale = useSyncExternalStore(
     subscribe,
     getLocaleSnapshot,
-    getServerLocaleSnapshot,
+    () => initialLocale,
   );
 
   useEffect(() => {
     document.documentElement.lang = locale;
+    document.cookie = `${LOCALE_COOKIE}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`;
   }, [locale]);
 
   const setLocale = useCallback((nextLocale: Locale) => {
     window.localStorage.setItem(STORAGE_KEY, nextLocale);
+    document.cookie = `${LOCALE_COOKIE}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    document.documentElement.lang = nextLocale;
     listeners.forEach((listener) => listener());
   }, []);
 

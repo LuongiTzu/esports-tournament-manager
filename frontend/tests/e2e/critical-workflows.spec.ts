@@ -216,6 +216,27 @@ test.describe.serial("critical full-stack smoke workflows", () => {
     ).toBeVisible();
   });
 
+  test("public tournament details and metadata are server-rendered", async ({
+    page,
+    request,
+  }) => {
+    const response = await request.get(
+      `http://localhost:3100/tournaments/${tournament.slug}`,
+    );
+    expect(response.ok()).toBeTruthy();
+    const html = await response.text();
+    expect(html).toContain(tournamentName);
+    expect(html).toContain('data-testid="tournament-title"');
+    expect(html).toContain('property="og:title"');
+    expect(html).toContain('name="twitter:card"');
+
+    await page.addInitScript(() => {
+      localStorage.setItem("etm-locale", "en");
+    });
+    await page.goto(`/tournaments/${tournament.slug}`);
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  });
+
   test("3. an approved registration is visible to the participant", async ({
     page,
   }) => {

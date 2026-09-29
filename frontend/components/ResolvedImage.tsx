@@ -11,6 +11,8 @@ interface ResolvedImageProps {
   fallback?: ReactNode;
   alt: string;
   className?: string;
+  loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
 }
 
 export default function ResolvedImage({
@@ -19,6 +21,8 @@ export default function ResolvedImage({
   fallback = null,
   alt,
   className,
+  loading = "lazy",
+  fetchPriority = "auto",
 }: ResolvedImageProps) {
   const primary = resolveImageUrl(src);
   const backup = resolveImageUrl(fallbackSrc);
@@ -32,6 +36,9 @@ export default function ResolvedImage({
       src={displayUrl}
       alt={alt}
       className={className}
+      loading={loading}
+      decoding="async"
+      fetchPriority={fetchPriority}
       onError={() => setFailedUrl(displayUrl)}
     />
   );

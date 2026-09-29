@@ -1,0 +1,882 @@
+"use client";
+
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import {
+  ArrowLeftIcon,
+  CalendarBlankIcon,
+  CalendarCheckIcon,
+  CalendarPlusIcon,
+  ClockIcon,
+  CrownIcon,
+  EnvelopeSimpleIcon,
+  FlagCheckeredIcon,
+  GameControllerIcon,
+  GearSixIcon,
+  GlobeHemisphereWestIcon,
+  LinkSimpleIcon,
+  PhoneIcon,
+  PlayIcon,
+  SealCheckIcon,
+  ShieldCheckIcon,
+  StarIcon,
+  TrophyIcon,
+  UsersThreeIcon,
+} from "@phosphor-icons/react";
+import TournamentDetailSkeleton from "@/features/tournaments/components/TournamentDetailSkeleton";
+import ResolvedImage from "@/components/ResolvedImage";
+import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
+import { clearSession, useAuth } from "@/features/auth/store";
+import { hasVerifiedEmail } from "@/features/auth/email-verification";
+import type { RatingList } from "@/features/ratings/types";
+import { accentVars } from "@/features/games/game-accent";
+import RosterSummary from "@/features/games/components/RosterSummary";
+import { gamePositionLabel } from "@/features/games/position-labels";
+import { formatLocalizedDate } from "@/features/locale/format";
+import { useLocale, type TranslationKey } from "@/features/locale/store";
+import TournamentReportAction from "@/features/reports/components/TournamentReportAction";
+import { teamsApi } from "@/features/teams/api";
+import StatusBadge from "@/features/teams/components/StatusBadge";
+import type { TeamWithMembers } from "@/features/teams/types";
+import { tournamentsApi } from "@/features/tournaments/api";
+import { getTournamentBannerUrl } from "@/features/tournaments/banner";
+import TournamentFavoriteButton from "@/features/tournaments/components/TournamentFavoriteButton";
+import type { TournamentDetail } from "@/features/tournaments/types";
+import { ApiError } from "@/lib/api/client";
+
+const PublicCompetitionView = dynamic(
+  () =>
+    import(
+      "@/features/tournaments/components/competition/PublicCompetitionView"
+    ),
+  {
+    ssr: false,
+    loading: () => <div className="mt-8 min-h-52 animate-pulse bg-surface-card" />,
+  },
+);
+
+const TournamentRatings = dynamic(
+  () => import("@/features/ratings/components/TournamentRatings"),
+  {
+    ssr: false,
+    loading: () => (
+      <div id="ratings" className="mt-8 min-h-48 animate-pulse bg-surface-card" />
+    ),
+  },
+);
+
+const TournamentComments = dynamic(
+  () => import("@/features/comments/components/TournamentComments"),
+  {
+    ssr: false,
+    loading: () => (
+      <div id="comments" className="mt-8 min-h-48 animate-pulse bg-surface-card" />
+    ),
+  },
+);
+
+const statusTone: Record<TournamentDetail["status"], string> = {
+  DRAFT: "border-line bg-surface-sub text-ink-muted",
+  REGISTRATION: "border-approved/35 bg-approved/12 text-approved",
+  ONGOING: "border-brand/35 bg-brand/12 text-brand",
+  COMPLETED: "border-accent/35 bg-accent/12 text-accent",
+  CANCELLED: "border-rejected/35 bg-rejected/12 text-rejected",
+};
+
+function EventCard({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="border border-line bg-surface-card/90 p-5 shadow-[0_12px_30px_rgb(0_0_0/0.12)] sm:p-6">
+      <div className="flex items-center gap-3">
+        <span className="grid size-9 place-items-center border border-accent/25 bg-accent/10 text-accent">
+          {icon}
+        </span>
+        <h2 className="text-lg font-bold text-ink">{title}</h2>
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+function Fact({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="min-w-0 border-l-2 border-accent/45 pl-3">
+      <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
+        {label}
+      </dt>
+      <dd className="mt-1 text-sm font-semibold text-ink">{value}</dd>
+    </div>
+  );
+}
+
+function ScheduleMilestone({
+  icon,
+  label,
+  value,
+  isLast = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+  isLast?: boolean;
+}) {
+  return (
+    <li className="relative flex gap-4 pb-6 last:pb-0">
+      {!isLast && (
+        <span
+          aria-hidden="true"
+          className="absolute bottom-0 left-[17px] top-9 border-l border-dashed border-accent/35"
+        />
+      )}
+      <span className="relative z-10 grid size-9 shrink-0 place-items-center rounded-full border border-accent/35 bg-surface-card text-accent">
+        {icon}
+      </span>
+      <div className="min-w-0 pt-0.5">
+        <p className="text-sm font-bold text-ink">{label}</p>
+        <p className="mt-1 text-sm text-ink-muted">{value}</p>
+      </div>
+    </li>
+  );
+}
+
+export default function TournamentDetailClient({
+  slug,
+  backHref,
+  initialTournament,
+}: {
+  slug: string;
+  backHref: string;
+  initialTournament: TournamentDetail | null;
+}) {
+  const { user, ready } = useAuth();
+  const { locale, t } = useLocale();
+  const [tournament, setTournament] =
+    useState<TournamentDetail | null>(initialTournament);
+  const [myTeam, setMyTeam] = useState<TeamWithMembers | null>(null);
+  const [loading, setLoading] = useState(!initialTournament);
+  const [retryVersion, setRetryVersion] = useState(0);
+  const [error, setError] = useState("");
+  const [ratingSnapshot, setRatingSnapshot] = useState<{
+    slug: string;
+    summary: RatingList["summary"];
+  } | null>(null);
+  const ratingSummary =
+    ratingSnapshot?.slug === slug ? ratingSnapshot.summary : null;
+  const updateRatingSummary = useCallback(
+    (summary: RatingList["summary"]) => setRatingSnapshot({ slug, summary }),
+    [slug],
+  );
+
+  useEffect(() => {
+    if (tournament) document.title = `${tournament.name} | ArenaVerse`;
+  }, [tournament]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (initialTournament && !user && retryVersion === 0) {
+      return;
+    }
+
+    let cancelled = false;
+    tournamentsApi
+      .findBySlug(slug)
+      .then((result) => {
+        if (!cancelled) {
+          setTournament(result);
+          setError("");
+        }
+      })
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        if (reason instanceof ApiError && reason.status === 401) clearSession();
+        if (initialTournament) {
+          setTournament(initialTournament);
+          return;
+        }
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : t("tournament.detail.loadError"),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialTournament, ready, retryVersion, slug, t, user]);
+
+  useEffect(() => {
+    if (!tournament || !user) return;
+    let cancelled = false;
+    teamsApi
+      .findMine()
+      .then((teams) => {
+        if (!cancelled) {
+          setMyTeam(
+            teams.find((team) => team.tournament.slug === slug) ?? null,
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMyTeam(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, tournament, user]);
+
+  if (loading) {
+    return <TournamentDetailSkeleton label={t("common.loading")} />;
+  }
+
+  if (error || !tournament) {
+    return (
+      <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-16 text-center">
+        <p className={alertErrorClass}>
+          {error || t("tournament.detail.notFound")}
+        </p>
+        <button
+          type="button"
+          className={`${secondaryButtonClass} mt-4 mr-4`}
+          onClick={() => {
+            setError("");
+            setLoading(true);
+            setRetryVersion((value) => value + 1);
+          }}
+        >
+          {t("common.retry")}
+        </button>
+        <Link
+          href={backHref}
+          className="mt-4 inline-block text-sm text-brand hover:underline"
+        >
+          {t("tournament.detail.backToList")}
+        </Link>
+      </div>
+    );
+  }
+
+  const isOrganizer = Boolean(user && tournament.organizer?.id === user.id);
+  const emailVerified = hasVerifiedEmail(user);
+  const ownTeam = user ? myTeam : null;
+  const canRegister = Boolean(
+    user &&
+    !isOrganizer &&
+    tournament.visibility === "PUBLIC" &&
+    tournament.registrationOpen &&
+    !ownTeam,
+  );
+  const displayGameName = tournament.displayGameName ?? tournament.game.name;
+  const bannerUrl = getTournamentBannerUrl(
+    tournament.bannerUrl,
+    tournament.game.name,
+    tournament.game.code,
+  );
+  const fallbackBanner = getTournamentBannerUrl(
+    null,
+    tournament.game.name,
+    tournament.game.code,
+  );
+  const formatDateTime = (value: string) =>
+    formatLocalizedDate(value, locale, {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  const eventDates = tournament.startDate
+    ? tournament.endDate
+      ? `${formatLocalizedDate(tournament.startDate, locale)} — ${formatLocalizedDate(tournament.endDate, locale)}`
+      : formatLocalizedDate(tournament.startDate, locale)
+    : t("common.notSet");
+  const hasContact = Boolean(
+    tournament.contactEmail ||
+    tournament.contactPhone ||
+    tournament.contactLink,
+  );
+
+  return (
+    <div
+      style={accentVars(tournament.game.name)}
+      className="tournament-detail-page w-full flex-1 pb-16"
+    >
+      <div className="mx-auto w-full max-w-[100rem] px-0 sm:px-4">
+        <div className="px-4 py-3 sm:px-0">
+          <Link
+            href={backHref}
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-ink-muted transition hover:bg-surface-sub hover:text-ink"
+          >
+            <ArrowLeftIcon size={17} weight="bold" aria-hidden />
+            {t("tournament.detail.backToList")}
+          </Link>
+        </div>
+        <header className="overflow-hidden border-y border-line bg-surface-card sm:border-x">
+          <div className="relative aspect-[16/6] min-h-64 overflow-hidden bg-surface-sub sm:min-h-80">
+            <ResolvedImage
+              src={bannerUrl}
+              fallbackSrc={fallbackBanner}
+              alt={`${t("tournament.detail.bannerAlt")} ${tournament.name}`}
+              className="absolute inset-0 size-full object-cover object-center"
+              loading="eager"
+              fetchPriority="high"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/5 to-slate-950/25" />
+            <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-surface-card/95 to-transparent" />
+
+            <div className="absolute left-4 top-4 flex flex-wrap gap-2 sm:left-6 sm:top-6">
+              <span
+                className={`border px-3 py-1.5 text-xs font-bold backdrop-blur-md ${statusTone[tournament.status]}`}
+              >
+                {t(`tournament.status.${tournament.status}` as TranslationKey)}
+              </span>
+              {tournament.isOfficial ? (
+                <span className="inline-flex items-center gap-1.5 border border-accent/35 bg-slate-950/65 px-3 py-1.5 text-xs font-bold text-accent backdrop-blur-md">
+                  <CrownIcon size={14} weight="fill" />
+                  {t("tournament.detail.official")}
+                </span>
+              ) : tournament.isVerified ? (
+                <span className="inline-flex items-center gap-1.5 border border-approved/35 bg-slate-950/65 px-3 py-1.5 text-xs font-bold text-approved backdrop-blur-md">
+                  <SealCheckIcon size={14} weight="fill" />
+                  {t("tournament.detail.verified")}
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="grid gap-7 border-t border-line px-4 py-6 sm:px-7 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,0.65fr)] lg:items-center lg:px-10">
+            <div className="flex min-w-0 items-start gap-4 sm:gap-6">
+              <span className="grid size-20 shrink-0 place-items-center overflow-hidden border border-line bg-surface-sub text-accent shadow-xl sm:size-28">
+                <ResolvedImage
+                  src={tournament.game.iconUrl}
+                  alt=""
+                  className="size-full object-cover object-center"
+                  fallback={<GameControllerIcon size={42} weight="duotone" />}
+                />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-accent">
+                  {displayGameName}
+                </p>
+                <h1
+                  data-testid="tournament-title"
+                  className="mt-2 text-2xl font-black leading-tight tracking-tight text-ink sm:text-4xl"
+                >
+                  {tournament.name}
+                </h1>
+                <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-ink-muted">
+                  <span className="inline-flex items-center gap-2">
+                    <CalendarBlankIcon className="text-accent" size={17} />
+                    {eventDates}
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <GlobeHemisphereWestIcon
+                      className="text-accent"
+                      size={17}
+                    />
+                    {t(`tournament.mode.${tournament.mode}` as TranslationKey)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-l-2 border-accent/55 pl-5 lg:text-right">
+              <p
+                className={`font-bold ${
+                  tournament.registrationOpen
+                    ? "text-approved"
+                    : "text-ink-muted"
+                }`}
+              >
+                {tournament.registrationOpen
+                  ? t("tournament.detail.registrationOpen")
+                  : t("tournament.detail.registrationClosed")}
+              </p>
+              <p className="mt-1 text-sm text-ink-muted">
+                {tournament.registrationDeadline
+                  ? `${t("tournament.detail.registrationUntil")} ${formatDateTime(tournament.registrationDeadline)}`
+                  : t("tournament.detail.registrationNoDeadline")}
+              </p>
+              <div className="mt-4 grid w-full gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                {isOrganizer && emailVerified && (
+                  <Link
+                    href={`/tournaments/${slug}/manage`}
+                    className={`${secondaryButtonClass} w-full`}
+                  >
+                    <GearSixIcon size={17} />
+                    {t("tournament.detail.manage")}
+                  </Link>
+                )}
+                {canRegister && emailVerified && (
+                  <Link
+                    href={`/tournaments/${slug}/register-team`}
+                    className="inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-md bg-accent px-6 py-3 text-[0.8125rem] font-black uppercase tracking-wide text-on-accent transition hover:brightness-110 active:translate-y-px"
+                  >
+                    <UsersThreeIcon size={19} weight="fill" aria-hidden />
+                    {t("tournament.detail.registerTeam")}
+                  </Link>
+                )}
+                <TournamentReportAction
+                  slug={slug}
+                  tournamentName={tournament.name}
+                />
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <a
+                    href="#ratings"
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line bg-surface-card/90 px-3.5 text-sm font-semibold text-ink-muted shadow-sm backdrop-blur-md transition hover:border-accent/45 hover:text-accent focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
+                  >
+                    <StarIcon
+                      aria-hidden
+                      size={20}
+                      weight={ratingSummary?.count ? "fill" : "bold"}
+                      className="text-accent"
+                    />
+                    {ratingSummary
+                      ? ratingSummary.count > 0 && ratingSummary.average !== null
+                        ? `${t("ratings.action")} · ${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(ratingSummary.average)} (${ratingSummary.count})`
+                        : `${t("ratings.action")} · ${t("ratings.noRatingsShort")}`
+                      : t("ratings.action")}
+                  </a>
+                  <TournamentFavoriteButton
+                    slug={slug}
+                    isFavorited={tournament.isFavorited}
+                    favoriteCount={tournament.favoriteCount}
+                    onOptimisticChange={(favoriteState) =>
+                      setTournament((current) =>
+                        current ? { ...current, ...favoriteState } : current,
+                      )
+                    }
+                    onReconciled={(favoriteState) =>
+                      setTournament((current) =>
+                        current ? { ...current, ...favoriteState } : current,
+                      )
+                    }
+                    onRollback={(favoriteState) =>
+                      setTournament((current) =>
+                        current ? { ...current, ...favoriteState } : current,
+                      )
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <nav
+            aria-label={t("tournament.detail.sectionNavigation")}
+            className="overflow-x-auto border-t border-line bg-surface-card/95 px-4 sm:px-8"
+          >
+            <div className="flex min-w-max gap-1">
+              <a href="#overview" className="tournament-detail-tab">
+                {t("tournament.detail.overview")}
+              </a>
+              <a href="#competition" className="tournament-detail-tab">
+                {t("tournament.detail.competition")}
+              </a>
+              <a href="#participants" className="tournament-detail-tab">
+                {t("tournament.detail.participants")}
+              </a>
+              <a href="#ratings" className="tournament-detail-tab">
+                {t("ratings.action")}
+              </a>
+              <a href="#comments" className="tournament-detail-tab">
+                {t("comments.title")}
+              </a>
+              {tournament.rules && (
+                <a href="#rules" className="tournament-detail-tab">
+                  {t("tournament.detail.rules")}
+                </a>
+              )}
+            </div>
+          </nav>
+        </header>
+      </div>
+
+      <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <section
+          id="overview"
+          className="scroll-mt-28 py-10 lg:grid lg:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.72fr)] lg:gap-7"
+        >
+          <div className="space-y-6">
+            <EventCard
+              title={t("tournament.detail.information")}
+              icon={<ShieldCheckIcon size={19} weight="duotone" />}
+            >
+              <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <Fact
+                  label={t("tournament.detail.game")}
+                  value={displayGameName}
+                />
+                <Fact
+                  label={t("tournament.detail.mode")}
+                  value={t(
+                    `tournament.mode.${tournament.mode}` as TranslationKey,
+                  )}
+                />
+                <Fact
+                  label={t("tournament.detail.capacity")}
+                  value={`${tournament._count?.teams ?? 0}${
+                    tournament.maxTeams ? ` / ${tournament.maxTeams}` : ""
+                  } ${t("tournament.detail.teamsUnit")}`}
+                />
+                <Fact
+                  label={t("tournament.detail.roster")}
+                  value={`${tournament.minTeamSize}–${tournament.maxTeamSize} ${t("tournament.detail.playersUnit")}`}
+                />
+                <Fact
+                  label={t("tournament.detail.visibility")}
+                  value={t(
+                    `tournament.visibility.${tournament.visibility}` as TranslationKey,
+                  )}
+                />
+                <Fact
+                  label={t("tournament.detail.location")}
+                  value={
+                    tournament.location ||
+                    (tournament.mode === "ONLINE"
+                      ? t("tournament.detail.online")
+                      : t("common.notSet"))
+                  }
+                />
+              </dl>
+
+              {tournament.description && (
+                <div className="mt-7 border-t border-line pt-6">
+                  <h3 className="font-bold text-ink">
+                    {t("tournament.detail.about")}
+                  </h3>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-ink-muted">
+                    {tournament.description}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-7 border-t border-line pt-6">
+                <h3 className="font-bold text-ink">
+                  {t("tournament.detail.teamStructure")}
+                </h3>
+                <div className="mt-4">
+                  <RosterSummary
+                    activeSize={tournament.minTeamSize}
+                    maxRosterSize={tournament.maxTeamSize}
+                  />
+                </div>
+                {tournament.game.positionMode !== "NONE" &&
+                  (tournament.game.positions?.length ?? 0) > 0 && (
+                    <div className="mt-5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+                        {tournament.game.positionMode === "FIXED"
+                          ? t("game.structure.requiredPositions")
+                          : t("game.structure.optionalPositions")}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {tournament.game.positions?.map((position) => (
+                          <span
+                            key={position}
+                            className="border border-line bg-surface-sub px-3 py-1 text-xs text-ink-muted"
+                          >
+                            {gamePositionLabel(position, locale)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
+
+              <div className="mt-7 flex items-center gap-3 border-t border-line pt-6">
+                <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-accent text-sm font-bold text-on-accent">
+                  <ResolvedImage
+                    src={tournament.organizer?.avatarUrl}
+                    alt=""
+                    className="size-full object-cover object-center"
+                    fallback={
+                      tournament.organizer?.displayName
+                        ?.charAt(0)
+                        .toUpperCase() || "?"
+                    }
+                  />
+                </span>
+                <div>
+                  <p className="text-xs text-ink-faint">
+                    {t("tournament.detail.organizedBy")}
+                  </p>
+                  <p className="font-bold text-ink">
+                    {tournament.organizer?.displayName}
+                  </p>
+                </div>
+              </div>
+            </EventCard>
+
+            {ownTeam && (
+              <EventCard
+                title={t("tournament.detail.yourTeam")}
+                icon={<UsersThreeIcon size={19} weight="duotone" />}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-ink">{ownTeam.name}</p>
+                    <p className="mt-1 text-sm text-ink-muted">
+                      {ownTeam._count?.members ?? 0}{" "}
+                      {t("tournament.detail.members")}
+                    </p>
+                  </div>
+                  <StatusBadge status={ownTeam.status} />
+                </div>
+                {ownTeam.status === "PENDING" && (
+                  <p className="mt-4 text-sm text-ink-muted">
+                    {t("tournament.detail.pendingReview")}
+                  </p>
+                )}
+                {ownTeam.status === "REJECTED" && (
+                  <p className="mt-4 text-sm text-ink-muted">
+                    {t("tournament.detail.rejectedHelp")}
+                  </p>
+                )}
+                <Link
+                  href={`/teams/${encodeURIComponent(ownTeam.id)}`}
+                  className="mt-4 inline-block text-sm font-semibold text-accent hover:underline"
+                >
+                  {t("teamManage.openProfile")}
+                </Link>
+              </EventCard>
+            )}
+          </div>
+
+          <aside className="mt-6 space-y-6 lg:mt-0">
+            <EventCard
+              title={t("tournament.detail.schedule")}
+              icon={<CalendarBlankIcon size={19} weight="duotone" />}
+            >
+              <ol>
+                <ScheduleMilestone
+                  icon={<CalendarPlusIcon size={17} weight="duotone" />}
+                  label={t("tournament.detail.registrationStarts")}
+                  value={
+                    tournament.registrationStartDate
+                      ? formatDateTime(tournament.registrationStartDate)
+                      : t("common.notSet")
+                  }
+                />
+                <ScheduleMilestone
+                  icon={<CalendarCheckIcon size={17} weight="duotone" />}
+                  label={t("tournament.detail.registrationDeadline")}
+                  value={
+                    tournament.registrationDeadline
+                      ? formatDateTime(tournament.registrationDeadline)
+                      : t("tournament.detail.registrationNoDeadline")
+                  }
+                />
+                <ScheduleMilestone
+                  icon={<PlayIcon size={17} weight="fill" />}
+                  label={t("tournament.detail.tournamentStarts")}
+                  value={
+                    tournament.startDate
+                      ? formatDateTime(tournament.startDate)
+                      : t("common.notSet")
+                  }
+                />
+                <ScheduleMilestone
+                  icon={<FlagCheckeredIcon size={17} weight="duotone" />}
+                  label={t("tournament.detail.tournamentEnds")}
+                  value={
+                    tournament.endDate
+                      ? formatDateTime(tournament.endDate)
+                      : t("common.notSet")
+                  }
+                  isLast
+                />
+              </ol>
+            </EventCard>
+
+            {tournament.prizePool && (
+              <EventCard
+                title={t("tournament.detail.rewards")}
+                icon={<TrophyIcon size={19} weight="duotone" />}
+              >
+                <p className="whitespace-pre-wrap text-sm leading-7 text-ink-muted">
+                  {tournament.prizePool}
+                </p>
+              </EventCard>
+            )}
+
+            {hasContact && (
+              <EventCard
+                title={t("tournament.detail.contact")}
+                icon={<EnvelopeSimpleIcon size={19} weight="duotone" />}
+              >
+                <ul className="space-y-3 text-sm">
+                  {tournament.contactEmail && (
+                    <li>
+                      <a
+                        href={`mailto:${tournament.contactEmail}`}
+                        className="flex items-center gap-3 text-ink-muted transition hover:text-accent"
+                      >
+                        <EnvelopeSimpleIcon size={17} />
+                        <span className="min-w-0 break-all">
+                          {tournament.contactEmail}
+                        </span>
+                      </a>
+                    </li>
+                  )}
+                  {tournament.contactPhone && (
+                    <li>
+                      <a
+                        href={`tel:${tournament.contactPhone}`}
+                        className="flex items-center gap-3 text-ink-muted transition hover:text-accent"
+                      >
+                        <PhoneIcon size={17} />
+                        {tournament.contactPhone}
+                      </a>
+                    </li>
+                  )}
+                  {tournament.contactLink && (
+                    <li>
+                      <a
+                        href={tournament.contactLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-3 text-ink-muted transition hover:text-accent"
+                      >
+                        <LinkSimpleIcon size={17} />
+                        <span className="min-w-0 truncate">
+                          {tournament.contactLink}
+                        </span>
+                      </a>
+                    </li>
+                  )}
+                </ul>
+              </EventCard>
+            )}
+
+            <div className="border border-line bg-surface-sub/75 p-5 text-sm text-ink-muted">
+              <div className="flex items-start gap-3">
+                <ClockIcon className="mt-0.5 shrink-0 text-accent" size={18} />
+                <p>
+                  {tournament.rounds?.length ?? 0}{" "}
+                  {t("tournament.detail.stagesConfigured")}
+                </p>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <PublicCompetitionView
+          id="competition"
+          slug={slug}
+          tournamentId={tournament.id}
+          bannerUrl={bannerUrl}
+          tournamentName={tournament.name}
+        />
+
+        <section
+          id="participants"
+          className="mt-8 scroll-mt-28 border border-line bg-surface-card/90 p-5 sm:p-7"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+                {t("tournament.detail.community")}
+              </p>
+              <h2 className="mt-1 text-2xl font-black text-ink">
+                {t("tournament.detail.approvedTeams")}
+              </h2>
+            </div>
+            <p className="text-sm text-ink-muted">
+              {tournament.teams.length} {t("tournament.detail.teamsUnit")}
+            </p>
+          </div>
+
+          {tournament.teams.length === 0 ? (
+            <div className="mt-6 border border-dashed border-line px-4 py-12 text-center">
+              <UsersThreeIcon
+                size={30}
+                className="mx-auto text-ink-faint"
+                weight="duotone"
+              />
+              <p className="mt-3 text-sm text-ink-muted">
+                {t("tournament.detail.noApprovedTeams")}
+              </p>
+              {!user && (
+                <p className="mt-1 text-sm text-ink-faint">
+                  <Link href="/login" className="text-accent hover:underline">
+                    {t("auth.login.submit")}
+                  </Link>{" "}
+                  {t("tournament.detail.loginToRegister")}
+                </p>
+              )}
+            </div>
+          ) : (
+            <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {tournament.teams.map((team) => (
+                <li key={team.id}>
+                  <Link
+                    href={`/teams/${encodeURIComponent(team.id)}`}
+                    className="flex h-full items-center gap-3 border border-line bg-surface-sub/70 p-4 transition hover:border-accent/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <span className="grid size-12 shrink-0 place-items-center overflow-hidden border border-line bg-surface-card font-bold text-accent">
+                      <ResolvedImage
+                        src={team.logoUrl}
+                        alt={`${t("tournament.detail.teamLogoAlt")} ${team.name}`}
+                        className="size-full object-cover object-center"
+                        fallback={team.name.charAt(0).toUpperCase()}
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-bold text-ink">
+                        {team.name}
+                      </span>
+                      <span className="mt-1 block truncate text-xs text-ink-faint">
+                        {team.captain?.displayName} ·{" "}
+                        {team._count?.members ?? 0}{" "}
+                        {t("tournament.detail.members")}
+                      </span>
+                      <span className="mt-2 block text-xs font-semibold text-accent">
+                        {t("teamDetail.view")}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <TournamentRatings
+          slug={slug}
+          onSummaryChange={updateRatingSummary}
+        />
+
+        <TournamentComments
+          key={tournament.id}
+          slug={slug}
+          tournamentId={tournament.id}
+          organizerId={tournament.organizer?.id}
+        />
+
+        {tournament.rules && (
+          <section
+            id="rules"
+            className="mt-8 scroll-mt-28 border border-line bg-surface-card/90 p-5 sm:p-7"
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+              {t("tournament.detail.competitionPolicy")}
+            </p>
+            <h2 className="mt-1 text-2xl font-black text-ink">
+              {t("tournament.detail.rules")}
+            </h2>
+            <p className="mt-5 max-w-4xl whitespace-pre-wrap text-sm leading-7 text-ink-muted">
+              {tournament.rules}
+            </p>
+          </section>
+        )}
+      </main>
+    </div>
+  );
+}
