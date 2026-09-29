@@ -114,8 +114,9 @@ Cho phép bình luận dưới các giải đấu.
 
 ---
 
-<div align="center">
+## Triển khai
 
-*Tài liệu đang trong giai đoạn phát triển — hướng dẫn cài đặt và chạy dự án sẽ được bổ sung sau.*
-
-</div>
+- Development: chạy PostgreSQL bằng `docker compose up -d postgres`, sau đó
+  chạy backend và frontend bằng các script `npm run start:dev` / `npm run dev`.
+- Production: xem hướng dẫn Docker, TLS, migration, MinIO, health check và vận
+  hành tại [docs/production-deployment.md](docs/production-deployment.md).

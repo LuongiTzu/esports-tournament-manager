@@ -62,7 +62,6 @@ export const authApi = {
   logout: () =>
     request<{ message: string }>("/auth/logout", {
       method: "POST",
-      auth: true,
     }),
   changePassword: (data: ChangePasswordRequest) =>
     request<{ message: string }>("/auth/change-password", {

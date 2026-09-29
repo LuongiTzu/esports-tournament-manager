@@ -13,6 +13,7 @@ async function exportOpenApi() {
     .setDescription('Backend API contract')
     .setVersion('1.0')
     .addBearerAuth()
+    .addCookieAuth('etm_refresh')
     .build();
   const document = SwaggerModule.createDocument(app, config);
 

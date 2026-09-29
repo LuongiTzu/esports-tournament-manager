@@ -1,4 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  DeleteObjectCommand,
+  HeadBucketCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { ImageStorageService } from './image-storage.service';
@@ -24,7 +31,12 @@ function file(
 }
 
 describe('ImageStorageService', () => {
-  const service = new ImageStorageService();
+  const config = {
+    get: jest.fn((key: string) =>
+      key === 'STORAGE_DRIVER' ? 'local' : undefined,
+    ),
+  } as unknown as ConfigService;
+  const service = new ImageStorageService(config);
   const createdUrls: string[] = [];
 
   beforeAll(() => service.onModuleInit());
@@ -77,5 +89,43 @@ describe('ImageStorageService', () => {
 
     await service.deleteOwned(stored.url, 'team-logos');
     expect(existsSync(path)).toBe(false);
+  });
+
+  it('stores, checks and deletes owned images through S3-compatible storage', async () => {
+    const send = jest
+      .spyOn(S3Client.prototype, 'send')
+      .mockResolvedValue({} as never);
+    const values: Record<string, string> = {
+      STORAGE_DRIVER: 's3',
+      S3_ENDPOINT: 'http://minio:9000',
+      S3_REGION: 'us-east-1',
+      S3_BUCKET: 'arenaverse',
+      S3_ACCESS_KEY_ID: 'access',
+      S3_SECRET_ACCESS_KEY: 'secret',
+      S3_FORCE_PATH_STYLE: 'true',
+      S3_PUBLIC_URL: 'https://arena.example/storage',
+    };
+    const s3Storage = new ImageStorageService({
+      get: jest.fn((key: string) => values[key]),
+    } as unknown as ConfigService);
+
+    await s3Storage.onModuleInit();
+    const stored = await s3Storage.store(
+      'team-logos',
+      file(
+        'image/png',
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      ),
+    );
+    await s3Storage.checkHealth();
+    await s3Storage.deleteOwned(stored.url, 'team-logos');
+
+    expect(stored.url).toMatch(
+      /^https:\/\/arena\.example\/storage\/team-logos\/[0-9a-f-]{36}\.png$/,
+    );
+    expect(send.mock.calls[0][0]).toBeInstanceOf(PutObjectCommand);
+    expect(send.mock.calls[1][0]).toBeInstanceOf(HeadBucketCommand);
+    expect(send.mock.calls[2][0]).toBeInstanceOf(DeleteObjectCommand);
+    send.mockRestore();
   });
 });

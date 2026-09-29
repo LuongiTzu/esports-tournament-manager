@@ -2,6 +2,7 @@ import {
   expect,
   test,
   type APIRequestContext,
+  type Cookie,
   type Page,
 } from "@playwright/test";
 
@@ -15,7 +16,7 @@ const users = {
 
 interface UserSession {
   accessToken: string;
-  refreshToken: string;
+  refreshCookie: Cookie;
   user: {
     id: string;
     email: string;
@@ -64,18 +65,32 @@ async function api<T>(
   return body.data;
 }
 
-function login(request: APIRequestContext, email: string) {
-  return api<UserSession>(request, "POST", "/auth/login", {
-    data: { email, password: PASSWORD },
-  });
+async function login(
+  request: APIRequestContext,
+  email: string,
+): Promise<UserSession> {
+  const session = await api<Omit<UserSession, "refreshCookie">>(
+    request,
+    "POST",
+    "/auth/login",
+    {
+      data: { email, password: PASSWORD },
+    },
+  );
+  const refreshCookie = (await request.storageState()).cookies.find(
+    (cookie) => cookie.name === "etm_refresh",
+  );
+  if (!refreshCookie) {
+    throw new Error("Login did not return the HttpOnly refresh cookie.");
+  }
+  return { ...session, refreshCookie };
 }
 
 async function useSession(page: Page, session: UserSession) {
-  await page.addInitScript((value: UserSession) => {
-    localStorage.setItem("accessToken", value.accessToken);
-    localStorage.setItem("refreshToken", value.refreshToken);
-    localStorage.setItem("user", JSON.stringify(value.user));
-  }, session);
+  await page.context().addCookies([session.refreshCookie]);
+  await page.addInitScript((user: UserSession["user"]) => {
+    localStorage.setItem("user", JSON.stringify(user));
+  }, session.user);
 }
 
 function teamBody(name: string, ign: string, email: string) {
@@ -106,11 +121,9 @@ test.describe.serial("critical full-stack smoke workflows", () => {
   const reportDescription = "Sprint 1 moderation smoke report";
 
   test.beforeAll(async ({ request }) => {
-    [adminSession, organizerSession, participantSession] = await Promise.all([
-      login(request, users.admin),
-      login(request, users.organizer),
-      login(request, users.participant),
-    ]);
+    organizerSession = await login(request, users.organizer);
+    participantSession = await login(request, users.participant);
+    adminSession = await login(request, users.admin);
 
     const games = await api<Array<{ id: string; code: string }>>(
       request,
@@ -200,6 +213,18 @@ test.describe.serial("critical full-stack smoke workflows", () => {
 
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByText("Smoke Organizer").first()).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() => ({
+          accessToken: localStorage.getItem("accessToken"),
+          refreshToken: localStorage.getItem("refreshToken"),
+        })),
+      )
+      .toEqual({ accessToken: null, refreshToken: null });
+    const refreshCookie = (await page.context().cookies()).find(
+      (cookie) => cookie.name === "etm_refresh",
+    );
+    expect(refreshCookie).toMatchObject({ httpOnly: true, sameSite: "Lax" });
   });
 
   test("2. a created public tournament is available to its organizer", async ({

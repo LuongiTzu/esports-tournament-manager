@@ -3,11 +3,12 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { authApi } from "@/features/auth/api";
 import type { User } from "@/features/auth/types";
+import { restoreAccessToken } from "@/lib/api/client";
 import { tokenStore } from "@/lib/api/token-store";
 
 interface AuthState {
   user: User | null;
-  /** false cho tới khi đã đọc xong localStorage — tránh redirect nhầm khi chưa hydrate */
+  /** false cho tới khi cookie phiên đã được kiểm tra — tránh redirect nhầm */
   ready: boolean;
 }
 
@@ -28,23 +29,46 @@ function subscribe(onChange: () => void) {
   };
 }
 
+let hydrationRequest: Promise<void> | null = null;
+
 function hydrateAuthState() {
-  if (state.ready) return;
-  setState({ user: tokenStore.getUser<User>(), ready: true });
+  if (state.ready) return Promise.resolve();
+  if (hydrationRequest) return hydrationRequest;
+
+  tokenStore.clearLegacyTokens();
+  hydrationRequest = (async () => {
+    const accessToken = await restoreAccessToken();
+    if (!accessToken) {
+      clearSession();
+      return;
+    }
+
+    try {
+      const user = await authApi.getMe();
+      tokenStore.setUser(user);
+      setState({ user, ready: true });
+    } catch {
+      clearSession();
+    }
+  })().finally(() => {
+    hydrationRequest = null;
+  });
+  return hydrationRequest;
 }
 
 function persistLogin(res: Awaited<ReturnType<typeof authApi.login>>) {
   tokenStore.accessToken = res.accessToken;
-  tokenStore.refreshToken = res.refreshToken;
   tokenStore.setUser(res.user);
   setState({ user: res.user, ready: true });
 }
 
 export async function login(email: string, password: string) {
+  await hydrateAuthState();
   persistLogin(await authApi.login({ email, password }));
 }
 
 export async function loginWithGoogle(credential: string) {
+  await hydrateAuthState();
   persistLogin(await authApi.googleLogin({ credential }));
 }
 
@@ -75,7 +99,7 @@ export function useAuth() {
   );
 
   useEffect(() => {
-    hydrateAuthState();
+    void hydrateAuthState();
   }, []);
 
   return authState;

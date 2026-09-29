@@ -9,9 +9,8 @@ interface ApiSuccessEnvelope {
   data: unknown;
 }
 
-interface TokenPair {
+interface AccessTokenResponse {
   accessToken: string;
-  refreshToken: string;
 }
 
 const RATE_LIMIT_MESSAGE =
@@ -69,42 +68,29 @@ async function readResponseBody(response: Response): Promise<unknown> {
     : response.text();
 }
 
-function isTokenPair(value: unknown): value is TokenPair {
+function isAccessTokenResponse(value: unknown): value is AccessTokenResponse {
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.accessToken === "string" &&
-    typeof candidate.refreshToken === "string"
-  );
+  return typeof candidate.accessToken === "string";
 }
 
 async function performTokenRefresh(): Promise<string | null> {
-  const refreshToken = tokenStore.refreshToken;
-  if (!refreshToken) {
-    tokenStore.clear();
-    return null;
-  }
-
   try {
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${refreshToken}`,
-      },
+      credentials: "include",
     });
     const body = await readResponseBody(response);
     const payload = isApiSuccessEnvelope(body, response.status)
       ? body.data
       : body;
 
-    if (!response.ok || !isTokenPair(payload)) {
+    if (!response.ok || !isAccessTokenResponse(payload)) {
       tokenStore.clear();
       return null;
     }
 
     tokenStore.accessToken = payload.accessToken;
-    tokenStore.refreshToken = payload.refreshToken;
     return payload.accessToken;
   } catch {
     tokenStore.clear();
@@ -112,7 +98,7 @@ async function performTokenRefresh(): Promise<string | null> {
   }
 }
 
-function refreshAccessToken() {
+export function restoreAccessToken() {
   if (!refreshRequest) {
     refreshRequest = performTokenRefresh().finally(() => {
       refreshRequest = null;
@@ -139,15 +125,17 @@ export async function request<T>(
 
   let res = await fetch(`${API_BASE_URL}${path}`, {
     ...rest,
+    credentials: rest.credentials ?? "include",
     headers: finalHeaders,
   });
 
   if (auth && res.status === 401) {
-    const refreshedAccessToken = await refreshAccessToken();
+    const refreshedAccessToken = await restoreAccessToken();
     if (refreshedAccessToken) {
       finalHeaders.set("Authorization", `Bearer ${refreshedAccessToken}`);
       res = await fetch(`${API_BASE_URL}${path}`, {
         ...rest,
+        credentials: rest.credentials ?? "include",
         headers: finalHeaders,
       });
     } else {

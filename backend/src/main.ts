@@ -5,9 +5,10 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { UPLOAD_ROOT } from './uploads/upload.config';
+import { storageDriver, UPLOAD_ROOT } from './uploads/upload.config';
 
 export function configureStaticAssets(app: NestExpressApplication): void {
+  if (storageDriver() !== 'local') return;
   app.useStaticAssets(UPLOAD_ROOT, {
     prefix: '/uploads/',
     dotfiles: 'deny',
@@ -36,9 +37,13 @@ export function configureApp(app: INestApplication): void {
     .setDescription('Backend API documentation')
     .setVersion('1.0')
     .addBearerAuth()
+    .addCookieAuth('etm_refresh')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document, { useGlobalPrefix: true });
+  SwaggerModule.setup('docs', app, document, {
+    useGlobalPrefix: true,
+    swaggerOptions: { withCredentials: true },
+  });
 }
 
 async function bootstrap() {

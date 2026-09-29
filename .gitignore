@@ -72,6 +72,10 @@ web_modules/
 .env.*
 !.env.example
 
+# TLS private material is mounted at deployment time.
+/deploy/certs/*
+!/deploy/certs/.gitkeep
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

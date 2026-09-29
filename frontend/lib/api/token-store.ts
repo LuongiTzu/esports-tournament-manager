@@ -1,6 +1,7 @@
 const isClient = () => typeof window !== "undefined";
 
 const accessTokenListeners = new Set<() => void>();
+let inMemoryAccessToken: string | null = null;
 
 function notifyAccessTokenChanged() {
   accessTokenListeners.forEach((listener) => listener());
@@ -8,21 +9,11 @@ function notifyAccessTokenChanged() {
 
 export const tokenStore = {
   get accessToken() {
-    return isClient() ? localStorage.getItem("accessToken") : null;
+    return inMemoryAccessToken;
   },
   set accessToken(value: string | null) {
-    if (!isClient()) return;
-    if (value) localStorage.setItem("accessToken", value);
-    else localStorage.removeItem("accessToken");
+    inMemoryAccessToken = value;
     notifyAccessTokenChanged();
-  },
-  get refreshToken() {
-    return isClient() ? localStorage.getItem("refreshToken") : null;
-  },
-  set refreshToken(value: string | null) {
-    if (!isClient()) return;
-    if (value) localStorage.setItem("refreshToken", value);
-    else localStorage.removeItem("refreshToken");
   },
   getUser<T>() {
     if (!isClient()) return null;
@@ -35,11 +26,18 @@ export const tokenStore = {
     else localStorage.removeItem("user");
   },
   clear() {
+    inMemoryAccessToken = null;
+    if (isClient()) {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+    }
+    notifyAccessTokenChanged();
+  },
+  clearLegacyTokens() {
     if (!isClient()) return;
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    notifyAccessTokenChanged();
   },
   subscribeAccessToken(listener: () => void) {
     accessTokenListeners.add(listener);

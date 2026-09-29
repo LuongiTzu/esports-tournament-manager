@@ -316,11 +316,29 @@ export class AuthService {
     return tokens;
   }
 
-  async logout(userId: string) {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { refreshToken: null, tokenVersion: { increment: 1 } },
-    });
+  async logout(refreshToken?: string) {
+    if (refreshToken) {
+      let payload: JwtPayload;
+      try {
+        payload = await this.tokens.verifyRefresh(refreshToken);
+      } catch {
+        // Logout is intentionally idempotent and never reveals token validity.
+        return { message: 'Đăng xuất thành công' };
+      }
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { id: true, refreshToken: true },
+      });
+      if (
+        user?.refreshToken &&
+        (await this.passwordHasher.verify(refreshToken, user.refreshToken))
+      ) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { refreshToken: null, tokenVersion: { increment: 1 } },
+        });
+      }
+    }
     return { message: 'Đăng xuất thành công' };
   }
 

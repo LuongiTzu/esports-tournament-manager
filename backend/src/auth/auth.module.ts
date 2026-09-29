@@ -11,6 +11,7 @@ import { AuthTokenService } from './auth-token.service';
 import { GoogleIdentityService } from './google-identity.service';
 import { AccountTokenService } from './account-token.service';
 import { EmailModule } from '../email/email.module';
+import { RefreshCookieService } from './refresh-cookie.service';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { EmailModule } from '../email/email.module';
     AuthTokenService,
     GoogleIdentityService,
     AccountTokenService,
+    RefreshCookieService,
   ],
   exports: [AuthService, JwtModule],
 })

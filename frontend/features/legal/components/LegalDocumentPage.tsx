@@ -89,7 +89,7 @@ const documents: Record<Locale, Record<LegalDocumentKind, LegalDocument>> = {
         {
           title: "2. Lưu trữ trên thiết bị",
           paragraphs: [
-            "ArenaVerse sử dụng bộ nhớ cục bộ của trình duyệt để duy trì phiên đăng nhập, lựa chọn ngôn ngữ và giao diện. Bạn có thể xóa dữ liệu này trong cài đặt trình duyệt; thao tác đó có thể đăng xuất tài khoản hoặc đặt lại tùy chọn.",
+            "ArenaVerse lưu refresh token trong cookie HttpOnly, chỉ giữ access token ngắn hạn trong bộ nhớ và dùng bộ nhớ cục bộ cho hồ sơ đã lưu cùng lựa chọn ngôn ngữ, giao diện. Xóa cookie hoặc dữ liệu trang web có thể đăng xuất tài khoản hay đặt lại tùy chọn.",
           ],
         },
         {
@@ -219,7 +219,7 @@ const documents: Record<Locale, Record<LegalDocumentKind, LegalDocument>> = {
         {
           title: "2. Device storage",
           paragraphs: [
-            "ArenaVerse uses browser local storage to maintain your session, language, and theme choices. You can clear this data in your browser settings, which may sign you out or reset preferences.",
+            "ArenaVerse stores the refresh token in an HttpOnly cookie, keeps the short-lived access token only in memory, and uses local storage for the cached profile, language, and theme choices. Clearing cookies or site data may sign you out or reset preferences.",
           ],
         },
         {

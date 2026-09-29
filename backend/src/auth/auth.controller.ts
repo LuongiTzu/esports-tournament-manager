@@ -6,11 +6,18 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-  Headers,
+  Req,
+  Res,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCookieAuth,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -25,6 +32,7 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { RequestEmailChangeDto } from './dto/request-email-change.dto';
 import { ConfirmEmailChangeDto } from './dto/confirm-email-change.dto';
+import { RefreshCookieService } from './refresh-cookie.service';
 
 const REGISTER_THROTTLE = {
   limit: () => (process.env.NODE_ENV === 'production' ? 3 : 20),
@@ -34,7 +42,10 @@ const REGISTER_THROTTLE = {
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly refreshCookie: RefreshCookieService,
+  ) {}
 
   /**
    * POST /api/auth/register
@@ -71,8 +82,16 @@ export class AuthController {
   @Post('login')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(
+    @Body() dto: LoginDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    this.refreshCookie.assertTrustedOrigin(request);
+    return this.createBrowserSession(
+      await this.authService.login(dto),
+      response,
+    );
   }
 
   /**
@@ -82,27 +101,39 @@ export class AuthController {
   @Post('google')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.OK)
-  async googleLogin(@Body() dto: GoogleLoginDto) {
-    return this.authService.googleLogin(dto);
+  async googleLogin(
+    @Body() dto: GoogleLoginDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    this.refreshCookie.assertTrustedOrigin(request);
+    return this.createBrowserSession(
+      await this.authService.googleLogin(dto),
+      response,
+    );
   }
 
   /**
    * POST /api/auth/refresh
-   * Dùng refresh token để lấy access token mới
-   * Gửi token qua header: Authorization: Bearer <refreshToken>
+   * Dùng refresh token HttpOnly cookie để lấy access token mới
    */
   @Post('refresh')
+  @ApiCookieAuth()
   @HttpCode(HttpStatus.OK)
-  async refresh(@Headers('authorization') authHeader: string) {
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Refresh token không được cung cấp');
+  async refresh(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    try {
+      const result = await this.authService.refreshTokens(
+        this.refreshCookie.read(request),
+      );
+      this.refreshCookie.set(response, result.refreshToken);
+      return { accessToken: result.accessToken };
+    } catch (error) {
+      this.refreshCookie.clear(response);
+      throw error;
     }
-
-    const refreshToken = authHeader.slice(7).trim();
-    if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token không được cung cấp');
-    }
-    return this.authService.refreshTokens(refreshToken);
   }
 
   /**
@@ -110,10 +141,22 @@ export class AuthController {
    * Đăng xuất, xoá refresh token trong DB
    */
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
+  @ApiCookieAuth()
   @HttpCode(HttpStatus.OK)
-  async logout(@CurrentUser('id') userId: string) {
-    return this.authService.logout(userId);
+  async logout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    let refreshToken: string | undefined;
+    try {
+      refreshToken = this.refreshCookie.read(request);
+    } catch (error) {
+      if (!(error instanceof UnauthorizedException)) throw error;
+      // Logout remains idempotent when the session cookie is missing/expired.
+    }
+    const result = await this.authService.logout(refreshToken);
+    this.refreshCookie.clear(response);
+    return result;
   }
 
   /**
@@ -182,5 +225,13 @@ export class AuthController {
   @ApiOperation({ summary: 'Xác nhận email mới bằng token một lần' })
   confirmEmailChange(@Body() dto: ConfirmEmailChangeDto) {
     return this.authService.confirmEmailChange(dto);
+  }
+
+  private createBrowserSession<
+    T extends { accessToken: string; refreshToken: string },
+  >(session: T, response: Response): Omit<T, 'refreshToken'> {
+    this.refreshCookie.set(response, session.refreshToken);
+    const { refreshToken: _refreshToken, ...publicSession } = session;
+    return publicSession;
   }
 }

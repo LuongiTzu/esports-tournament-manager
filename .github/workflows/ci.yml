@@ -35,6 +35,7 @@ jobs:
           npm run typecheck
           npm test -- --runInBand
           npm run openapi:export
+          npm audit --omit=dev --omit=optional
 
       - name: OpenAPI type drift check
         working-directory: frontend
@@ -46,6 +47,16 @@ jobs:
           npm run lint
           npm test
           npm run build
+          npm audit --omit=dev
+
+  production-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production Compose configuration
+        run: docker compose --env-file deploy/production.env.example --profile production config --quiet
+      - name: Build production application images
+        run: docker compose --env-file deploy/production.env.example --profile production build backend frontend migrate
 
   database-and-browser-e2e:
     runs-on: ubuntu-latest

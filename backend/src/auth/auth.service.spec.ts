@@ -473,4 +473,37 @@ describe('AuthService lock and refresh invariants', () => {
       service.login({ email: 'user@example.com', password: 'Password123' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('revokes only the session represented by a matching refresh token', async () => {
+    const { service, prisma, tokens, passwordHasher } = harness();
+    tokens.verifyRefresh.mockResolvedValue({
+      sub: 'user-1',
+      email: 'user@example.com',
+      role: Role.SIGNED_UP_USER,
+      tokenVersion: 3,
+    });
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      refreshToken: 'stored-refresh-hash',
+    });
+    passwordHasher.verify.mockResolvedValue(true);
+
+    await expect(service.logout('raw-refresh')).resolves.toEqual({
+      message: 'Đăng xuất thành công',
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { refreshToken: null, tokenVersion: { increment: 1 } },
+    });
+  });
+
+  it('keeps logout idempotent for an invalid refresh token', async () => {
+    const { service, prisma, tokens } = harness();
+    tokens.verifyRefresh.mockRejectedValue(new Error('invalid token'));
+
+    await expect(service.logout('invalid-refresh')).resolves.toEqual({
+      message: 'Đăng xuất thành công',
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
 });

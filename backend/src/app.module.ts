@@ -17,6 +17,7 @@ import { CommentModule } from './comments/comment.module';
 import { ReportModule } from './reports/report.module';
 import { UploadModule } from './uploads/upload.module';
 import { RatingModule } from './ratings/rating.module';
+import { ObservabilityModule } from './observability/observability.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { RatingModule } from './ratings/rating.module';
     TournamentRealtimeModule,
     UploadModule,
     RatingModule,
+    ObservabilityModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

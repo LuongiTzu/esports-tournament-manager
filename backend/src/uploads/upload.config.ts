@@ -1,5 +1,4 @@
 import { BadRequestException } from '@nestjs/common';
-import { mkdirSync } from 'fs';
 import { memoryStorage } from 'multer';
 import { join, resolve } from 'path';
 
@@ -17,7 +16,11 @@ export const IMAGE_EXTENSIONS = {
 
 export type SupportedImageMime = keyof typeof IMAGE_EXTENSIONS;
 
-mkdirSync(UPLOAD_ROOT, { recursive: true });
+export type StorageDriver = 'local' | 's3';
+
+export function storageDriver(): StorageDriver {
+  return process.env.STORAGE_DRIVER?.toLowerCase() === 's3' ? 's3' : 'local';
+}
 
 export const imageUploadOptions = {
   // Keep the bounded file in memory until authorization has passed and its
