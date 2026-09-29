@@ -71,6 +71,7 @@ const en = {
   "nav.mobile": "Mobile navigation",
   "nav.home": "Home",
   "nav.tournaments": "Tournaments",
+  "nav.ratings": "Ratings",
   "nav.myTournaments": "My tournaments",
   "nav.admin": "Admin",
   "nav.login": "Log in",
@@ -84,6 +85,7 @@ const en = {
   "admin.nav.users": "Users",
   "admin.nav.tournaments": "Tournaments",
   "admin.nav.reports": "Reports",
+  "admin.nav.ratings": "Ratings",
   "admin.nav.moderation": "Moderation",
   "admin.shell.navigation": "Admin navigation",
   "admin.shell.verifying": "Verifying administrator access",
@@ -143,7 +145,7 @@ const en = {
   "tournaments.discovery.sortLabel": "Sort by",
   "tournaments.discovery.sortRecommended": "Recommended",
   "tournaments.discovery.sortName": "Tournament name",
-  "tournaments.discovery.sortNewest": "Newest",
+  "tournaments.discovery.sortNewest": "Recently created",
   "tournaments.discovery.sortTeams": "Most registered teams",
   "tournaments.discovery.searchLabel": "Search",
   "tournaments.discovery.searchPlaceholder":
@@ -228,6 +230,7 @@ const en = {
   "tournament.card.noDescription": "No description yet.",
   "tournament.card.teams": "teams",
   "tournament.card.dateUnknown": "To be confirmed",
+  "tournament.card.createdAt": "Created",
   "tournament.card.verified": "Verified",
 } satisfies Record<keyof typeof vi, string>;
 

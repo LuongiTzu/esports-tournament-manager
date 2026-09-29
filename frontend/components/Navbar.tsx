@@ -178,6 +178,7 @@ export default function Navbar() {
   const mainLinks = [
     { href: "/", label: t("nav.home") },
     { href: "/tournaments", label: t("nav.tournaments") },
+    { href: "/ratings", label: t("nav.ratings") },
     ...(user ? [{ href: "/users/me", label: t("nav.myTournaments") }] : []),
   ];
   const mobileLinks = [

@@ -63,6 +63,8 @@ export default function TournamentDiscovery() {
   const view: TournamentView =
     searchParams.get("view") === "list" ? "list" : "grid";
   const page = readPage(searchParams.get("page"));
+  const currentQuery = searchParams.toString();
+  const returnTo = `${pathname}${currentQuery ? `?${currentQuery}` : ""}#tournament-results`;
   const [games, setGames] = useState<Game[]>([]);
   const [gamesError, setGamesError] = useState(false);
   const [searchDraft, setSearchDraft] = useState(() => ({
@@ -470,6 +472,10 @@ export default function TournamentDiscovery() {
             <TournamentGrid
               tournaments={tournaments}
               view={view}
+              showCreatedAt={sort === "newest"}
+              getTournamentHref={(tournament) =>
+                `/tournaments/${tournament.slug}?returnTo=${encodeURIComponent(returnTo)}`
+              }
               onFavoriteOptimisticChange={updateFavoriteState}
               onFavoriteReconciled={updateFavoriteState}
               onFavoriteRollback={updateFavoriteState}

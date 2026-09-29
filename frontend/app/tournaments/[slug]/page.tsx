@@ -3,6 +3,7 @@
 import { use, useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
+  ArrowLeftIcon,
   CalendarBlankIcon,
   CalendarCheckIcon,
   CalendarPlusIcon,
@@ -53,6 +54,23 @@ const statusTone: Record<TournamentDetail["status"], string> = {
   COMPLETED: "border-accent/35 bg-accent/12 text-accent",
   CANCELLED: "border-rejected/35 bg-rejected/12 text-rejected",
 };
+
+function safeReturnPath(value?: string | string[]) {
+  if (typeof value !== "string") return "/tournaments";
+  try {
+    const base = "https://arenaverse.local";
+    const url = new URL(value, base);
+    if (
+      url.origin !== base ||
+      (url.pathname !== "/tournaments" && url.pathname !== "/ratings")
+    ) {
+      return "/tournaments";
+    }
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/tournaments";
+  }
+}
 
 function EventCard({
   title,
@@ -119,10 +137,14 @@ function ScheduleMilestone({
 
 export default function TournamentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ returnTo?: string | string[] }>;
 }) {
   const { slug } = use(params);
+  const { returnTo } = use(searchParams);
+  const backHref = safeReturnPath(returnTo);
   const { user } = useAuth();
   const { locale, t } = useLocale();
   const [tournament, setTournament] = useState<TournamentDetail | null>(null);
@@ -207,7 +229,7 @@ export default function TournamentDetailPage({
           {t("common.retry")}
         </button>
         <Link
-          href="/tournaments"
+          href={backHref}
           className="mt-4 inline-block text-sm text-brand hover:underline"
         >
           {t("tournament.detail.backToList")}
@@ -259,6 +281,15 @@ export default function TournamentDetailPage({
       className="tournament-detail-page w-full flex-1 pb-16"
     >
       <div className="mx-auto w-full max-w-[100rem] px-0 sm:px-4">
+        <div className="px-4 py-3 sm:px-0">
+          <Link
+            href={backHref}
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-ink-muted transition hover:bg-surface-sub hover:text-ink"
+          >
+            <ArrowLeftIcon size={17} weight="bold" aria-hidden />
+            {t("tournament.detail.backToList")}
+          </Link>
+        </div>
         <header className="overflow-hidden border-y border-line bg-surface-card sm:border-x">
           <div className="relative aspect-[16/6] min-h-64 overflow-hidden bg-surface-sub sm:min-h-80">
             <ResolvedImage
@@ -376,8 +407,8 @@ export default function TournamentDetailPage({
                     />
                     {ratingSummary
                       ? ratingSummary.count > 0 && ratingSummary.average !== null
-                        ? `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(ratingSummary.average)} (${ratingSummary.count})`
-                        : t("ratings.noRatingsShort")
+                        ? `${t("ratings.action")} · ${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(ratingSummary.average)} (${ratingSummary.count})`
+                        : `${t("ratings.action")} · ${t("ratings.noRatingsShort")}`
                       : t("ratings.action")}
                   </a>
                   <TournamentFavoriteButton

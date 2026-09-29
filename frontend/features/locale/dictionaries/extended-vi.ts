@@ -35,6 +35,14 @@ const extendedVi = {
   "ratings.reason.ORGANIZER": "BTC không được đánh giá giải do mình tổ chức.",
   "ratings.reason.NOT_COMPLETED":
     "Chỉ có thể đánh giá sau khi giải hoàn thành.",
+  "ratings.discovery.eyebrow": "Đánh giá cộng đồng",
+  "ratings.discovery.title": "Đánh giá các giải đấu đã hoàn thành",
+  "ratings.discovery.description":
+    "Chọn một giải đấu để xem nhận xét từ cộng đồng hoặc gửi đánh giá của bạn.",
+  "ratings.discovery.empty": "Chưa có giải đấu đã hoàn thành để đánh giá.",
+  "ratings.discovery.loadError": "Không tải được danh sách giải đấu có thể đánh giá.",
+  "ratings.discovery.previous": "Trang trước",
+  "ratings.discovery.next": "Trang sau",
   "deleteTournament.title": "Xóa giải đấu",
   "deleteTournament.hint":
     "Xóa vĩnh viễn giải cùng dữ liệu liên quan như đội, vòng đấu và trận đấu. Chỉ xóa được khi giải chưa bắt đầu và đáp ứng điều kiện của hệ thống.",

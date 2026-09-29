@@ -8,6 +8,7 @@ import {
   CaretRightIcon,
   FlagIcon,
   GavelIcon,
+  StarIcon,
   TrophyIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react";
@@ -44,6 +45,11 @@ const navigationGroups = [
         labelKey: "admin.nav.reports",
         href: "/admin/reports",
         icon: FlagIcon,
+      },
+      {
+        labelKey: "admin.nav.ratings",
+        href: "/admin/ratings",
+        icon: StarIcon,
       },
       {
         labelKey: "admin.nav.moderation",

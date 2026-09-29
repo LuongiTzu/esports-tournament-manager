@@ -38,6 +38,14 @@ const extendedEn = {
   "ratings.reason.ORGANIZER": "Organizers cannot rate their own tournaments.",
   "ratings.reason.NOT_COMPLETED":
     "Ratings open once the tournament is completed.",
+  "ratings.discovery.eyebrow": "Community ratings",
+  "ratings.discovery.title": "Rate completed tournaments",
+  "ratings.discovery.description":
+    "Choose a tournament to read community reviews or submit your own rating.",
+  "ratings.discovery.empty": "There are no completed tournaments to rate yet.",
+  "ratings.discovery.loadError": "Could not load tournaments available for rating.",
+  "ratings.discovery.previous": "Previous page",
+  "ratings.discovery.next": "Next page",
   "deleteTournament.title": "Delete tournament",
   "deleteTournament.hint":
     "Permanently delete this tournament and related data, including teams, rounds and matches. Deletion is allowed only before competition starts and when system requirements are met.",

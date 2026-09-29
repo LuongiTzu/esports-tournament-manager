@@ -38,6 +38,8 @@ const statusClasses: Record<Tournament["status"], string> = {
 export default function TournamentCard({
   tournament: t,
   view = "grid",
+  href,
+  showCreatedAt = false,
   onFavoriteOptimisticChange,
   onFavoriteReconciled,
   onFavoriteRollback,
@@ -45,6 +47,8 @@ export default function TournamentCard({
 }: {
   tournament: Tournament;
   view?: TournamentView;
+  href?: string;
+  showCreatedAt?: boolean;
   onFavoriteOptimisticChange?: (
     state: TournamentFavoriteMutationResult,
   ) => void;
@@ -72,7 +76,7 @@ export default function TournamentCard({
       }`}
     >
       <Link
-        href={`/tournaments/${t.slug}`}
+        href={href ?? `/tournaments/${t.slug}`}
         aria-label={t.name}
         className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_3px_var(--color-accent)]"
       />
@@ -140,6 +144,13 @@ export default function TournamentCard({
         <p className="mt-2 line-clamp-2 flex-1 text-sm leading-6 text-ink-muted">
           {t.description || translate("tournament.card.noDescription")}
         </p>
+
+        {showCreatedAt && (
+          <p className="mt-4 text-xs font-semibold text-accent">
+            {translate("tournament.card.createdAt")}: {" "}
+            {formatLocalizedDate(t.createdAt, locale)}
+          </p>
+        )}
 
         <div className="mt-5 flex items-center justify-between gap-3 border-t border-line/70 pt-4 text-xs text-ink-faint">
           <span className="inline-flex items-center gap-1.5">

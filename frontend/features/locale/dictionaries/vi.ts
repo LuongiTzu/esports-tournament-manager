@@ -71,6 +71,7 @@ const vi = {
   "nav.mobile": "Điều hướng di động",
   "nav.home": "Trang chủ",
   "nav.tournaments": "Giải đấu",
+  "nav.ratings": "Đánh giá",
   "nav.myTournaments": "Giải của tôi",
   "nav.admin": "Quản trị",
   "nav.login": "Đăng nhập",
@@ -84,6 +85,7 @@ const vi = {
   "admin.nav.users": "Người dùng",
   "admin.nav.tournaments": "Giải đấu",
   "admin.nav.reports": "Báo cáo",
+  "admin.nav.ratings": "Đánh giá",
   "admin.nav.moderation": "Kiểm duyệt",
   "admin.shell.navigation": "Điều hướng quản trị",
   "admin.shell.verifying": "Đang xác minh quyền quản trị",
@@ -143,7 +145,7 @@ const vi = {
   "tournaments.discovery.sortLabel": "Sắp xếp",
   "tournaments.discovery.sortRecommended": "Đề xuất",
   "tournaments.discovery.sortName": "Theo tên giải đấu",
-  "tournaments.discovery.sortNewest": "Mới nhất",
+  "tournaments.discovery.sortNewest": "Mới tạo gần đây",
   "tournaments.discovery.sortTeams": "Nhiều đội đăng ký",
   "tournaments.discovery.searchLabel": "Tìm kiếm",
   "tournaments.discovery.searchPlaceholder": "Tìm theo tên giải hoặc tên game",
@@ -227,6 +229,7 @@ const vi = {
   "tournament.card.noDescription": "Chưa có mô tả.",
   "tournament.card.teams": "đội",
   "tournament.card.dateUnknown": "Chưa xác định",
+  "tournament.card.createdAt": "Ngày tạo",
   "tournament.card.verified": "Đã xác minh",
 } as const;
 

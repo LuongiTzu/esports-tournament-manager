@@ -10,6 +10,8 @@ export type TournamentView = "grid" | "list";
 export function TournamentGrid({
   tournaments,
   view = "grid",
+  getTournamentHref,
+  showCreatedAt = false,
   onFavoriteOptimisticChange,
   onFavoriteReconciled,
   onFavoriteRollback,
@@ -17,6 +19,8 @@ export function TournamentGrid({
 }: {
   tournaments: Tournament[];
   view?: TournamentView;
+  getTournamentHref?: (tournament: Tournament) => string;
+  showCreatedAt?: boolean;
   onFavoriteOptimisticChange?: (
     tournament: Tournament,
     state: TournamentFavoriteMutationResult,
@@ -47,6 +51,8 @@ export function TournamentGrid({
           key={tournament.id}
           tournament={tournament}
           view={view}
+          href={getTournamentHref?.(tournament)}
+          showCreatedAt={showCreatedAt}
           onFavoriteOptimisticChange={(state) =>
             onFavoriteOptimisticChange?.(tournament, state, index)
           }
