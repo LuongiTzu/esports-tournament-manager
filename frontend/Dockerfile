@@ -13,6 +13,13 @@ ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL}
 COPY . .
 RUN npm run build
 
+FROM dependencies AS development
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY . .
+EXPOSE 3000
+CMD ["npm", "run", "dev"]
+
 FROM node:22-alpine AS production
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

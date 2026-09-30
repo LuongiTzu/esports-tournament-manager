@@ -10,6 +10,15 @@ COPY prisma ./prisma
 COPY src ./src
 RUN npx prisma generate && npm run build
 
+FROM dependencies AS development
+ENV NODE_ENV=development
+COPY nest-cli.json tsconfig.json tsconfig.build.json ./
+COPY prisma ./prisma
+COPY src ./src
+RUN npx prisma generate
+EXPOSE 3001
+CMD ["npm", "run", "start:dev"]
+
 FROM dependencies AS migration
 COPY prisma ./prisma
 CMD ["npx", "prisma", "migrate", "deploy"]

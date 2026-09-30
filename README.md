@@ -116,7 +116,8 @@ Cho phép bình luận dưới các giải đấu.
 
 ## Triển khai
 
-- Development: chạy PostgreSQL bằng `docker compose up -d postgres`, sau đó
-  chạy backend và frontend bằng các script `npm run start:dev` / `npm run dev`.
+- Development: chạy PostgreSQL, backend và frontend bằng
+  `docker compose up -d --build`. Frontend có tại `http://localhost:3000` và
+  backend có tại `http://localhost:3001/api`.
 - Production: xem hướng dẫn Docker, TLS, migration, MinIO, health check và vận
   hành tại [docs/production-deployment.md](docs/production-deployment.md).

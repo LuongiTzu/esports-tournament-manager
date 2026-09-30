@@ -54,9 +54,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate production Compose configuration
-        run: docker compose --env-file deploy/production.env.example --profile production config --quiet
+        run: docker compose -f docker-compose.prod.yml --env-file deploy/production.env.example config --quiet
       - name: Build production application images
-        run: docker compose --env-file deploy/production.env.example --profile production build backend frontend migrate
+        run: docker compose -f docker-compose.prod.yml --env-file deploy/production.env.example build backend frontend migrate
 
   database-and-browser-e2e:
     runs-on: ubuntu-latest
