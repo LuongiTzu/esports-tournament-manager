@@ -9,9 +9,11 @@ import {
   CalendarDotsIcon,
   CaretLeftIcon,
   CaretRightIcon,
+  CheckCircleIcon,
   ClockIcon,
   GameControllerIcon,
   LinkSimpleIcon,
+  SignInIcon,
   TrophyIcon,
 } from "@phosphor-icons/react";
 import ResolvedImage from "@/components/ResolvedImage";
@@ -59,9 +61,17 @@ const statusTone: Record<MatchStatus, string> = {
 function MatchCard({
   match,
   featured = false,
+  now,
+  checkingInKey,
+  feedback,
+  onCheckIn,
 }: {
   match: MyMatch;
   featured?: boolean;
+  now: number;
+  checkingInKey: string | null;
+  feedback: { matchId: string; type: "success" | "error" } | null;
+  onCheckIn: (matchId: string, teamId: string) => void;
 }) {
   const { locale, t } = useLocale();
   const tournament = match.round.tournament;
@@ -76,6 +86,28 @@ function MatchCard({
     { slot: "A" as const, team: match.teamA, score: match.scoreA },
     { slot: "B" as const, team: match.teamB, score: match.scoreB },
   ];
+  const captainTeamId = match.captainTeamIds.find((teamId) =>
+    match.userTeamIds.includes(teamId),
+  );
+  const captainCheckIn = captainTeamId
+    ? match.checkIns.find((checkIn) => checkIn.teamId === captainTeamId)
+    : undefined;
+  const checkInKey = captainTeamId
+    ? `${match.id}:${captainTeamId}`
+    : null;
+  const opensAt = match.checkInWindow
+    ? new Date(match.checkInWindow.opensAt).getTime()
+    : null;
+  const closesAt = match.checkInWindow
+    ? new Date(match.checkInWindow.closesAt).getTime()
+    : null;
+  const checkInOpen = Boolean(
+    now &&
+      opensAt !== null &&
+      closesAt !== null &&
+      now >= opensAt &&
+      now <= closesAt,
+  );
 
   return (
     <article
@@ -122,6 +154,9 @@ function MatchCard({
           {teams.map(({ slot, team, score }, index) => {
             const isMine = Boolean(team && match.userTeamIds.includes(team.id));
             const isWinner = Boolean(team && match.winner?.id === team.id);
+            const teamCheckIn = team
+              ? match.checkIns.find((checkIn) => checkIn.teamId === team.id)
+              : undefined;
             return (
               <div
                 key={slot}
@@ -148,6 +183,20 @@ function MatchCard({
                   {isMine && (
                     <p className="mt-0.5 text-[11px] font-semibold text-brand">
                       {t("myMatches.yourTeam")}
+                    </p>
+                  )}
+                  {team && match.status !== "COMPLETED" && (
+                    <p
+                      className={`mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold ${
+                        teamCheckIn ? "text-approved" : "text-ink-muted"
+                      }`}
+                    >
+                      {teamCheckIn && <CheckCircleIcon weight="fill" />}
+                      {t(
+                        teamCheckIn
+                          ? "myMatches.checkIn.checkedIn"
+                          : "myMatches.checkIn.pending",
+                      )}
                     </p>
                   )}
                 </div>
@@ -179,6 +228,75 @@ function MatchCard({
             </span>
           )}
         </div>
+
+        {match.status === "PENDING" && match.userTeamIds.length > 0 && (
+          <div className="mt-4 rounded-xl border border-brand/20 bg-brand/5 p-3.5">
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
+                <SignInIcon weight="duotone" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-ink">
+                  {t("myMatches.checkIn.title")}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-ink-muted">
+                  {t("myMatches.checkIn.description")}
+                </p>
+
+                <div className="mt-3" aria-live="polite">
+                  {captainCheckIn ? (
+                    <p className="inline-flex items-center gap-1.5 text-xs font-bold text-approved">
+                      <CheckCircleIcon weight="fill" />
+                      {t("myMatches.checkIn.success")}
+                    </p>
+                  ) : !captainTeamId ? (
+                    <p className="text-xs font-semibold text-ink-muted">
+                      {t("myMatches.checkIn.captainOnly")}
+                    </p>
+                  ) : !match.checkInWindow ? (
+                    <p className="text-xs font-semibold text-ink-muted">
+                      {t("myMatches.checkIn.unscheduled")}
+                    </p>
+                  ) : now > 0 && opensAt !== null && now < opensAt ? (
+                    <p className="text-xs font-semibold text-ink-muted">
+                      {t("myMatches.checkIn.opensAt")} {" "}
+                      {formatLocalizedDate(
+                        match.checkInWindow.opensAt,
+                        locale,
+                        { dateStyle: "medium", timeStyle: "short" },
+                      )}
+                    </p>
+                  ) : now > 0 && closesAt !== null && now > closesAt ? (
+                    <p className="text-xs font-semibold text-rejected">
+                      {t("myMatches.checkIn.closed")}
+                    </p>
+                  ) : checkInOpen ? (
+                    <button
+                      type="button"
+                      disabled={checkingInKey === checkInKey}
+                      onClick={() => onCheckIn(match.id, captainTeamId)}
+                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-xs font-bold text-on-brand transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <SignInIcon aria-hidden weight="bold" />
+                      {t(
+                        checkingInKey === checkInKey
+                          ? "myMatches.checkIn.checking"
+                          : "myMatches.checkIn.action",
+                      )}
+                    </button>
+                  ) : null}
+
+                  {feedback?.matchId === match.id &&
+                    feedback.type === "error" && (
+                      <p className="mt-2 text-xs font-semibold text-rejected">
+                        {t("myMatches.checkIn.error")}
+                      </p>
+                    )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
           <Link
@@ -225,12 +343,23 @@ export default function MyMatchesPage() {
   const [status, setStatus] = useState<MatchStatus>("PENDING");
   const [page, setPage] = useState(1);
   const [attempt, setAttempt] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const [checkingInKey, setCheckingInKey] = useState<string | null>(null);
+  const [checkInFeedback, setCheckInFeedback] = useState<{
+    matchId: string;
+    type: "success" | "error";
+  } | null>(null);
   const [result, setResult] = useState<{
     key: string;
     response: MyMatchesResponse | null;
     error: boolean;
   } | null>(null);
   const requestKey = `${user?.id ?? "guest"}:${status}:${page}:${attempt}`;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!ready) return;
@@ -254,6 +383,43 @@ export default function MyMatchesPage() {
       cancelled = true;
     };
   }, [page, ready, requestKey, router, status, user]);
+
+  const handleCheckIn = async (matchId: string, teamId: string) => {
+    const key = `${matchId}:${teamId}`;
+    setCheckingInKey(key);
+    setCheckInFeedback(null);
+    try {
+      const checkIn = await matchesApi.checkIn(matchId, teamId);
+      const withCheckIn = (match: MyMatch): MyMatch =>
+        match.id === matchId
+          ? {
+              ...match,
+              checkIns: [
+                ...match.checkIns.filter((item) => item.teamId !== teamId),
+                checkIn,
+              ],
+            }
+          : match;
+      setResult((current) => {
+        if (!current?.response) return current;
+        return {
+          ...current,
+          response: {
+            ...current.response,
+            data: current.response.data.map(withCheckIn),
+            nextMatch: current.response.nextMatch
+              ? withCheckIn(current.response.nextMatch)
+              : null,
+          },
+        };
+      });
+      setCheckInFeedback({ matchId, type: "success" });
+    } catch {
+      setCheckInFeedback({ matchId, type: "error" });
+    } finally {
+      setCheckingInKey(null);
+    }
+  };
 
   if (!ready || (user && !result)) {
     return (
@@ -317,7 +483,14 @@ export default function MyMatchesPage() {
               </div>
             </div>
             <div className="max-w-2xl">
-              <MatchCard match={response.nextMatch} featured />
+              <MatchCard
+                match={response.nextMatch}
+                featured
+                now={now}
+                checkingInKey={checkingInKey}
+                feedback={checkInFeedback}
+                onCheckIn={handleCheckIn}
+              />
             </div>
           </section>
         )}
@@ -420,7 +593,14 @@ export default function MyMatchesPage() {
             ) : (
               <div className="grid gap-5 lg:grid-cols-2">
                 {matches.map((match) => (
-                  <MatchCard key={match.id} match={match} />
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    now={now}
+                    checkingInKey={checkingInKey}
+                    feedback={checkInFeedback}
+                    onCheckIn={handleCheckIn}
+                  />
                 ))}
               </div>
             )}

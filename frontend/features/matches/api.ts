@@ -1,6 +1,7 @@
 import { request } from "@/lib/api/client";
 import type {
   MatchDetail,
+  MatchCheckIn,
   MatchMutationResult,
   MyMatchesResponse,
   PutMatchScoresRequest,
@@ -8,6 +9,15 @@ import type {
 } from "./types";
 
 export const matchesApi = {
+  checkIn: (matchId: string, teamId: string) =>
+    request<MatchCheckIn>(
+      `/matches/${encodeURIComponent(matchId)}/check-ins`,
+      {
+        method: "POST",
+        body: JSON.stringify({ teamId }),
+        auth: true,
+      },
+    ),
   findMine: (
     params: {
       status?: MatchDetail["status"];

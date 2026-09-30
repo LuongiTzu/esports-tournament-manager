@@ -9,6 +9,8 @@ import { MatchQueryService } from './match-query.service';
 import { MatchResultService } from './match-result.service';
 import { MatchSchedulingService } from './match-scheduling.service';
 import { MyMatchesQueryDto } from './dto/my-matches-query.dto';
+import { MatchCheckInDto } from './dto/match-check-in.dto';
+import { MatchCheckInService } from './match-check-in.service';
 
 @Injectable()
 export class MatchesService {
@@ -16,12 +18,16 @@ export class MatchesService {
     private readonly queries: MatchQueryService,
     private readonly scheduling: MatchSchedulingService,
     private readonly results: MatchResultService,
+    private readonly checkIns: MatchCheckInService,
   ) {}
   findOne(matchId: string) {
     return this.queries.findOne(matchId);
   }
   findForUser(userId: string, query: MyMatchesQueryDto) {
     return this.queries.findForUser(userId, query);
+  }
+  checkIn(matchId: string, userId: string, dto: MatchCheckInDto) {
+    return this.checkIns.checkIn(matchId, userId, dto);
   }
   update(matchId: string, dto: UpdateMatchDto, actorId?: string) {
     return this.results.update(matchId, dto, actorId);

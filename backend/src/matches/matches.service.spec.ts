@@ -17,6 +17,7 @@ import { MatchQueryService } from './match-query.service';
 import { MatchResultService } from './match-result.service';
 import { MatchSchedulingService } from './match-scheduling.service';
 import { MatchesService } from './matches.service';
+import { MatchCheckInService } from './match-check-in.service';
 import { RoundLifecycleService } from '../brackets/round-lifecycle.service';
 
 function match(overrides: Record<string, unknown> = {}) {
@@ -190,6 +191,7 @@ function harness(
         undefined,
         roundLifecycle,
       ),
+      new MatchCheckInService(prisma),
     ),
     tx,
     rows,
@@ -1123,7 +1125,7 @@ describe('MatchesService results', () => {
 
 describe('MatchesService organizer operations', () => {
   it('persists and broadcasts an actual schedule change', async () => {
-    const { service, notifications, events } = harness();
+    const { service, tx, notifications, events } = harness();
 
     await service.update('match-1', {
       scheduledAt: '2026-08-20T10:00:00.000Z',
@@ -1144,6 +1146,13 @@ describe('MatchesService organizer operations', () => {
     );
     expect(jest.mocked(events.publish)).toHaveBeenCalledWith(
       expect.objectContaining({ event: 'scheduleUpdated' }),
+    );
+    expect(tx.match.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          checkIns: { deleteMany: {} },
+        }) as unknown,
+      }),
     );
   });
 
@@ -1243,6 +1252,14 @@ describe('MatchesService organizer operations', () => {
       }),
     ).resolves.toEqual({ updatedCount: 2, matchIds: ['m1', 'm2'] });
     expect(tx.match.update).toHaveBeenCalledTimes(1);
+    expect(tx.match.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          scheduledAt: new Date('2026-08-20T10:00:00.000Z'),
+          checkIns: { deleteMany: {} },
+        },
+      }),
+    );
     expect(
       jest.mocked(notifications.createForMatchEvent),
     ).toHaveBeenCalledTimes(1);

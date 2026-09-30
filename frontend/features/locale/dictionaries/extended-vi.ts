@@ -712,6 +712,22 @@ const extendedVi = {
     "Các trận sẽ xuất hiện khi đội của bạn được duyệt và ban tổ chức tạo cấu trúc thi đấu.",
   "myMatches.browse": "Khám phá giải đấu",
   "myMatches.pagination": "Phân trang trận đấu của tôi",
+  "myMatches.checkIn.title": "Check-in trước trận",
+  "myMatches.checkIn.description":
+    "Đội trưởng có thể xác nhận sẵn sàng trong 30 phút trước giờ đấu.",
+  "myMatches.checkIn.checkedIn": "Đã check-in",
+  "myMatches.checkIn.pending": "Chưa check-in",
+  "myMatches.checkIn.action": "Check-in ngay",
+  "myMatches.checkIn.checking": "Đang check-in...",
+  "myMatches.checkIn.opensAt": "Check-in sẽ mở lúc",
+  "myMatches.checkIn.closed": "Cửa sổ check-in đã đóng.",
+  "myMatches.checkIn.unscheduled":
+    "Trận đấu cần được xếp lịch trước khi check-in.",
+  "myMatches.checkIn.captainOnly":
+    "Chỉ đội trưởng mới có thể xác nhận check-in cho đội.",
+  "myMatches.checkIn.success": "Đội của bạn đã check-in thành công.",
+  "myMatches.checkIn.error":
+    "Không thể check-in lúc này. Vui lòng tải lại và thử lại.",
   "tournament.tools.exportCalendar": "Xuất lịch",
   "tournament.tools.share": "Chia sẻ QR",
   "tournament.tools.shareTitle": "Chia sẻ giải đấu",

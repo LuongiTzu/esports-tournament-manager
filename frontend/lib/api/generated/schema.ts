@@ -1343,6 +1343,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/matches/{id}/check-ins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check the current user team in for a match */
+        post: operations["MatchesController_checkIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/matches/{id}": {
         parameters: {
             query?: never;
@@ -1877,6 +1894,19 @@ export interface components {
             logoUrl: string | null;
             seed: number | null;
         };
+        MatchCheckInResponseDto: {
+            id: string;
+            matchId: string;
+            teamId: string;
+            /** Format: date-time */
+            checkedInAt: string;
+        };
+        MyMatchCheckInWindowDto: {
+            /** Format: date-time */
+            opensAt: string;
+            /** Format: date-time */
+            closesAt: string;
+        };
         MyMatchGameDto: {
             id: string;
             code: string;
@@ -1923,6 +1953,9 @@ export interface components {
             teamB: components["schemas"]["MyMatchTeamDto"] | null;
             winner: components["schemas"]["MyMatchTeamDto"] | null;
             userTeamIds: string[];
+            captainTeamIds: string[];
+            checkIns: components["schemas"]["MatchCheckInResponseDto"][];
+            checkInWindow: components["schemas"]["MyMatchCheckInWindowDto"] | null;
             round: components["schemas"]["MyMatchRoundDto"];
         };
         MyMatchSummaryDto: {
@@ -1942,6 +1975,9 @@ export interface components {
             nextMatch: components["schemas"]["MyMatchItemDto"] | null;
             summary: components["schemas"]["MyMatchSummaryDto"];
             pagination: components["schemas"]["MyMatchPaginationDto"];
+        };
+        MatchCheckInDto: {
+            teamId: string;
         };
         BulkScheduleItemDto: {
             matchId: string;
@@ -4079,6 +4115,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MyMatchesResponseDto"];
+                };
+            };
+        };
+    };
+    MatchesController_checkIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchCheckInDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchCheckInResponseDto"];
                 };
             };
         };

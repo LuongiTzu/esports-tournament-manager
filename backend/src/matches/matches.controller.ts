@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -33,6 +35,10 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AllowAdminOverride } from '../common/decorators/allow-admin-override.decorator';
 import { MyMatchesQueryDto } from './dto/my-matches-query.dto';
 import { MyMatchesResponseDto } from './dto/my-matches-response.dto';
+import {
+  MatchCheckInDto,
+  MatchCheckInResponseDto,
+} from './dto/match-check-in.dto';
 
 @ApiTags('Matches')
 @Controller()
@@ -49,6 +55,20 @@ export class MatchesController {
     @Query() query: MyMatchesQueryDto,
   ) {
     return this.matches.findForUser(userId, query);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check the current user team in for a match' })
+  @ApiOkResponse({ type: MatchCheckInResponseDto })
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('matches/:id/check-ins')
+  checkIn(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: MatchCheckInDto,
+  ) {
+    return this.matches.checkIn(id, userId, dto);
   }
 
   @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)

@@ -3004,6 +3004,52 @@
         ]
       }
     },
+    "/api/matches/{id}/check-ins": {
+      "post": {
+        "operationId": "MatchesController_checkIn",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchCheckInDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchCheckInResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Check the current user team in for a match",
+        "tags": [
+          "Matches"
+        ]
+      }
+    },
     "/api/matches/{id}": {
       "get": {
         "operationId": "MatchesController_findOne",
@@ -4699,6 +4745,47 @@
           "seed"
         ]
       },
+      "MatchCheckInResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "matchId": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "string"
+          },
+          "checkedInAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "matchId",
+          "teamId",
+          "checkedInAt"
+        ]
+      },
+      "MyMatchCheckInWindowDto": {
+        "type": "object",
+        "properties": {
+          "opensAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closesAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "opensAt",
+          "closesAt"
+        ]
+      },
       "MyMatchGameDto": {
         "type": "object",
         "properties": {
@@ -4897,6 +4984,27 @@
               "type": "string"
             }
           },
+          "captainTeamIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "checkIns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchCheckInResponseDto"
+            }
+          },
+          "checkInWindow": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyMatchCheckInWindowDto"
+              }
+            ]
+          },
           "round": {
             "$ref": "#/components/schemas/MyMatchRoundDto"
           }
@@ -4917,6 +5025,9 @@
           "teamB",
           "winner",
           "userTeamIds",
+          "captainTeamIds",
+          "checkIns",
+          "checkInWindow",
           "round"
         ]
       },
@@ -4996,6 +5107,17 @@
           "nextMatch",
           "summary",
           "pagination"
+        ]
+      },
+      "MatchCheckInDto": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "teamId"
         ]
       },
       "BulkScheduleItemDto": {

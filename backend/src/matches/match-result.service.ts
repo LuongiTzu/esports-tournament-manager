@@ -159,6 +159,7 @@ export class MatchResultService {
                 ? null
                 : new Date(dto.scheduledAt),
           discordLink: dto.discordLink,
+          checkIns: scheduleChanged ? { deleteMany: {} } : undefined,
           status: dto.status,
           winnerTeamId,
           outcome: outcome.outcome,

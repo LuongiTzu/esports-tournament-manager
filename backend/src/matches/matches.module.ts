@@ -10,6 +10,7 @@ import { CompetitionProgressionService } from './competition-progression.service
 import { NotificationModule } from '../notifications/notification.module';
 import { TournamentRealtimeModule } from '../tournaments/tournament-realtime.module';
 import { BracketsModule } from '../brackets/brackets.module';
+import { MatchCheckInService } from './match-check-in.service';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { BracketsModule } from '../brackets/brackets.module';
     MatchResultService,
     MatchResultPolicy,
     CompetitionProgressionService,
+    MatchCheckInService,
   ],
   exports: [
     MatchesService,

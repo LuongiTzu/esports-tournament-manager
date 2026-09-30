@@ -21,6 +21,14 @@ function matchRecord(id = 'match-1') {
     scheduledAt: new Date('2030-06-15T12:00:00.000Z'),
     playedAt: null,
     discordLink: 'https://discord.example/match',
+    checkIns: [
+      {
+        id: 'check-in-1',
+        matchId: id,
+        teamId: 'team-1',
+        checkedInAt: new Date('2030-06-15T11:35:00.000Z'),
+      },
+    ],
     teamAId: 'team-1',
     teamBId: 'opponent-1',
     teamA: {
@@ -92,9 +100,10 @@ describe('MatchQueryService.findForUser', () => {
   it('queries active non-BYE matches and identifies the current user teams', async () => {
     const { prisma, service } = harness();
     const match = matchRecord();
-    jest
-      .mocked(prisma.team.findMany)
-      .mockResolvedValue([{ id: 'team-1' }, { id: 'team-2' }] as never);
+    jest.mocked(prisma.team.findMany).mockResolvedValue([
+      { id: 'team-1', captainId: 'user-1' },
+      { id: 'team-2', captainId: 'other-user' },
+    ] as never);
     jest.mocked(prisma.match.findMany).mockResolvedValue([match] as never);
     jest.mocked(prisma.match.count).mockResolvedValue(1);
     jest.mocked(prisma.match.findFirst).mockResolvedValue(match as never);
@@ -141,6 +150,12 @@ describe('MatchQueryService.findForUser', () => {
     expect(result.data[0]).toMatchObject({
       id: 'match-1',
       userTeamIds: ['team-1'],
+      captainTeamIds: ['team-1'],
+      checkIns: [{ id: 'check-in-1', teamId: 'team-1' }],
+      checkInWindow: {
+        opensAt: new Date('2030-06-15T11:30:00.000Z'),
+        closesAt: new Date('2030-06-15T12:00:00.000Z'),
+      },
       round: {
         tournament: { displayGameName: 'Chess Blitz' },
       },

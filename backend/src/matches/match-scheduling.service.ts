@@ -90,7 +90,10 @@ export class MatchSchedulingService {
         }
         const updated = await tx.match.update({
           where: { id: item.matchId },
-          data: { scheduledAt },
+          data: {
+            scheduledAt,
+            checkIns: { deleteMany: {} },
+          },
           select: { id: true, updatedAt: true },
         });
         revisions.push(updated);

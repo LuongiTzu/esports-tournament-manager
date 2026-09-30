@@ -731,6 +731,22 @@ const extendedEn = {
     "Matches will appear after your team is approved and the organizer generates the competition structure.",
   "myMatches.browse": "Browse tournaments",
   "myMatches.pagination": "My matches pagination",
+  "myMatches.checkIn.title": "Pre-match check-in",
+  "myMatches.checkIn.description":
+    "The team captain can confirm readiness during the 30 minutes before the match.",
+  "myMatches.checkIn.checkedIn": "Checked in",
+  "myMatches.checkIn.pending": "Not checked in",
+  "myMatches.checkIn.action": "Check in now",
+  "myMatches.checkIn.checking": "Checking in...",
+  "myMatches.checkIn.opensAt": "Check-in opens at",
+  "myMatches.checkIn.closed": "The check-in window has closed.",
+  "myMatches.checkIn.unscheduled":
+    "The match must be scheduled before check-in.",
+  "myMatches.checkIn.captainOnly":
+    "Only the team captain can check the team in.",
+  "myMatches.checkIn.success": "Your team checked in successfully.",
+  "myMatches.checkIn.error":
+    "Check-in is unavailable right now. Refresh and try again.",
   "tournament.tools.exportCalendar": "Export schedule",
   "tournament.tools.share": "Share QR",
   "tournament.tools.shareTitle": "Share tournament",

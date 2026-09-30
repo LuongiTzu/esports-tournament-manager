@@ -6,6 +6,15 @@ import {
   TournamentStatus,
 } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
+import { MatchCheckInResponseDto } from './match-check-in.dto';
+
+class MyMatchCheckInWindowDto {
+  @ApiProperty({ type: String, format: 'date-time' })
+  opensAt!: Date;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  closesAt!: Date;
+}
 
 class MyMatchTeamDto {
   @ApiProperty()
@@ -126,6 +135,15 @@ export class MyMatchItemDto {
 
   @ApiProperty({ type: [String] })
   userTeamIds!: string[];
+
+  @ApiProperty({ type: [String] })
+  captainTeamIds!: string[];
+
+  @ApiProperty({ type: [MatchCheckInResponseDto] })
+  checkIns!: MatchCheckInResponseDto[];
+
+  @ApiProperty({ type: MyMatchCheckInWindowDto, nullable: true })
+  checkInWindow!: MyMatchCheckInWindowDto | null;
 
   @ApiProperty({ type: MyMatchRoundDto })
   round!: MyMatchRoundDto;

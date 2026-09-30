@@ -699,3 +699,22 @@ CREATE TABLE "tournament_ratings" (
 );
 CREATE UNIQUE INDEX "tournament_ratings_tournament_id_author_id_key" ON "tournament_ratings"("tournament_id", "author_id");
 CREATE INDEX "tournament_ratings_tournament_id_is_hidden_created_at_idx" ON "tournament_ratings"("tournament_id", "is_hidden", "created_at");
+
+-- Match check-ins
+CREATE TABLE "match_check_ins" (
+    "id" TEXT NOT NULL,
+    "checked_in_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "match_id" TEXT NOT NULL,
+    "team_id" TEXT NOT NULL,
+    "checked_in_by_id" TEXT NOT NULL,
+
+    CONSTRAINT "match_check_ins_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "match_check_ins_match_id_team_id_key" ON "match_check_ins"("match_id", "team_id");
+CREATE INDEX "match_check_ins_team_id_checked_in_at_idx" ON "match_check_ins"("team_id", "checked_in_at");
+CREATE INDEX "match_check_ins_checked_in_by_id_idx" ON "match_check_ins"("checked_in_by_id");
+
+ALTER TABLE "match_check_ins" ADD CONSTRAINT "match_check_ins_match_id_fkey" FOREIGN KEY ("match_id") REFERENCES "matches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "match_check_ins" ADD CONSTRAINT "match_check_ins_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "match_check_ins" ADD CONSTRAINT "match_check_ins_checked_in_by_id_fkey" FOREIGN KEY ("checked_in_by_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

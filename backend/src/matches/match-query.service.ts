@@ -3,6 +3,7 @@ import { MatchStatus, Prisma, RegistrationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { withTournamentGameDisplayName } from '../tournaments/domain/tournament-game-display';
 import { MyMatchesQueryDto } from './dto/my-matches-query.dto';
+import { getMatchCheckInWindow } from './domain/match-check-in.policy';
 
 const publicTeamSelect = {
   id: true,
@@ -24,6 +25,10 @@ const myMatchSelect = Prisma.validator<Prisma.MatchSelect>()({
   scheduledAt: true,
   playedAt: true,
   discordLink: true,
+  checkIns: {
+    select: { id: true, matchId: true, teamId: true, checkedInAt: true },
+    orderBy: { checkedInAt: 'asc' },
+  },
   teamA: { select: publicTeamSelect },
   teamB: { select: publicTeamSelect },
   winner: { select: publicTeamSelect },
@@ -52,12 +57,25 @@ const myMatchSelect = Prisma.validator<Prisma.MatchSelect>()({
 
 type MyMatchRecord = Prisma.MatchGetPayload<{ select: typeof myMatchSelect }>;
 
-function toMyMatch(match: MyMatchRecord, userTeamIds: Set<string>) {
+function toMyMatch(
+  match: MyMatchRecord,
+  userTeamIds: Set<string>,
+  captainTeamIds: Set<string>,
+) {
+  const assignedTeamIds = [match.teamA?.id, match.teamB?.id].filter(
+    (teamId): teamId is string => teamId !== undefined,
+  );
   return {
     ...match,
-    userTeamIds: [match.teamA?.id, match.teamB?.id].filter(
-      (teamId): teamId is string =>
-        teamId !== undefined && userTeamIds.has(teamId),
+    checkIns: match.checkIns.filter((checkIn) =>
+      assignedTeamIds.includes(checkIn.teamId),
+    ),
+    checkInWindow: match.scheduledAt
+      ? getMatchCheckInWindow(match.scheduledAt)
+      : null,
+    userTeamIds: assignedTeamIds.filter((teamId) => userTeamIds.has(teamId)),
+    captainTeamIds: assignedTeamIds.filter((teamId) =>
+      captainTeamIds.has(teamId),
     ),
     round: {
       ...match.round,
@@ -100,9 +118,12 @@ export class MatchQueryService {
         status: RegistrationStatus.APPROVED,
         OR: [{ captainId: userId }, { members: { some: { userId } } }],
       },
-      select: { id: true },
+      select: { id: true, captainId: true },
     });
     const userTeamIds = new Set(teams.map((team) => team.id));
+    const captainTeamIds = new Set(
+      teams.filter((team) => team.captainId === userId).map((team) => team.id),
+    );
 
     if (userTeamIds.size === 0) {
       return {
@@ -175,8 +196,10 @@ export class MatchQueryService {
     }
 
     return {
-      data: data.map((match) => toMyMatch(match, userTeamIds)),
-      nextMatch: nextMatch ? toMyMatch(nextMatch, userTeamIds) : null,
+      data: data.map((match) => toMyMatch(match, userTeamIds, captainTeamIds)),
+      nextMatch: nextMatch
+        ? toMyMatch(nextMatch, userTeamIds, captainTeamIds)
+        : null,
       summary,
       pagination: {
         page,
