@@ -5,6 +5,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { CookieOptions, Request, Response } from 'express';
+import {
+  isConfiguredBrowserOrigin,
+  parseBrowserOrigins,
+} from '../common/config/browser-origins';
 
 const REFRESH_COOKIE_NAME = 'etm_refresh';
 const REFRESH_COOKIE_PATH = '/api/auth';
@@ -47,13 +51,12 @@ export class RefreshCookieService {
     const origin = request.headers.origin;
     if (!origin) return;
 
-    const allowedOrigins = this.config
-      .get<string>('FRONTEND_URL', 'http://localhost:3000')
-      .split(',')
-      .map((value) => value.trim().replace(/\/$/, ''))
-      .filter(Boolean);
+    const allowedOrigins = parseBrowserOrigins(
+      this.config.get<string>('ALLOWED_ORIGINS') ??
+        this.config.get<string>('FRONTEND_URL', 'http://localhost:3000'),
+    );
 
-    if (!allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+    if (!isConfiguredBrowserOrigin(origin, allowedOrigins)) {
       throw new ForbiddenException('Nguồn yêu cầu không được phép');
     }
   }

@@ -3,9 +3,17 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import {
+  configuredBrowserOrigins,
+  configuredCorsOrigin,
+} from './common/config/browser-origins';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-import { storageDriver, UPLOAD_ROOT } from './uploads/upload.config';
+import {
+  assertProductionStorageConfiguration,
+  storageDriver,
+  UPLOAD_ROOT,
+} from './uploads/upload.config';
 
 export function configureStaticAssets(app: NestExpressApplication): void {
   if (storageDriver() !== 'local') return;
@@ -28,9 +36,11 @@ export function configureApp(app: INestApplication): void {
     }),
   );
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: configuredCorsOrigin,
     credentials: true,
   });
+
+  if (!isSwaggerEnabled()) return;
 
   const config = new DocumentBuilder()
     .setTitle('Esports Tournament Manager API')
@@ -46,8 +56,18 @@ export function configureApp(app: INestApplication): void {
   });
 }
 
+export function isSwaggerEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  const configured = env.SWAGGER_ENABLED?.trim().toLowerCase();
+  if (configured !== undefined) return configured === 'true';
+  return env.NODE_ENV !== 'production';
+}
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  configuredBrowserOrigins();
+  assertProductionStorageConfiguration();
   configureStaticAssets(app);
   configureApp(app);
   const port = process.env.PORT || 3001;

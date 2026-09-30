@@ -22,6 +22,17 @@ export function storageDriver(): StorageDriver {
   return process.env.STORAGE_DRIVER?.toLowerCase() === 's3' ? 's3' : 'local';
 }
 
+export function assertProductionStorageConfiguration(
+  env: NodeJS.ProcessEnv = process.env,
+): void {
+  if (
+    env.NODE_ENV === 'production' &&
+    env.STORAGE_DRIVER?.trim().toLowerCase() !== 's3'
+  ) {
+    throw new Error('Production requires STORAGE_DRIVER=s3');
+  }
+}
+
 export const imageUploadOptions = {
   // Keep the bounded file in memory until authorization has passed and its
   // signature has been verified. Business services then persist it atomically.

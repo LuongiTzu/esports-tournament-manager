@@ -22,6 +22,7 @@ import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { PrismaService } from '../prisma/prisma.service';
 import { TournamentEventsService } from './tournament-events.service';
 import { NotificationEventsService } from '../notifications/notification-events.service';
+import { configuredCorsOrigin } from '../common/config/browser-origins';
 import { tournamentVisibilityPolicy } from '../common/policies/tournament-visibility.policy';
 
 interface TournamentSocketData {
@@ -32,7 +33,7 @@ interface TournamentSocketData {
 @WebSocketGateway({
   namespace: '/tournaments',
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: configuredCorsOrigin,
     credentials: true,
   },
 })

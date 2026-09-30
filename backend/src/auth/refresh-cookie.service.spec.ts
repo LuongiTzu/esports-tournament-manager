@@ -41,6 +41,19 @@ describe('RefreshCookieService', () => {
     );
   });
 
+  it('accepts every configured browser origin', () => {
+    const cookies = service({
+      FRONTEND_URL: 'https://arena.example',
+      ALLOWED_ORIGINS: 'https://arena.example, https://admin.arena.example/',
+    });
+
+    expect(() =>
+      cookies.assertTrustedOrigin({
+        headers: { origin: 'https://admin.arena.example' },
+      } as Request),
+    ).not.toThrow();
+  });
+
   it('reads a URL-encoded refresh cookie', () => {
     const cookies = service();
     const request = {
