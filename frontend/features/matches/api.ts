@@ -2,11 +2,29 @@ import { request } from "@/lib/api/client";
 import type {
   MatchDetail,
   MatchMutationResult,
+  MyMatchesResponse,
   PutMatchScoresRequest,
   UpdateMatchRequest,
 } from "./types";
 
 export const matchesApi = {
+  findMine: (
+    params: {
+      status?: MatchDetail["status"];
+      page?: number;
+      limit?: number;
+    } = {},
+  ) => {
+    const query = new URLSearchParams();
+    if (params.status) query.set("status", params.status);
+    if (params.page) query.set("page", String(params.page));
+    if (params.limit) query.set("limit", String(params.limit));
+    const search = query.toString();
+    return request<MyMatchesResponse>(
+      `/users/me/matches${search ? `?${search}` : ""}`,
+      { auth: true },
+    );
+  },
   findOne: (matchId: string) =>
     request<MatchDetail>(`/matches/${matchId}`, { auth: true }),
   update: (matchId: string, data: UpdateMatchRequest) =>

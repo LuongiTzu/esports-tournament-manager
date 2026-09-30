@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { HeartIcon, UsersThreeIcon } from "@phosphor-icons/react";
+import {
+  CalendarDotsIcon,
+  HeartIcon,
+  UsersThreeIcon,
+} from "@phosphor-icons/react";
 import { alertErrorClass } from "@/components/ui";
 import { useAuth } from "@/features/auth/store";
 import { useLocale } from "@/features/locale/store";
@@ -146,13 +150,22 @@ export default function MyProfilePage() {
           <h1 className="text-2xl font-black text-ink sm:text-3xl">
             {t("profile.myTournaments")}
           </h1>
-          <Link
-            href="/users/me/teams"
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink-muted hover:border-brand hover:text-brand"
-          >
-            <UsersThreeIcon aria-hidden />
-            {t("myTeams.title")}
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/users/me/matches"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink-muted hover:border-brand hover:text-brand"
+            >
+              <CalendarDotsIcon aria-hidden />
+              {t("nav.myMatches")}
+            </Link>
+            <Link
+              href="/users/me/teams"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm font-semibold text-ink-muted hover:border-brand hover:text-brand"
+            >
+              <UsersThreeIcon aria-hidden />
+              {t("myTeams.title")}
+            </Link>
+          </div>
         </div>
         <div
           role="tablist"

@@ -6,8 +6,15 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
@@ -24,10 +31,25 @@ import {
 import { MatchesService } from './matches.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AllowAdminOverride } from '../common/decorators/allow-admin-override.decorator';
+import { MyMatchesQueryDto } from './dto/my-matches-query.dto';
+import { MyMatchesResponseDto } from './dto/my-matches-response.dto';
 
+@ApiTags('Matches')
 @Controller()
 export class MatchesController {
   constructor(private readonly matches: MatchesService) {}
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List matches for the current user teams' })
+  @ApiOkResponse({ type: MyMatchesResponseDto })
+  @UseGuards(JwtAuthGuard)
+  @Get('users/me/matches')
+  findMine(
+    @CurrentUser('id') userId: string,
+    @Query() query: MyMatchesQueryDto,
+  ) {
+    return this.matches.findForUser(userId, query);
+  }
 
   @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)
   @VisibilityResource('match:id')

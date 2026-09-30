@@ -22,6 +22,9 @@ import AccountMenu from "@/components/navigation/AccountMenu";
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
+  if (href === "/users/me") {
+    return pathname === href || pathname === "/users/me/teams";
+  }
   if (href === "/tournaments") {
     const segments = pathname.split("/").filter(Boolean);
     return (
@@ -179,7 +182,12 @@ export default function Navbar() {
     { href: "/", label: t("nav.home") },
     { href: "/tournaments", label: t("nav.tournaments") },
     { href: "/ratings", label: t("nav.ratings") },
-    ...(user ? [{ href: "/users/me", label: t("nav.myTournaments") }] : []),
+    ...(user
+      ? [
+          { href: "/users/me/matches", label: t("nav.myMatches") },
+          { href: "/users/me", label: t("nav.myTournaments") },
+        ]
+      : []),
   ];
   const mobileLinks = [
     ...mainLinks,

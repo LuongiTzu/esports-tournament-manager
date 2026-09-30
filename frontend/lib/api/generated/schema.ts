@@ -1326,6 +1326,23 @@ export interface paths {
         patch: operations["TeamsController_updateStatus"];
         trace?: never;
     };
+    "/api/users/me/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List matches for the current user teams */
+        get: operations["MatchesController_findMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/matches/{id}": {
         parameters: {
             query?: never;
@@ -1852,6 +1869,79 @@ export interface components {
             /** @enum {string} */
             status: "PENDING" | "APPROVED" | "REJECTED";
             rejectReason?: string;
+        };
+        MyMatchTeamDto: {
+            id: string;
+            name: string;
+            shortName: string | null;
+            logoUrl: string | null;
+            seed: number | null;
+        };
+        MyMatchGameDto: {
+            id: string;
+            code: string;
+            name: string;
+            iconUrl: string | null;
+        };
+        MyMatchTournamentDto: {
+            id: string;
+            name: string;
+            slug: string;
+            /** @enum {string} */
+            status: "DRAFT" | "REGISTRATION" | "ONGOING" | "COMPLETED" | "CANCELLED";
+            /** @enum {string} */
+            mode: "ONLINE" | "OFFLINE" | "HYBRID";
+            location: string | null;
+            customGameName: string | null;
+            displayGameName: string;
+            game: components["schemas"]["MyMatchGameDto"];
+        };
+        MyMatchRoundDto: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            format: "ROUND_ROBIN" | "GROUP_STAGE" | "SWISS" | "PLAYOFF" | "DOUBLE_ELIM";
+            tournament: components["schemas"]["MyMatchTournamentDto"];
+        };
+        MyMatchItemDto: {
+            id: string;
+            /** @enum {string} */
+            status: "PENDING" | "ONGOING" | "COMPLETED";
+            /** @enum {string|null} */
+            outcome: "TEAM_A" | "TEAM_B" | "DRAW" | null;
+            scoreA: number;
+            scoreB: number;
+            bestOf: number;
+            bracketRound: number | null;
+            matchNumber: number | null;
+            /** Format: date-time */
+            scheduledAt: string | null;
+            /** Format: date-time */
+            playedAt: string | null;
+            discordLink: string | null;
+            teamA: components["schemas"]["MyMatchTeamDto"] | null;
+            teamB: components["schemas"]["MyMatchTeamDto"] | null;
+            winner: components["schemas"]["MyMatchTeamDto"] | null;
+            userTeamIds: string[];
+            round: components["schemas"]["MyMatchRoundDto"];
+        };
+        MyMatchSummaryDto: {
+            total: number;
+            pending: number;
+            ongoing: number;
+            completed: number;
+        };
+        MyMatchPaginationDto: {
+            page: number;
+            limit: number;
+            total: number;
+            totalPages: number;
+        };
+        MyMatchesResponseDto: {
+            data: components["schemas"]["MyMatchItemDto"][];
+            nextMatch: components["schemas"]["MyMatchItemDto"] | null;
+            summary: components["schemas"]["MyMatchSummaryDto"];
+            pagination: components["schemas"]["MyMatchPaginationDto"];
         };
         BulkScheduleItemDto: {
             matchId: string;
@@ -3966,6 +4056,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    MatchesController_findMine: {
+        parameters: {
+            query?: {
+                status?: "PENDING" | "ONGOING" | "COMPLETED";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyMatchesResponseDto"];
                 };
             };
         };

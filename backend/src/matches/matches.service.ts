@@ -8,6 +8,7 @@ import {
 import { MatchQueryService } from './match-query.service';
 import { MatchResultService } from './match-result.service';
 import { MatchSchedulingService } from './match-scheduling.service';
+import { MyMatchesQueryDto } from './dto/my-matches-query.dto';
 
 @Injectable()
 export class MatchesService {
@@ -18,6 +19,9 @@ export class MatchesService {
   ) {}
   findOne(matchId: string) {
     return this.queries.findOne(matchId);
+  }
+  findForUser(userId: string, query: MyMatchesQueryDto) {
+    return this.queries.findForUser(userId, query);
   }
   update(matchId: string, dto: UpdateMatchDto, actorId?: string) {
     return this.results.update(matchId, dto, actorId);

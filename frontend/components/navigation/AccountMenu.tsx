@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   CaretDownIcon,
+  CalendarDotsIcon,
   PlusIcon,
   ShieldCheckIcon,
   SignOutIcon,
@@ -74,6 +75,11 @@ export default function AccountMenu({
       href: "/users/me",
       label: t("nav.myTournaments"),
       icon: TrophyIcon,
+    },
+    {
+      href: "/users/me/matches",
+      label: t("nav.myMatches"),
+      icon: CalendarDotsIcon,
     },
     {
       href: "/users/me/teams",

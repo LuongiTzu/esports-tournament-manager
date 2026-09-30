@@ -5,6 +5,7 @@ import type {
   MatchStatus,
   TournamentRound,
 } from "@/features/tournaments/types";
+import type { components } from "@/lib/api/generated/schema";
 
 export interface MatchGameScore {
   setNumber: number;
@@ -62,3 +63,6 @@ export interface MatchMutationResult {
   scheduledAt: string | null;
   discordLink: string | null;
 }
+
+export type MyMatch = components["schemas"]["MyMatchItemDto"];
+export type MyMatchesResponse = components["schemas"]["MyMatchesResponseDto"];

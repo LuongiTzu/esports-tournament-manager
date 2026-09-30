@@ -2945,6 +2945,65 @@
         ]
       }
     },
+    "/api/users/me/matches": {
+      "get": {
+        "operationId": "MatchesController_findMine",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "ONGOING",
+                "COMPLETED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyMatchesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List matches for the current user teams",
+        "tags": [
+          "Matches"
+        ]
+      }
+    },
     "/api/matches/{id}": {
       "get": {
         "operationId": "MatchesController_findOne",
@@ -4608,6 +4667,335 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "MyMatchTeamDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "shortName": {
+            "type": "string",
+            "nullable": true
+          },
+          "logoUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "seed": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "shortName",
+          "logoUrl",
+          "seed"
+        ]
+      },
+      "MyMatchGameDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "iconUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "iconUrl"
+        ]
+      },
+      "MyMatchTournamentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "REGISTRATION",
+              "ONGOING",
+              "COMPLETED",
+              "CANCELLED"
+            ],
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "ONLINE",
+              "OFFLINE",
+              "HYBRID"
+            ],
+            "type": "string"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "customGameName": {
+            "type": "string",
+            "nullable": true
+          },
+          "displayGameName": {
+            "type": "string"
+          },
+          "game": {
+            "$ref": "#/components/schemas/MyMatchGameDto"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "status",
+          "mode",
+          "location",
+          "customGameName",
+          "displayGameName",
+          "game"
+        ]
+      },
+      "MyMatchRoundDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "ROUND_ROBIN",
+              "GROUP_STAGE",
+              "SWISS",
+              "PLAYOFF",
+              "DOUBLE_ELIM"
+            ],
+            "type": "string"
+          },
+          "tournament": {
+            "$ref": "#/components/schemas/MyMatchTournamentDto"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "format",
+          "tournament"
+        ]
+      },
+      "MyMatchItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "ONGOING",
+              "COMPLETED"
+            ],
+            "type": "string"
+          },
+          "outcome": {
+            "nullable": true,
+            "enum": [
+              "TEAM_A",
+              "TEAM_B",
+              "DRAW"
+            ],
+            "type": "string"
+          },
+          "scoreA": {
+            "type": "number"
+          },
+          "scoreB": {
+            "type": "number"
+          },
+          "bestOf": {
+            "type": "number"
+          },
+          "bracketRound": {
+            "type": "number",
+            "nullable": true
+          },
+          "matchNumber": {
+            "type": "number",
+            "nullable": true
+          },
+          "scheduledAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "playedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "discordLink": {
+            "type": "string",
+            "nullable": true
+          },
+          "teamA": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyMatchTeamDto"
+              }
+            ]
+          },
+          "teamB": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyMatchTeamDto"
+              }
+            ]
+          },
+          "winner": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyMatchTeamDto"
+              }
+            ]
+          },
+          "userTeamIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "round": {
+            "$ref": "#/components/schemas/MyMatchRoundDto"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "outcome",
+          "scoreA",
+          "scoreB",
+          "bestOf",
+          "bracketRound",
+          "matchNumber",
+          "scheduledAt",
+          "playedAt",
+          "discordLink",
+          "teamA",
+          "teamB",
+          "winner",
+          "userTeamIds",
+          "round"
+        ]
+      },
+      "MyMatchSummaryDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "pending": {
+            "type": "number"
+          },
+          "ongoing": {
+            "type": "number"
+          },
+          "completed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "pending",
+          "ongoing",
+          "completed"
+        ]
+      },
+      "MyMatchPaginationDto": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "totalPages": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "page",
+          "limit",
+          "total",
+          "totalPages"
+        ]
+      },
+      "MyMatchesResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyMatchItemDto"
+            }
+          },
+          "nextMatch": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MyMatchItemDto"
+              }
+            ]
+          },
+          "summary": {
+            "$ref": "#/components/schemas/MyMatchSummaryDto"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/MyMatchPaginationDto"
+          }
+        },
+        "required": [
+          "data",
+          "nextMatch",
+          "summary",
+          "pagination"
         ]
       },
       "BulkScheduleItemDto": {
