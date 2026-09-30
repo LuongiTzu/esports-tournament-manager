@@ -16,6 +16,7 @@ import type {
   TournamentDetail,
   TournamentFavoriteMutationResult,
   TournamentMutationResult,
+  TournamentSchedule,
   TournamentStandingsResponse,
   UpdateTournamentLifecycleRequest,
   UpdateTournamentRequest,
@@ -85,6 +86,10 @@ export const tournamentsApi = {
     }),
   getTournamentBracket: (slug: string) =>
     request<TournamentBracket>(`/tournaments/${slug}/bracket`, { auth: true }),
+  getSchedule: (slug: string) =>
+    request<TournamentSchedule>(`/tournaments/${slug}/schedule`, {
+      auth: true,
+    }),
   getStandings: (slug: string) =>
     request<TournamentStandingsResponse>(`/tournaments/${slug}/standings`, {
       auth: true,

@@ -14,6 +14,7 @@ import TournamentLifecycleControls from "@/features/tournaments/components/manag
 import TournamentGameEditor from "@/features/tournaments/components/manage/TournamentGameEditor";
 import TournamentInfoEditor from "@/features/tournaments/components/manage/TournamentInfoEditor";
 import TournamentDeleteSection from "@/features/tournaments/components/manage/TournamentDeleteSection";
+import TournamentReadinessChecklist from "@/features/tournaments/components/manage/TournamentReadinessChecklist";
 import TournamentAnnouncementForm from "@/features/notifications/components/TournamentAnnouncementForm";
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { ManagementPageSkeleton } from "@/features/tournaments/components/manage/ManagementSkeletons";
@@ -238,6 +239,13 @@ export default function ManagePage({
           </div>
         )}
 
+        {(tournament.status === "DRAFT" ||
+          tournament.status === "REGISTRATION") && (
+          <div className="mt-8">
+            <TournamentReadinessChecklist tournament={tournament} />
+          </div>
+        )}
+
         <div className="mt-8">
           <TournamentInfoEditor
             tournament={tournament}
@@ -252,14 +260,14 @@ export default function ManagePage({
           />
         </div>
 
-        <div className="mt-6">
+        <div id="lifecycle-controls" className="scroll-mt-28 mt-6">
           <TournamentLifecycleControls
             tournament={tournament}
             onRefresh={refreshTournament}
           />
         </div>
 
-        <div className="mt-6">
+        <div id="competition-management" className="scroll-mt-28 mt-6">
           <CompetitionManager
             tournament={tournament}
             onTournamentRefresh={refreshTournament}
@@ -270,7 +278,10 @@ export default function ManagePage({
           <TournamentAnnouncementForm key={tournament.id} slug={slug} />
         </div>
 
-        <div className="mt-12 border-t border-line pt-10">
+        <div
+          id="registration-management"
+          className="scroll-mt-28 mt-12 border-t border-line pt-10"
+        >
           <RegistrationManagement
             tournament={tournament}
             onTournamentRefresh={refreshTournament}

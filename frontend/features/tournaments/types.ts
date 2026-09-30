@@ -287,6 +287,33 @@ export interface TournamentBracket {
   rounds: RoundBracket[];
 }
 
+export interface TournamentScheduleMatch {
+  id: string;
+  status: MatchStatus;
+  isActive: boolean;
+  isBye: boolean;
+  bestOf: number;
+  bracketRound: number | null;
+  matchNumber: number | null;
+  scheduledAt: string | null;
+  discordLink: string | null;
+  teamA: BracketTeam | null;
+  teamB: BracketTeam | null;
+}
+
+export interface TournamentSchedule {
+  tournament: { id: string; name: string; slug: string };
+  rounds: Array<{
+    id: string;
+    name: string;
+    orderIndex: number;
+    dates: Array<{
+      date: string;
+      matches: TournamentScheduleMatch[];
+    }>;
+  }>;
+}
+
 export interface BasicStanding {
   id: string;
   name: string;

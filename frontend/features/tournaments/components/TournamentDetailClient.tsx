@@ -42,6 +42,7 @@ import type { TeamWithMembers } from "@/features/teams/types";
 import { tournamentsApi } from "@/features/tournaments/api";
 import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 import TournamentFavoriteButton from "@/features/tournaments/components/TournamentFavoriteButton";
+import TournamentShareActions from "@/features/tournaments/components/TournamentShareActions";
 import type { TournamentDetail } from "@/features/tournaments/types";
 import { ApiError } from "@/lib/api/client";
 
@@ -444,6 +445,7 @@ export default function TournamentDetailClient({
                         : `${t("ratings.action")} · ${t("ratings.noRatingsShort")}`
                       : t("ratings.action")}
                   </a>
+                  <TournamentShareActions tournament={tournament} />
                   <TournamentFavoriteButton
                     slug={slug}
                     isFavorited={tournament.isFavorited}
