@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { withTournamentGameDisplayName } from '../tournaments/domain/tournament-game-display';
 import { MyMatchesQueryDto } from './dto/my-matches-query.dto';
 import { getMatchCheckInWindow } from './domain/match-check-in.policy';
+import { matchResultReviewSelect } from './match-result-review.select';
 
 const publicTeamSelect = {
   id: true,
@@ -29,6 +30,7 @@ const myMatchSelect = Prisma.validator<Prisma.MatchSelect>()({
     select: { id: true, matchId: true, teamId: true, checkedInAt: true },
     orderBy: { checkedInAt: 'asc' },
   },
+  resultReview: { select: matchResultReviewSelect },
   teamA: { select: publicTeamSelect },
   teamB: { select: publicTeamSelect },
   winner: { select: publicTeamSelect },

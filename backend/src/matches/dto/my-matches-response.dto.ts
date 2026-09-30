@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 import { MatchCheckInResponseDto } from './match-check-in.dto';
+import { MatchResultReviewDto } from './match-result-review.dto';
 
 class MyMatchCheckInWindowDto {
   @ApiProperty({ type: String, format: 'date-time' })
@@ -144,6 +145,9 @@ export class MyMatchItemDto {
 
   @ApiProperty({ type: MyMatchCheckInWindowDto, nullable: true })
   checkInWindow!: MyMatchCheckInWindowDto | null;
+
+  @ApiProperty({ type: MatchResultReviewDto, nullable: true })
+  resultReview!: MatchResultReviewDto | null;
 
   @ApiProperty({ type: MyMatchRoundDto })
   round!: MyMatchRoundDto;

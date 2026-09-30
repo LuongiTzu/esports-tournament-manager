@@ -31,6 +31,7 @@ import {
 import { matchesApi } from "@/features/matches/api";
 import { ApiError } from "@/lib/api/client";
 import type { MatchDetail } from "@/features/matches/types";
+import type { MatchResultReview } from "@/features/matches/types";
 import { roundFormatLabel } from "@/features/tournaments/round-formats";
 import type {
   MatchStatus,
@@ -39,6 +40,7 @@ import type {
 import type { TournamentStatus } from "@/shared/types/tournament-status";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
+import MatchResultReviewManagement from "./MatchResultReviewManagement";
 
 interface EditableGameScore {
   teamAScore: string;
@@ -118,9 +120,14 @@ export default function MatchManagementPanel({
 }) {
   const { locale, t } = useLocale();
   const [match, setMatch] = useState<MatchDetail | null>(null);
+  const [resultReview, setResultReview] = useState<MatchResultReview | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [retryVersion, setRetryVersion] = useState(0);
-  const [saving, setSaving] = useState<"schedule" | "result" | null>(null);
+  const [saving, setSaving] = useState<"schedule" | "result" | "review" | null>(
+    null,
+  );
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
@@ -167,15 +174,25 @@ export default function MatchManagementPanel({
   }, []);
 
   const loadMatch = useCallback(async () => {
-    populate(await matchesApi.findOne(matchId));
+    const [matchResponse, reviewResponse] = await Promise.all([
+      matchesApi.findOne(matchId),
+      matchesApi.findResultReview(matchId),
+    ]);
+    populate(matchResponse);
+    setResultReview(reviewResponse);
   }, [matchId, populate]);
 
   useEffect(() => {
     let cancelled = false;
-    matchesApi
-      .findOne(matchId)
-      .then((response) => {
-        if (!cancelled) populate(response);
+    Promise.all([
+      matchesApi.findOne(matchId),
+      matchesApi.findResultReview(matchId),
+    ])
+      .then(([matchResponse, reviewResponse]) => {
+        if (!cancelled) {
+          populate(matchResponse);
+          setResultReview(reviewResponse);
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -273,6 +290,30 @@ export default function MatchManagementPanel({
           ? err.message
           : t("match.manage.scheduleUpdateError"),
       );
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const resolveDispute = async (resolutionNote: string) => {
+    if (!match || saving) return false;
+    setSaving("review");
+    setError("");
+    setSuccess("");
+    try {
+      const review = await matchesApi.resolveResultDispute(
+        match.id,
+        resolutionNote,
+      );
+      setResultReview(review);
+      await onMutation();
+      setSuccess(t("match.manage.review.resolved"));
+      return true;
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : t("match.manage.review.error"),
+      );
+      return false;
     } finally {
       setSaving(null);
     }
@@ -913,6 +954,14 @@ export default function MatchManagementPanel({
                   </section>
                 </fieldset>
               )}
+
+              <MatchResultReviewManagement
+                review={resultReview}
+                teamA={match.teamA}
+                teamB={match.teamB}
+                working={saving === "review"}
+                onResolve={resolveDispute}
+              />
             </div>
           ) : (
             <div className="p-6">

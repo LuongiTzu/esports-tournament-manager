@@ -39,6 +39,11 @@ import {
   MatchCheckInDto,
   MatchCheckInResponseDto,
 } from './dto/match-check-in.dto';
+import {
+  MatchResultReviewDto,
+  ResolveMatchDisputeDto,
+  RespondToMatchResultDto,
+} from './dto/match-result-review.dto';
 
 @ApiTags('Matches')
 @Controller()
@@ -69,6 +74,46 @@ export class MatchesController {
     @Body() dto: MatchCheckInDto,
   ) {
     return this.matches.checkIn(id, userId, dto);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Confirm or dispute a completed match result' })
+  @ApiOkResponse({ type: MatchResultReviewDto })
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard)
+  @HttpCode(HttpStatus.OK)
+  @Post('matches/:id/result-review/responses')
+  respondToResult(
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string,
+    @Body() dto: RespondToMatchResultDto,
+  ) {
+    return this.matches.respondToResult(id, userId, dto);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get a match result review for its organizer' })
+  @ApiOkResponse({ type: MatchResultReviewDto })
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('match:id')
+  @AllowAdminOverride()
+  @Get('matches/:id/result-review')
+  findResultReview(@Param('id') id: string) {
+    return this.matches.findResultReview(id);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Resolve a disputed match result' })
+  @ApiOkResponse({ type: MatchResultReviewDto })
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('match:id')
+  @AllowAdminOverride()
+  @Patch('matches/:id/result-review/resolve')
+  resolveResultDispute(
+    @Param('id') id: string,
+    @CurrentUser('id') actorId: string,
+    @Body() dto: ResolveMatchDisputeDto,
+  ) {
+    return this.matches.resolveResultDispute(id, actorId, dto);
   }
 
   @UseGuards(OptionalJwtAuthGuard, VisibilityGuard)

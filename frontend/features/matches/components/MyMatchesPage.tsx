@@ -20,7 +20,12 @@ import ResolvedImage from "@/components/ResolvedImage";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { useAuth } from "@/features/auth/store";
 import { matchesApi } from "@/features/matches/api";
-import type { MyMatch, MyMatchesResponse } from "@/features/matches/types";
+import type {
+  MyMatch,
+  MyMatchesResponse,
+  RespondToMatchResultRequest,
+} from "@/features/matches/types";
+import MatchResultReviewPanel from "./MatchResultReviewPanel";
 import {
   formatLocalizedDate,
   formatRelativeDate,
@@ -65,6 +70,9 @@ function MatchCard({
   checkingInKey,
   feedback,
   onCheckIn,
+  resultResponseKey,
+  resultFeedback,
+  onResultResponse,
 }: {
   match: MyMatch;
   featured?: boolean;
@@ -72,6 +80,12 @@ function MatchCard({
   checkingInKey: string | null;
   feedback: { matchId: string; type: "success" | "error" } | null;
   onCheckIn: (matchId: string, teamId: string) => void;
+  resultResponseKey: string | null;
+  resultFeedback: { matchId: string; type: "success" | "error" } | null;
+  onResultResponse: (
+    matchId: string,
+    data: RespondToMatchResultRequest,
+  ) => Promise<boolean>;
 }) {
   const { locale, t } = useLocale();
   const tournament = match.round.tournament;
@@ -298,6 +312,15 @@ function MatchCard({
           </div>
         )}
 
+        <MatchResultReviewPanel
+          match={match}
+          working={resultResponseKey?.startsWith(`${match.id}:`) ?? false}
+          feedback={
+            resultFeedback?.matchId === match.id ? resultFeedback.type : null
+          }
+          onRespond={(data) => onResultResponse(match.id, data)}
+        />
+
         <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
           <Link
             href={`/tournaments/${encodeURIComponent(tournament.slug)}#competition`}
@@ -346,6 +369,13 @@ export default function MyMatchesPage() {
   const [now, setNow] = useState(() => Date.now());
   const [checkingInKey, setCheckingInKey] = useState<string | null>(null);
   const [checkInFeedback, setCheckInFeedback] = useState<{
+    matchId: string;
+    type: "success" | "error";
+  } | null>(null);
+  const [resultResponseKey, setResultResponseKey] = useState<string | null>(
+    null,
+  );
+  const [resultFeedback, setResultFeedback] = useState<{
     matchId: string;
     type: "success" | "error";
   } | null>(null);
@@ -421,6 +451,39 @@ export default function MyMatchesPage() {
     }
   };
 
+  const handleResultResponse = async (
+    matchId: string,
+    data: RespondToMatchResultRequest,
+  ) => {
+    setResultResponseKey(`${matchId}:${data.teamId}`);
+    setResultFeedback(null);
+    try {
+      const resultReview = await matchesApi.respondToResult(matchId, data);
+      const withReview = (match: MyMatch): MyMatch =>
+        match.id === matchId ? { ...match, resultReview } : match;
+      setResult((current) => {
+        if (!current?.response) return current;
+        return {
+          ...current,
+          response: {
+            ...current.response,
+            data: current.response.data.map(withReview),
+            nextMatch: current.response.nextMatch
+              ? withReview(current.response.nextMatch)
+              : null,
+          },
+        };
+      });
+      setResultFeedback({ matchId, type: "success" });
+      return true;
+    } catch {
+      setResultFeedback({ matchId, type: "error" });
+      return false;
+    } finally {
+      setResultResponseKey(null);
+    }
+  };
+
   if (!ready || (user && !result)) {
     return (
       <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6">
@@ -490,6 +553,9 @@ export default function MyMatchesPage() {
                 checkingInKey={checkingInKey}
                 feedback={checkInFeedback}
                 onCheckIn={handleCheckIn}
+                resultResponseKey={resultResponseKey}
+                resultFeedback={resultFeedback}
+                onResultResponse={handleResultResponse}
               />
             </div>
           </section>
@@ -600,6 +666,9 @@ export default function MyMatchesPage() {
                     checkingInKey={checkingInKey}
                     feedback={checkInFeedback}
                     onCheckIn={handleCheckIn}
+                    resultResponseKey={resultResponseKey}
+                    resultFeedback={resultFeedback}
+                    onResultResponse={handleResultResponse}
                   />
                 ))}
               </div>

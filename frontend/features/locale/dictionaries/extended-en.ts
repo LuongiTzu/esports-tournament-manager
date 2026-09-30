@@ -747,6 +747,32 @@ const extendedEn = {
   "myMatches.checkIn.success": "Your team checked in successfully.",
   "myMatches.checkIn.error":
     "Check-in is unavailable right now. Refresh and try again.",
+  "myMatches.resultReview.title": "Result confirmation",
+  "myMatches.resultReview.description":
+    "Each team captain can confirm the score or submit a dispute for organizer review.",
+  "myMatches.resultReview.status.PENDING_CONFIRMATION": "Awaiting confirmation",
+  "myMatches.resultReview.status.CONFIRMED": "Confirmed by both teams",
+  "myMatches.resultReview.status.DISPUTED": "Disputed",
+  "myMatches.resultReview.status.RESOLVED": "Resolved by organizer",
+  "myMatches.resultReview.decision.CONFIRMED": "Confirmed",
+  "myMatches.resultReview.decision.DISPUTED": "Disputed",
+  "myMatches.resultReview.awaiting": "Awaiting response",
+  "myMatches.resultReview.evidence": "Evidence",
+  "myMatches.resultReview.resolution": "Organizer resolution",
+  "myMatches.resultReview.captainOnly":
+    "Only the team captain can confirm or dispute this result.",
+  "myMatches.resultReview.responded": "Your team has submitted its response.",
+  "myMatches.resultReview.confirm": "Confirm score",
+  "myMatches.resultReview.dispute": "Dispute result",
+  "myMatches.resultReview.disputeReason": "Dispute reason",
+  "myMatches.resultReview.evidenceLinks":
+    "Image/video evidence links (one per line, up to 5)",
+  "myMatches.resultReview.validation":
+    "Provide at least 10 characters and ensure every evidence link is valid.",
+  "myMatches.resultReview.submitDispute": "Submit dispute",
+  "myMatches.resultReview.success": "Your result response was submitted.",
+  "myMatches.resultReview.error":
+    "The response could not be submitted. Reload and try again.",
   "tournament.tools.exportCalendar": "Export schedule",
   "tournament.tools.share": "Share QR",
   "tournament.tools.shareTitle": "Share tournament",
@@ -1140,6 +1166,18 @@ const extendedEn = {
   "match.manage.saveResult": "Save result",
   "match.manage.setDraw": "Set draw result",
   "match.manage.notFound": "Match not found",
+  "match.manage.review.title": "Result confirmation and disputes",
+  "match.manage.review.description":
+    "Track both team responses and resolve disputes without silently changing the recorded result.",
+  "match.manage.review.correctionHint":
+    "If the dispute is valid, correct the score in the result form; both teams will be asked to confirm again. If the current score is correct, record the decision below to close the dispute.",
+  "match.manage.review.resolutionNote": "Resolution note",
+  "match.manage.review.validation":
+    "The resolution note must contain at least 10 characters.",
+  "match.manage.review.uphold": "Uphold result and close dispute",
+  "match.manage.review.resolved": "The dispute was closed with a resolution.",
+  "match.manage.review.resolvedBy": "Resolved by",
+  "match.manage.review.error": "The dispute could not be resolved.",
   "competition.manage.structureNotFound": "Stage structure not found",
   "competition.manage.loadError": "Could not load competition structure",
   "competition.manage.regenerateConfirm":
@@ -1246,6 +1284,12 @@ const extendedEn = {
     "Next Swiss iteration generated",
   "competition.audit.action.MATCH_RESULT_RECORDED": "Match result recorded",
   "competition.audit.action.MATCH_RESULT_CORRECTED": "Match result corrected",
+  "competition.audit.action.MATCH_RESULT_CONFIRMED":
+    "Team confirmed match result",
+  "competition.audit.action.MATCH_RESULT_DISPUTED":
+    "Team disputed match result",
+  "competition.audit.action.MATCH_DISPUTE_RESOLVED":
+    "Organizer resolved result dispute",
   "competition.audit.action.DOWNSTREAM_RESET": "Downstream stages reset",
   "competition.audit.action.ROUND_DELETED": "Round deleted",
   "competition.audit.action.FINAL_STANDINGS_CONFIRMED":

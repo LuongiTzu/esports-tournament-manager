@@ -728,6 +728,32 @@ const extendedVi = {
   "myMatches.checkIn.success": "Đội của bạn đã check-in thành công.",
   "myMatches.checkIn.error":
     "Không thể check-in lúc này. Vui lòng tải lại và thử lại.",
+  "myMatches.resultReview.title": "Xác nhận kết quả",
+  "myMatches.resultReview.description":
+    "Đội trưởng của hai đội xác nhận tỷ số hoặc gửi khiếu nại để BTC xem xét.",
+  "myMatches.resultReview.status.PENDING_CONFIRMATION": "Chờ xác nhận",
+  "myMatches.resultReview.status.CONFIRMED": "Hai đội đã xác nhận",
+  "myMatches.resultReview.status.DISPUTED": "Đang khiếu nại",
+  "myMatches.resultReview.status.RESOLVED": "BTC đã xử lý",
+  "myMatches.resultReview.decision.CONFIRMED": "Đã xác nhận",
+  "myMatches.resultReview.decision.DISPUTED": "Đã khiếu nại",
+  "myMatches.resultReview.awaiting": "Chưa phản hồi",
+  "myMatches.resultReview.evidence": "Bằng chứng",
+  "myMatches.resultReview.resolution": "Kết luận của BTC",
+  "myMatches.resultReview.captainOnly":
+    "Chỉ đội trưởng có thể xác nhận hoặc khiếu nại kết quả.",
+  "myMatches.resultReview.responded": "Đội của bạn đã gửi phản hồi.",
+  "myMatches.resultReview.confirm": "Xác nhận tỷ số",
+  "myMatches.resultReview.dispute": "Khiếu nại kết quả",
+  "myMatches.resultReview.disputeReason": "Lý do khiếu nại",
+  "myMatches.resultReview.evidenceLinks":
+    "Link ảnh/video bằng chứng (mỗi dòng một link, tối đa 5)",
+  "myMatches.resultReview.validation":
+    "Lý do cần ít nhất 10 ký tự và các link bằng chứng phải hợp lệ.",
+  "myMatches.resultReview.submitDispute": "Gửi khiếu nại",
+  "myMatches.resultReview.success": "Đã gửi phản hồi kết quả.",
+  "myMatches.resultReview.error":
+    "Không thể gửi phản hồi. Hãy tải lại dữ liệu và thử lại.",
   "tournament.tools.exportCalendar": "Xuất lịch",
   "tournament.tools.share": "Chia sẻ QR",
   "tournament.tools.shareTitle": "Chia sẻ giải đấu",
@@ -1111,6 +1137,17 @@ const extendedVi = {
   "match.manage.saveResult": "Lưu kết quả",
   "match.manage.setDraw": "Đặt kết quả hòa",
   "match.manage.notFound": "Không tìm thấy trận đấu",
+  "match.manage.review.title": "Xác nhận và khiếu nại kết quả",
+  "match.manage.review.description":
+    "Theo dõi phản hồi của hai đội và xử lý khiếu nại mà không âm thầm thay đổi kết quả.",
+  "match.manage.review.correctionHint":
+    "Nếu khiếu nại đúng, hãy sửa tỷ số ở biểu mẫu kết quả; hai đội sẽ phải xác nhận lại. Nếu tỷ số hiện tại đúng, ghi kết luận bên dưới để đóng khiếu nại.",
+  "match.manage.review.resolutionNote": "Kết luận xử lý",
+  "match.manage.review.validation": "Kết luận cần ít nhất 10 ký tự.",
+  "match.manage.review.uphold": "Giữ nguyên kết quả và đóng khiếu nại",
+  "match.manage.review.resolved": "Đã đóng khiếu nại và lưu kết luận.",
+  "match.manage.review.resolvedBy": "Xử lý bởi",
+  "match.manage.review.error": "Không thể xử lý khiếu nại.",
   "competition.manage.structureNotFound":
     "Không tìm thấy cấu trúc của giai đoạn",
   "competition.manage.loadError": "Không tải được cấu trúc thi đấu",
@@ -1215,6 +1252,9 @@ const extendedVi = {
     "Đã tạo lượt Swiss tiếp theo",
   "competition.audit.action.MATCH_RESULT_RECORDED": "Đã ghi nhận kết quả trận",
   "competition.audit.action.MATCH_RESULT_CORRECTED": "Đã sửa kết quả trận",
+  "competition.audit.action.MATCH_RESULT_CONFIRMED": "Đội đã xác nhận kết quả",
+  "competition.audit.action.MATCH_RESULT_DISPUTED": "Đội đã khiếu nại kết quả",
+  "competition.audit.action.MATCH_DISPUTE_RESOLVED": "BTC đã xử lý khiếu nại",
   "competition.audit.action.DOWNSTREAM_RESET": "Đã reset các vòng phía sau",
   "competition.audit.action.ROUND_DELETED": "Đã xóa vòng đấu",
   "competition.audit.action.FINAL_STANDINGS_CONFIRMED":

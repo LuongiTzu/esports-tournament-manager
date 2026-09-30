@@ -11,6 +11,7 @@ import { NotificationModule } from '../notifications/notification.module';
 import { TournamentRealtimeModule } from '../tournaments/tournament-realtime.module';
 import { BracketsModule } from '../brackets/brackets.module';
 import { MatchCheckInService } from './match-check-in.service';
+import { MatchResultReviewService } from './match-result-review.service';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { MatchCheckInService } from './match-check-in.service';
     MatchResultPolicy,
     CompetitionProgressionService,
     MatchCheckInService,
+    MatchResultReviewService,
   ],
   exports: [
     MatchesService,

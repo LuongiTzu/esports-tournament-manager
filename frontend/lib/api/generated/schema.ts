@@ -1360,6 +1360,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/matches/{id}/result-review/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm or dispute a completed match result */
+        post: operations["MatchesController_respondToResult"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matches/{id}/result-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a match result review for its organizer */
+        get: operations["MatchesController_findResultReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matches/{id}/result-review/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Resolve a disputed match result */
+        patch: operations["MatchesController_resolveResultDispute"];
+        trace?: never;
+    };
     "/api/matches/{id}": {
         parameters: {
             query?: never;
@@ -1907,6 +1958,33 @@ export interface components {
             /** Format: date-time */
             closesAt: string;
         };
+        MatchResultReviewActorDto: {
+            id: string;
+            displayName: string;
+        };
+        MatchResultResponseDto: {
+            id: string;
+            teamId: string;
+            /** @enum {string} */
+            decision: "CONFIRMED" | "DISPUTED";
+            note: string | null;
+            evidenceUrls: string[];
+            /** Format: date-time */
+            respondedAt: string;
+            respondedBy: components["schemas"]["MatchResultReviewActorDto"];
+        };
+        MatchResultReviewDto: {
+            matchId: string;
+            /** @enum {string} */
+            status: "PENDING_CONFIRMATION" | "CONFIRMED" | "DISPUTED" | "RESOLVED";
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            resolutionNote: string | null;
+            resolvedBy: components["schemas"]["MatchResultReviewActorDto"] | null;
+            responses: components["schemas"]["MatchResultResponseDto"][];
+        };
         MyMatchGameDto: {
             id: string;
             code: string;
@@ -1956,6 +2034,7 @@ export interface components {
             captainTeamIds: string[];
             checkIns: components["schemas"]["MatchCheckInResponseDto"][];
             checkInWindow: components["schemas"]["MyMatchCheckInWindowDto"] | null;
+            resultReview: components["schemas"]["MatchResultReviewDto"] | null;
             round: components["schemas"]["MyMatchRoundDto"];
         };
         MyMatchSummaryDto: {
@@ -1978,6 +2057,16 @@ export interface components {
         };
         MatchCheckInDto: {
             teamId: string;
+        };
+        RespondToMatchResultDto: {
+            teamId: string;
+            /** @enum {string} */
+            decision: "CONFIRMED" | "DISPUTED";
+            note?: string;
+            evidenceUrls?: string[];
+        };
+        ResolveMatchDisputeDto: {
+            resolutionNote: string;
         };
         BulkScheduleItemDto: {
             matchId: string;
@@ -2978,7 +3067,7 @@ export interface operations {
     TournamentsController_competitionAuditHistory: {
         parameters: {
             query?: {
-                action?: "ROUND_STRUCTURE_GENERATED" | "ROUND_STRUCTURE_REGENERATED" | "ROUND_SEEDS_UPDATED" | "ROUND_ADVANCEMENT_CONFIRMED" | "SWISS_ITERATION_GENERATED" | "MATCH_RESULT_RECORDED" | "MATCH_RESULT_CORRECTED" | "DOWNSTREAM_RESET" | "ROUND_DELETED" | "FINAL_STANDINGS_CONFIRMED" | "ADMIN_OVERRIDE_ACTION";
+                action?: "ROUND_STRUCTURE_GENERATED" | "ROUND_STRUCTURE_REGENERATED" | "ROUND_SEEDS_UPDATED" | "ROUND_ADVANCEMENT_CONFIRMED" | "SWISS_ITERATION_GENERATED" | "MATCH_RESULT_RECORDED" | "MATCH_RESULT_CORRECTED" | "MATCH_RESULT_CONFIRMED" | "MATCH_RESULT_DISPUTED" | "MATCH_DISPUTE_RESOLVED" | "DOWNSTREAM_RESET" | "ROUND_DELETED" | "FINAL_STANDINGS_CONFIRMED" | "ADMIN_OVERRIDE_ACTION";
                 page?: number;
                 limit?: number;
             };
@@ -4140,6 +4229,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchCheckInResponseDto"];
+                };
+            };
+        };
+    };
+    MatchesController_respondToResult: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondToMatchResultDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchResultReviewDto"];
+                };
+            };
+        };
+    };
+    MatchesController_findResultReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchResultReviewDto"];
+                };
+            };
+        };
+    };
+    MatchesController_resolveResultDispute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveMatchDisputeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchResultReviewDto"];
                 };
             };
         };

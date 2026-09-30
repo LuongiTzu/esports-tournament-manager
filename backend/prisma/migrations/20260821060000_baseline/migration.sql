@@ -44,6 +44,12 @@ CREATE TYPE "MemberRole" AS ENUM ('CAPTAIN', 'PLAYER', 'SUBSTITUTE', 'COACH', 'M
 CREATE TYPE "MatchStatus" AS ENUM ('PENDING', 'ONGOING', 'COMPLETED');
 
 -- CreateEnum
+CREATE TYPE "MatchResultReviewStatus" AS ENUM ('PENDING_CONFIRMATION', 'CONFIRMED', 'DISPUTED', 'RESOLVED');
+
+-- CreateEnum
+CREATE TYPE "MatchResultDecision" AS ENUM ('CONFIRMED', 'DISPUTED');
+
+-- CreateEnum
 CREATE TYPE "MatchOutcome" AS ENUM ('TEAM_A', 'TEAM_B', 'DRAW');
 
 -- CreateEnum
@@ -620,7 +626,7 @@ ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_invited_by_id_fk
 ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_accepted_by_id_fkey" FOREIGN KEY ("accepted_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- CreateEnum
-CREATE TYPE "CompetitionAuditAction" AS ENUM ('ROUND_STRUCTURE_GENERATED', 'ROUND_STRUCTURE_REGENERATED', 'ROUND_SEEDS_UPDATED', 'ROUND_ADVANCEMENT_CONFIRMED', 'SWISS_ITERATION_GENERATED', 'MATCH_RESULT_RECORDED', 'MATCH_RESULT_CORRECTED', 'DOWNSTREAM_RESET', 'ROUND_DELETED', 'FINAL_STANDINGS_CONFIRMED', 'ADMIN_OVERRIDE_ACTION');
+CREATE TYPE "CompetitionAuditAction" AS ENUM ('ROUND_STRUCTURE_GENERATED', 'ROUND_STRUCTURE_REGENERATED', 'ROUND_SEEDS_UPDATED', 'ROUND_ADVANCEMENT_CONFIRMED', 'SWISS_ITERATION_GENERATED', 'MATCH_RESULT_RECORDED', 'MATCH_RESULT_CORRECTED', 'MATCH_RESULT_CONFIRMED', 'MATCH_RESULT_DISPUTED', 'MATCH_DISPUTE_RESOLVED', 'DOWNSTREAM_RESET', 'ROUND_DELETED', 'FINAL_STANDINGS_CONFIRMED', 'ADMIN_OVERRIDE_ACTION');
 
 -- CreateEnum
 CREATE TYPE "TournamentAdminOverrideStatus" AS ENUM ('ACTIVE', 'ENDED');
@@ -718,3 +724,41 @@ CREATE INDEX "match_check_ins_checked_in_by_id_idx" ON "match_check_ins"("checke
 ALTER TABLE "match_check_ins" ADD CONSTRAINT "match_check_ins_match_id_fkey" FOREIGN KEY ("match_id") REFERENCES "matches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "match_check_ins" ADD CONSTRAINT "match_check_ins_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "match_check_ins" ADD CONSTRAINT "match_check_ins_checked_in_by_id_fkey" FOREIGN KEY ("checked_in_by_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- Match result confirmation and dispute workflow
+CREATE TABLE "match_result_reviews" (
+    "match_id" TEXT NOT NULL,
+    "status" "MatchResultReviewStatus" NOT NULL DEFAULT 'PENDING_CONFIRMATION',
+    "opened_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "resolved_at" TIMESTAMP(3),
+    "resolution_note" VARCHAR(2000),
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    "resolved_by_id" TEXT,
+
+    CONSTRAINT "match_result_reviews_pkey" PRIMARY KEY ("match_id")
+);
+
+CREATE TABLE "match_result_responses" (
+    "id" TEXT NOT NULL,
+    "decision" "MatchResultDecision" NOT NULL,
+    "note" VARCHAR(2000),
+    "evidence_urls" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    "responded_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "review_match_id" TEXT NOT NULL,
+    "team_id" TEXT NOT NULL,
+    "responded_by_id" TEXT NOT NULL,
+
+    CONSTRAINT "match_result_responses_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "match_result_reviews_status_updated_at_idx" ON "match_result_reviews"("status", "updated_at");
+CREATE INDEX "match_result_reviews_resolved_by_id_idx" ON "match_result_reviews"("resolved_by_id");
+CREATE UNIQUE INDEX "match_result_responses_review_match_id_team_id_key" ON "match_result_responses"("review_match_id", "team_id");
+CREATE INDEX "match_result_responses_team_id_responded_at_idx" ON "match_result_responses"("team_id", "responded_at");
+CREATE INDEX "match_result_responses_responded_by_id_idx" ON "match_result_responses"("responded_by_id");
+
+ALTER TABLE "match_result_reviews" ADD CONSTRAINT "match_result_reviews_match_id_fkey" FOREIGN KEY ("match_id") REFERENCES "matches"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "match_result_reviews" ADD CONSTRAINT "match_result_reviews_resolved_by_id_fkey" FOREIGN KEY ("resolved_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "match_result_responses" ADD CONSTRAINT "match_result_responses_review_match_id_fkey" FOREIGN KEY ("review_match_id") REFERENCES "match_result_reviews"("match_id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "match_result_responses" ADD CONSTRAINT "match_result_responses_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "match_result_responses" ADD CONSTRAINT "match_result_responses_responded_by_id_fkey" FOREIGN KEY ("responded_by_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

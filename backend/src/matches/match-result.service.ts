@@ -9,6 +9,7 @@ import {
 import {
   CompetitionAuditAction,
   MatchOutcome,
+  MatchResultReviewStatus,
   MatchStatus,
   NotificationType,
   Prisma,
@@ -52,6 +53,7 @@ const matchResultSelect = {
   scoreB: true,
   status: true,
   isActive: true,
+  isBye: true,
   activationCondition: true,
   bracketType: true,
   bestOf: true,
@@ -169,6 +171,8 @@ export class MatchResultService {
               : null,
         },
       });
+
+      await this.syncResultReview(tx, match, status, resultChanged);
 
       if (status === MatchStatus.COMPLETED && winnerTeamId) {
         await this.progression.advanceResult(tx, match, winnerTeamId);
@@ -290,6 +294,8 @@ export class MatchResultService {
         include: { scores: { orderBy: { setNumber: 'asc' } } },
       });
 
+      await this.syncResultReview(tx, match, status, resultChanged);
+
       if (status === MatchStatus.COMPLETED && winnerTeamId) {
         await this.progression.advanceResult(tx, match, winnerTeamId);
         await this.progression.completeEliminationIfReady(tx, match);
@@ -407,6 +413,37 @@ export class MatchResultService {
           winnerTeamId: current.winnerTeamId,
           outcome: current.outcome,
         },
+      },
+    });
+  }
+
+  private async syncResultReview(
+    tx: Tx,
+    match: ResultMatch,
+    status: MatchStatus,
+    resultChanged: boolean,
+  ) {
+    if (!resultChanged) return;
+    if (
+      status !== MatchStatus.COMPLETED ||
+      match.isBye ||
+      !match.teamAId ||
+      !match.teamBId
+    ) {
+      await tx.matchResultReview.deleteMany({ where: { matchId: match.id } });
+      return;
+    }
+
+    await tx.matchResultReview.upsert({
+      where: { matchId: match.id },
+      create: { matchId: match.id },
+      update: {
+        status: MatchResultReviewStatus.PENDING_CONFIRMATION,
+        openedAt: new Date(),
+        resolvedAt: null,
+        resolvedById: null,
+        resolutionNote: null,
+        responses: { deleteMany: {} },
       },
     });
   }

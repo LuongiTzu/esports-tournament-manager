@@ -133,6 +133,18 @@ enum MatchStatus {
   COMPLETED
 }
 
+enum MatchResultReviewStatus {
+  PENDING_CONFIRMATION
+  CONFIRMED
+  DISPUTED
+  RESOLVED
+}
+
+enum MatchResultDecision {
+  CONFIRMED
+  DISPUTED
+}
+
 /// Kết quả rõ ràng của trận đã hoàn tất; null khi trận chưa có kết quả.
 enum MatchOutcome {
   TEAM_A
@@ -209,6 +221,9 @@ enum CompetitionAuditAction {
   SWISS_ITERATION_GENERATED
   MATCH_RESULT_RECORDED
   MATCH_RESULT_CORRECTED
+  MATCH_RESULT_CONFIRMED
+  MATCH_RESULT_DISPUTED
+  MATCH_DISPUTE_RESOLVED
   DOWNSTREAM_RESET
   ROUND_DELETED
   FINAL_STANDINGS_CONFIRMED
@@ -269,6 +284,8 @@ model User {
   competitionAuditLogs     CompetitionAuditLog[]     @relation("CompetitionAuditActor")
   tournamentAdminOverrides TournamentAdminOverride[] @relation("TournamentAdminOverrideActor")
   matchCheckIns            MatchCheckIn[]
+  matchResultResponses     MatchResultResponse[]     @relation("MatchResultResponseActor")
+  resolvedResultReviews    MatchResultReview[]       @relation("MatchResultReviewResolver")
 
   @@map("users")
 }
@@ -512,10 +529,11 @@ model Team {
   invitations TeamInvitation[]
 
   // Matches
-  matchesAsTeamA Match[]        @relation("TeamAMatches")
-  matchesAsTeamB Match[]        @relation("TeamBMatches")
-  wonMatches     Match[]        @relation("WinnerTeam")
-  matchCheckIns  MatchCheckIn[]
+  matchesAsTeamA  Match[]               @relation("TeamAMatches")
+  matchesAsTeamB  Match[]               @relation("TeamBMatches")
+  wonMatches      Match[]               @relation("WinnerTeam")
+  matchCheckIns   MatchCheckIn[]
+  resultResponses MatchResultResponse[]
 
   // Groups
   groupAssignments GroupTeam[]
@@ -641,8 +659,9 @@ model Match {
   loserNextMatch     Match?     @relation("LoserNextMatch", fields: [loserNextMatchId], references: [id])
   loserPrevMatches   Match[]    @relation("LoserNextMatch")
 
-  scores   MatchScore[]
-  checkIns MatchCheckIn[]
+  scores       MatchScore[]
+  checkIns     MatchCheckIn[]
+  resultReview MatchResultReview?
 
   @@index([roundId, groupId])
   @@index([activationCondition, isActive])
@@ -668,6 +687,49 @@ model MatchCheckIn {
   @@index([teamId, checkedInAt])
   @@index([checkedInById])
   @@map("match_check_ins")
+}
+
+/// Team confirmation and dispute workflow for a completed Match result.
+model MatchResultReview {
+  matchId        String                  @id @map("match_id")
+  status         MatchResultReviewStatus @default(PENDING_CONFIRMATION)
+  openedAt       DateTime                @default(now()) @map("opened_at")
+  resolvedAt     DateTime?               @map("resolved_at")
+  resolutionNote String?                 @map("resolution_note") @db.VarChar(2000)
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  resolvedById String? @map("resolved_by_id")
+  resolvedBy   User?   @relation("MatchResultReviewResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  responses MatchResultResponse[]
+
+  @@index([status, updatedAt])
+  @@index([resolvedById])
+  @@map("match_result_reviews")
+}
+
+model MatchResultResponse {
+  id           String              @id @default(cuid())
+  decision     MatchResultDecision
+  note         String?             @db.VarChar(2000)
+  evidenceUrls String[]            @default([]) @map("evidence_urls")
+  respondedAt  DateTime            @default(now()) @map("responded_at")
+
+  reviewMatchId String            @map("review_match_id")
+  review        MatchResultReview @relation(fields: [reviewMatchId], references: [matchId], onDelete: Cascade)
+
+  teamId String @map("team_id")
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  respondedById String @map("responded_by_id")
+  respondedBy   User   @relation("MatchResultResponseActor", fields: [respondedById], references: [id], onDelete: Restrict)
+
+  @@unique([reviewMatchId, teamId])
+  @@index([teamId, respondedAt])
+  @@index([respondedById])
+  @@map("match_result_responses")
 }
 
 /// Tỉ số chi tiết từng ván/map (hỗ trợ BO3, BO5)

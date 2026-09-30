@@ -1397,6 +1397,9 @@
                 "SWISS_ITERATION_GENERATED",
                 "MATCH_RESULT_RECORDED",
                 "MATCH_RESULT_CORRECTED",
+                "MATCH_RESULT_CONFIRMED",
+                "MATCH_RESULT_DISPUTED",
+                "MATCH_DISPUTE_RESOLVED",
                 "DOWNSTREAM_RESET",
                 "ROUND_DELETED",
                 "FINAL_STANDINGS_CONFIRMED",
@@ -3045,6 +3048,134 @@
           }
         ],
         "summary": "Check the current user team in for a match",
+        "tags": [
+          "Matches"
+        ]
+      }
+    },
+    "/api/matches/{id}/result-review/responses": {
+      "post": {
+        "operationId": "MatchesController_respondToResult",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RespondToMatchResultDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchResultReviewDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm or dispute a completed match result",
+        "tags": [
+          "Matches"
+        ]
+      }
+    },
+    "/api/matches/{id}/result-review": {
+      "get": {
+        "operationId": "MatchesController_findResultReview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchResultReviewDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a match result review for its organizer",
+        "tags": [
+          "Matches"
+        ]
+      }
+    },
+    "/api/matches/{id}/result-review/resolve": {
+      "patch": {
+        "operationId": "MatchesController_resolveResultDispute",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveMatchDisputeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchResultReviewDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Resolve a disputed match result",
         "tags": [
           "Matches"
         ]
@@ -4786,6 +4917,119 @@
           "closesAt"
         ]
       },
+      "MatchResultReviewActorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName"
+        ]
+      },
+      "MatchResultResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "teamId": {
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "CONFIRMED",
+              "DISPUTED"
+            ],
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "evidenceUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "respondedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "respondedBy": {
+            "$ref": "#/components/schemas/MatchResultReviewActorDto"
+          }
+        },
+        "required": [
+          "id",
+          "teamId",
+          "decision",
+          "note",
+          "evidenceUrls",
+          "respondedAt",
+          "respondedBy"
+        ]
+      },
+      "MatchResultReviewDto": {
+        "type": "object",
+        "properties": {
+          "matchId": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "PENDING_CONFIRMATION",
+              "CONFIRMED",
+              "DISPUTED",
+              "RESOLVED"
+            ],
+            "type": "string"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "resolutionNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolvedBy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MatchResultReviewActorDto"
+              }
+            ]
+          },
+          "responses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchResultResponseDto"
+            }
+          }
+        },
+        "required": [
+          "matchId",
+          "status",
+          "openedAt",
+          "resolvedAt",
+          "resolutionNote",
+          "resolvedBy",
+          "responses"
+        ]
+      },
       "MyMatchGameDto": {
         "type": "object",
         "properties": {
@@ -5005,6 +5249,15 @@
               }
             ]
           },
+          "resultReview": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MatchResultReviewDto"
+              }
+            ]
+          },
           "round": {
             "$ref": "#/components/schemas/MyMatchRoundDto"
           }
@@ -5028,6 +5281,7 @@
           "captainTeamIds",
           "checkIns",
           "checkInWindow",
+          "resultReview",
           "round"
         ]
       },
@@ -5118,6 +5372,51 @@
         },
         "required": [
           "teamId"
+        ]
+      },
+      "RespondToMatchResultDto": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "CONFIRMED",
+              "DISPUTED"
+            ],
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 10
+          },
+          "evidenceUrls": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
+        },
+        "required": [
+          "teamId",
+          "decision"
+        ]
+      },
+      "ResolveMatchDisputeDto": {
+        "type": "object",
+        "properties": {
+          "resolutionNote": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "resolutionNote"
         ]
       },
       "BulkScheduleItemDto": {

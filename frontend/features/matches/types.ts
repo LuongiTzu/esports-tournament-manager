@@ -67,3 +67,8 @@ export interface MatchMutationResult {
 export type MyMatch = components["schemas"]["MyMatchItemDto"];
 export type MyMatchesResponse = components["schemas"]["MyMatchesResponseDto"];
 export type MatchCheckIn = components["schemas"]["MatchCheckInResponseDto"];
+export type MatchResultReview = components["schemas"]["MatchResultReviewDto"];
+export type MatchResultDecision =
+  components["schemas"]["RespondToMatchResultDto"]["decision"];
+export type RespondToMatchResultRequest =
+  components["schemas"]["RespondToMatchResultDto"];

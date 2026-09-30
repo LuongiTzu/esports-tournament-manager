@@ -11,6 +11,11 @@ import { MatchSchedulingService } from './match-scheduling.service';
 import { MyMatchesQueryDto } from './dto/my-matches-query.dto';
 import { MatchCheckInDto } from './dto/match-check-in.dto';
 import { MatchCheckInService } from './match-check-in.service';
+import {
+  ResolveMatchDisputeDto,
+  RespondToMatchResultDto,
+} from './dto/match-result-review.dto';
+import { MatchResultReviewService } from './match-result-review.service';
 
 @Injectable()
 export class MatchesService {
@@ -19,6 +24,7 @@ export class MatchesService {
     private readonly scheduling: MatchSchedulingService,
     private readonly results: MatchResultService,
     private readonly checkIns: MatchCheckInService,
+    private readonly resultReviews: MatchResultReviewService,
   ) {}
   findOne(matchId: string) {
     return this.queries.findOne(matchId);
@@ -26,8 +32,25 @@ export class MatchesService {
   findForUser(userId: string, query: MyMatchesQueryDto) {
     return this.queries.findForUser(userId, query);
   }
+  findResultReview(matchId: string) {
+    return this.resultReviews.findOne(matchId);
+  }
   checkIn(matchId: string, userId: string, dto: MatchCheckInDto) {
     return this.checkIns.checkIn(matchId, userId, dto);
+  }
+  respondToResult(
+    matchId: string,
+    userId: string,
+    dto: RespondToMatchResultDto,
+  ) {
+    return this.resultReviews.respond(matchId, userId, dto);
+  }
+  resolveResultDispute(
+    matchId: string,
+    actorId: string,
+    dto: ResolveMatchDisputeDto,
+  ) {
+    return this.resultReviews.resolve(matchId, actorId, dto);
   }
   update(matchId: string, dto: UpdateMatchDto, actorId?: string) {
     return this.results.update(matchId, dto, actorId);

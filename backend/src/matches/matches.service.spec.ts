@@ -18,6 +18,7 @@ import { MatchResultService } from './match-result.service';
 import { MatchSchedulingService } from './match-scheduling.service';
 import { MatchesService } from './matches.service';
 import { MatchCheckInService } from './match-check-in.service';
+import { MatchResultReviewService } from './match-result-review.service';
 import { RoundLifecycleService } from '../brackets/round-lifecycle.service';
 
 function match(overrides: Record<string, unknown> = {}) {
@@ -31,6 +32,7 @@ function match(overrides: Record<string, unknown> = {}) {
     scoreB: 0,
     status: MatchStatus.PENDING,
     isActive: true,
+    isBye: false,
     activationCondition: null,
     bracketType: null,
     bracketRound: 1,
@@ -140,6 +142,11 @@ function harness(
         },
       ),
     },
+    matchResultReview: {
+      upsert: jest.fn().mockResolvedValue({}),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    matchResultResponse: { create: jest.fn() },
     round: { findUnique: jest.fn(), update: jest.fn() },
     roundTeam: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -192,6 +199,7 @@ function harness(
         roundLifecycle,
       ),
       new MatchCheckInService(prisma),
+      new MatchResultReviewService(prisma),
     ),
     tx,
     rows,
@@ -875,7 +883,7 @@ describe('MatchesService results', () => {
   });
 
   it('does not notify an idempotent completed-score retry and notifies a correction', async () => {
-    const { service, notifications } = harness();
+    const { service, notifications, tx } = harness();
     const createNotification = jest.mocked(notifications.createForMatchEvent);
 
     await service.putScores('match-1', games(['A', 'A']));
@@ -888,6 +896,18 @@ describe('MatchesService results', () => {
 
     expect(createNotification).toHaveBeenCalledTimes(2);
     expect(revisionKey).not.toBe(firstKey);
+    expect(tx.matchResultReview.upsert).toHaveBeenCalledTimes(2);
+    expect(tx.matchResultReview.upsert).toHaveBeenLastCalledWith({
+      where: { matchId: 'match-1' },
+      create: { matchId: 'match-1' },
+      update: expect.objectContaining({
+        status: 'PENDING_CONFIRMATION',
+        resolvedAt: null,
+        resolvedById: null,
+        resolutionNote: null,
+        responses: { deleteMany: {} },
+      }) as unknown,
+    });
   });
 
   it('does not notify identical completed scores after an unrelated match update', async () => {

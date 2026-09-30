@@ -29,6 +29,7 @@ function matchRecord(id = 'match-1') {
         checkedInAt: new Date('2030-06-15T11:35:00.000Z'),
       },
     ],
+    resultReview: null,
     teamAId: 'team-1',
     teamBId: 'opponent-1',
     teamA: {
