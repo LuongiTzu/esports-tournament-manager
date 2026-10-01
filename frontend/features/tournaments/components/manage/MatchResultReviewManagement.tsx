@@ -16,6 +16,7 @@ interface Props {
   teamA: BracketTeam | null;
   teamB: BracketTeam | null;
   working: boolean;
+  canResolve: boolean;
   onResolve: (resolutionNote: string) => Promise<boolean>;
 }
 
@@ -31,6 +32,7 @@ export default function MatchResultReviewManagement({
   teamA,
   teamB,
   working,
+  canResolve,
   onResolve,
 }: Props) {
   const { t } = useLocale();
@@ -108,7 +110,7 @@ export default function MatchResultReviewManagement({
           })}
       </div>
 
-      {review.status === "DISPUTED" && (
+      {review.status === "DISPUTED" && canResolve && (
         <div className="mt-4 rounded-lg border border-rejected/25 bg-rejected/5 p-3">
           <p className="text-xs leading-5 text-ink-muted">
             {t("match.manage.review.correctionHint")}

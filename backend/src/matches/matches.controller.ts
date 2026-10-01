@@ -44,6 +44,8 @@ import {
   ResolveMatchDisputeDto,
   RespondToMatchResultDto,
 } from './dto/match-result-review.dto';
+import { TournamentStaffRole } from '@prisma/client';
+import { TournamentStaffRoles } from '../common/decorators/tournament-staff-roles.decorator';
 
 @ApiTags('Matches')
 @Controller()
@@ -95,6 +97,11 @@ export class MatchesController {
   @ApiOkResponse({ type: MatchResultReviewDto })
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('match:id')
+  @TournamentStaffRoles(
+    TournamentStaffRole.CO_ORGANIZER,
+    TournamentStaffRole.REFEREE,
+    TournamentStaffRole.SCOREKEEPER,
+  )
   @AllowAdminOverride()
   @Get('matches/:id/result-review')
   findResultReview(@Param('id') id: string) {
@@ -106,6 +113,10 @@ export class MatchesController {
   @ApiOkResponse({ type: MatchResultReviewDto })
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('match:id')
+  @TournamentStaffRoles(
+    TournamentStaffRole.CO_ORGANIZER,
+    TournamentStaffRole.REFEREE,
+  )
   @AllowAdminOverride()
   @Patch('matches/:id/result-review/resolve')
   resolveResultDispute(
@@ -125,6 +136,10 @@ export class MatchesController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('matches:body')
+  @TournamentStaffRoles(
+    TournamentStaffRole.CO_ORGANIZER,
+    TournamentStaffRole.REFEREE,
+  )
   @AllowAdminOverride()
   @Patch('matches/bulk-schedule')
   bulkSchedule(@Body() dto: BulkScheduleDto) {
@@ -133,6 +148,11 @@ export class MatchesController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('match:id')
+  @TournamentStaffRoles(
+    TournamentStaffRole.CO_ORGANIZER,
+    TournamentStaffRole.REFEREE,
+    TournamentStaffRole.SCOREKEEPER,
+  )
   @AllowAdminOverride()
   @Patch('matches/:id')
   update(
@@ -145,6 +165,11 @@ export class MatchesController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('match:id')
+  @TournamentStaffRoles(
+    TournamentStaffRole.CO_ORGANIZER,
+    TournamentStaffRole.REFEREE,
+    TournamentStaffRole.SCOREKEEPER,
+  )
   @AllowAdminOverride()
   @Put('matches/:id/scores')
   putScores(
@@ -157,6 +182,10 @@ export class MatchesController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('round:id')
+  @TournamentStaffRoles(
+    TournamentStaffRole.CO_ORGANIZER,
+    TournamentStaffRole.REFEREE,
+  )
   @AllowAdminOverride()
   @Post('rounds/:id/matches')
   createManual(@Param('id') id: string, @Body() dto: CreateManualMatchDto) {

@@ -12,6 +12,8 @@ import { TournamentFavoriteService } from './tournament-favorite.service';
 import { TournamentFinalizationService } from './tournament-finalization.service';
 import { TournamentRealtimeModule } from './tournament-realtime.module';
 import { TournamentAdminOverrideService } from './tournament-admin-override.service';
+import { TournamentStaffService } from './tournament-staff.service';
+import { TournamentCloneService } from './tournament-clone.service';
 
 /**
  * Module Tournament — quản lý giải đấu (UC-U04, U05, U09, U10, U18)
@@ -33,6 +35,8 @@ import { TournamentAdminOverrideService } from './tournament-admin-override.serv
     TournamentFavoriteService,
     TournamentFinalizationService,
     TournamentAdminOverrideService,
+    TournamentStaffService,
+    TournamentCloneService,
   ],
   exports: [
     TournamentsService,

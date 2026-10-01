@@ -1400,6 +1400,10 @@
                 "MATCH_RESULT_CONFIRMED",
                 "MATCH_RESULT_DISPUTED",
                 "MATCH_DISPUTE_RESOLVED",
+                "TOURNAMENT_STAFF_ADDED",
+                "TOURNAMENT_STAFF_UPDATED",
+                "TOURNAMENT_STAFF_REMOVED",
+                "TOURNAMENT_CLONED",
                 "DOWNSTREAM_RESET",
                 "ROUND_DELETED",
                 "FINAL_STANDINGS_CONFIRMED",
@@ -1467,6 +1471,220 @@
             }
           }
         },
+        "tags": [
+          "Tournaments"
+        ]
+      }
+    },
+    "/api/tournaments/{tournamentId}/clone": {
+      "post": {
+        "operationId": "TournamentsController_clone",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloneTournamentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Clone tournament configuration into a new draft",
+        "tags": [
+          "Tournaments"
+        ]
+      }
+    },
+    "/api/tournaments/{tournamentId}/staff": {
+      "get": {
+        "operationId": "TournamentsController_listStaff",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TournamentStaffDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Tournaments"
+        ]
+      },
+      "post": {
+        "operationId": "TournamentsController_addStaff",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTournamentStaffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Tournaments"
+        ]
+      }
+    },
+    "/api/tournaments/{tournamentId}/staff/{staffId}": {
+      "patch": {
+        "operationId": "TournamentsController_updateStaff",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "staffId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTournamentStaffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentStaffDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Tournaments"
+        ]
+      },
+      "delete": {
+        "operationId": "TournamentsController_removeStaff",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "staffId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "tags": [
           "Tournaments"
         ]
@@ -4357,6 +4575,110 @@
         "required": [
           "name",
           "gameId"
+        ]
+      },
+      "CloneTournamentDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 150
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "TournamentStaffUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "avatarUrl"
+        ]
+      },
+      "TournamentStaffDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "CO_ORGANIZER",
+              "REFEREE",
+              "SCOREKEEPER"
+            ],
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user": {
+            "$ref": "#/components/schemas/TournamentStaffUserDto"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "createdAt",
+          "user"
+        ]
+      },
+      "AddTournamentStaffDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "format": "email"
+          },
+          "role": {
+            "enum": [
+              "CO_ORGANIZER",
+              "REFEREE",
+              "SCOREKEEPER"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ]
+      },
+      "UpdateTournamentStaffDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "enum": [
+              "CO_ORGANIZER",
+              "REFEREE",
+              "SCOREKEEPER"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
         ]
       },
       "UpdateTournamentDto": {

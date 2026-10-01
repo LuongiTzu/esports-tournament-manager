@@ -12,6 +12,8 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
+import { TournamentStaffRole } from '@prisma/client';
+import { TournamentStaffRoles } from '../common/decorators/tournament-staff-roles.decorator';
 import { Ownership } from '../common/decorators/ownership.decorator';
 import { VisibilityResource } from '../common/decorators/visibility.decorator';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
@@ -38,6 +40,7 @@ import {
  * Controller Team — đăng ký & quản lý hồ sơ đội (UC-U06, U07, U08, U11, U12, G06)
  */
 @Controller()
+@TournamentStaffRoles(TournamentStaffRole.CO_ORGANIZER)
 export class TeamsController {
   constructor(
     private teamsService: TeamsService,

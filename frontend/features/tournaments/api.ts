@@ -18,6 +18,8 @@ import type {
   TournamentMutationResult,
   TournamentSchedule,
   TournamentStandingsResponse,
+  TournamentStaff,
+  TournamentStaffRole,
   UpdateTournamentLifecycleRequest,
   UpdateTournamentRequest,
 } from "@/features/tournaments/types";
@@ -25,6 +27,42 @@ import { request } from "@/lib/api/client";
 import { uploadImage } from "@/lib/api/upload";
 
 export const tournamentsApi = {
+  clone: (tournamentId: string, name: string) =>
+    request<Tournament>(
+      `/tournaments/${encodeURIComponent(tournamentId)}/clone`,
+      {
+        method: "POST",
+        body: JSON.stringify({ name }),
+        auth: true,
+      },
+    ),
+  listStaff: (tournamentId: string) =>
+    request<TournamentStaff[]>(
+      `/tournaments/${encodeURIComponent(tournamentId)}/staff`,
+      { auth: true },
+    ),
+  addStaff: (
+    tournamentId: string,
+    data: { email: string; role: TournamentStaffRole },
+  ) =>
+    request<TournamentStaff>(
+      `/tournaments/${encodeURIComponent(tournamentId)}/staff`,
+      { method: "POST", body: JSON.stringify(data), auth: true },
+    ),
+  updateStaff: (
+    tournamentId: string,
+    staffId: string,
+    role: TournamentStaffRole,
+  ) =>
+    request<TournamentStaff>(
+      `/tournaments/${encodeURIComponent(tournamentId)}/staff/${encodeURIComponent(staffId)}`,
+      { method: "PATCH", body: JSON.stringify({ role }), auth: true },
+    ),
+  removeStaff: (tournamentId: string, staffId: string) =>
+    request<{ removed: boolean }>(
+      `/tournaments/${encodeURIComponent(tournamentId)}/staff/${encodeURIComponent(staffId)}`,
+      { method: "DELETE", auth: true },
+    ),
   remove: (tournamentId: string) =>
     request<{ message: string }>(
       `/tournaments/${encodeURIComponent(tournamentId)}`,

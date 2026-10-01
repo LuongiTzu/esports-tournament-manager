@@ -268,11 +268,12 @@ export default function TournamentDetailClient({
   }
 
   const isOrganizer = Boolean(user && tournament.organizer?.id === user.id);
+  const canManage = Boolean(isOrganizer || tournament.viewerStaffRole);
   const emailVerified = hasVerifiedEmail(user);
   const ownTeam = user ? myTeam : null;
   const canRegister = Boolean(
     user &&
-    !isOrganizer &&
+    !canManage &&
     tournament.visibility === "PUBLIC" &&
     tournament.registrationOpen &&
     !ownTeam,
@@ -406,7 +407,7 @@ export default function TournamentDetailClient({
                   : t("tournament.detail.registrationNoDeadline")}
               </p>
               <div className="mt-4 grid w-full gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                {isOrganizer && emailVerified && (
+                {canManage && emailVerified && (
                   <Link
                     href={`/tournaments/${slug}/manage`}
                     className={`${secondaryButtonClass} w-full`}

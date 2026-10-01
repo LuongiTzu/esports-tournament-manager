@@ -4,8 +4,9 @@ export interface TournamentAccessContext {
   visibility: Visibility;
   moderationStatus: ModerationStatus;
   organizerId: string;
-  user?: { id: string; role: Role | string } | null;
+  user?: { id: string; role: string } | null;
   isRelatedParticipant?: boolean;
+  isTournamentStaff?: boolean;
 }
 
 export class TournamentVisibilityPolicy {
@@ -22,7 +23,11 @@ export class TournamentVisibilityPolicy {
     }
 
     return Boolean(
-      context.user && (isOrganizer || isAdmin || context.isRelatedParticipant),
+      context.user &&
+      (isOrganizer ||
+        isAdmin ||
+        context.isRelatedParticipant ||
+        context.isTournamentStaff),
     );
   }
 }

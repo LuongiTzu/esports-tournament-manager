@@ -668,6 +668,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tournaments/{tournamentId}/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clone tournament configuration into a new draft */
+        post: operations["TournamentsController_clone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tournaments/{tournamentId}/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TournamentsController_listStaff"];
+        put?: never;
+        post: operations["TournamentsController_addStaff"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tournaments/{tournamentId}/staff/{staffId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["TournamentsController_removeStaff"];
+        options?: never;
+        head?: never;
+        patch: operations["TournamentsController_updateStaff"];
+        trace?: never;
+    };
     "/api/tournaments/{tournamentId}": {
         parameters: {
             query?: never;
@@ -1813,6 +1862,33 @@ export interface components {
             /** Format: uri */
             contactLink?: string;
             rounds?: components["schemas"]["CreateRoundDto"][];
+        };
+        CloneTournamentDto: {
+            name: string;
+        };
+        TournamentStaffUserDto: {
+            id: string;
+            email: string;
+            displayName: string;
+            avatarUrl: string | null;
+        };
+        TournamentStaffDto: {
+            id: string;
+            /** @enum {string} */
+            role: "CO_ORGANIZER" | "REFEREE" | "SCOREKEEPER";
+            /** Format: date-time */
+            createdAt: string;
+            user: components["schemas"]["TournamentStaffUserDto"];
+        };
+        AddTournamentStaffDto: {
+            /** Format: email */
+            email: string;
+            /** @enum {string} */
+            role: "CO_ORGANIZER" | "REFEREE" | "SCOREKEEPER";
+        };
+        UpdateTournamentStaffDto: {
+            /** @enum {string} */
+            role: "CO_ORGANIZER" | "REFEREE" | "SCOREKEEPER";
         };
         UpdateTournamentDto: {
             /** @description Số người thi đấu chính mỗi bên; backend kiểm tra theo metadata của Game */
@@ -3067,7 +3143,7 @@ export interface operations {
     TournamentsController_competitionAuditHistory: {
         parameters: {
             query?: {
-                action?: "ROUND_STRUCTURE_GENERATED" | "ROUND_STRUCTURE_REGENERATED" | "ROUND_SEEDS_UPDATED" | "ROUND_ADVANCEMENT_CONFIRMED" | "SWISS_ITERATION_GENERATED" | "MATCH_RESULT_RECORDED" | "MATCH_RESULT_CORRECTED" | "MATCH_RESULT_CONFIRMED" | "MATCH_RESULT_DISPUTED" | "MATCH_DISPUTE_RESOLVED" | "DOWNSTREAM_RESET" | "ROUND_DELETED" | "FINAL_STANDINGS_CONFIRMED" | "ADMIN_OVERRIDE_ACTION";
+                action?: "ROUND_STRUCTURE_GENERATED" | "ROUND_STRUCTURE_REGENERATED" | "ROUND_SEEDS_UPDATED" | "ROUND_ADVANCEMENT_CONFIRMED" | "SWISS_ITERATION_GENERATED" | "MATCH_RESULT_RECORDED" | "MATCH_RESULT_CORRECTED" | "MATCH_RESULT_CONFIRMED" | "MATCH_RESULT_DISPUTED" | "MATCH_DISPUTE_RESOLVED" | "TOURNAMENT_STAFF_ADDED" | "TOURNAMENT_STAFF_UPDATED" | "TOURNAMENT_STAFF_REMOVED" | "TOURNAMENT_CLONED" | "DOWNSTREAM_RESET" | "ROUND_DELETED" | "FINAL_STANDINGS_CONFIRMED" | "ADMIN_OVERRIDE_ACTION";
                 page?: number;
                 limit?: number;
             };
@@ -3105,6 +3181,123 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TournamentFavoriteViewFieldsDto"];
+                };
+            };
+        };
+    };
+    TournamentsController_clone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloneTournamentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    TournamentsController_listStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentStaffDto"][];
+                };
+            };
+        };
+    };
+    TournamentsController_addStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddTournamentStaffDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentStaffDto"];
+                };
+            };
+        };
+    };
+    TournamentsController_removeStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournamentId: string;
+                staffId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TournamentsController_updateStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tournamentId: string;
+                staffId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTournamentStaffDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentStaffDto"];
                 };
             };
         };

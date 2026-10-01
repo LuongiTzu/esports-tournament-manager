@@ -39,9 +39,12 @@ import {
 import { SwissService } from './swiss.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AllowAdminOverride } from '../common/decorators/allow-admin-override.decorator';
+import { TournamentStaffRole } from '@prisma/client';
+import { TournamentStaffRoles } from '../common/decorators/tournament-staff-roles.decorator';
 
 @ApiTags('brackets')
 @Controller('rounds')
+@TournamentStaffRoles(TournamentStaffRole.CO_ORGANIZER)
 export class BracketsController {
   constructor(
     private readonly operations: BracketOperationsService,

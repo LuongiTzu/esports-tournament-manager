@@ -17,8 +17,11 @@ import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { CreateTournamentNotificationDto } from './dto/notification.dto';
 import { NotificationService } from './notification.service';
 import { NotificationListQueryDto } from './dto/notification-list-query.dto';
+import { TournamentStaffRole } from '@prisma/client';
+import { TournamentStaffRoles } from '../common/decorators/tournament-staff-roles.decorator';
 
 @Controller()
+@TournamentStaffRoles(TournamentStaffRole.CO_ORGANIZER)
 export class NotificationController {
   constructor(private readonly notifications: NotificationService) {}
 

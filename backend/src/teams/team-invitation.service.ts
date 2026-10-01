@@ -11,6 +11,7 @@ import {
   TeamInvitationPurpose,
   TeamInvitationStatus,
   TournamentStatus,
+  TournamentStaffRole,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -79,6 +80,7 @@ export class TeamInvitationService {
     });
     if (!team) throw new NotFoundException('Không tìm thấy đội');
     const isOrganizer = team.tournament.organizerId === actorId;
+    const isCoOrganizer = await this.isCoOrganizer(team.tournament.id, actorId);
     const hasAdminOverride = Boolean(
       await this.managementAccess.findActiveOverrideForAdmin(
         team.tournament.id,
@@ -86,7 +88,7 @@ export class TeamInvitationService {
       ),
     );
     const isCaptain = team.captainId === actorId;
-    if (!isOrganizer && !isCaptain && !hasAdminOverride) {
+    if (!isOrganizer && !isCoOrganizer && !isCaptain && !hasAdminOverride) {
       throw new ForbiddenException('Bạn không có quyền mời thành viên đội này');
     }
     const member = team.members[0];
@@ -259,6 +261,7 @@ export class TeamInvitationService {
     if (!invitation) throw new NotFoundException('Không tìm thấy lời mời');
     const canManage =
       invitation.tournament.organizerId === organizerId ||
+      (await this.isCoOrganizer(invitation.tournamentId, organizerId)) ||
       Boolean(
         await this.managementAccess.findActiveOverrideForAdmin(
           invitation.tournamentId,
@@ -417,6 +420,16 @@ export class TeamInvitationService {
     const canManage =
       tournament.organizerId === actorId ||
       Boolean(
+        await this.prisma.tournamentStaff.findFirst({
+          where: {
+            tournamentId: tournament.id,
+            userId: actorId,
+            role: TournamentStaffRole.CO_ORGANIZER,
+          },
+          select: { id: true },
+        }),
+      ) ||
+      Boolean(
         await this.managementAccess.findActiveOverrideForAdmin(
           tournament.id,
           actorId,
@@ -426,6 +439,19 @@ export class TeamInvitationService {
       throw new ForbiddenException('Bạn không có quyền quản lý giải đấu này');
     }
     return tournament;
+  }
+
+  private async isCoOrganizer(tournamentId: string, userId: string) {
+    return Boolean(
+      await this.prisma.tournamentStaff.findFirst({
+        where: {
+          tournamentId,
+          userId,
+          role: TournamentStaffRole.CO_ORGANIZER,
+        },
+        select: { id: true },
+      }),
+    );
   }
 
   private assertCanInviteRegistration(tournament: {

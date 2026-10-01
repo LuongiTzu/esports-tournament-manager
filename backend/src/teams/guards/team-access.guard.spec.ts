@@ -30,6 +30,7 @@ function guard() {
         },
       }),
     },
+    tournamentStaff: { findUnique: jest.fn().mockResolvedValue(null) },
   } as unknown as PrismaService;
   const reflector = {
     getAllAndOverride: jest.fn().mockReturnValue('CAPTAIN_OR_ORGANIZER'),

@@ -14,6 +14,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Ownership } from '../common/decorators/ownership.decorator';
 import { AllowAdminOverride } from '../common/decorators/allow-admin-override.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
+import { TournamentStaffRole } from '@prisma/client';
+import { TournamentStaffRoles } from '../common/decorators/tournament-staff-roles.decorator';
 import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { TeamAccess, TeamAccessGuard } from '../teams/guards/team-access.guard';
 import { imageUploadOptions } from './upload.config';
@@ -80,6 +82,7 @@ export class UploadController {
   @Post('tournaments/:tournamentId/banner')
   @UseGuards(EmailVerifiedGuard, OwnershipGuard)
   @Ownership('tournamentId')
+  @TournamentStaffRoles(TournamentStaffRole.CO_ORGANIZER)
   @AllowAdminOverride()
   @ApiConsumes('multipart/form-data')
   @ApiBody(imageBody)

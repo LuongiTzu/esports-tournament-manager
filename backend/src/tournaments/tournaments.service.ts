@@ -11,6 +11,13 @@ import { TournamentFavoriteService } from './tournament-favorite.service';
 import { TournamentFinalizationService } from './tournament-finalization.service';
 import { ConfirmFinalStandingsDto } from './dto/finalize-tournament.dto';
 import { TournamentListSort } from './dto/tournament-list-query.dto';
+import { TournamentStaffService } from './tournament-staff.service';
+import { TournamentCloneService } from './tournament-clone.service';
+import {
+  AddTournamentStaffDto,
+  CloneTournamentDto,
+  UpdateTournamentStaffDto,
+} from './dto/tournament-staff.dto';
 
 @Injectable()
 export class TournamentsService {
@@ -19,9 +26,36 @@ export class TournamentsService {
     private readonly queries: TournamentQueryService,
     private readonly favorites: TournamentFavoriteService,
     private readonly finalization: TournamentFinalizationService = {} as TournamentFinalizationService,
+    private readonly staff: TournamentStaffService = {} as TournamentStaffService,
+    private readonly cloning: TournamentCloneService = {} as TournamentCloneService,
   ) {}
   create(userId: string, dto: CreateTournamentDto, userRole?: string) {
     return this.commands.create(userId, dto, userRole);
+  }
+  clone(
+    tournamentId: string,
+    userId: string,
+    dto: CloneTournamentDto,
+    userRole?: string,
+  ) {
+    return this.cloning.clone(tournamentId, userId, dto, userRole);
+  }
+  listStaff(tournamentId: string) {
+    return this.staff.list(tournamentId);
+  }
+  addStaff(tournamentId: string, actorId: string, dto: AddTournamentStaffDto) {
+    return this.staff.add(tournamentId, actorId, dto);
+  }
+  updateStaff(
+    tournamentId: string,
+    staffId: string,
+    actorId: string,
+    dto: UpdateTournamentStaffDto,
+  ) {
+    return this.staff.update(tournamentId, staffId, actorId, dto);
+  }
+  removeStaff(tournamentId: string, staffId: string, actorId: string) {
+    return this.staff.remove(tournamentId, staffId, actorId);
   }
   findAllPublic(
     query: {

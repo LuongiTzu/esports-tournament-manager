@@ -48,24 +48,36 @@ export class VisibilityGuard implements CanActivate {
       this.deny();
     }
 
-    const belongsToTeam = await this.prisma.team.findFirst({
-      where: {
-        tournamentId: tournament.id,
-        status: {
-          in: [RegistrationStatus.PENDING, RegistrationStatus.APPROVED],
+    const [belongsToTeam, staffMembership] = await Promise.all([
+      this.prisma.team.findFirst({
+        where: {
+          tournamentId: tournament.id,
+          status: {
+            in: [RegistrationStatus.PENDING, RegistrationStatus.APPROVED],
+          },
+          OR: [
+            { captainId: user.id },
+            { members: { some: { userId: user.id } } },
+          ],
         },
-        OR: [
-          { captainId: user.id },
-          { members: { some: { userId: user.id } } },
-        ],
-      },
-      select: { id: true },
-    });
+        select: { id: true },
+      }),
+      this.prisma.tournamentStaff.findUnique({
+        where: {
+          tournamentId_userId: {
+            tournamentId: tournament.id,
+            userId: user.id,
+          },
+        },
+        select: { id: true },
+      }),
+    ]);
     if (
       !tournamentVisibilityPolicy.canView({
         ...tournament,
         user,
         isRelatedParticipant: belongsToTeam !== null,
+        isTournamentStaff: staffMembership !== null,
       })
     ) {
       this.deny();

@@ -34,6 +34,7 @@ function harness(
   resource: Resource,
   tournament: TournamentVisibility | null,
   belongsToTeam = false,
+  isStaff = false,
 ) {
   const findMembership = jest
     .fn()
@@ -49,6 +50,11 @@ function harness(
     tournament: { findUnique: findTournamentBySlug },
     team: { findUnique: findTeamById, findFirst: findMembership },
     round: { findUnique: findRoundById },
+    tournamentStaff: {
+      findUnique: jest
+        .fn()
+        .mockResolvedValue(isStaff ? { id: 'staff-1' } : null),
+    },
   } as unknown as PrismaService;
   const reflector = {
     getAllAndOverride: jest.fn().mockReturnValue(resource),
@@ -85,6 +91,18 @@ describe.each(resources)('VisibilityGuard - %s', (_label, resource) => {
       ).resolves.toBe(true);
     },
   );
+
+  it('allows tournament staff to view a private tournament', async () => {
+    const { guard } = harness(
+      resource,
+      { ...activeTournament, visibility: Visibility.PRIVATE },
+      false,
+      true,
+    );
+    await expect(
+      guard.canActivate(context({ id: 'staff-1', role: Role.SIGNED_UP_USER })),
+    ).resolves.toBe(true);
+  });
 
   it.each([
     ['anonymous', undefined, false],

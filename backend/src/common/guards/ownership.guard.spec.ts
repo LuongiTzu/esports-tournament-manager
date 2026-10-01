@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Role, TournamentStaffRole } from '@prisma/client';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OwnershipGuard } from './ownership.guard';
 import { ALLOW_ADMIN_OVERRIDE_KEY } from '../decorators/allow-admin-override.decorator';
 import { OWNERSHIP_PARAM_KEY } from '../decorators/ownership.decorator';
 import { TournamentManagementAccessService } from '../services/tournament-management-access.service';
+import { TOURNAMENT_STAFF_ROLES_KEY } from '../decorators/tournament-staff-roles.decorator';
 
 describe('OwnershipGuard round ownership', () => {
   it('allows only an Admin with an active override on an opted-in route', async () => {
@@ -104,6 +105,45 @@ describe('OwnershipGuard round ownership', () => {
       switchToHttp: () => ({
         getRequest: () => ({
           user: { id: 'organizer', role: Role.SIGNED_UP_USER },
+          params: { id: 'round-1' },
+          query: {},
+        }),
+      }),
+    } as unknown as ExecutionContext;
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+  });
+
+  it('allows only an explicitly permitted tournament staff role', async () => {
+    const prisma = {
+      round: {
+        findUnique: jest.fn().mockResolvedValue({ tournamentId: 't-1' }),
+      },
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({ organizerId: 'organizer' }),
+      },
+      tournamentStaff: {
+        findUnique: jest.fn().mockResolvedValue({
+          role: TournamentStaffRole.REFEREE,
+        }),
+      },
+    } as unknown as PrismaService;
+    const reflector = {
+      getAllAndOverride: jest.fn((key: string) =>
+        key === OWNERSHIP_PARAM_KEY
+          ? 'round:id'
+          : key === TOURNAMENT_STAFF_ROLES_KEY
+            ? [TournamentStaffRole.REFEREE]
+            : undefined,
+      ),
+    } as unknown as Reflector;
+    const guard = new OwnershipGuard(reflector, prisma);
+    const context = {
+      getHandler: () => null,
+      getClass: () => null,
+      switchToHttp: () => ({
+        getRequest: () => ({
+          user: { id: 'referee', role: Role.SIGNED_UP_USER },
           params: { id: 'round-1' },
           query: {},
         }),

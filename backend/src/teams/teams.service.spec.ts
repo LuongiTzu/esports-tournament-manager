@@ -58,6 +58,7 @@ function harness(teamValue = team()) {
     delete: jest.fn(),
   };
   const prisma = {
+    tournamentStaff: { findFirst: jest.fn().mockResolvedValue(null) },
     team: teamClient,
     round: roundClient,
     teamMember: teamMemberClient,

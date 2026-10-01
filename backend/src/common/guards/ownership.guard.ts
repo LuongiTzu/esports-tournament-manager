@@ -9,10 +9,11 @@ import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OWNERSHIP_PARAM_KEY } from '../decorators/ownership.decorator';
 import { AuthenticatedUser } from '../../auth/strategies/jwt.strategy';
-import { Role } from '@prisma/client';
+import { Role, TournamentStaffRole } from '@prisma/client';
 import { ALLOW_ADMIN_OVERRIDE_KEY } from '../decorators/allow-admin-override.decorator';
 import { TournamentManagementAccessService } from '../services/tournament-management-access.service';
 import type { ActiveAdminOverrideAccess } from '../types/admin-override-access';
+import { TOURNAMENT_STAFF_ROLES_KEY } from '../decorators/tournament-staff-roles.decorator';
 
 /**
  * Guard kiểm tra quyền sở hữu tài nguyên.
@@ -164,6 +165,18 @@ export class OwnershipGuard implements CanActivate {
     }
 
     if (tournament.organizerId !== user.id) {
+      const allowedStaffRoles = this.reflector.getAllAndOverride<
+        TournamentStaffRole[]
+      >(TOURNAMENT_STAFF_ROLES_KEY, [context.getHandler(), context.getClass()]);
+      if (Array.isArray(allowedStaffRoles) && allowedStaffRoles.length) {
+        const membership = await this.prisma.tournamentStaff.findUnique({
+          where: { tournamentId_userId: { tournamentId, userId: user.id } },
+          select: { role: true },
+        });
+        if (membership && allowedStaffRoles.includes(membership.role)) {
+          return true;
+        }
+      }
       const allowAdminOverride = this.reflector.getAllAndOverride<boolean>(
         ALLOW_ADMIN_OVERRIDE_KEY,
         [context.getHandler(), context.getClass()],

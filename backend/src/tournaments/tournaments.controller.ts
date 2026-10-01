@@ -43,6 +43,14 @@ import {
   TournamentFavoriteMutationResultDto,
   TournamentFavoriteViewFieldsDto,
 } from './dto/tournament-favorite.dto';
+import { TournamentStaffRole } from '@prisma/client';
+import { TournamentStaffRoles } from '../common/decorators/tournament-staff-roles.decorator';
+import {
+  AddTournamentStaffDto,
+  CloneTournamentDto,
+  TournamentStaffDto,
+  UpdateTournamentStaffDto,
+} from './dto/tournament-staff.dto';
 
 /**
  * Controller Tournament — quản lý giải đấu (UC-U04, U05, U09, U10, U18)
@@ -166,6 +174,7 @@ export class TournamentsController {
 
   @UseGuards(JwtAuthGuard, OwnershipGuard)
   @Ownership('tournamentId')
+  @TournamentStaffRoles(TournamentStaffRole.CO_ORGANIZER)
   @AllowAdminOverride()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List organizer-visible competition audit history' })
@@ -205,12 +214,79 @@ export class TournamentsController {
     return this.tournamentsService.create(user.id, dto, user.role);
   }
 
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Clone tournament configuration into a new draft' })
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('tournamentId')
+  @Post(':tournamentId/clone')
+  clone(
+    @Param('tournamentId') tournamentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CloneTournamentDto,
+  ) {
+    return this.tournamentsService.clone(tournamentId, user.id, dto, user.role);
+  }
+
+  @ApiBearerAuth()
+  @ApiOkResponse({ type: [TournamentStaffDto] })
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('tournamentId')
+  @Get(':tournamentId/staff')
+  listStaff(@Param('tournamentId') tournamentId: string) {
+    return this.tournamentsService.listStaff(tournamentId);
+  }
+
+  @ApiBearerAuth()
+  @ApiOkResponse({ type: TournamentStaffDto })
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('tournamentId')
+  @Post(':tournamentId/staff')
+  addStaff(
+    @Param('tournamentId') tournamentId: string,
+    @CurrentUser('id') actorId: string,
+    @Body() dto: AddTournamentStaffDto,
+  ) {
+    return this.tournamentsService.addStaff(tournamentId, actorId, dto);
+  }
+
+  @ApiBearerAuth()
+  @ApiOkResponse({ type: TournamentStaffDto })
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('tournamentId')
+  @Patch(':tournamentId/staff/:staffId')
+  updateStaff(
+    @Param('tournamentId') tournamentId: string,
+    @Param('staffId') staffId: string,
+    @CurrentUser('id') actorId: string,
+    @Body() dto: UpdateTournamentStaffDto,
+  ) {
+    return this.tournamentsService.updateStaff(
+      tournamentId,
+      staffId,
+      actorId,
+      dto,
+    );
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('tournamentId')
+  @Delete(':tournamentId/staff/:staffId')
+  removeStaff(
+    @Param('tournamentId') tournamentId: string,
+    @Param('staffId') staffId: string,
+    @CurrentUser('id') actorId: string,
+  ) {
+    return this.tournamentsService.removeStaff(tournamentId, staffId, actorId);
+  }
+
   /**
    * PATCH /api/tournaments/:tournamentId
    * Cập nhật giải đấu (UC-U09) — chỉ BTC
    */
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('tournamentId')
+  @TournamentStaffRoles(TournamentStaffRole.CO_ORGANIZER)
   @AllowAdminOverride()
   @Patch(':tournamentId')
   update(
@@ -222,6 +298,7 @@ export class TournamentsController {
 
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('tournamentId')
+  @TournamentStaffRoles(TournamentStaffRole.CO_ORGANIZER)
   @AllowAdminOverride()
   @ApiBearerAuth()
   @ApiOperation({
@@ -259,6 +336,7 @@ export class TournamentsController {
    */
   @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
   @Ownership('slug:slug')
+  @TournamentStaffRoles(TournamentStaffRole.CO_ORGANIZER)
   @AllowAdminOverride()
   @Post(':slug/rounds')
   addRound(@Param('slug') slug: string, @Body() dto: CreateRoundDto) {

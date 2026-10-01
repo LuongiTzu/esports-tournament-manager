@@ -109,12 +109,14 @@ export default function MatchManagementPanel({
   matchId,
   round,
   tournamentStatus,
+  canResolveDisputes = true,
   onClose,
   onMutation,
 }: {
   matchId: string;
   round: TournamentRound;
   tournamentStatus: TournamentStatus;
+  canResolveDisputes?: boolean;
   onClose: () => void;
   onMutation: () => Promise<void>;
 }) {
@@ -960,6 +962,7 @@ export default function MatchManagementPanel({
                 teamA={match.teamA}
                 teamB={match.teamB}
                 working={saving === "review"}
+                canResolve={canResolveDisputes}
                 onResolve={resolveDispute}
               />
             </div>

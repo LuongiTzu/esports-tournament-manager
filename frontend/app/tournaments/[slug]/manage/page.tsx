@@ -22,6 +22,8 @@ import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { adminApi } from "@/features/admin/api";
 import type { AdminTournamentOverride } from "@/features/admin/types";
+import TournamentStaffManagement from "@/features/tournaments/components/manage/TournamentStaffManagement";
+import TournamentClonePanel from "@/features/tournaments/components/manage/TournamentClonePanel";
 
 export default function ManagePage({
   params,
@@ -52,7 +54,10 @@ export default function ManagePage({
       try {
         const loadedTournament = await tournamentsApi.findBySlug(slug);
         if (cancelled) return;
-        if (loadedTournament.organizer?.id !== user.id) {
+        if (
+          loadedTournament.organizer?.id !== user.id &&
+          !loadedTournament.viewerStaffRole
+        ) {
           if (user.role !== "ADMIN") {
             setLoadError(t("manage.notOrganizer"));
             return;
@@ -181,6 +186,12 @@ export default function ManagePage({
     );
   }
 
+  const isOwner = user?.id === tournament.organizer?.id;
+  const canManageStructure =
+    isOwner ||
+    tournament.viewerStaffRole === "CO_ORGANIZER" ||
+    Boolean(adminOverride);
+
   return (
     <div
       style={accentVars(tournament.game?.name)}
@@ -239,61 +250,82 @@ export default function ManagePage({
           </div>
         )}
 
-        {(tournament.status === "DRAFT" ||
-          tournament.status === "REGISTRATION") && (
-          <div className="mt-8">
-            <TournamentReadinessChecklist tournament={tournament} />
-          </div>
+        {canManageStructure &&
+          (tournament.status === "DRAFT" ||
+            tournament.status === "REGISTRATION") && (
+            <div className="mt-8">
+              <TournamentReadinessChecklist tournament={tournament} />
+            </div>
+          )}
+
+        {canManageStructure && (
+          <>
+            <div className="mt-8">
+              <TournamentInfoEditor
+                tournament={tournament}
+                onRefresh={refreshTournament}
+              />
+            </div>
+
+            <div className="mt-6">
+              <TournamentGameEditor
+                tournament={tournament}
+                onUpdated={setTournament}
+              />
+            </div>
+
+            <div id="lifecycle-controls" className="scroll-mt-28 mt-6">
+              <TournamentLifecycleControls
+                tournament={tournament}
+                onRefresh={refreshTournament}
+              />
+            </div>
+          </>
         )}
-
-        <div className="mt-8">
-          <TournamentInfoEditor
-            tournament={tournament}
-            onRefresh={refreshTournament}
-          />
-        </div>
-
-        <div className="mt-6">
-          <TournamentGameEditor
-            tournament={tournament}
-            onUpdated={setTournament}
-          />
-        </div>
-
-        <div id="lifecycle-controls" className="scroll-mt-28 mt-6">
-          <TournamentLifecycleControls
-            tournament={tournament}
-            onRefresh={refreshTournament}
-          />
-        </div>
 
         <div id="competition-management" className="scroll-mt-28 mt-6">
           <CompetitionManager
             tournament={tournament}
             onTournamentRefresh={refreshTournament}
+            canManageStructure={canManageStructure}
+            canResolveDisputes={
+              canManageStructure || tournament.viewerStaffRole === "REFEREE"
+            }
           />
         </div>
 
-        <div className="mt-12 border-t border-line pt-10">
-          <TournamentAnnouncementForm key={tournament.id} slug={slug} />
-        </div>
+        {canManageStructure && (
+          <>
+            <div className="mt-12 border-t border-line pt-10">
+              <TournamentAnnouncementForm key={tournament.id} slug={slug} />
+            </div>
 
-        <div
-          id="registration-management"
-          className="scroll-mt-28 mt-12 border-t border-line pt-10"
-        >
-          <RegistrationManagement
-            tournament={tournament}
-            onTournamentRefresh={refreshTournament}
-          />
-        </div>
-        {user?.id === tournament.organizer?.id && (
-          <div className="mt-12 border-t border-line pt-10">
-            <TournamentDeleteSection
-              key={tournament.id}
-              tournament={tournament}
-            />
-          </div>
+            <div
+              id="registration-management"
+              className="scroll-mt-28 mt-12 border-t border-line pt-10"
+            >
+              <RegistrationManagement
+                tournament={tournament}
+                onTournamentRefresh={refreshTournament}
+              />
+            </div>
+          </>
+        )}
+        {isOwner && (
+          <>
+            <div className="mt-12 border-t border-line pt-10">
+              <TournamentStaffManagement tournamentId={tournament.id} />
+            </div>
+            <div className="mt-6">
+              <TournamentClonePanel tournament={tournament} />
+            </div>
+            <div className="mt-12 border-t border-line pt-10">
+              <TournamentDeleteSection
+                key={tournament.id}
+                tournament={tournament}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>

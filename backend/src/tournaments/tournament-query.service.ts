@@ -137,6 +137,11 @@ export class TournamentQueryService {
         organizer: {
           select: { id: true, displayName: true, avatarUrl: true },
         },
+        staff: {
+          where: { userId: userId ?? '' },
+          select: { role: true },
+          take: 1,
+        },
         rounds: {
           orderBy: { orderIndex: 'asc' },
           include: {
@@ -168,6 +173,8 @@ export class TournamentQueryService {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
 
+    const { staff, ...visibleTournament } = tournament;
+    const viewerStaffRole = staff?.[0]?.role ?? null;
     const firstRound = tournament.rounds[0];
     const participantReason = participantLockReason(
       tournament.status,
@@ -201,7 +208,8 @@ export class TournamentQueryService {
 
     return withTournamentFavoriteState(
       withTournamentGameDisplayName({
-        ...tournament,
+        ...visibleTournament,
+        viewerStaffRole,
         management: {
           gameConfiguration: managementAction(
             gameConfigurationLockReason(
@@ -239,7 +247,9 @@ export class TournamentQueryService {
     }
     if (tab === 'organized') {
       const tournaments = await this.prisma.tournament.findMany({
-        where: { organizerId: userId },
+        where: {
+          OR: [{ organizerId: userId }, { staff: { some: { userId } } }],
+        },
         orderBy: { createdAt: 'desc' },
         include: {
           game: { select: { id: true, code: true, name: true, iconUrl: true } },
@@ -729,20 +739,35 @@ export class TournamentQueryService {
     ) {
       return false;
     }
-    const team = await this.prisma.team.findFirst({
-      where: {
-        tournamentId: tournament.id,
-        status: {
-          in: [RegistrationStatus.PENDING, RegistrationStatus.APPROVED],
+    const [team, staffMembership] = await Promise.all([
+      this.prisma.team.findFirst({
+        where: {
+          tournamentId: tournament.id,
+          status: {
+            in: [RegistrationStatus.PENDING, RegistrationStatus.APPROVED],
+          },
+          OR: [
+            { captainId: user.id },
+            { members: { some: { userId: user.id } } },
+          ],
         },
-        OR: [{ captainId: userId }, { members: { some: { userId } } }],
-      },
-      select: { id: true },
-    });
+        select: { id: true },
+      }),
+      this.prisma.tournamentStaff.findUnique({
+        where: {
+          tournamentId_userId: {
+            tournamentId: tournament.id,
+            userId: user.id,
+          },
+        },
+        select: { id: true },
+      }),
+    ]);
     return tournamentVisibilityPolicy.canView({
       ...tournament,
       user,
       isRelatedParticipant: team !== null,
+      isTournamentStaff: staffMembership !== null,
     });
   }
 }

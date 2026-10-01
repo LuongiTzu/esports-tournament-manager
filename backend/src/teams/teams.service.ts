@@ -15,6 +15,7 @@ import {
   Role,
   TeamInvitationStatus,
   TournamentStatus,
+  TournamentStaffRole,
   Visibility,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -345,6 +346,17 @@ export class TeamsService {
       )),
     );
 
+    const isCoOrganizer = Boolean(
+      await this.prisma.tournamentStaff.findFirst({
+        where: {
+          tournamentId: reference.tournamentId,
+          userId,
+          role: TournamentStaffRole.CO_ORGANIZER,
+        },
+        select: { id: true },
+      }),
+    );
+
     await this.prisma.$transaction(async (tx) => {
       await this.lockTournament(tx, reference.tournamentId);
       const team = await tx.team.findUnique({
@@ -362,7 +374,9 @@ export class TeamsService {
       }
 
       const canManageTournament =
-        team.tournament.organizerId === userId || hasAdminOverride;
+        team.tournament.organizerId === userId ||
+        isCoOrganizer ||
+        hasAdminOverride;
       if (!canManageTournament && team.status !== RegistrationStatus.PENDING) {
         throw new ForbiddenException(
           'Đội đã được duyệt nên không thể tự rút đăng ký, vui lòng liên hệ ban tổ chức',

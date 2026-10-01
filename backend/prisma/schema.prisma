@@ -75,6 +75,12 @@ enum TournamentMode {
   HYBRID
 }
 
+enum TournamentStaffRole {
+  CO_ORGANIZER
+  REFEREE
+  SCOREKEEPER
+}
+
 /// Trạng thái kiểm duyệt giải đấu (Instant Publishing + Hậu kiểm)
 enum ModerationStatus {
   ACTIVE
@@ -224,6 +230,10 @@ enum CompetitionAuditAction {
   MATCH_RESULT_CONFIRMED
   MATCH_RESULT_DISPUTED
   MATCH_DISPUTE_RESOLVED
+  TOURNAMENT_STAFF_ADDED
+  TOURNAMENT_STAFF_UPDATED
+  TOURNAMENT_STAFF_REMOVED
+  TOURNAMENT_CLONED
   DOWNSTREAM_RESET
   ROUND_DELETED
   FINAL_STANDINGS_CONFIRMED
@@ -286,6 +296,7 @@ model User {
   matchCheckIns            MatchCheckIn[]
   matchResultResponses     MatchResultResponse[]     @relation("MatchResultResponseActor")
   resolvedResultReviews    MatchResultReview[]       @relation("MatchResultReviewResolver")
+  tournamentStaffMemberships TournamentStaff[]
 
   @@map("users")
 }
@@ -376,10 +387,27 @@ model Tournament {
   teamInvitations      TeamInvitation[]
   competitionAuditLogs CompetitionAuditLog[]
   adminOverrides       TournamentAdminOverride[]
+  staff                TournamentStaff[]
 
   @@index([gameId, visibility, moderationStatus])
   @@index([status, startDate])
   @@map("tournaments")
+}
+
+model TournamentStaff {
+  id        String              @id @default(cuid())
+  role      TournamentStaffRole
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  tournamentId String     @map("tournament_id")
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  userId       String     @map("user_id")
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, userId])
+  @@index([userId, role])
+  @@map("tournament_staff")
 }
 
 /// A saved Tournament and its important Tournament-wide notification subscription.

@@ -13,6 +13,7 @@ export type TournamentVisibility = "PUBLIC" | "PRIVATE";
 export type TournamentMode = "ONLINE" | "OFFLINE" | "HYBRID";
 export type MatchScoringMode = "SERIES_SCORE" | "POINT_SCORE";
 export type TournamentSort = "recommended" | "name" | "newest" | "teams";
+export type TournamentStaffRole = "CO_ORGANIZER" | "REFEREE" | "SCOREKEEPER";
 
 export interface RoundRobinSettings {
   scoringMode?: MatchScoringMode;
@@ -184,6 +185,19 @@ export interface TournamentDetail extends Omit<Tournament, "game"> {
   game: Game;
   teams: ApprovedTeam[];
   management?: TournamentManagementState;
+  viewerStaffRole?: TournamentStaffRole | null;
+}
+
+export interface TournamentStaff {
+  id: string;
+  role: TournamentStaffRole;
+  createdAt: string;
+  user: {
+    id: string;
+    email: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
 }
 
 export type TournamentManagementReason =
@@ -519,6 +533,10 @@ export type CompetitionAuditAction =
   | "MATCH_RESULT_CONFIRMED"
   | "MATCH_RESULT_DISPUTED"
   | "MATCH_DISPUTE_RESOLVED"
+  | "TOURNAMENT_STAFF_ADDED"
+  | "TOURNAMENT_STAFF_UPDATED"
+  | "TOURNAMENT_STAFF_REMOVED"
+  | "TOURNAMENT_CLONED"
   | "DOWNSTREAM_RESET"
   | "ROUND_DELETED"
   | "FINAL_STANDINGS_CONFIRMED"

@@ -64,9 +64,13 @@ const generateStructureButtonClass =
 export default function CompetitionManager({
   tournament,
   onTournamentRefresh,
+  canManageStructure = true,
+  canResolveDisputes = true,
 }: {
   tournament: TournamentDetail;
   onTournamentRefresh: () => Promise<void>;
+  canManageStructure?: boolean;
+  canResolveDisputes?: boolean;
 }) {
   const { t } = useLocale();
   const rounds = useMemo(
@@ -508,11 +512,14 @@ export default function CompetitionManager({
   );
   const swissProgress = activeStandings?.swissProgress ?? null;
   const actionsAllowed =
+    canManageStructure &&
     tournament.status !== "CANCELLED" &&
     tournament.status !== "COMPLETED" &&
     activeRound?.status !== "COMPLETED";
   const advancementAllowed =
-    tournament.status !== "CANCELLED" && tournament.status !== "COMPLETED";
+    canManageStructure &&
+    tournament.status !== "CANCELLED" &&
+    tournament.status !== "COMPLETED";
   const canAdvance =
     advancementAllowed &&
     activeStandings?.advancement.state === "AWAITING_ADVANCEMENT" &&
@@ -520,6 +527,7 @@ export default function CompetitionManager({
       activeRound?.format === "GROUP_STAGE" ||
       activeRound?.format === "SWISS");
   const canFinalizeStandings =
+    canManageStructure &&
     tournament.status === "ONGOING" &&
     activeStandings?.finalization.state === "READY";
   const hasResettableDownstream = rounds.some((round) => {
@@ -536,6 +544,7 @@ export default function CompetitionManager({
     );
   });
   const canResetDownstream =
+    canManageStructure &&
     tournament.status !== "DRAFT" &&
     tournament.status !== "CANCELLED" &&
     hasResettableDownstream;
@@ -753,22 +762,24 @@ export default function CompetitionManager({
           </div>
           <div className="mt-4">
             <RoundSettingsSummary round={activeRound} />
-            <RoundSettingsEditor
-              key={`${activeRound.id}-${JSON.stringify(activeRound.settings)}`}
-              round={activeRound}
-              locked={
-                loading ||
-                !bracket ||
-                bracket.matches.length > 0 ||
-                bracket.groups.length > 0 ||
-                activeRound.status !== "UPCOMING" ||
-                ["COMPLETED", "CANCELLED"].includes(tournament.status)
-              }
-              onSaved={async () => {
-                await loadCompetition(activeRound.id);
-                await onTournamentRefresh();
-              }}
-            />
+            {canManageStructure && (
+              <RoundSettingsEditor
+                key={`${activeRound.id}-${JSON.stringify(activeRound.settings)}`}
+                round={activeRound}
+                locked={
+                  loading ||
+                  !bracket ||
+                  bracket.matches.length > 0 ||
+                  bracket.groups.length > 0 ||
+                  activeRound.status !== "UPCOMING" ||
+                  ["COMPLETED", "CANCELLED"].includes(tournament.status)
+                }
+                onSaved={async () => {
+                  await loadCompetition(activeRound.id);
+                  await onTournamentRefresh();
+                }}
+              />
+            )}
           </div>
 
           {notice && (
@@ -798,19 +809,21 @@ export default function CompetitionManager({
             </p>
           )}
 
-          <CompetitionTieBreakPanels
-            tieBreakDecision={tieBreakDecision}
-            selectedTieTeamIds={selectedTieTeamIds}
-            tieBreakSelectionComplete={tieBreakSelectionComplete}
-            championshipTieBreak={championshipTieBreak}
-            selectedChampionTeamId={selectedChampionTeamId}
-            loading={loading}
-            working={working}
-            onToggleTieBreakTeam={toggleTieBreakTeam}
-            onConfirmTieBreak={confirmTieBreak}
-            onSelectChampion={setSelectedChampionTeamId}
-            onFinalizeStandings={(teamId) => void finalizeStandings(teamId)}
-          />
+          {canManageStructure && (
+            <CompetitionTieBreakPanels
+              tieBreakDecision={tieBreakDecision}
+              selectedTieTeamIds={selectedTieTeamIds}
+              tieBreakSelectionComplete={tieBreakSelectionComplete}
+              championshipTieBreak={championshipTieBreak}
+              selectedChampionTeamId={selectedChampionTeamId}
+              loading={loading}
+              working={working}
+              onToggleTieBreakTeam={toggleTieBreakTeam}
+              onConfirmTieBreak={confirmTieBreak}
+              onSelectChampion={setSelectedChampionTeamId}
+              onFinalizeStandings={(teamId) => void finalizeStandings(teamId)}
+            />
+          )}
           <div className="mt-6">
             {loading && !bracket ? (
               <CompetitionSkeleton
@@ -881,7 +894,9 @@ export default function CompetitionManager({
         </div>
       )}
 
-      <CompetitionAuditHistory tournamentId={tournament.id} />
+      {canManageStructure && (
+        <CompetitionAuditHistory tournamentId={tournament.id} />
+      )}
 
       {selectedMatchId && activeRound && (
         <MatchManagementPanel
@@ -889,6 +904,7 @@ export default function CompetitionManager({
           matchId={selectedMatchId}
           round={activeRound}
           tournamentStatus={tournament.status}
+          canResolveDisputes={canResolveDisputes}
           onClose={() => setSelectedMatchId(null)}
           onMutation={async () => {
             await Promise.all([

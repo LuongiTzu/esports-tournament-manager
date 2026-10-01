@@ -11,7 +11,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuthenticatedUser } from '../../auth/strategies/jwt.strategy';
 import { TournamentManagementAccessService } from '../../common/services/tournament-management-access.service';
 import type { ActiveAdminOverrideAccess } from '../../common/types/admin-override-access';
-import { Role } from '@prisma/client';
+import { Role, TournamentStaffRole } from '@prisma/client';
 
 export type TeamAccessLevel = 'ORGANIZER' | 'CAPTAIN' | 'CAPTAIN_OR_ORGANIZER';
 
@@ -83,6 +83,19 @@ export class TeamAccessGuard implements CanActivate {
         : level === 'CAPTAIN'
           ? isCaptain
           : isCaptain || isOrganizer;
+
+    if (!allowed && level !== 'CAPTAIN') {
+      const staff = await this.prisma.tournamentStaff.findUnique({
+        where: {
+          tournamentId_userId: {
+            tournamentId: team.tournamentId,
+            userId: user.id,
+          },
+        },
+        select: { role: true },
+      });
+      allowed = staff?.role === TournamentStaffRole.CO_ORGANIZER;
+    }
 
     if (!allowed && level !== 'CAPTAIN' && user.role === Role.ADMIN) {
       const activeOverride =

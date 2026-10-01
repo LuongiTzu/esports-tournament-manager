@@ -44,6 +44,9 @@ CREATE TYPE "MemberRole" AS ENUM ('CAPTAIN', 'PLAYER', 'SUBSTITUTE', 'COACH', 'M
 CREATE TYPE "MatchStatus" AS ENUM ('PENDING', 'ONGOING', 'COMPLETED');
 
 -- CreateEnum
+CREATE TYPE "TournamentStaffRole" AS ENUM ('CO_ORGANIZER', 'REFEREE', 'SCOREKEEPER');
+
+-- CreateEnum
 CREATE TYPE "MatchResultReviewStatus" AS ENUM ('PENDING_CONFIRMATION', 'CONFIRMED', 'DISPUTED', 'RESOLVED');
 
 -- CreateEnum
@@ -626,7 +629,7 @@ ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_invited_by_id_fk
 ALTER TABLE "team_invitations" ADD CONSTRAINT "team_invitations_accepted_by_id_fkey" FOREIGN KEY ("accepted_by_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- CreateEnum
-CREATE TYPE "CompetitionAuditAction" AS ENUM ('ROUND_STRUCTURE_GENERATED', 'ROUND_STRUCTURE_REGENERATED', 'ROUND_SEEDS_UPDATED', 'ROUND_ADVANCEMENT_CONFIRMED', 'SWISS_ITERATION_GENERATED', 'MATCH_RESULT_RECORDED', 'MATCH_RESULT_CORRECTED', 'MATCH_RESULT_CONFIRMED', 'MATCH_RESULT_DISPUTED', 'MATCH_DISPUTE_RESOLVED', 'DOWNSTREAM_RESET', 'ROUND_DELETED', 'FINAL_STANDINGS_CONFIRMED', 'ADMIN_OVERRIDE_ACTION');
+CREATE TYPE "CompetitionAuditAction" AS ENUM ('ROUND_STRUCTURE_GENERATED', 'ROUND_STRUCTURE_REGENERATED', 'ROUND_SEEDS_UPDATED', 'ROUND_ADVANCEMENT_CONFIRMED', 'SWISS_ITERATION_GENERATED', 'MATCH_RESULT_RECORDED', 'MATCH_RESULT_CORRECTED', 'MATCH_RESULT_CONFIRMED', 'MATCH_RESULT_DISPUTED', 'MATCH_DISPUTE_RESOLVED', 'TOURNAMENT_STAFF_ADDED', 'TOURNAMENT_STAFF_UPDATED', 'TOURNAMENT_STAFF_REMOVED', 'TOURNAMENT_CLONED', 'DOWNSTREAM_RESET', 'ROUND_DELETED', 'FINAL_STANDINGS_CONFIRMED', 'ADMIN_OVERRIDE_ACTION');
 
 -- CreateEnum
 CREATE TYPE "TournamentAdminOverrideStatus" AS ENUM ('ACTIVE', 'ENDED');
@@ -762,3 +765,21 @@ ALTER TABLE "match_result_reviews" ADD CONSTRAINT "match_result_reviews_resolved
 ALTER TABLE "match_result_responses" ADD CONSTRAINT "match_result_responses_review_match_id_fkey" FOREIGN KEY ("review_match_id") REFERENCES "match_result_reviews"("match_id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "match_result_responses" ADD CONSTRAINT "match_result_responses_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "match_result_responses" ADD CONSTRAINT "match_result_responses_responded_by_id_fkey" FOREIGN KEY ("responded_by_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- Tournament collaborators and officials
+CREATE TABLE "tournament_staff" (
+    "id" TEXT NOT NULL,
+    "role" "TournamentStaffRole" NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    "tournament_id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+
+    CONSTRAINT "tournament_staff_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "tournament_staff_tournament_id_user_id_key" ON "tournament_staff"("tournament_id", "user_id");
+CREATE INDEX "tournament_staff_user_id_role_idx" ON "tournament_staff"("user_id", "role");
+
+ALTER TABLE "tournament_staff" ADD CONSTRAINT "tournament_staff_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "tournament_staff" ADD CONSTRAINT "tournament_staff_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

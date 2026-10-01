@@ -704,6 +704,28 @@ const extendedEn = {
   "manage.loadError": "Could not load data",
   "manage.eyebrow": "Organizer workspace",
   "manage.title": "Manage",
+  "staff.title": "Collaborators and officials",
+  "staff.description":
+    "Co-organizers manage setup and participants; referees and scorekeepers only manage matches.",
+  "staff.email": "Account email",
+  "staff.role": "Role",
+  "staff.role.CO_ORGANIZER": "Co-organizer",
+  "staff.role.REFEREE": "Referee",
+  "staff.role.SCOREKEEPER": "Scorekeeper",
+  "staff.add": "Add staff member",
+  "staff.remove": "Remove staff member",
+  "staff.removeConfirm": "Remove this person from the tournament staff?",
+  "staff.empty": "No collaborators or officials have been added.",
+  "staff.loadError": "Could not load tournament staff.",
+  "staff.addError": "Could not add the staff member.",
+  "staff.updateError": "Could not update the staff role.",
+  "staff.removeError": "Could not remove the staff member.",
+  "clone.title": "Clone tournament",
+  "clone.description":
+    "Create a private draft from the current settings, rules, and stages without copying teams, schedules, scores, or results.",
+  "clone.name": "New tournament name",
+  "clone.action": "Create draft",
+  "clone.error": "The tournament could not be cloned.",
   "nav.myMatches": "My matches",
   "pageTitle.myMatches": "My matches",
   "myMatches.eyebrow": "Competition center",
@@ -1290,6 +1312,13 @@ const extendedEn = {
     "Team disputed match result",
   "competition.audit.action.MATCH_DISPUTE_RESOLVED":
     "Organizer resolved result dispute",
+  "competition.audit.action.TOURNAMENT_STAFF_ADDED":
+    "Tournament staff member added",
+  "competition.audit.action.TOURNAMENT_STAFF_UPDATED":
+    "Tournament staff role updated",
+  "competition.audit.action.TOURNAMENT_STAFF_REMOVED":
+    "Tournament staff member removed",
+  "competition.audit.action.TOURNAMENT_CLONED": "Tournament cloned",
   "competition.audit.action.DOWNSTREAM_RESET": "Downstream stages reset",
   "competition.audit.action.ROUND_DELETED": "Round deleted",
   "competition.audit.action.FINAL_STANDINGS_CONFIRMED":
