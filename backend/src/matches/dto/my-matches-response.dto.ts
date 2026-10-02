@@ -181,7 +181,36 @@ class MyMatchPaginationDto {
   totalPages!: number;
 }
 
+class MyMatchFilterGameDto {
+  @ApiProperty()
+  id!: string;
+  @ApiProperty()
+  name!: string;
+  @ApiProperty()
+  code!: string;
+}
+
+class MyMatchFilterTournamentDto {
+  @ApiProperty()
+  id!: string;
+  @ApiProperty()
+  name!: string;
+  @ApiProperty({ type: MyMatchFilterGameDto })
+  game!: MyMatchFilterGameDto;
+}
+
+class MyMatchFilterTeamDto {
+  @ApiProperty()
+  id!: string;
+  @ApiProperty()
+  name!: string;
+  @ApiProperty({ type: MyMatchFilterTournamentDto })
+  tournament!: MyMatchFilterTournamentDto;
+}
+
 export class MyMatchesResponseDto {
+  @ApiProperty({ type: [MyMatchFilterTeamDto] })
+  filterTeams!: MyMatchFilterTeamDto[];
   @ApiProperty({ type: [MyMatchItemDto] })
   data!: MyMatchItemDto[];
 

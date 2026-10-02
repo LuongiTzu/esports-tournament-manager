@@ -94,6 +94,7 @@ describe('MatchQueryService.findForUser', () => {
       nextMatch: null,
       summary: { total: 0, pending: 0, ongoing: 0, completed: 0 },
       pagination: { page: 1, limit: 12, total: 0, totalPages: 0 },
+      filterTeams: [],
     });
     expect(prisma.match.findMany).not.toHaveBeenCalled();
   });
@@ -168,5 +169,46 @@ describe('MatchQueryService.findForUser', () => {
       total: 1,
       totalPages: 1,
     });
+  });
+
+  it('applies filters before pagination without replacing the user access scope', async () => {
+    const { prisma, service } = harness();
+    const tournament = matchRecord().round.tournament;
+    jest
+      .mocked(prisma.team.findMany)
+      .mockResolvedValue([
+        { id: 'team-1', name: 'My Team', captainId: 'user-1', tournament },
+      ] as never);
+    jest.mocked(prisma.match.findMany).mockResolvedValue([]);
+    jest.mocked(prisma.match.count).mockResolvedValue(0);
+    jest.mocked(prisma.match.findFirst).mockResolvedValue(null);
+    jest.mocked(prisma.match.groupBy).mockResolvedValue([] as never);
+    const result = await service.findForUser('user-1', {
+      status: MatchStatus.COMPLETED,
+      gameId: 'game-1',
+      tournamentId: 'tournament-1',
+      teamId: 'foreign-team',
+      search: 'Arena',
+      page: 3,
+      limit: 5,
+      sort: 'OLDEST',
+    });
+    const query = jest.mocked(prisma.match.findMany).mock.calls[0][0]!;
+    expect(query).toMatchObject({
+      skip: 10,
+      take: 5,
+      where: {
+        OR: [{ teamAId: { in: ['team-1'] } }, { teamBId: { in: ['team-1'] } }],
+        AND: expect.arrayContaining([
+          { round: { tournament: { id: 'tournament-1', gameId: 'game-1' } } },
+          { OR: [{ teamAId: 'foreign-team' }, { teamBId: 'foreign-team' }] },
+        ]) as unknown,
+      },
+      orderBy: [{ playedAt: { sort: 'asc', nulls: 'last' } }, { id: 'asc' }],
+    });
+    expect(prisma.match.count).toHaveBeenCalledWith({ where: query.where });
+    expect(result.filterTeams).toEqual([
+      { id: 'team-1', name: 'My Team', tournament },
+    ]);
   });
 });

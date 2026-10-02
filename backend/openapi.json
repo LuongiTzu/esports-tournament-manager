@@ -3184,6 +3184,85 @@
             }
           },
           {
+            "name": "gameId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "tournamentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "teamId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "attention",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NEEDS_ACTION",
+                "CHECK_IN",
+                "CONFIRM",
+                "DISPUTED"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DEFAULT",
+                "NEWEST",
+                "OLDEST"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "page",
             "required": false,
             "in": "query",
@@ -5168,6 +5247,63 @@
           "status"
         ]
       },
+      "MyMatchFilterGameDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "code"
+        ]
+      },
+      "MyMatchFilterTournamentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "game": {
+            "$ref": "#/components/schemas/MyMatchFilterGameDto"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "game"
+        ]
+      },
+      "MyMatchFilterTeamDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tournament": {
+            "$ref": "#/components/schemas/MyMatchFilterTournamentDto"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "tournament"
+        ]
+      },
       "MyMatchTeamDto": {
         "type": "object",
         "properties": {
@@ -5656,6 +5792,12 @@
       "MyMatchesResponseDto": {
         "type": "object",
         "properties": {
+          "filterTeams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyMatchFilterTeamDto"
+            }
+          },
           "data": {
             "type": "array",
             "items": {
@@ -5679,6 +5821,7 @@
           }
         },
         "required": [
+          "filterTeams",
           "data",
           "nextMatch",
           "summary",

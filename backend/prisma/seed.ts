@@ -32,9 +32,14 @@ import {
   SEED_USERS,
   SeedTournamentSpec,
   TEAM_NAMES,
+  UI_SCENARIO_ACCOUNTS,
   VIETNAMESE_MEMBER_NAMES,
 } from './seed/data';
 import { validateSeed } from './seed/validation';
+import {
+  seedUiScenarios,
+  UI_SCENARIO_TOURNAMENT_SLUG,
+} from './seed/ui-scenarios';
 
 const BCRYPT_ROUNDS = 10;
 const PARTICIPANTS = SEED_USERS.filter((user) =>
@@ -125,10 +130,18 @@ async function main(): Promise<void> {
     await normalizeCompletedMatchDates(prisma);
     await seedPerGameScores(prisma);
     await seedCommunityData(prisma);
+    await seedUiScenarios(prisma);
 
     const summary = await validateSeed(prisma);
     console.log('Development seed completed and validated.');
     console.log(`Common development password: ${DEVELOPMENT_PASSWORD}`);
+    console.log(
+      `UI scenario tournament: /tournaments/${UI_SCENARIO_TOURNAMENT_SLUG}`,
+    );
+    console.log('UI scenario accounts:');
+    for (const [role, account] of Object.entries(UI_SCENARIO_ACCOUNTS)) {
+      console.log(`- ${role}: ${account.email}`);
+    }
     console.log(JSON.stringify(summary, null, 2));
   } finally {
     await app.close();
@@ -280,6 +293,7 @@ async function seedUsers(prisma: PrismaService): Promise<void> {
   const emailVerifiedAt = new Date('2026-01-01T00:00:00.000Z');
   for (const user of SEED_USERS) {
     const profile = {
+      email: user.email,
       passwordHash,
       emailVerifiedAt,
       displayName: user.displayName,
@@ -299,7 +313,6 @@ async function seedUsers(prisma: PrismaService): Promise<void> {
       update: profile,
       create: {
         id: user.id,
-        email: user.email,
         ...profile,
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
       },

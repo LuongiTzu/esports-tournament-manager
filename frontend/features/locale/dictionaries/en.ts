@@ -71,7 +71,6 @@ const en = {
   "nav.mobile": "Mobile navigation",
   "nav.home": "Home",
   "nav.tournaments": "Tournaments",
-  "nav.ratings": "Ratings",
   "nav.myTournaments": "My tournaments",
   "nav.admin": "Admin",
   "nav.login": "Log in",

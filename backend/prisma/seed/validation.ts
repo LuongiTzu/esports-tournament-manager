@@ -15,6 +15,7 @@ import {
   SEED_EMAIL_DOMAIN,
   SEED_SLUG_PREFIX,
   SEED_USERS,
+  UI_SCENARIO_ACCOUNTS,
 } from './data';
 
 const rosterPolicy = new RegistrationRosterPolicy();
@@ -68,6 +69,10 @@ export interface SeedSummary {
   favorites: number;
   reports: number;
   invitations: number;
+  tournamentStaff: number;
+  matchCheckIns: number;
+  resultReviews: number;
+  resultResponses: number;
   bannedKeywords: number;
   roundAssignments: number;
   groupAssignments: number;
@@ -136,6 +141,13 @@ export async function validateSeed(
     new Set(users.map((user) => user.email)).size === users.length,
     'Seeded user emails must be unique',
   );
+  const emailByUserId = new Map(users.map((user) => [user.id, user.email]));
+  for (const account of Object.values(UI_SCENARIO_ACCOUNTS)) {
+    assert(
+      emailByUserId.get(account.id) === account.email,
+      `UI scenario account email does not match ${account.id}`,
+    );
+  }
   assert(
     users.filter((user) => user.isLocked).length === 7,
     'Expected exactly 7 locked development accounts',
@@ -153,7 +165,7 @@ export async function validateSeed(
     GAME_CATALOG_CODES.every((code) => gameCodes.has(code)),
     'Database is missing one or more canonical games',
   );
-  assert(tournaments.length === 80, 'Expected exactly 80 seeded tournaments');
+  assert(tournaments.length === 81, 'Expected exactly 81 seeded tournaments');
   assert(
     new Set(tournaments.map((tournament) => tournament.game.code)).size === 12,
     'Expected tournaments across exactly 12 canonical games',
@@ -459,6 +471,10 @@ export async function validateSeed(
     favorites,
     reports,
     invitations,
+    tournamentStaff,
+    matchCheckIns,
+    resultReviews,
+    resultResponses,
     bannedKeywords,
     roundAssignments,
     groupAssignments,
@@ -470,6 +486,10 @@ export async function validateSeed(
     prisma.tournamentFavorite.count(),
     prisma.report.count(),
     prisma.teamInvitation.count(),
+    prisma.tournamentStaff.count(),
+    prisma.matchCheckIn.count(),
+    prisma.matchResultReview.count(),
+    prisma.matchResultResponse.count(),
     prisma.bannedKeyword.count(),
     prisma.roundTeam.count(),
     prisma.groupTeam.count(),
@@ -482,6 +502,10 @@ export async function validateSeed(
     favorites,
     reports,
     invitations,
+    tournamentStaff,
+    matchCheckIns,
+    resultReviews,
+    resultResponses,
     bannedKeywords,
     roundAssignments,
     groupAssignments,

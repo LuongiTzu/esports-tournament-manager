@@ -2014,6 +2014,21 @@ export interface components {
             status: "PENDING" | "APPROVED" | "REJECTED";
             rejectReason?: string;
         };
+        MyMatchFilterGameDto: {
+            id: string;
+            name: string;
+            code: string;
+        };
+        MyMatchFilterTournamentDto: {
+            id: string;
+            name: string;
+            game: components["schemas"]["MyMatchFilterGameDto"];
+        };
+        MyMatchFilterTeamDto: {
+            id: string;
+            name: string;
+            tournament: components["schemas"]["MyMatchFilterTournamentDto"];
+        };
         MyMatchTeamDto: {
             id: string;
             name: string;
@@ -2126,6 +2141,7 @@ export interface components {
             totalPages: number;
         };
         MyMatchesResponseDto: {
+            filterTeams: components["schemas"]["MyMatchFilterTeamDto"][];
             data: components["schemas"]["MyMatchItemDto"][];
             nextMatch: components["schemas"]["MyMatchItemDto"] | null;
             summary: components["schemas"]["MyMatchSummaryDto"];
@@ -4382,6 +4398,14 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "PENDING" | "ONGOING" | "COMPLETED";
+                gameId?: string;
+                tournamentId?: string;
+                teamId?: string;
+                search?: string;
+                attention?: "NEEDS_ACTION" | "CHECK_IN" | "CONFIRM" | "DISPUTED";
+                sort?: "DEFAULT" | "NEWEST" | "OLDEST";
+                from?: string;
+                to?: string;
                 page?: number;
                 limit?: number;
             };

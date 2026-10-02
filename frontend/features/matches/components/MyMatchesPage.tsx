@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import {
   ArrowRightIcon,
   CalendarBlankIcon,
-  CalendarDotsIcon,
   CaretLeftIcon,
   CaretRightIcon,
+  CaretDownIcon,
+  FunnelSimpleIcon,
   CheckCircleIcon,
   ClockIcon,
   GameControllerIcon,
@@ -19,7 +20,11 @@ import {
 import ResolvedImage from "@/components/ResolvedImage";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { useAuth } from "@/features/auth/store";
-import { matchesApi } from "@/features/matches/api";
+import { gamePoster } from "@/features/games/game-posters";
+import { matchesApi, type MyMatchFilters } from "@/features/matches/api";
+import MyMatchFilterBar from "./MyMatchFilterBar";
+import CompactMatchRow from "./CompactMatchRow";
+import styles from "./MyMatchesPage.module.css";
 import type {
   MyMatch,
   MyMatchesResponse,
@@ -89,6 +94,9 @@ function MatchCard({
 }) {
   const { locale, t } = useLocale();
   const tournament = match.round.tournament;
+  const poster =
+    gamePoster(tournament.game.code) ??
+    "/images/tournaments/common/backgrounds/tournament-collage.png";
   const hasScore = match.status !== "PENDING";
   const scheduleLabel = match.scheduledAt
     ? formatLocalizedDate(match.scheduledAt, locale, {
@@ -106,9 +114,7 @@ function MatchCard({
   const captainCheckIn = captainTeamId
     ? match.checkIns.find((checkIn) => checkIn.teamId === captainTeamId)
     : undefined;
-  const checkInKey = captainTeamId
-    ? `${match.id}:${captainTeamId}`
-    : null;
+  const checkInKey = captainTeamId ? `${match.id}:${captainTeamId}` : null;
   const opensAt = match.checkInWindow
     ? new Date(match.checkInWindow.opensAt).getTime()
     : null;
@@ -117,19 +123,30 @@ function MatchCard({
     : null;
   const checkInOpen = Boolean(
     now &&
-      opensAt !== null &&
-      closesAt !== null &&
-      now >= opensAt &&
-      now <= closesAt,
+    opensAt !== null &&
+    closesAt !== null &&
+    now >= opensAt &&
+    now <= closesAt,
   );
 
   return (
     <article
-      className={`overflow-hidden rounded-2xl border bg-surface-card shadow-sm ${
+      className={`relative isolate overflow-hidden rounded-2xl border bg-surface-card shadow-sm ${
         featured ? "border-brand/45 shadow-brand/10" : "border-line"
       }`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface-sub/55 px-4 py-3 sm:px-5">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+      >
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-75 grayscale"
+          style={{ backgroundImage: `url("${poster}")` }}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-surface)_85%,transparent),color-mix(in_oklab,var(--color-surface)_88%,transparent)_55%,color-mix(in_oklab,var(--color-surface)_93%,transparent))]" />
+      </div>
+
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface-sub/35 px-4 py-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-brand/10 text-brand">
             <ResolvedImage
@@ -155,7 +172,7 @@ function MatchCard({
         </span>
       </div>
 
-      <div className="p-4 sm:p-5">
+      <div className="relative z-10 p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
           <span className="font-semibold text-ink">{match.round.name}</span>
           <span>
@@ -176,7 +193,7 @@ function MatchCard({
                 key={slot}
                 className={`flex min-h-16 items-center gap-3 px-3 py-2.5 ${
                   index > 0 ? "border-t border-line" : ""
-                } ${isMine ? "bg-brand/7" : "bg-surface-card"}`}
+                } ${isMine ? "bg-brand/10" : "bg-surface-card/40"}`}
               >
                 <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-surface-sub text-sm font-bold text-brand">
                   <ResolvedImage
@@ -273,7 +290,7 @@ function MatchCard({
                     </p>
                   ) : now > 0 && opensAt !== null && now < opensAt ? (
                     <p className="text-xs font-semibold text-ink-muted">
-                      {t("myMatches.checkIn.opensAt")} {" "}
+                      {t("myMatches.checkIn.opensAt")}{" "}
                       {formatLocalizedDate(
                         match.checkInWindow.opensAt,
                         locale,
@@ -348,11 +365,11 @@ function MatchCard({
 
 function MatchesSkeleton() {
   return (
-    <div className="grid gap-5 lg:grid-cols-2" aria-hidden>
+    <div className="space-y-3" aria-hidden>
       {[0, 1, 2, 3].map((item) => (
         <div
           key={item}
-          className="h-80 animate-pulse rounded-2xl border border-line bg-surface-card"
+          className="h-28 animate-pulse rounded-2xl border border-line bg-surface-card"
         />
       ))}
     </div>
@@ -365,6 +382,8 @@ export default function MyMatchesPage() {
   const { t } = useLocale();
   const [status, setStatus] = useState<MatchStatus>("PENDING");
   const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState<MyMatchFilters>({});
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [checkingInKey, setCheckingInKey] = useState<string | null>(null);
@@ -384,7 +403,7 @@ export default function MyMatchesPage() {
     response: MyMatchesResponse | null;
     error: boolean;
   } | null>(null);
-  const requestKey = `${user?.id ?? "guest"}:${status}:${page}:${attempt}`;
+  const requestKey = `${user?.id ?? "guest"}:${status}:${page}:${attempt}:${JSON.stringify(filters)}`;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
@@ -401,7 +420,7 @@ export default function MyMatchesPage() {
     }
     let cancelled = false;
     matchesApi
-      .findMine({ status, page, limit: PAGE_SIZE })
+      .findMine({ ...filters, status, page, limit: PAGE_SIZE })
       .then((response) => {
         if (!cancelled) setResult({ key: requestKey, response, error: false });
       })
@@ -412,7 +431,7 @@ export default function MyMatchesPage() {
     return () => {
       cancelled = true;
     };
-  }, [page, ready, requestKey, router, status, user]);
+  }, [filters, page, ready, requestKey, router, status, user]);
 
   const handleCheckIn = async (matchId: string, teamId: string) => {
     const key = `${matchId}:${teamId}`;
@@ -444,6 +463,10 @@ export default function MyMatchesPage() {
         };
       });
       setCheckInFeedback({ matchId, type: "success" });
+      if (filters.attention) {
+        setPage(1);
+        setAttempt((value) => value + 1);
+      }
     } catch {
       setCheckInFeedback({ matchId, type: "error" });
     } finally {
@@ -475,6 +498,10 @@ export default function MyMatchesPage() {
         };
       });
       setResultFeedback({ matchId, type: "success" });
+      if (filters.attention) {
+        setPage(1);
+        setAttempt((value) => value + 1);
+      }
       return true;
     } catch {
       setResultFeedback({ matchId, type: "error" });
@@ -486,7 +513,7 @@ export default function MyMatchesPage() {
 
   if (!ready || (user && !result)) {
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6">
+      <div className={`${styles.page} mx-auto w-full max-w-7xl px-4 py-10 sm:px-6`}>
         <MatchesSkeleton />
       </div>
     );
@@ -496,38 +523,65 @@ export default function MyMatchesPage() {
   const loading = result?.key !== requestKey;
   const response = result?.response;
   const matches = response?.data ?? [];
+  const groups = new Map<string, MyMatch[]>();
+  for (const match of matches) {
+    const id = match.round.tournament.id;
+    const group = groups.get(id) ?? [];
+    group.push(match);
+    groups.set(id, group);
+  }
+  const filtered = Object.entries(filters).some(
+    ([key, value]) => value && !(key === "sort" && value === "DEFAULT"),
+  );
+  const filterCount = Object.entries(filters).filter(
+    ([key, value]) => value && !(key === "sort" && value === "DEFAULT"),
+  ).length;
+
+  const statusTotal =
+    response?.summary[
+      STATUS_TABS.find((tab) => tab.status === status)!.summaryKey
+    ] ?? 0;
 
   return (
-    <div className="w-full flex-1">
+    <div className={`${styles.page} tournament-discovery-page relative w-full flex-1 overflow-x-clip bg-surface`}>
       <title>{`${t("pageTitle.myMatches")} | ArenaVerse`}</title>
-      <header className="border-b border-line bg-[image:var(--gradient-hero)]">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand">
-            {t("myMatches.eyebrow")}
-          </p>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-5">
-            <div className="max-w-2xl">
-              <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight text-ink sm:text-4xl">
-                <CalendarDotsIcon
-                  className="shrink-0 text-brand"
-                  weight="duotone"
-                />
-                {t("myMatches.title")}
-              </h1>
-              <p className="mt-3 text-sm leading-6 text-ink-muted sm:text-base">
-                {t("myMatches.description")}
-              </p>
-            </div>
-            <Link href="/users/me/teams" className={secondaryButtonClass}>
-              {t("myTeams.title")}
-              <ArrowRightIcon aria-hidden />
-            </Link>
+      <header className="tournament-discovery-hero relative isolate overflow-hidden border-b border-line">
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-20 bg-cover bg-center"
+          style={{
+            backgroundImage:
+              "url('/images/tournaments/common/backgrounds/tournament-collage.png')",
+          }}
+        />
+        <div
+          aria-hidden
+          className="tournament-discovery-hero-overlay absolute inset-0 -z-10 bg-[linear-gradient(90deg,color-mix(in_oklab,var(--color-surface)_68%,transparent),color-mix(in_oklab,var(--color-surface)_18%,transparent)_50%,color-mix(in_oklab,var(--color-surface)_68%,transparent)),linear-gradient(0deg,color-mix(in_oklab,var(--color-surface)_78%,transparent),transparent_72%)]"
+        />
+        <div className="mx-auto grid max-w-7xl items-center gap-4 px-4 py-5 sm:px-6 sm:py-6 lg:grid-cols-[10rem_minmax(0,1fr)_10rem] lg:gap-6 lg:px-8">
+          <div className="min-w-0 text-center lg:col-start-2">
+            <p className="tournament-discovery-eyebrow text-xs font-extrabold uppercase tracking-[0.3em] text-brand-hover">
+              {t("myMatches.eyebrow")}
+            </p>
+            <h1 className="tournament-discovery-title mt-2 text-balance text-[clamp(1.75rem,3vw,2.35rem)] font-black leading-[1.18] tracking-tight text-ink drop-shadow-[0_3px_14px_rgba(0,0,0,0.85)]">
+              {t("myMatches.title")}
+            </h1>
+            <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-ink-muted sm:text-base">
+              {t("myMatches.description")}
+            </p>
           </div>
+          <Link
+            href="/users/me/teams"
+            className={`${secondaryButtonClass} justify-self-end whitespace-nowrap bg-surface-card/80 backdrop-blur-md`}
+          >
+            {t("myTeams.title")}
+            <ArrowRightIcon aria-hidden />
+          </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-        {response?.nextMatch && (
+      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+        {status === "PENDING" && !filtered && response?.nextMatch && (
           <section aria-labelledby="next-match-heading" className="mb-9">
             <div className="mb-4 flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-xl bg-brand/10 text-brand">
@@ -545,18 +599,20 @@ export default function MyMatchesPage() {
                 </h2>
               </div>
             </div>
-            <div className="max-w-2xl">
-              <MatchCard
-                match={response.nextMatch}
-                featured
-                now={now}
-                checkingInKey={checkingInKey}
-                feedback={checkInFeedback}
-                onCheckIn={handleCheckIn}
-                resultResponseKey={resultResponseKey}
-                resultFeedback={resultFeedback}
-                onResultResponse={handleResultResponse}
-              />
+            <div className="overflow-hidden rounded-2xl border border-brand/35 bg-surface-card">
+              <CompactMatchRow match={response.nextMatch} now={now}>
+                <MatchCard
+                  match={response.nextMatch}
+                  featured
+                  now={now}
+                  checkingInKey={checkingInKey}
+                  feedback={checkInFeedback}
+                  onCheckIn={handleCheckIn}
+                  resultResponseKey={resultResponseKey}
+                  resultFeedback={resultFeedback}
+                  onResultResponse={handleResultResponse}
+                />
+              </CompactMatchRow>
             </div>
           </section>
         )}
@@ -576,51 +632,87 @@ export default function MyMatchesPage() {
             </div>
             {response && (
               <p className="text-sm text-ink-muted">
-                {response.summary.total} {t("myMatches.totalMatches")}
+                {response.pagination.total} / {statusTotal}{" "}
+                {t("myMatches.totalMatches")}
               </p>
             )}
           </div>
 
-          <div
-            role="tablist"
-            aria-label={t("myMatches.filters")}
-            className="mt-5 flex flex-wrap gap-2"
-          >
-            {STATUS_TABS.map((tab) => {
-              const active = status === tab.status;
-              const count = response?.summary[tab.summaryKey];
-              return (
-                <button
-                  key={tab.status}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => {
-                    setStatus(tab.status);
-                    setPage(1);
-                  }}
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
-                    active
-                      ? "border-brand bg-brand text-on-brand"
-                      : "border-line bg-surface-card text-ink-muted hover:border-brand/50 hover:text-ink"
-                  }`}
-                >
-                  {t(tab.label)}
-                  {count !== undefined && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
-                        active ? "bg-white/15" : "bg-surface-sub"
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <div
+              role="tablist"
+              aria-label={t("myMatches.filters")}
+              className="flex flex-wrap gap-2"
+            >
+              {STATUS_TABS.map((tab) => {
+                const active = status === tab.status;
+                const count = response?.summary[tab.summaryKey];
+                return (
+                  <button
+                    key={tab.status}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => {
+                      setStatus(tab.status);
+                      setPage(1);
+                    }}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                      active
+                        ? "border-brand bg-brand text-on-brand"
+                        : "border-line bg-surface-card text-ink-muted hover:border-brand/50 hover:text-ink"
+                    }`}
+                  >
+                    {t(tab.label)}
+                    {count !== undefined && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                          active ? "bg-white/15" : "bg-surface-sub"
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              aria-expanded={filtersOpen}
+              aria-controls="my-match-filters"
+              onClick={() => setFiltersOpen((open) => !open)}
+              className={`${secondaryButtonClass} ${filtersOpen || filterCount ? "border-brand/60 text-brand-hover" : ""}`}
+            >
+              <FunnelSimpleIcon aria-hidden weight="bold" />
+              {t("myMatches.filter.toggle")}
+              {filterCount > 0 && (
+                <span className="rounded-full bg-brand px-2 py-0.5 text-xs text-on-brand">
+                  {filterCount}
+                </span>
+              )}
+            </button>
           </div>
 
-          <div className="mt-6" role="tabpanel" aria-live="polite">
+          {filtersOpen && (
+            <div id="my-match-filters">
+              <MyMatchFilterBar
+                filters={filters}
+                teams={response?.filterTeams ?? []}
+                onChange={(next) => {
+                  setFilters(next);
+                  setPage(1);
+                }}
+              />
+            </div>
+          )}
+
+          <div
+            className="mt-6"
+            role="tabpanel"
+            aria-live="polite"
+            aria-busy={loading}
+          >
             {loading ? (
               <MatchesSkeleton />
             ) : result?.error ? (
@@ -644,10 +736,16 @@ export default function MyMatchesPage() {
                   weight="duotone"
                 />
                 <p className="mt-4 font-bold text-ink">
-                  {t(`myMatches.empty.${status}`)}
+                  {filtered
+                    ? t("myMatches.filter.noResults")
+                    : t(`myMatches.empty.${status}`)}
                 </p>
                 <p className="mx-auto mt-2 max-w-lg text-sm text-ink-muted">
-                  {t("myMatches.emptyHint")}
+                  {t(
+                    filtered
+                      ? "myMatches.filter.noResultsHint"
+                      : "myMatches.emptyHint",
+                  )}
                 </p>
                 <Link
                   href="/tournaments"
@@ -657,25 +755,69 @@ export default function MyMatchesPage() {
                 </Link>
               </div>
             ) : (
-              <div className="grid gap-5 lg:grid-cols-2">
-                {matches.map((match) => (
-                  <MatchCard
-                    key={match.id}
-                    match={match}
-                    now={now}
-                    checkingInKey={checkingInKey}
-                    feedback={checkInFeedback}
-                    onCheckIn={handleCheckIn}
-                    resultResponseKey={resultResponseKey}
-                    resultFeedback={resultFeedback}
-                    onResultResponse={handleResultResponse}
-                  />
-                ))}
+              <div className="space-y-5">
+                {[...groups].map(([id, group]) => {
+                  const tournament = group[0].round.tournament;
+                  return (
+                    <details
+                      key={`${requestKey}:${id}`}
+                      open
+                      className="group overflow-hidden rounded-2xl border border-line bg-surface-card"
+                    >
+                      <summary className="flex cursor-pointer list-none items-center gap-3 border-b border-line bg-surface-sub/40 p-4 sm:p-5 [&::-webkit-details-marker]:hidden">
+                        <CaretDownIcon
+                          aria-hidden
+                          className="shrink-0 text-brand-hover transition group-open:rotate-180"
+                        />
+                        <ResolvedImage
+                          src={
+                            gamePoster(tournament.game.code) ??
+                            gamePoster("CUSTOM")
+                          }
+                          alt=""
+                          className="hidden aspect-video w-24 shrink-0 rounded-lg bg-surface object-contain sm:block"
+                          fallback={
+                            <GameControllerIcon
+                              aria-hidden
+                              className="text-brand"
+                            />
+                          }
+                        />
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-sm font-bold text-ink sm:text-base">
+                            {tournament.name}
+                          </h3>
+                          <p className="mt-1 text-xs text-ink-muted">
+                            {tournament.displayGameName}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-xs text-ink-muted">
+                          {group.length} {t("myMatches.filter.onPage")}
+                        </span>
+                      </summary>
+                      {group.map((match) => (
+                        <CompactMatchRow key={match.id} match={match} now={now}>
+                          <MatchCard
+                            key={match.id}
+                            match={match}
+                            now={now}
+                            checkingInKey={checkingInKey}
+                            feedback={checkInFeedback}
+                            onCheckIn={handleCheckIn}
+                            resultResponseKey={resultResponseKey}
+                            resultFeedback={resultFeedback}
+                            onResultResponse={handleResultResponse}
+                          />
+                        </CompactMatchRow>
+                      ))}
+                    </details>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {response && response.pagination.totalPages > 1 && (
+          {!loading && response && response.pagination.totalPages > 1 && (
             <nav
               aria-label={t("myMatches.pagination")}
               className="mt-7 flex items-center justify-center gap-3"
@@ -704,7 +846,7 @@ export default function MyMatchesPage() {
             </nav>
           )}
         </section>
-      </main>
+      </div>
     </div>
   );
 }

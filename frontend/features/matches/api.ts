@@ -10,18 +10,26 @@ import type {
   UpdateMatchRequest,
 } from "./types";
 
+export interface MyMatchFilters {
+  gameId?: string;
+  tournamentId?: string;
+  teamId?: string;
+  search?: string;
+  attention?: "NEEDS_ACTION" | "CHECK_IN" | "CONFIRM" | "DISPUTED";
+  sort?: "DEFAULT" | "NEWEST" | "OLDEST";
+  from?: string;
+  to?: string;
+}
+
 export const matchesApi = {
   checkIn: (matchId: string, teamId: string) =>
-    request<MatchCheckIn>(
-      `/matches/${encodeURIComponent(matchId)}/check-ins`,
-      {
-        method: "POST",
-        body: JSON.stringify({ teamId }),
-        auth: true,
-      },
-    ),
+    request<MatchCheckIn>(`/matches/${encodeURIComponent(matchId)}/check-ins`, {
+      method: "POST",
+      body: JSON.stringify({ teamId }),
+      auth: true,
+    }),
   findMine: (
-    params: {
+    params: MyMatchFilters & {
       status?: MatchDetail["status"];
       page?: number;
       limit?: number;
@@ -31,6 +39,18 @@ export const matchesApi = {
     if (params.status) query.set("status", params.status);
     if (params.page) query.set("page", String(params.page));
     if (params.limit) query.set("limit", String(params.limit));
+    for (const key of [
+      "gameId",
+      "tournamentId",
+      "teamId",
+      "search",
+      "attention",
+      "sort",
+      "from",
+      "to",
+    ] as const) {
+      if (params[key]) query.set(key, params[key]);
+    }
     const search = query.toString();
     return request<MyMatchesResponse>(
       `/users/me/matches${search ? `?${search}` : ""}`,

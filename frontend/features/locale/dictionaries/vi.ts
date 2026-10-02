@@ -71,7 +71,6 @@ const vi = {
   "nav.mobile": "Điều hướng di động",
   "nav.home": "Trang chủ",
   "nav.tournaments": "Giải đấu",
-  "nav.ratings": "Đánh giá",
   "nav.myTournaments": "Giải của tôi",
   "nav.admin": "Quản trị",
   "nav.login": "Đăng nhập",

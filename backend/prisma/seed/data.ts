@@ -19,6 +19,49 @@ export const DEVELOPMENT_PASSWORD = '12345678';
 export const SEED_EMAIL_DOMAIN = 'du-lieu-giai-dau.test';
 export const SEED_SLUG_PREFIX = 'du-lieu-viet-';
 
+export const UI_SCENARIO_ACCOUNTS = {
+  owner: {
+    id: 'seed-user-034',
+    email: `nguyen.minh.quan@${SEED_EMAIL_DOMAIN}`,
+    displayName: 'Nguyễn Minh Quân',
+  },
+  captainA: {
+    id: 'seed-user-046',
+    email: `tran.gia.huy@${SEED_EMAIL_DOMAIN}`,
+    displayName: 'Trần Gia Huy',
+  },
+  captainB: {
+    id: 'seed-user-047',
+    email: `le.hoang.phuc@${SEED_EMAIL_DOMAIN}`,
+    displayName: 'Lê Hoàng Phúc',
+  },
+  member: {
+    id: 'seed-user-048',
+    email: `pham.khanh.linh@${SEED_EMAIL_DOMAIN}`,
+    displayName: 'Phạm Khánh Linh',
+  },
+  coOrganizer: {
+    id: 'seed-user-049',
+    email: `vo.anh.tuan@${SEED_EMAIL_DOMAIN}`,
+    displayName: 'Võ Anh Tuấn',
+  },
+  referee: {
+    id: 'seed-user-050',
+    email: `dang.quoc.viet@${SEED_EMAIL_DOMAIN}`,
+    displayName: 'Đặng Quốc Việt',
+  },
+  scorekeeper: {
+    id: 'seed-user-051',
+    email: `bui.ngoc.anh@${SEED_EMAIL_DOMAIN}`,
+    displayName: 'Bùi Ngọc Anh',
+  },
+} as const;
+
+const UI_SCENARIO_ACCOUNT_BY_ID = new Map<
+  string,
+  { id: string; email: string; displayName: string }
+>(Object.values(UI_SCENARIO_ACCOUNTS).map((account) => [account.id, account]));
+
 export type SeedPersona =
   'ADMIN' | 'ORGANIZER' | 'HYBRID' | 'PARTICIPANT' | 'SPECTATOR';
 
@@ -156,10 +199,16 @@ export const SEED_USERS: SeedUserSpec[] = Array.from(
   (_, index) => {
     const persona = personaFor(index);
     const ordinal = index + 1;
+    const id = `seed-user-${String(ordinal).padStart(3, '0')}`;
+    const scenarioAccount = UI_SCENARIO_ACCOUNT_BY_ID.get(id);
     return {
-      id: `seed-user-${String(ordinal).padStart(3, '0')}`,
-      email: `thanh-vien-${String(ordinal).padStart(3, '0')}@${SEED_EMAIL_DOMAIN}`,
-      displayName: `${familyNames[index % familyNames.length]} ${givenNames[Math.floor(index / familyNames.length) % givenNames.length]}`,
+      id,
+      email:
+        scenarioAccount?.email ??
+        `thanh-vien-${String(ordinal).padStart(3, '0')}@${SEED_EMAIL_DOMAIN}`,
+      displayName:
+        scenarioAccount?.displayName ??
+        `${familyNames[index % familyNames.length]} ${givenNames[Math.floor(index / familyNames.length) % givenNames.length]}`,
       role: persona === 'ADMIN' ? Role.ADMIN : Role.SIGNED_UP_USER,
       persona,
       gender: [Gender.MALE, Gender.FEMALE, Gender.OTHER][index % 3],

@@ -5,6 +5,7 @@ import { withTournamentGameDisplayName } from '../tournaments/domain/tournament-
 import { MyMatchesQueryDto } from './dto/my-matches-query.dto';
 import { getMatchCheckInWindow } from './domain/match-check-in.policy';
 import { matchResultReviewSelect } from './match-result-review.select';
+import { myMatchFilters } from './my-match-filters';
 
 const publicTeamSelect = {
   id: true,
@@ -120,12 +121,29 @@ export class MatchQueryService {
         status: RegistrationStatus.APPROVED,
         OR: [{ captainId: userId }, { members: { some: { userId } } }],
       },
-      select: { id: true, captainId: true },
+      select: {
+        id: true,
+        name: true,
+        captainId: true,
+        tournament: {
+          select: {
+            id: true,
+            name: true,
+            game: { select: { id: true, name: true, code: true } },
+          },
+        },
+      },
     });
     const userTeamIds = new Set(teams.map((team) => team.id));
     const captainTeamIds = new Set(
       teams.filter((team) => team.captainId === userId).map((team) => team.id),
     );
+    const filterTeams = teams.map((team) => ({
+      id: team.id,
+      name: team.name,
+      tournament: team.tournament,
+    }));
+    const filters = myMatchFilters(query, [...captainTeamIds], new Date());
 
     if (userTeamIds.size === 0) {
       return {
@@ -133,6 +151,7 @@ export class MatchQueryService {
         nextMatch: null,
         summary: { total: 0, pending: 0, ongoing: 0, completed: 0 },
         pagination: { page, limit, total: 0, totalPages: 0 },
+        filterTeams,
       };
     }
 
@@ -145,6 +164,7 @@ export class MatchQueryService {
     const where: Prisma.MatchWhereInput = {
       ...baseWhere,
       status: query.status,
+      AND: filters,
     };
     const orderBy: Prisma.MatchOrderByWithRelationInput[] =
       query.status === MatchStatus.COMPLETED
@@ -158,6 +178,16 @@ export class MatchQueryService {
               { scheduledAt: { sort: 'asc', nulls: 'last' } },
               { createdAt: 'asc' },
             ];
+    if (query.sort && query.sort !== 'DEFAULT') {
+      const sort = query.sort === 'OLDEST' ? 'asc' : 'desc';
+      orderBy.splice(0, orderBy.length, {
+        [query.status === MatchStatus.COMPLETED ? 'playedAt' : 'scheduledAt']: {
+          sort,
+          nulls: 'last',
+        },
+      });
+    }
+    orderBy.push({ id: 'asc' });
 
     const [data, total, nextMatch, statusGroups] = await Promise.all([
       this.prisma.match.findMany({
@@ -209,6 +239,7 @@ export class MatchQueryService {
         total,
         totalPages: Math.ceil(total / limit),
       },
+      filterTeams,
     };
   }
 }

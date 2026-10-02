@@ -15,10 +15,7 @@ function safeReturnPath(value?: string | string[]) {
   try {
     const base = "https://arenaverse.local";
     const url = new URL(value, base);
-    if (
-      url.origin !== base ||
-      (url.pathname !== "/tournaments" && url.pathname !== "/ratings")
-    ) {
+    if (url.origin !== base || url.pathname !== "/tournaments") {
       return "/tournaments";
     }
     return `${url.pathname}${url.search}${url.hash}`;
