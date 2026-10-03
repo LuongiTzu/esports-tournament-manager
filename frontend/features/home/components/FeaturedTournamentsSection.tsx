@@ -59,10 +59,6 @@ export default function FeaturedTournamentsSection() {
       id="featured-tournaments"
       className="relative scroll-mt-24 overflow-x-clip py-20 sm:py-24"
     >
-      <div
-        aria-hidden
-        className="absolute -right-48 top-12 -z-10 size-96 rounded-full bg-brand-secondary/8 blur-3xl"
-      />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <ScrollReveal>
           <SectionHeading

@@ -16,6 +16,7 @@ import {
   LinkSimpleIcon,
   SignInIcon,
   TrophyIcon,
+  UsersThreeIcon,
 } from "@phosphor-icons/react";
 import ResolvedImage from "@/components/ResolvedImage";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
@@ -572,10 +573,11 @@ export default function MyMatchesPage() {
           </div>
           <Link
             href="/users/me/teams"
-            className={`${secondaryButtonClass} justify-self-end whitespace-nowrap bg-surface-card/80 backdrop-blur-md`}
+            className="inline-flex min-h-12 items-center justify-center gap-2 justify-self-end whitespace-nowrap rounded-[var(--radius-control)] border border-violet-400/60 bg-violet-600 px-4 py-3 text-sm font-bold text-white shadow-[0_6px_24px_rgba(124,58,237,0.25)] transition-colors hover:border-violet-300 hover:bg-violet-700"
           >
+            <UsersThreeIcon aria-hidden size={20} weight="bold" className="shrink-0" />
             {t("myTeams.title")}
-            <ArrowRightIcon aria-hidden />
+            <ArrowRightIcon aria-hidden weight="bold" className="shrink-0" />
           </Link>
         </div>
       </header>

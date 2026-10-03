@@ -5,10 +5,7 @@
   border: 1px solid #bda0ef55;
   border-radius: 18px;
   padding: 10px 0 12px;
-  background:
-    radial-gradient(ellipse at 28% 50%, #8b5cf62b, transparent 50%),
-    radial-gradient(ellipse at 78% 65%, #22d3ee19, transparent 45%),
-    linear-gradient(115deg, #16101f, #201426 48%, #101a29);
+  background: #14181f;
   color: #ede9fe;
 }
 

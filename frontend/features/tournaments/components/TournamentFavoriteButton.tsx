@@ -121,11 +121,11 @@ export default function TournamentFavoriteButton({
         aria-busy={pending}
         disabled={pending || !ready}
         onClick={handleClick}
-        className={`relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border font-semibold shadow-sm backdrop-blur-md transition-[color,background-color,border-color,transform,opacity] focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] motion-safe:active:scale-95 disabled:cursor-wait disabled:opacity-70 ${
+        className={`relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border font-semibold shadow-sm backdrop-blur-md transition-[color,background-color,border-color,box-shadow,filter,transform,opacity] focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] motion-safe:active:scale-95 disabled:cursor-wait ${
           compact ? "min-w-11 px-2.5 text-xs" : "px-3.5 text-sm"
         } ${
           state.isFavorited
-            ? "border-accent/45 bg-accent/15 text-accent hover:bg-accent/20"
+            ? "border-rose-400/45 bg-[#2d1a26] text-rose-200 hover:border-rose-400/70 hover:bg-[#3a202d]"
             : "border-line bg-surface-card/90 text-ink-muted hover:border-accent/45 hover:text-accent"
         }`}
       >

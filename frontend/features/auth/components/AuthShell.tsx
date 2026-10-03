@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import SideRays from "@/components/effects/SideRays";
 import { useLocale } from "@/features/locale/store";
 import styles from "./AuthSurface.module.css";
 
@@ -30,30 +29,6 @@ export default function AuthShell({
       <div
         className={`${styles.page} relative isolate flex w-full flex-1 items-center overflow-hidden px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-14`}
       >
-        <SideRays
-          fillContainer
-          speed={2.5}
-          rayColor1="#EAB308"
-          rayColor2="#96C8FF"
-          intensity={2}
-          spread={2}
-          origin="top-right"
-          tilt={0}
-          saturation={1.5}
-          blend={0.75}
-          falloff={1.6}
-          opacity={1}
-        />
-
-        <div
-          aria-hidden
-          className="absolute left-[8%] top-[12%] -z-10 size-80 rounded-full bg-brand/10 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="absolute bottom-[8%] right-[6%] -z-10 size-80 rounded-full bg-brand-secondary/10 blur-3xl"
-        />
-
         <div
           className={`${styles.frame} relative z-10 mx-auto grid w-full max-w-[69.375rem] overflow-hidden rounded-[1.25rem] border md:grid-cols-[1.05fr_0.95fr]`}
         >

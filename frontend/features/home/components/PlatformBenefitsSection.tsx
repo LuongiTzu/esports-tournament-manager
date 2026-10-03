@@ -111,14 +111,6 @@ export default function PlatformBenefitsSection() {
 
   return (
     <section className="relative overflow-x-clip py-20 sm:py-24">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-[radial-gradient(circle_at_0%_65%,color-mix(in_oklab,var(--color-brand)_18%,transparent),transparent_68%)]"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 right-0 w-1/3 bg-[radial-gradient(circle_at_100%_65%,color-mix(in_oklab,var(--color-brand-secondary)_16%,transparent),transparent_68%)]"
-      />
 
       <div className="mx-auto max-w-[90rem] px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -149,10 +141,6 @@ export default function PlatformBenefitsSection() {
             aria-hidden
             className="pointer-events-none absolute left-1/2 top-1/2 hidden size-[30rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-brand-secondary/20 lg:block"
           />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 hidden size-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand/10 blur-3xl lg:block"
-          />
 
           <motion.div
             custom={{ x: -210, y: 70, delay: 0.08 }}
@@ -160,7 +148,6 @@ export default function PlatformBenefitsSection() {
             className="pointer-events-none absolute bottom-0 left-0 z-10 hidden w-[20rem] isolate lg:block xl:left-2 xl:w-[24rem]"
             style={{ willChange: "transform, opacity" }}
           >
-            <div className="absolute -bottom-2 -left-12 -z-20 size-80 rounded-full bg-brand/24 blur-3xl" />
             <DeviceMobileIcon
               aria-hidden
               size={310}
@@ -183,7 +170,6 @@ export default function PlatformBenefitsSection() {
             className="pointer-events-none absolute bottom-16 right-0 z-10 hidden w-[21rem] isolate lg:block xl:right-2 xl:w-[25rem]"
             style={{ willChange: "transform, opacity" }}
           >
-            <div className="absolute -bottom-4 -right-12 -z-20 size-80 rounded-full bg-brand-secondary/22 blur-3xl" />
             <KeyboardIcon
               aria-hidden
               size={330}

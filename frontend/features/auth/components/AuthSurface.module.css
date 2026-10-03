@@ -11,10 +11,7 @@
   --auth-raised-light: rgb(255 255 255 / 88%);
   --auth-inset-dark: rgb(82 65 70 / 15%);
   --auth-inset-light: rgb(255 255 255 / 90%);
-  background:
-    radial-gradient(circle at 11% 14%, rgb(92 12 35 / 7%), transparent 23rem),
-    radial-gradient(circle at 90% 83%, rgb(59 7 21 / 6%), transparent 25rem),
-    var(--color-surface);
+  background: var(--color-surface);
 }
 
 .frame {

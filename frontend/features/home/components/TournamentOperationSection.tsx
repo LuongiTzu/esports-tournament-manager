@@ -77,7 +77,6 @@ export default function TournamentOperationSection() {
       id="operation"
       className="relative isolate scroll-mt-24 overflow-x-clip py-14 sm:py-16"
     >
-      <div className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(circle_at_50%_38%,color-mix(in_oklab,var(--color-brand)_12%,transparent),transparent_33%),radial-gradient(circle_at_72%_55%,color-mix(in_oklab,var(--color-brand-secondary)_8%,transparent),transparent_28%)]" />
       <div className="pointer-events-none absolute -left-48 top-28 -z-10 size-[44rem] rounded-full border border-brand/10" />
       <div className="pointer-events-none absolute -left-28 top-48 -z-10 size-[30rem] rounded-full border border-brand-secondary/10" />
 
@@ -115,10 +114,6 @@ export default function TournamentOperationSection() {
               className="relative mx-auto h-full max-w-xl"
               style={{ willChange: "transform, opacity" }}
             >
-              <div
-                aria-hidden
-                className="absolute left-1/2 top-1/2 -z-10 h-20 w-[92%] -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-brand/10 via-brand-secondary/35 to-brand/10 blur-[1px]"
-              />
               <Image
                 src="/images/home/operation/faker-player.png"
                 alt={t("home.operation.playerAlt")}

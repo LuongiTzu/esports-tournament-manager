@@ -74,7 +74,7 @@ services:
       INTERNAL_API_URL: http://backend:3001/api
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
       WATCHPACK_POLLING: "true"
-    command: ["npm", "run", "dev"]
+    command: ["npm", "run", "dev", "--", "--webpack"]
     ports:
       - "3000:3000"
     volumes:

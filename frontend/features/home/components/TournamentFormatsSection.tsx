@@ -97,10 +97,6 @@ export default function TournamentFormatsSection() {
 
   return (
     <section id="formats" className="relative scroll-mt-24 py-20 sm:py-24">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-1/3 -z-10 h-96 bg-[radial-gradient(ellipse_at_center,color-mix(in_oklab,var(--color-brand)_7%,transparent),transparent_68%)]"
-      />
 
       <div className="mx-auto max-w-[90rem] px-4 sm:px-6 lg:px-8">
         <ScrollReveal>

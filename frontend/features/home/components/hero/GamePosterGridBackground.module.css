@@ -15,11 +15,6 @@
       color-mix(in oklab, var(--color-surface) 54%, transparent),
       color-mix(in oklab, var(--color-surface) 34%, transparent) 44%,
       var(--color-surface) 100%
-    ),
-    radial-gradient(
-      circle at 68% 46%,
-      color-mix(in oklab, var(--color-brand) 12%, transparent),
-      transparent 34rem
     );
   position: absolute;
   inset: 0;
@@ -101,11 +96,6 @@
       color-mix(in oklab, var(--color-surface) 46%, transparent),
       color-mix(in oklab, var(--color-surface) 25%, transparent) 44%,
       var(--color-surface) 100%
-    ),
-    radial-gradient(
-      circle at 68% 46%,
-      color-mix(in oklab, var(--color-brand) 15%, transparent),
-      transparent 34rem
     );
 }
 

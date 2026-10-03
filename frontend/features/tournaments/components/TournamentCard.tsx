@@ -2,7 +2,6 @@ import Link from "next/link";
 import {
   CalendarBlankIcon,
   CrownIcon,
-  GameControllerIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react";
 import type { Tournament } from "@/features/tournaments/types";
@@ -116,15 +115,6 @@ export default function TournamentCard({
             {translate("tournament.detail.official")}
           </span>
         )}
-
-        <span className="absolute bottom-3 right-4 grid size-14 place-items-center overflow-hidden rounded-xl border border-white/15 bg-surface/90 text-accent shadow-lg shadow-black/30 backdrop-blur-md">
-          <ResolvedImage
-            src={t.game?.iconUrl}
-            alt=""
-            className="size-10 object-contain object-center"
-            fallback={<GameControllerIcon size={28} weight="duotone" />}
-          />
-        </span>
       </div>
 
       <div

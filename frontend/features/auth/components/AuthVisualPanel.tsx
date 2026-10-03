@@ -83,15 +83,7 @@ export default function AuthVisualPanel({
       </div>
       <div
         aria-hidden
-        className="absolute inset-0 -z-20 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-visual-backdrop)_35%,transparent)_0%,color-mix(in_oklab,var(--color-visual-backdrop)_62%,transparent)_48%,var(--color-visual-backdrop)_100%),linear-gradient(110deg,color-mix(in_oklab,var(--color-brand)_32%,transparent),color-mix(in_oklab,var(--color-brand-secondary)_24%,transparent))]"
-      />
-      <div
-        aria-hidden
-        className="absolute -left-24 top-1/3 -z-10 size-72 rounded-full bg-brand/25 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="absolute -right-24 bottom-0 -z-10 size-72 rounded-full bg-brand-secondary/25 blur-3xl"
+        className="absolute inset-0 -z-20 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-visual-backdrop)_35%,transparent)_0%,color-mix(in_oklab,var(--color-visual-backdrop)_62%,transparent)_48%,var(--color-visual-backdrop)_100%)]"
       />
 
       <div

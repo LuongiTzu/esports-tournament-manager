@@ -96,9 +96,7 @@
 
 .wash {
   opacity: var(--art-opacity);
-  background:
-    radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--art-primary) 12%, transparent), transparent 40%),
-    radial-gradient(ellipse at 100% 100%, color-mix(in srgb, var(--art-secondary) 10%, transparent), transparent 40%);
+  background: transparent;
 }
 
 .art {
@@ -180,35 +178,9 @@
   );
 }
 
-.backdrop[data-variant="silk"] .wash {
-  background:
-    radial-gradient(ellipse at 12% 12%, color-mix(in srgb, var(--art-secondary) 22%, transparent), transparent 50%),
-    radial-gradient(ellipse at 86% 85%, color-mix(in srgb, var(--art-primary) 18%, transparent), transparent 50%);
-}
-
 .backdrop[data-variant="brush"] .wash {
   background:
-    radial-gradient(circle, color-mix(in srgb, var(--sheet-ink, var(--color-ink)) 12%, transparent) 0.5px, transparent 0.8px) 0 0 / 4px 4px,
-    radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--art-primary) 10%, transparent), transparent 45%);
-}
-
-.backdrop[data-variant="panels"] .wash {
-  background:
-    radial-gradient(ellipse at 0% 30%, color-mix(in srgb, var(--art-primary) 18%, transparent), transparent 60%),
-    radial-gradient(ellipse at 100% 70%, color-mix(in srgb, var(--art-secondary) 16%, transparent), transparent 60%);
-}
-
-.backdrop[data-variant="contours"] .wash {
-  background:
-    radial-gradient(ellipse at 100% 100%, color-mix(in srgb, var(--art-primary) 18%, transparent), transparent 52%),
-    radial-gradient(ellipse at 0% 0%, color-mix(in srgb, var(--art-secondary) 14%, transparent), transparent 38%);
-}
-
-.backdrop[data-variant="aurora"] .wash {
-  background:
-    radial-gradient(ellipse at 12% 0%, color-mix(in srgb, var(--art-primary) 30%, transparent), transparent 52%),
-    radial-gradient(ellipse at 92% 92%, color-mix(in srgb, var(--art-secondary) 26%, transparent), transparent 52%),
-    radial-gradient(ellipse at 80% 5%, color-mix(in srgb, var(--art-secondary) 10%, transparent), transparent 40%);
+    radial-gradient(circle, color-mix(in srgb, var(--sheet-ink, var(--color-ink)) 12%, transparent) 0.5px, transparent 0.8px) 0 0 / 4px 4px;
 }
 
 @media (max-width: 640px) {

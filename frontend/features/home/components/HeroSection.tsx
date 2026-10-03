@@ -64,7 +64,6 @@ export default function HeroSection() {
         </div>
 
         <div className="relative mx-auto h-[420px] w-full max-w-xl sm:h-[480px] lg:h-[500px]">
-          <div aria-hidden className="absolute inset-[12%_4%] rounded-full bg-brand/12 blur-3xl" />
           <DepthCarousel
             items={heroImages.map((image) => ({
               image: image.image,

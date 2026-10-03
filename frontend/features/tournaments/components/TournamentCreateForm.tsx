@@ -20,7 +20,6 @@ import {
   secondaryButtonClass,
 } from "@/components/ui";
 import ImageUploadPicker from "@/components/ImageUploadPicker";
-import SideRays from "@/components/effects/SideRays";
 import { clearSession, useAuth } from "@/features/auth/store";
 import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
 import { isEmailNotVerifiedError } from "@/features/auth/email-verification";
@@ -778,20 +777,6 @@ export default function TournamentCreateForm() {
       style={accentVars(selectedGame?.name)}
       className="tournament-create-page relative w-full flex-1 overflow-x-clip px-4 py-8 sm:px-6 lg:px-8 lg:py-10"
     >
-      <SideRays
-        speed={2.5}
-        rayColor1="#EAB308"
-        rayColor2="#96C8FF"
-        intensity={2}
-        spread={2}
-        origin="top-right"
-        tilt={0}
-        saturation={1.5}
-        blend={0.75}
-        falloff={1.6}
-        opacity={1}
-      />
-
       <div
         ref={wizardTopRef}
         className="relative z-10 mx-auto max-w-7xl scroll-mt-24"
