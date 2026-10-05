@@ -5,6 +5,7 @@ import { CaretDownIcon } from "@phosphor-icons/react";
 import { useLocale } from "@/features/locale/store";
 import { formatLocalizedDate } from "@/features/locale/format";
 import type { MyMatch } from "../types";
+import { getMyCheckInState } from "../check-in-state";
 
 export default function CompactMatchRow({
   match,
@@ -42,14 +43,7 @@ export default function CompactMatchRow({
           (response) => response.teamId === id,
         ),
     );
-  const canCheckIn =
-    match.status === "PENDING" &&
-    match.checkInWindow &&
-    now >= Date.parse(match.checkInWindow.opensAt) &&
-    now <= Date.parse(match.checkInWindow.closesAt) &&
-    match.captainTeamIds.some(
-      (id) => !match.checkIns.some((checkIn) => checkIn.teamId === id),
-    );
+  const checkIn = getMyCheckInState(match, now);
   const review = match.resultReview?.status;
   return (
     <div className="border-t border-line first:border-t-0">
@@ -57,7 +51,7 @@ export default function CompactMatchRow({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="grid w-full gap-3 px-4 py-4 text-left transition hover:bg-surface-sub/60 focus-visible:outline-2 focus-visible:outline-brand sm:px-5 lg:grid-cols-[10rem_minmax(0,1fr)_auto] lg:items-center"
+        className="grid w-full gap-3 px-4 py-4 text-left transition hover:bg-surface-sub/60 focus-visible:outline-2 focus-visible:outline-brand sm:px-5 lg:grid-cols-[10rem_minmax(0,1fr)_13rem] lg:items-center"
       >
         <span className="text-xs text-ink-muted">
           <time
@@ -109,9 +103,28 @@ export default function CompactMatchRow({
               {t(`myMatches.compact.${result}`)}
             </span>
           )}
-          {canCheckIn && (
+          {checkIn?.state === "OPEN" && (
             <span className="rounded-full bg-pending/10 px-2 py-1 text-pending">
-              {t("myMatches.compact.checkIn")}
+              {t(
+                checkIn.canCheckIn
+                  ? "myMatches.compact.checkIn"
+                  : "myMatches.checkIn.pending",
+              )}
+            </span>
+          )}
+          {checkIn?.state === "MISSED" && (
+            <span className="rounded-full bg-rejected/10 px-2 py-1 text-rejected">
+              {t("myMatches.checkIn.missed")}
+            </span>
+          )}
+          {checkIn?.state === "OPENS_LATER" && (
+            <span className="rounded-full bg-surface-sub px-2 py-1 text-ink-muted">
+              {t("myMatches.checkIn.opensLater")}
+            </span>
+          )}
+          {checkIn?.state === "CHECKED_IN" && (
+            <span className="rounded-full bg-approved/10 px-2 py-1 text-approved">
+              {t("myMatches.checkIn.checkedIn")}
             </span>
           )}
           {review && (

@@ -1,0 +1,103 @@
+{
+  "downloadedAt": "2026-10-05",
+  "assets": [
+    {
+      "file": "counter-strike-2.svg",
+      "url": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/counterstrike.svg",
+      "author": "Simple Icons",
+      "license": "CC0-1.0",
+      "bytes": 3061
+    },
+    {
+      "file": "dota-2.svg",
+      "url": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/dota2.svg",
+      "author": "Simple Icons",
+      "license": "CC0-1.0",
+      "bytes": 4667
+    },
+    {
+      "file": "league-of-legends.svg",
+      "url": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/leagueoflegends.svg",
+      "author": "Simple Icons",
+      "license": "CC0-1.0",
+      "bytes": 587
+    },
+    {
+      "file": "valorant.svg",
+      "url": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/valorant.svg",
+      "author": "Simple Icons",
+      "license": "CC0-1.0",
+      "bytes": 612
+    },
+    {
+      "file": "crossfire.svg",
+      "url": "https://d3h9qea4qy4169.cloudfront.net/crossfire_844ec865cc.svg",
+      "author": "Esports World Cup",
+      "license": "Game trademark; no open license specified upstream",
+      "bytes": 819
+    },
+    {
+      "file": "rocket-league.svg",
+      "url": "https://d3h9qea4qy4169.cloudfront.net/rocket_league_31dd407d16_b7331750a1.svg",
+      "author": "Esports World Cup",
+      "license": "Game trademark; no open license specified upstream",
+      "bytes": 9021
+    },
+    {
+      "file": "street-fighter-6.svg",
+      "url": "https://d3h9qea4qy4169.cloudfront.net/street_fighter_6_0c412e7101.svg",
+      "author": "Esports World Cup",
+      "license": "Game trademark; no open license specified upstream",
+      "bytes": 4542
+    },
+    {
+      "file": "tekken-8.svg",
+      "url": "https://d3h9qea4qy4169.cloudfront.net/Tekken_white_551892f836.svg",
+      "author": "Esports World Cup",
+      "license": "Game trademark; no open license specified upstream",
+      "bytes": 10051
+    },
+    {
+      "file": "mobile-legends.svg",
+      "url": "https://d3h9qea4qy4169.cloudfront.net/mlbb_icon_white_c22137bb63.svg",
+      "author": "Esports World Cup",
+      "license": "Game trademark; no open license specified upstream",
+      "bytes": 34385
+    },
+    {
+      "file": "honor-of-kings.svg",
+      "url": "https://raw.githubusercontent.com/Remix-Design/RemixIcon/master/icons/Logos/honor-of-kings-fill.svg",
+      "author": "Remix Design",
+      "license": "Remix Icon License v1.0",
+      "bytes": 985
+    },
+    {
+      "file": "lien-quan-mobile.svg",
+      "url": "https://raw.githubusercontent.com/Arcticons-Team/Arcticons/main/icons/white/lien_quan_mobile.svg",
+      "author": "Arcticons Team",
+      "license": "CC-BY-SA-4.0",
+      "bytes": 544
+    },
+    {
+      "file": "pokemon-unite.svg",
+      "url": "https://unite.pokemon.com/favicons/favicon.svg",
+      "author": "The Pokemon Company",
+      "license": "Game trademark; no open license specified upstream",
+      "bytes": 1139
+    },
+    {
+      "file": "wild-rift.svg",
+      "url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/content_organization/3a8b726f12edb8b70843502917ec331209a92a94-24x24.svg?accountingTag=WR",
+      "author": "Riot Games",
+      "license": "Game trademark; no open license specified upstream",
+      "bytes": 1421
+    },
+    {
+      "file": "fc-online.ico",
+      "url": "https://cdn.vn.garenanow.com/web/fo4vn/Khoa/2023/T9/FCO/favicon.ico",
+      "author": "Garena / EA",
+      "license": "Game trademark; no open license specified upstream",
+      "bytes": 12305
+    }
+  ]
+}

@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo } from "react";
 import {
-  GameControllerIcon,
   TrophyIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react";
 import ResolvedImage from "@/components/ResolvedImage";
+import GameIcon from "@/features/games/components/GameIcon";
 import { useLocale } from "@/features/locale/store";
 import type { Game } from "@/features/games/types";
 import { getTournamentBannerUrl } from "@/features/tournaments/banner";
@@ -79,12 +79,7 @@ export default function TournamentLivePreview({
               : t("tournament.create.openRegistration")}
           </span>
           <span className="absolute bottom-3 right-3 grid size-12 place-items-center overflow-hidden rounded-xl border border-line bg-surface-card text-brand shadow-sm">
-            <ResolvedImage
-              src={selectedGame?.iconUrl}
-              alt=""
-              className="size-9 object-contain"
-              fallback={<GameControllerIcon size={25} weight="duotone" />}
-            />
+            <GameIcon game={selectedGame} size={28} />
           </span>
         </div>
 

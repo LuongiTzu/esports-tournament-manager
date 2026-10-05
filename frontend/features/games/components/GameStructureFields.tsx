@@ -8,6 +8,7 @@ import { gamePositionLabel } from "@/features/games/position-labels";
 import type { Game } from "@/features/games/types";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import RosterSummary from "./RosterSummary";
+import GameIcon from "./GameIcon";
 
 export interface GameStructureValue {
   gameId: string;
@@ -109,7 +110,8 @@ export default function GameStructureFields({
                   />
                 )}
                 <span className="absolute inset-x-0 bottom-0 p-3">
-                  <span className="block text-sm font-bold leading-tight text-white">
+                  <span className="flex items-center gap-2 text-sm font-bold leading-tight text-white">
+                    <GameIcon game={item} size={20} />
                     {item.code === "CUSTOM"
                       ? t("game.structure.customGame")
                       : item.name}

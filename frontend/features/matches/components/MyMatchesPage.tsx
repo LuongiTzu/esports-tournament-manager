@@ -12,17 +12,22 @@ import {
   FunnelSimpleIcon,
   CheckCircleIcon,
   ClockIcon,
-  GameControllerIcon,
   LinkSimpleIcon,
   SignInIcon,
   TrophyIcon,
   UsersThreeIcon,
+  WarningCircleIcon,
 } from "@phosphor-icons/react";
 import ResolvedImage from "@/components/ResolvedImage";
+import GameIcon from "@/features/games/components/GameIcon";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { useAuth } from "@/features/auth/store";
 import { gamePoster } from "@/features/games/game-posters";
 import { matchesApi, type MyMatchFilters } from "@/features/matches/api";
+import {
+  getMyCheckInState,
+  pickPriorityMatch,
+} from "@/features/matches/check-in-state";
 import MyMatchFilterBar from "./MyMatchFilterBar";
 import CompactMatchRow from "./CompactMatchRow";
 import styles from "./MyMatchesPage.module.css";
@@ -40,6 +45,29 @@ import { useLocale, type TranslationKey } from "@/features/locale/store";
 import type { MatchStatus } from "@/features/tournaments/types";
 
 const PAGE_SIZE = 12;
+
+async function loadPriorityCheckInMatches() {
+  const [open, overdue] = await Promise.allSettled([
+    matchesApi.findMine({
+      status: "PENDING",
+      attention: "CHECK_IN",
+      page: 1,
+      limit: 1,
+    }),
+    matchesApi.findMine({
+      status: "PENDING",
+      attention: "OVERDUE_CHECK_IN",
+      sort: "NEWEST",
+      page: 1,
+      limit: 1,
+    }),
+  ]);
+  return {
+    open: open.status === "fulfilled" ? open.value.data[0] ?? null : null,
+    overdue:
+      overdue.status === "fulfilled" ? overdue.value.data[0] ?? null : null,
+  };
+}
 
 const STATUS_TABS: Array<{
   status: MatchStatus;
@@ -109,26 +137,12 @@ function MatchCard({
     { slot: "A" as const, team: match.teamA, score: match.scoreA },
     { slot: "B" as const, team: match.teamB, score: match.scoreB },
   ];
-  const captainTeamId = match.captainTeamIds.find((teamId) =>
-    match.userTeamIds.includes(teamId),
-  );
-  const captainCheckIn = captainTeamId
-    ? match.checkIns.find((checkIn) => checkIn.teamId === captainTeamId)
-    : undefined;
-  const checkInKey = captainTeamId ? `${match.id}:${captainTeamId}` : null;
-  const opensAt = match.checkInWindow
-    ? new Date(match.checkInWindow.opensAt).getTime()
-    : null;
-  const closesAt = match.checkInWindow
-    ? new Date(match.checkInWindow.closesAt).getTime()
-    : null;
-  const checkInOpen = Boolean(
-    now &&
-    opensAt !== null &&
-    closesAt !== null &&
-    now >= opensAt &&
-    now <= closesAt,
-  );
+  const checkIn = getMyCheckInState(match, now);
+  const checkInKey = checkIn ? `${match.id}:${checkIn.teamId}` : null;
+  const checkInWindow = match.checkInWindow;
+  const remainingCheckInMs = checkInWindow
+    ? Date.parse(checkInWindow.closesAt) - now
+    : 0;
 
   return (
     <article
@@ -150,12 +164,7 @@ function MatchCard({
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-surface-sub/35 px-4 py-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-brand/10 text-brand">
-            <ResolvedImage
-              src={tournament.game.iconUrl}
-              alt=""
-              className="size-full object-cover"
-              fallback={<GameControllerIcon weight="duotone" />}
-            />
+            <GameIcon game={tournament.game} size={22} />
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-ink">
@@ -262,7 +271,9 @@ function MatchCard({
         </div>
 
         {match.status === "PENDING" && match.userTeamIds.length > 0 && (
-          <div className="mt-4 rounded-xl border border-brand/20 bg-brand/5 p-3.5">
+          <div
+            className={`mt-4 rounded-xl border p-3.5 ${checkIn?.state === "MISSED" ? "border-rejected/30 bg-rejected/5" : checkIn?.state === "OPEN" ? "border-pending/30 bg-pending/5" : "border-brand/20 bg-brand/5"}`}
+          >
             <div className="flex items-start gap-3">
               <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand/10 text-brand">
                 <SignInIcon weight="duotone" />
@@ -272,50 +283,65 @@ function MatchCard({
                   {t("myMatches.checkIn.title")}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-ink-muted">
-                  {t("myMatches.checkIn.description")}
+                  {checkIn?.state === "MISSED"
+                    ? t("myMatches.checkIn.missedHint")
+                    : t("myMatches.checkIn.description")}
                 </p>
 
                 <div className="mt-3" aria-live="polite">
-                  {captainCheckIn ? (
+                  {checkIn?.state === "CHECKED_IN" ? (
                     <p className="inline-flex items-center gap-1.5 text-xs font-bold text-approved">
                       <CheckCircleIcon weight="fill" />
                       {t("myMatches.checkIn.success")}
                     </p>
-                  ) : !captainTeamId ? (
-                    <p className="text-xs font-semibold text-ink-muted">
-                      {t("myMatches.checkIn.captainOnly")}
-                    </p>
-                  ) : !match.checkInWindow ? (
+                  ) : checkIn?.state === "UNSCHEDULED" ? (
                     <p className="text-xs font-semibold text-ink-muted">
                       {t("myMatches.checkIn.unscheduled")}
                     </p>
-                  ) : now > 0 && opensAt !== null && now < opensAt ? (
+                  ) : checkIn?.state === "OPENS_LATER" && checkInWindow ? (
                     <p className="text-xs font-semibold text-ink-muted">
                       {t("myMatches.checkIn.opensAt")}{" "}
-                      {formatLocalizedDate(
-                        match.checkInWindow.opensAt,
-                        locale,
-                        { dateStyle: "medium", timeStyle: "short" },
-                      )}
+                      {formatLocalizedDate(checkInWindow.opensAt, locale, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
                     </p>
-                  ) : now > 0 && closesAt !== null && now > closesAt ? (
+                  ) : checkIn?.state === "MISSED" ? (
                     <p className="text-xs font-semibold text-rejected">
-                      {t("myMatches.checkIn.closed")}
+                      {t("myMatches.checkIn.missed")}
                     </p>
-                  ) : checkInOpen ? (
-                    <button
-                      type="button"
-                      disabled={checkingInKey === checkInKey}
-                      onClick={() => onCheckIn(match.id, captainTeamId)}
-                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-xs font-bold text-on-brand transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <SignInIcon aria-hidden weight="bold" />
-                      {t(
-                        checkingInKey === checkInKey
-                          ? "myMatches.checkIn.checking"
-                          : "myMatches.checkIn.action",
+                  ) : checkIn?.state === "OPEN" && checkInWindow ? (
+                    <div className="flex flex-wrap items-center gap-3">
+                      {checkIn.canCheckIn ? (
+                        <button
+                          type="button"
+                          disabled={checkingInKey === checkInKey}
+                          onClick={() => onCheckIn(match.id, checkIn.teamId)}
+                          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2 text-xs font-bold text-on-brand transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <SignInIcon aria-hidden weight="bold" />
+                          {t(
+                            checkingInKey === checkInKey
+                              ? "myMatches.checkIn.checking"
+                              : "myMatches.checkIn.action",
+                          )}
+                        </button>
+                      ) : (
+                        <p className="text-xs font-semibold text-ink-muted">
+                          {t("myMatches.checkIn.captainOnly")}
+                        </p>
                       )}
-                    </button>
+                      <p className="text-xs font-semibold text-pending">
+                        {remainingCheckInMs < 60_000
+                          ? t("myMatches.checkIn.lessThanMinute")
+                          : `${t("myMatches.checkIn.timeLeft")} ${Math.ceil(remainingCheckInMs / 60_000)} ${t("myMatches.checkIn.minutes")}`}
+                        {" · "}
+                        {t("myMatches.checkIn.closesAt")}{" "}
+                        {formatLocalizedDate(checkInWindow.closesAt, locale, {
+                          timeStyle: "short",
+                        })}
+                      </p>
+                    </div>
                   ) : null}
 
                   {feedback?.matchId === match.id &&
@@ -404,7 +430,19 @@ export default function MyMatchesPage() {
     response: MyMatchesResponse | null;
     error: boolean;
   } | null>(null);
+  const [priorityMatches, setPriorityMatches] = useState<{
+    key: string;
+    open: MyMatch | null;
+    overdue: MyMatch | null;
+  } | null>(null);
   const requestKey = `${user?.id ?? "guest"}:${status}:${page}:${attempt}:${JSON.stringify(filters)}`;
+  const priorityKey = `${user?.id ?? "guest"}:${attempt}`;
+  const filtered = Object.entries(filters).some(
+    ([key, value]) => value && !(key === "sort" && value === "DEFAULT"),
+  );
+  const filterCount = Object.entries(filters).filter(
+    ([key, value]) => value && !(key === "sort" && value === "DEFAULT"),
+  ).length;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
@@ -433,6 +471,91 @@ export default function MyMatchesPage() {
       cancelled = true;
     };
   }, [filters, page, ready, requestKey, router, status, user]);
+
+  useEffect(() => {
+    if (!ready || !user || status !== "PENDING" || filtered) return;
+    let cancelled = false;
+    void loadPriorityCheckInMatches().then((matches) => {
+      if (!cancelled) {
+        setPriorityMatches({ key: priorityKey, ...matches });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, user, status, filtered, priorityKey]);
+
+  useEffect(() => {
+    if (!ready || !user || status !== "PENDING") return;
+    let cancelled = false;
+    const refresh = async () => {
+      setNow(Date.now());
+      try {
+        const response = await matchesApi.findMine({
+          ...filters,
+          status,
+          page,
+          limit: PAGE_SIZE,
+        });
+        if (!cancelled) {
+          setResult((current) =>
+            current?.key === requestKey
+              ? { key: requestKey, response, error: false }
+              : current,
+          );
+        }
+      } catch {
+        // Keep the last visible schedule; an explicit retry remains available.
+      }
+      if (!filtered) {
+        const matches = await loadPriorityCheckInMatches();
+        if (!cancelled) {
+          setPriorityMatches({ key: priorityKey, ...matches });
+        }
+      }
+    };
+    const onFocus = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    const visibleMatches =
+      result?.key === requestKey
+        ? [
+            ...(result.response?.data ?? []),
+            ...(result.response?.nextMatch ? [result.response.nextMatch] : []),
+            ...(priorityMatches?.key === priorityKey && priorityMatches.open
+              ? [priorityMatches.open]
+              : []),
+            ...(priorityMatches?.key === priorityKey && priorityMatches.overdue
+              ? [priorityMatches.overdue]
+              : []),
+          ]
+        : [];
+    const nextBoundary = visibleMatches
+      .flatMap((match) =>
+        match.checkInWindow
+          ? [
+              Date.parse(match.checkInWindow.opensAt),
+              Date.parse(match.checkInWindow.closesAt) + 1,
+            ]
+          : [],
+      )
+      .filter((time) => time > Date.now())
+      .sort((a, b) => a - b)[0];
+    const boundaryTimer = nextBoundary
+      ? window.setTimeout(
+          () => void refresh(),
+          Math.min(nextBoundary - Date.now(), 2_147_483_647),
+        )
+      : undefined;
+    const interval = window.setInterval(() => void refresh(), 60_000);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(boundaryTimer);
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [ready, user, status, filters, page, filtered, requestKey, priorityKey, result, priorityMatches]);
 
   const handleCheckIn = async (matchId: string, teamId: string) => {
     const key = `${matchId}:${teamId}`;
@@ -464,7 +587,7 @@ export default function MyMatchesPage() {
         };
       });
       setCheckInFeedback({ matchId, type: "success" });
-      if (filters.attention) {
+      if (filters.attention || priorityMatches?.open?.id === matchId) {
         setPage(1);
         setAttempt((value) => value + 1);
       }
@@ -531,12 +654,25 @@ export default function MyMatchesPage() {
     group.push(match);
     groups.set(id, group);
   }
-  const filtered = Object.entries(filters).some(
-    ([key, value]) => value && !(key === "sort" && value === "DEFAULT"),
-  );
-  const filterCount = Object.entries(filters).filter(
-    ([key, value]) => value && !(key === "sort" && value === "DEFAULT"),
-  ).length;
+  const priorityMatch =
+    status === "PENDING" && !filtered && response
+      ? pickPriorityMatch(
+          [
+            ...response.data,
+            ...(response.nextMatch ? [response.nextMatch] : []),
+            ...(priorityMatches?.key === priorityKey && priorityMatches.open
+              ? [priorityMatches.open]
+              : []),
+            ...(priorityMatches?.key === priorityKey && priorityMatches.overdue
+              ? [priorityMatches.overdue]
+              : []),
+          ],
+          now,
+        )
+      : null;
+  const priorityState = priorityMatch
+    ? getMyCheckInState(priorityMatch, now)?.state
+    : null;
 
   const statusTotal =
     response?.summary[
@@ -583,38 +719,52 @@ export default function MyMatchesPage() {
       </header>
 
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-        {status === "PENDING" && !filtered && response?.nextMatch && (
+        {priorityMatch && !loading && (
           <section aria-labelledby="next-match-heading" className="mb-9">
             <div className="mb-4 flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-xl bg-brand/10 text-brand">
-                <TrophyIcon weight="duotone" />
+              <span
+                className={`grid size-10 place-items-center rounded-xl ${priorityState === "MISSED" ? "bg-rejected/10 text-rejected" : priorityState === "OPEN" ? "bg-pending/10 text-pending" : "bg-brand/10 text-brand"}`}
+              >
+                {priorityState === "MISSED" ? (
+                  <WarningCircleIcon weight="duotone" />
+                ) : (
+                  <TrophyIcon weight="duotone" />
+                )}
               </span>
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand">
-                  {t("myMatches.nextEyebrow")}
+                  {t(
+                    priorityState === "OPEN" || priorityState === "MISSED"
+                      ? "myMatches.priority.eyebrow"
+                      : "myMatches.nextEyebrow",
+                  )}
                 </p>
                 <h2
                   id="next-match-heading"
                   className="text-xl font-black text-ink"
                 >
-                  {t("myMatches.nextTitle")}
+                  {t(
+                    priorityState === "OPEN"
+                      ? "myMatches.priority.open"
+                      : priorityState === "MISSED"
+                        ? "myMatches.priority.missed"
+                        : "myMatches.nextTitle",
+                  )}
                 </h2>
               </div>
             </div>
             <div className="overflow-hidden rounded-2xl border border-brand/35 bg-surface-card">
-              <CompactMatchRow match={response.nextMatch} now={now}>
-                <MatchCard
-                  match={response.nextMatch}
-                  featured
-                  now={now}
-                  checkingInKey={checkingInKey}
-                  feedback={checkInFeedback}
-                  onCheckIn={handleCheckIn}
-                  resultResponseKey={resultResponseKey}
-                  resultFeedback={resultFeedback}
-                  onResultResponse={handleResultResponse}
-                />
-              </CompactMatchRow>
+              <MatchCard
+                match={priorityMatch}
+                featured
+                now={now}
+                checkingInKey={checkingInKey}
+                feedback={checkInFeedback}
+                onCheckIn={handleCheckIn}
+                resultResponseKey={resultResponseKey}
+                resultFeedback={resultFeedback}
+                onResultResponse={handleResultResponse}
+              />
             </div>
           </section>
         )}
@@ -658,6 +808,22 @@ export default function MyMatchesPage() {
                     onClick={() => {
                       setStatus(tab.status);
                       setPage(1);
+                      setFilters((current) => {
+                        const attention = current.attention;
+                        const appliesHere =
+                          !attention ||
+                          (tab.status === "PENDING" &&
+                            (attention === "NEEDS_ACTION" ||
+                              attention === "CHECK_IN" ||
+                              attention === "OVERDUE_CHECK_IN")) ||
+                          (tab.status === "COMPLETED" &&
+                            (attention === "NEEDS_ACTION" ||
+                              attention === "CONFIRM" ||
+                              attention === "DISPUTED"));
+                        return appliesHere
+                          ? current
+                          : { ...current, attention: undefined };
+                      });
                     }}
                     className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
                       active
@@ -703,6 +869,17 @@ export default function MyMatchesPage() {
                 teams={response?.filterTeams ?? []}
                 onChange={(next) => {
                   setFilters(next);
+                  if (
+                    next.attention === "CHECK_IN" ||
+                    next.attention === "OVERDUE_CHECK_IN"
+                  ) {
+                    setStatus("PENDING");
+                  } else if (
+                    next.attention === "CONFIRM" ||
+                    next.attention === "DISPUTED"
+                  ) {
+                    setStatus("COMPLETED");
+                  }
                   setPage(1);
                 }}
               />
@@ -779,8 +956,8 @@ export default function MyMatchesPage() {
                           alt=""
                           className="hidden aspect-video w-24 shrink-0 rounded-lg bg-surface object-contain sm:block"
                           fallback={
-                            <GameControllerIcon
-                              aria-hidden
+                            <GameIcon
+                              game={tournament.game}
                               className="text-brand"
                             />
                           }
@@ -789,7 +966,8 @@ export default function MyMatchesPage() {
                           <h3 className="text-sm font-bold text-ink sm:text-base">
                             {tournament.name}
                           </h3>
-                          <p className="mt-1 text-xs text-ink-muted">
+                          <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-muted">
+                            <GameIcon game={tournament.game} size={16} />
                             {tournament.displayGameName}
                           </p>
                         </div>

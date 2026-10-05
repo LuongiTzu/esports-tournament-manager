@@ -3,7 +3,12 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeftIcon, ShieldWarningIcon } from "@phosphor-icons/react";
+import {
+  ArrowLeftIcon,
+  CopyIcon,
+  GavelIcon,
+  ShieldWarningIcon,
+} from "@phosphor-icons/react";
 import { useAuth } from "@/features/auth/store";
 import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
 import { accentVars } from "@/features/games/game-accent";
@@ -215,9 +220,23 @@ export default function ManagePage({
               {t("manage.title")} {tournament.name}
             </h1>
           </div>
-          <span className="rounded-full border border-line bg-surface-card px-3 py-1.5 text-xs font-medium text-ink-muted">
-            {t(`tournament.status.${tournament.status}` as TranslationKey)}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {Boolean(tournament.rounds?.length) && (
+              <a href="#review-queue" className={secondaryButtonClass}>
+                <GavelIcon aria-hidden />
+                {t("manage.reviewQueue.shortcut")}
+              </a>
+            )}
+            {isOwner && (
+              <a href="#clone-tournament" className={secondaryButtonClass}>
+                <CopyIcon aria-hidden />
+                {t("clone.shortcut")}
+              </a>
+            )}
+            <span className="rounded-full border border-line bg-surface-card px-3 py-1.5 text-xs font-medium text-ink-muted">
+              {t(`tournament.status.${tournament.status}` as TranslationKey)}
+            </span>
+          </div>
         </div>
 
         {adminOverride && (
@@ -314,10 +333,10 @@ export default function ManagePage({
         {isOwner && (
           <>
             <div className="mt-12 border-t border-line pt-10">
-              <TournamentStaffManagement tournamentId={tournament.id} />
+              <TournamentClonePanel key={tournament.id} tournament={tournament} />
             </div>
-            <div className="mt-6">
-              <TournamentClonePanel tournament={tournament} />
+            <div className="mt-12 border-t border-line pt-10">
+              <TournamentStaffManagement tournamentId={tournament.id} />
             </div>
             <div className="mt-12 border-t border-line pt-10">
               <TournamentDeleteSection

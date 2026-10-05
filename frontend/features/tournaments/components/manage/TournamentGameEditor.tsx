@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   FloppyDiskIcon,
-  GameControllerIcon,
   LockKeyIcon,
 } from "@phosphor-icons/react";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
@@ -13,6 +12,7 @@ import GameStructureFields, {
 } from "@/features/games/components/GameStructureFields";
 import type { Game } from "@/features/games/types";
 import { useLocale } from "@/features/locale/store";
+import GameIcon from "@/features/games/components/GameIcon";
 import { tournamentsApi } from "@/features/tournaments/api";
 import type { TournamentDetail } from "@/features/tournaments/types";
 
@@ -107,7 +107,7 @@ export default function TournamentGameEditor({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="flex items-center gap-2 font-semibold text-ink">
-            <GameControllerIcon size={20} weight="duotone" />
+            <GameIcon game={tournament.game} size={20} />
             {t("game.structure.editorTitle")}
           </p>
           <p className="mt-1 text-sm text-ink-muted">

@@ -4,6 +4,8 @@ import type {
   MatchCheckIn,
   MatchMutationResult,
   MatchResultReview,
+  TournamentResultReviewsResponse,
+  TournamentResultReviewItem,
   MyMatchesResponse,
   PutMatchScoresRequest,
   RespondToMatchResultRequest,
@@ -15,7 +17,12 @@ export interface MyMatchFilters {
   tournamentId?: string;
   teamId?: string;
   search?: string;
-  attention?: "NEEDS_ACTION" | "CHECK_IN" | "CONFIRM" | "DISPUTED";
+  attention?:
+    | "NEEDS_ACTION"
+    | "CHECK_IN"
+    | "OVERDUE_CHECK_IN"
+    | "CONFIRM"
+    | "DISPUTED";
   sort?: "DEFAULT" | "NEWEST" | "OLDEST";
   from?: string;
   to?: string;
@@ -64,6 +71,22 @@ export const matchesApi = {
       `/matches/${encodeURIComponent(matchId)}/result-review`,
       { auth: true },
     ),
+  findTournamentResultReviews: (
+    tournamentId: string,
+    status: TournamentResultReviewItem["status"],
+    page = 1,
+    limit = 10,
+  ) => {
+    const query = new URLSearchParams({
+      status,
+      page: String(page),
+      limit: String(limit),
+    });
+    return request<TournamentResultReviewsResponse>(
+      `/tournaments/${encodeURIComponent(tournamentId)}/result-reviews?${query}`,
+      { auth: true },
+    );
+  },
   respondToResult: (matchId: string, data: RespondToMatchResultRequest) =>
     request<MatchResultReview>(
       `/matches/${encodeURIComponent(matchId)}/result-review/responses`,

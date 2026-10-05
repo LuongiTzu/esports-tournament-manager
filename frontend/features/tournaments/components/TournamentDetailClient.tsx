@@ -12,7 +12,6 @@ import {
   CrownIcon,
   EnvelopeSimpleIcon,
   FlagCheckeredIcon,
-  GameControllerIcon,
   GearSixIcon,
   GlobeHemisphereWestIcon,
   LinkSimpleIcon,
@@ -26,6 +25,7 @@ import {
 } from "@phosphor-icons/react";
 import TournamentDetailSkeleton from "@/features/tournaments/components/TournamentDetailSkeleton";
 import ResolvedImage from "@/components/ResolvedImage";
+import GameIcon from "@/features/games/components/GameIcon";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { clearSession, useAuth } from "@/features/auth/store";
 import { hasVerifiedEmail } from "@/features/auth/email-verification";
@@ -356,12 +356,7 @@ export default function TournamentDetailClient({
           <div className="grid gap-7 border-t border-line px-4 py-6 sm:px-7 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,0.65fr)] lg:items-center lg:px-10">
             <div className="flex min-w-0 items-start gap-4 sm:gap-6">
               <span className="grid size-20 shrink-0 place-items-center overflow-hidden border border-line bg-surface-sub text-accent shadow-xl sm:size-28">
-                <ResolvedImage
-                  src={tournament.game.iconUrl}
-                  alt=""
-                  className="size-full object-cover object-center"
-                  fallback={<GameControllerIcon size={42} weight="duotone" />}
-                />
+                <GameIcon game={tournament.game} size={48} />
               </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-accent">

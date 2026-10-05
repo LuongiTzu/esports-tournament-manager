@@ -1443,6 +1443,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tournaments/{tournamentId}/result-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List result reviews for tournament staff */
+        get: operations["MatchesController_findTournamentResultReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/matches/{id}/result-review/resolve": {
         parameters: {
             query?: never;
@@ -2156,6 +2173,41 @@ export interface components {
             decision: "CONFIRMED" | "DISPUTED";
             note?: string;
             evidenceUrls?: string[];
+        };
+        TournamentResultReviewTeamDto: {
+            id: string;
+            name: string;
+        };
+        TournamentResultReviewItemDto: {
+            matchId: string;
+            roundId: string;
+            roundName: string;
+            matchNumber: number | null;
+            teamA: components["schemas"]["TournamentResultReviewTeamDto"] | null;
+            teamB: components["schemas"]["TournamentResultReviewTeamDto"] | null;
+            /** @enum {string} */
+            status: "PENDING_CONFIRMATION" | "CONFIRMED" | "DISPUTED" | "RESOLVED";
+            /** Format: date-time */
+            openedAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        TournamentResultReviewSummaryDto: {
+            disputed: number;
+            pendingConfirmation: number;
+            resolved: number;
+            confirmed: number;
+        };
+        TournamentResultReviewPaginationDto: {
+            page: number;
+            limit: number;
+            total: number;
+            totalPages: number;
+        };
+        TournamentResultReviewsResponseDto: {
+            data: components["schemas"]["TournamentResultReviewItemDto"][];
+            summary: components["schemas"]["TournamentResultReviewSummaryDto"];
+            pagination: components["schemas"]["TournamentResultReviewPaginationDto"];
         };
         ResolveMatchDisputeDto: {
             resolutionNote: string;
@@ -4402,7 +4454,7 @@ export interface operations {
                 tournamentId?: string;
                 teamId?: string;
                 search?: string;
-                attention?: "NEEDS_ACTION" | "CHECK_IN" | "CONFIRM" | "DISPUTED";
+                attention?: "NEEDS_ACTION" | "CHECK_IN" | "OVERDUE_CHECK_IN" | "CONFIRM" | "DISPUTED";
                 sort?: "DEFAULT" | "NEWEST" | "OLDEST";
                 from?: string;
                 to?: string;
@@ -4492,6 +4544,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchResultReviewDto"];
+                };
+            };
+        };
+    };
+    MatchesController_findTournamentResultReviews: {
+        parameters: {
+            query?: {
+                status?: "DISPUTED" | "PENDING_CONFIRMATION" | "CONFIRMED" | "RESOLVED";
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                tournamentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TournamentResultReviewsResponseDto"];
                 };
             };
         };

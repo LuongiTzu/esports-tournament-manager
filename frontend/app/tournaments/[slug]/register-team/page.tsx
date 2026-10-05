@@ -7,13 +7,13 @@ import {
   ArrowLeftIcon,
   CalendarBlankIcon,
   EnvelopeSimpleIcon,
-  GameControllerIcon,
   PhoneIcon,
   ShieldCheckIcon,
   UserCircleIcon,
 } from "@phosphor-icons/react";
 import ImageUploadPicker from "@/components/ImageUploadPicker";
 import ResolvedImage from "@/components/ResolvedImage";
+import GameIcon from "@/features/games/components/GameIcon";
 import {
   alertErrorClass,
   hintClass,
@@ -410,7 +410,7 @@ export default function RegisterTeamPage({
             <div className="absolute inset-x-0 bottom-0 px-5 pb-6 sm:px-8 sm:pb-8 lg:px-10">
               <div className="flex items-center gap-3 text-accent">
                 <span className="grid size-10 place-items-center border border-white/15 bg-slate-950/50 backdrop-blur-md">
-                  <GameControllerIcon size={22} weight="duotone" />
+                  <GameIcon game={config.game} size={24} />
                 </span>
                 <span className="text-sm font-bold">
                   {rules.displayGameName}

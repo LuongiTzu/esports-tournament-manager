@@ -11,6 +11,7 @@ import { accentVars } from "@/features/games/game-accent";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { formatLocalizedDate } from "@/features/locale/format";
 import ResolvedImage from "@/components/ResolvedImage";
+import GameIcon from "@/features/games/components/GameIcon";
 import TournamentFavoriteButton from "@/features/tournaments/components/TournamentFavoriteButton";
 import type { TournamentFavoriteMutationResult } from "@/features/tournaments/types";
 
@@ -125,7 +126,8 @@ export default function TournamentCard({
             {t.name}
           </h3>
           {t.game && (
-            <span className="shrink-0 rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent/20 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent">
+              <GameIcon game={t.game} size={16} />
               {t.displayGameName ?? t.game.name}
             </span>
           )}

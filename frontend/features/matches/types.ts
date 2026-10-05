@@ -68,6 +68,10 @@ export type MyMatch = components["schemas"]["MyMatchItemDto"];
 export type MyMatchesResponse = components["schemas"]["MyMatchesResponseDto"];
 export type MatchCheckIn = components["schemas"]["MatchCheckInResponseDto"];
 export type MatchResultReview = components["schemas"]["MatchResultReviewDto"];
+export type TournamentResultReviewsResponse =
+  components["schemas"]["TournamentResultReviewsResponseDto"];
+export type TournamentResultReviewItem =
+  components["schemas"]["TournamentResultReviewItemDto"];
 export type MatchResultDecision =
   components["schemas"]["RespondToMatchResultDto"]["decision"];
 export type RespondToMatchResultRequest =

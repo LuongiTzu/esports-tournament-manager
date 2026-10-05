@@ -37,6 +37,8 @@ import { ApiError } from "@/lib/api/client";
 import RoundCompetitionView from "./RoundCompetitionView";
 import RoundSettingsEditor from "./RoundSettingsEditor";
 import MatchManagementPanel from "./MatchManagementPanel";
+import TournamentResultReviewQueue from "./TournamentResultReviewQueue";
+import type { TournamentResultReviewItem } from "@/features/matches/types";
 import RoundProgressionSummary from "./RoundProgressionSummary";
 import RoundStandingsView from "./RoundStandingsView";
 import RoundSettingsSummary from "../competition/RoundSettingsSummary";
@@ -102,6 +104,7 @@ export default function CompetitionManager({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [reviewRefreshVersion, setReviewRefreshVersion] = useState(0);
   const [tieBreakDecision, setTieBreakDecision] =
     useState<QualificationTieBreakDetails | null>(null);
   const [selectedTieTeamIds, setSelectedTieTeamIds] = useState<string[]>([]);
@@ -167,6 +170,7 @@ export default function CompetitionManager({
   }, [loadCompetition, selectedRound?.id]);
 
   useCompetitionInvalidation(tournament.id, () => {
+    setReviewRefreshVersion((current) => current + 1);
     if (selectedRound?.id) {
       void Promise.all([
         loadCompetition(selectedRound.id),
@@ -174,6 +178,33 @@ export default function CompetitionManager({
       ]);
     }
   });
+
+  const selectRound = (roundId: string) => {
+    if (roundId === selectedRound?.id || working) return;
+    setLoading(true);
+    setError("");
+    setBracket(null);
+    setStandings(null);
+    setSelectedMatchId(null);
+    setGenerationPreview(null);
+    setDownstreamResetPreview(null);
+    setSelectedRoundId(roundId);
+    setNotice("");
+    setTieBreakDecision(null);
+    setSelectedTieTeamIds([]);
+    setChampionshipTieBreak(null);
+    setSelectedChampionTeamId("");
+  };
+
+  const openReviewMatch = (item: TournamentResultReviewItem) => {
+    if (working) return;
+    if (!rounds.some((round) => round.id === item.roundId)) {
+      setError(t("competition.manage.structureNotFound"));
+      return;
+    }
+    selectRound(item.roundId);
+    setSelectedMatchId(item.matchId);
+  };
 
   const previewGeneration = async () => {
     if (!selectedRound || working) return;
@@ -576,25 +607,18 @@ export default function CompetitionManager({
         </span>
       </div>
 
+      <TournamentResultReviewQueue
+        tournamentId={tournament.id}
+        canResolveDisputes={canResolveDisputes}
+        busy={Boolean(working)}
+        refreshVersion={reviewRefreshVersion}
+        onOpenMatch={openReviewMatch}
+      />
+
       <CompetitionStageNavigation
         rounds={rounds}
         selectedRoundId={selectedRound?.id}
-        onSelect={(roundId) => {
-          if (roundId === selectedRound?.id || working) return;
-          setLoading(true);
-          setError("");
-          setBracket(null);
-          setStandings(null);
-          setSelectedMatchId(null);
-          setGenerationPreview(null);
-          setDownstreamResetPreview(null);
-          setSelectedRoundId(roundId);
-          setNotice("");
-          setTieBreakDecision(null);
-          setSelectedTieTeamIds([]);
-          setChampionshipTieBreak(null);
-          setSelectedChampionTeamId("");
-        }}
+        onSelect={selectRound}
       />
 
       {selectedRound && (
@@ -911,6 +935,7 @@ export default function CompetitionManager({
               loadCompetition(activeRound.id),
               onTournamentRefresh(),
             ]);
+            setReviewRefreshVersion((current) => current + 1);
           }}
         />
       )}

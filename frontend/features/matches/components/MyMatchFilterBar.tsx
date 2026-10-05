@@ -160,6 +160,9 @@ export default function MyMatchFilterBar({
               {t("myMatches.filter.needsAction")}
             </option>
             <option value="CHECK_IN">{t("myMatches.compact.checkIn")}</option>
+            <option value="OVERDUE_CHECK_IN">
+              {t("myMatches.filter.overdueCheckIn")}
+            </option>
             <option value="CONFIRM">{t("myMatches.compact.confirm")}</option>
             <option value="DISPUTED">
               {t("myMatches.resultReview.status.DISPUTED")}

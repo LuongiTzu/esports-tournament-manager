@@ -125,7 +125,7 @@ export default function TournamentFavoriteButton({
           compact ? "min-w-11 px-2.5 text-xs" : "px-3.5 text-sm"
         } ${
           state.isFavorited
-            ? "border-rose-400/45 bg-[#2d1a26] text-rose-200 hover:border-rose-400/70 hover:bg-[#3a202d]"
+            ? "border-rose-400/60 bg-[#542637] text-rose-100 hover:border-rose-300/75 hover:bg-[#663044]"
             : "border-line bg-surface-card/90 text-ink-muted hover:border-accent/45 hover:text-accent"
         }`}
       >

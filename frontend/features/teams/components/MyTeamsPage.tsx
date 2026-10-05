@@ -12,6 +12,7 @@ import {
   CalendarBlankIcon,
 } from "@phosphor-icons/react";
 import ResolvedImage from "@/components/ResolvedImage";
+import GameIcon from "@/features/games/components/GameIcon";
 import { useAuth } from "@/features/auth/store";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale } from "@/features/locale/store";
@@ -299,7 +300,8 @@ export default function MyTeamsPage() {
                         >
                           {team.tournament.name}
                         </Link>
-                        <p className="mt-1 text-[13px] text-ink-muted">
+                        <p className="mt-1 flex items-center gap-1.5 text-[13px] text-ink-muted">
+                          <GameIcon game={team.tournament.game} size={16} />
                           {team.tournament.displayGameName}
                         </p>
                       </div>
