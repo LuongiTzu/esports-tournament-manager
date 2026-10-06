@@ -18,7 +18,7 @@ export default function RoundProgressionSummary({
   const { progress, advancement } = data;
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-stretch">
-      <div className="rounded-xl border border-line bg-surface-sub p-4">
+      <div className="p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
           {t("progress.stageProgress")}
         </p>
@@ -65,7 +65,7 @@ export default function RoundProgressionSummary({
       )}
 
       {advancement.nextRound ? (
-        <div className="rounded-xl border border-brand/30 bg-brand/5 p-4">
+        <div className="border-l-2 border-brand p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-brand">
             {t("progress.nextRound")}
           </p>
@@ -80,7 +80,7 @@ export default function RoundProgressionSummary({
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-line bg-surface-sub p-4">
+        <div className="border-l border-line p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
             {t("progress.output")}
           </p>
@@ -91,7 +91,7 @@ export default function RoundProgressionSummary({
       )}
 
       {advancement.qualifiedTeams.length > 0 && (
-        <div className="lg:col-span-3 rounded-xl border border-approved/30 bg-approved/5 p-4">
+        <div className="border-t border-line p-4 lg:col-span-3">
           <p className="flex items-center gap-2 text-sm font-semibold text-approved">
             <CheckCircleIcon weight="fill" />{" "}
             {advancement.qualifiedTeams.length} {t("progress.teamsConfirmed")}
@@ -110,7 +110,7 @@ export default function RoundProgressionSummary({
       )}
 
       {data.participants.length > 0 && (
-        <div className="lg:col-span-3 rounded-xl border border-line px-4 py-3 text-sm text-ink-muted">
+        <div className="border-t border-line px-4 py-3 text-sm text-ink-muted lg:col-span-3">
           <div className="flex items-start gap-3">
             <UsersIcon className="mt-0.5 shrink-0 text-brand" />
             <span>

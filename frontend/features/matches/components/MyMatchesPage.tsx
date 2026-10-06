@@ -367,7 +367,7 @@ function MatchCard({
 
         <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
           <Link
-            href={`/tournaments/${encodeURIComponent(tournament.slug)}#competition`}
+            href={`/tournaments/${encodeURIComponent(tournament.slug)}/competition`}
             className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-line-strong px-3 py-2 text-xs font-semibold text-ink transition hover:border-brand/60 hover:text-brand"
           >
             {t("myMatches.viewTournament")}

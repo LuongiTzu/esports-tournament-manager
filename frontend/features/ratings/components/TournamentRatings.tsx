@@ -218,7 +218,7 @@ function RatingsContent({
             {result.eligibility.reason === "LOGIN_REQUIRED" && (
               <Link
                 className="mt-3 inline-block text-brand underline"
-                href={`/login?returnTo=${encodeURIComponent(`/tournaments/${slug}#ratings`)}`}
+                href={`/login?returnTo=${encodeURIComponent(`/tournaments/${slug}/ratings`)}`}
               >
                 {t("auth.login.submit")}
               </Link>

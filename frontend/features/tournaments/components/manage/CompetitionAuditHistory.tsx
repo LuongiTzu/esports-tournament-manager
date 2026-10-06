@@ -126,7 +126,7 @@ export default function CompetitionAuditHistory({
           {entries.map((entry) => (
             <li
               key={entry.id}
-              className="flex gap-3 rounded-xl border border-line bg-surface-sub px-4 py-3"
+              className="flex gap-3 border-b border-line px-1 py-3"
             >
               <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-brand/10 text-brand">
                 <ClockCounterClockwiseIcon />

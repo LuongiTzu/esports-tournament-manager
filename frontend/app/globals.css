@@ -532,6 +532,56 @@ html {
   background: var(--color-surface);
 }
 
+.manage-page :where(*) {
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  background-image: none !important;
+}
+
+.manage-page :where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-brand) !important;
+  outline-offset: 2px;
+}
+
+.manage-tab {
+  display: inline-flex;
+  min-height: 3.5rem;
+  align-items: center;
+  padding: 0 1.15rem;
+  border-bottom: 2px solid transparent;
+  color: var(--color-ink-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.manage-tab:hover,
+.manage-tab:focus-visible {
+  color: var(--color-ink);
+  background-color: var(--color-surface-sub);
+}
+
+.manage-tab:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: -2px;
+}
+
+.manage-tab-active {
+  border-bottom-color: var(--color-brand);
+  color: var(--color-ink);
+}
+
+.manage-page #clone-tournament > .rounded-xl,
+.manage-page #clone-tournament > .grid > .rounded-xl,
+.manage-page #review-queue .bg-surface-sub\/40,
+.manage-page .manage-staff-list > .bg-surface-sub\/50 {
+  border-radius: 0;
+  border-width: 0 0 1px;
+  border-color: var(--color-line);
+  background-color: transparent;
+  padding-inline: 0;
+}
+
 .team-register-page {
   --radius-control: 0.5rem;
   --radius-card: 0.625rem;

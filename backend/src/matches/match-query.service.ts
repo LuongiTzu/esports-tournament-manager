@@ -143,7 +143,12 @@ export class MatchQueryService {
       name: team.name,
       tournament: team.tournament,
     }));
-    const filters = myMatchFilters(query, [...captainTeamIds], new Date());
+    const filters = myMatchFilters(
+      query,
+      [...userTeamIds],
+      [...captainTeamIds],
+      new Date(),
+    );
 
     if (userTeamIds.size === 0) {
       return {

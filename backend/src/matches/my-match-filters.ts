@@ -5,6 +5,7 @@ import { MATCH_CHECK_IN_WINDOW_MINUTES } from './domain/match-check-in.policy';
 
 export function myMatchFilters(
   query: MyMatchesQueryDto,
+  userTeamIds: string[],
   captainTeamIds: string[],
   now: Date,
 ): Prisma.MatchWhereInput[] {
@@ -56,6 +57,15 @@ export function myMatchFilters(
         checkIns: { none: { teamId } },
       })),
     };
+    const overdueCheckInFor = (teamIds: string[]): Prisma.MatchWhereInput => ({
+      status: 'PENDING',
+      scheduledAt: { lt: now },
+      OR: teamIds.map((teamId) => ({
+        OR: [{ teamAId: teamId }, { teamBId: teamId }],
+        checkIns: { none: { teamId } },
+      })),
+    });
+    const overdueCheckIn = overdueCheckInFor(userTeamIds);
     const confirm: Prisma.MatchWhereInput = {
       status: 'COMPLETED',
       OR: captainTeamIds.map((teamId) => ({
@@ -72,15 +82,19 @@ export function myMatchFilters(
       status: 'COMPLETED',
       resultReview: { is: { status: 'DISPUTED' } },
     };
-    filters.push(
-      query.attention === 'CHECK_IN'
-        ? checkIn
-        : query.attention === 'CONFIRM'
-          ? confirm
-          : query.attention === 'DISPUTED'
-            ? disputed
-            : { OR: [checkIn, confirm, disputed] },
-    );
+    const byAttention: Record<
+      NonNullable<MyMatchesQueryDto['attention']>,
+      Prisma.MatchWhereInput
+    > = {
+      CHECK_IN: checkIn,
+      OVERDUE_CHECK_IN: overdueCheckIn,
+      CONFIRM: confirm,
+      DISPUTED: disputed,
+      NEEDS_ACTION: {
+        OR: [checkIn, overdueCheckInFor(captainTeamIds), confirm, disputed],
+      },
+    };
+    filters.push(byAttention[query.attention]);
   }
   return filters;
 }

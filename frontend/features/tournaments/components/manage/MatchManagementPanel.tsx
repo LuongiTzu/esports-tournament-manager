@@ -502,7 +502,7 @@ export default function MatchManagementPanel({
         : "bg-surface-hover text-ink-muted";
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-3 backdrop-blur-sm sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-3 sm:p-6">
       <section
         ref={panelRef}
         tabIndex={-1}

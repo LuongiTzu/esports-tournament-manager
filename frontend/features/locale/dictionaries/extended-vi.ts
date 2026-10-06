@@ -56,7 +56,6 @@ const extendedVi = {
   "myMatches.filter.noResults": "Không có trận phù hợp",
   "myMatches.filter.noResultsHint": "Thử đổi bộ lọc hoặc chọn Xóa bộ lọc để xem lại danh sách.",
   "myMatches.filter.onPage": "trận trên trang này",
-  "manage.reviewQueue.shortcut": "Khiếu nại & xác nhận",
   "manage.reviewQueue.eyebrow": "Việc cần theo dõi",
   "manage.reviewQueue.title": "Khiếu nại & xác nhận kết quả",
   "manage.reviewQueue.description":
@@ -753,6 +752,14 @@ const extendedVi = {
   "manage.loadError": "Không tải được dữ liệu",
   "manage.eyebrow": "Không gian ban tổ chức",
   "manage.title": "Quản lý",
+  "manage.nav.label": "Các trang quản lý giải đấu",
+  "manage.nav.overview": "Tổng quan",
+  "manage.nav.competition": "Giai đoạn & trận đấu",
+  "manage.nav.registrations": "Đội đăng ký",
+  "manage.nav.announcements": "Thông báo",
+  "manage.nav.staff": "Nhân sự",
+  "manage.nav.tools": "Công cụ",
+  "manage.sectionForbidden": "Bạn không có quyền truy cập mục quản lý này.",
   "staff.title": "Cộng tác viên và trọng tài",
   "staff.description":
     "Đồng BTC quản lý cấu hình và đội tham dự; trọng tài và người nhập tỷ số chỉ thao tác trận đấu.",
@@ -769,7 +776,6 @@ const extendedVi = {
   "staff.addError": "Không thể thêm nhân sự.",
   "staff.updateError": "Không thể cập nhật vai trò.",
   "staff.removeError": "Không thể xóa nhân sự.",
-  "clone.shortcut": "Tạo giải tương tự",
   "clone.eyebrow": "Bắt đầu mùa giải mới",
   "clone.title": "Tạo giải mới từ giải này",
   "clone.description":

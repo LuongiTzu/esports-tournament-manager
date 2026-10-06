@@ -36,7 +36,7 @@ function MemberCard({
     PLAYER_ROLES.has(member.memberRole) && positionMode !== "NONE";
 
   return (
-    <li className="rounded-xl border border-line bg-surface-sub/45 p-3">
+    <li className="border-b border-line px-1 py-3">
       <div className="flex items-start gap-3">
         <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-brand/10 text-sm font-bold text-brand">
           <ResolvedImage
@@ -201,7 +201,7 @@ export default function TeamRegistrationDetail({
         </div>
       </div>
 
-      <section className="mt-5 rounded-xl border border-line bg-surface-sub/45 p-4">
+      <section className="mt-5 border-t border-line pt-4">
         <h4 className="text-sm font-semibold text-ink">
           {t("registration.representative")}
         </h4>

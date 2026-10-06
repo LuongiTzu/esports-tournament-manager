@@ -314,17 +314,17 @@ function notificationDestination(notification: UserNotification) {
       ? `/tournaments/${slug}#comment-${encodeURIComponent(rootCommentId)}`
       : `/tournaments/${slug}#comments`;
   }
-  if (
-    notification.type === "TEAM_REGISTERED" ||
-    notification.type === "ADMIN_WARNING"
-  ) {
+  if (notification.type === "TEAM_REGISTERED") {
+    return `/tournaments/${slug}/manage/registrations`;
+  }
+  if (notification.type === "ADMIN_WARNING") {
     return `/tournaments/${slug}/manage`;
   }
   if (
     notification.type === "SCORE_UPDATE" ||
     notification.type === "SCHEDULE_CHANGE"
   ) {
-    return `/tournaments/${slug}#competition`;
+    return `/tournaments/${slug}/competition`;
   }
   return `/tournaments/${slug}`;
 }

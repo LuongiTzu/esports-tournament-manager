@@ -117,7 +117,7 @@ export default function TeamMatchHistory({ team }: { team: TeamDetail }) {
         </div>
       )}
       <Link
-        href={`/tournaments/${encodeURIComponent(team.tournament.slug)}#competition`}
+        href={`/tournaments/${encodeURIComponent(team.tournament.slug)}/competition`}
         className="mt-5 flex w-fit items-center gap-2 text-xs font-semibold text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
       >
         {t("teamDetail.viewCompetition")}

@@ -122,7 +122,7 @@ export default function AdminRatingsPanel() {
               <li key={r.id} className="rounded-lg border border-line p-4">
                 <Link
                   className="break-words font-bold text-brand"
-                  href={`/tournaments/${encodeURIComponent(r.tournament.slug)}#ratings`}
+                  href={`/tournaments/${encodeURIComponent(r.tournament.slug)}/ratings`}
                 >
                   {r.tournament.name}
                 </Link>

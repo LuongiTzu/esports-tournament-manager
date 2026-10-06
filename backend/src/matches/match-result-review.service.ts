@@ -24,6 +24,7 @@ import {
   RespondToMatchResultDto,
 } from './dto/match-result-review.dto';
 import { matchResultReviewSelect } from './match-result-review.select';
+import { TournamentResultReviewsQueryDto } from './dto/tournament-result-reviews.dto';
 
 @Injectable()
 export class MatchResultReviewService {
@@ -38,6 +39,77 @@ export class MatchResultReviewService {
       where: { matchId },
       select: matchResultReviewSelect,
     });
+  }
+
+  async findForTournament(
+    tournamentId: string,
+    query: TournamentResultReviewsQueryDto,
+  ) {
+    const page = query.page ?? 1;
+    const limit = Math.min(query.limit ?? 20, 50);
+    const scope: Prisma.MatchResultReviewWhereInput = {
+      match: { round: { tournamentId } },
+    };
+    const where: Prisma.MatchResultReviewWhereInput = {
+      ...scope,
+      status: query.status ?? MatchResultReviewStatus.DISPUTED,
+    };
+    const [reviews, total, statusGroups] = await Promise.all([
+      this.prisma.matchResultReview.findMany({
+        where,
+        orderBy: [{ updatedAt: 'desc' }, { matchId: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          matchId: true,
+          status: true,
+          openedAt: true,
+          updatedAt: true,
+          match: {
+            select: {
+              matchNumber: true,
+              teamA: { select: { id: true, name: true } },
+              teamB: { select: { id: true, name: true } },
+              round: { select: { id: true, name: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.matchResultReview.count({ where }),
+      this.prisma.matchResultReview.groupBy({
+        by: ['status'],
+        where: scope,
+        _count: { _all: true },
+      }),
+    ]);
+    const counts = Object.fromEntries(
+      statusGroups.map((group) => [group.status, group._count._all]),
+    ) as Partial<Record<MatchResultReviewStatus, number>>;
+    return {
+      data: reviews.map((review) => ({
+        matchId: review.matchId,
+        roundId: review.match.round.id,
+        roundName: review.match.round.name,
+        matchNumber: review.match.matchNumber,
+        teamA: review.match.teamA,
+        teamB: review.match.teamB,
+        status: review.status,
+        openedAt: review.openedAt,
+        updatedAt: review.updatedAt,
+      })),
+      summary: {
+        disputed: counts.DISPUTED ?? 0,
+        pendingConfirmation: counts.PENDING_CONFIRMATION ?? 0,
+        resolved: counts.RESOLVED ?? 0,
+        confirmed: counts.CONFIRMED ?? 0,
+      },
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   respond(matchId: string, userId: string, dto: RespondToMatchResultDto) {

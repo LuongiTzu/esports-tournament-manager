@@ -27,6 +27,7 @@ const TEAM_B_ID = 'seed-team-ui-hanoi-guardians';
 const MATCH_IDS = {
   checkInOpen: 'seed-ui-match-check-in-open',
   checkInLater: 'seed-ui-match-check-in-later',
+  checkInOverdue: 'seed-ui-match-check-in-overdue',
   unscheduled: 'seed-ui-match-unscheduled',
   ongoing: 'seed-ui-match-ongoing',
   pendingReview: 'seed-ui-match-review-pending',
@@ -198,6 +199,7 @@ export async function seedUiScenarios(prisma: PrismaService): Promise<void> {
     data: [
       matchData(MATCH_IDS.checkInOpen, 1, MatchStatus.PENDING, at(30 * MINUTE)),
       matchData(MATCH_IDS.checkInLater, 2, MatchStatus.PENDING, at(2 * HOUR)),
+      matchData(MATCH_IDS.checkInOverdue, 9, MatchStatus.PENDING, at(-20 * MINUTE)),
       matchData(MATCH_IDS.unscheduled, 3, MatchStatus.PENDING, null),
       matchData(MATCH_IDS.ongoing, 4, MatchStatus.ONGOING, at(-15 * MINUTE), {
         scoreA: 1,

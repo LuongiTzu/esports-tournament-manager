@@ -46,6 +46,10 @@ import {
 } from './dto/match-result-review.dto';
 import { TournamentStaffRole } from '@prisma/client';
 import { TournamentStaffRoles } from '../common/decorators/tournament-staff-roles.decorator';
+import {
+  TournamentResultReviewsQueryDto,
+  TournamentResultReviewsResponseDto,
+} from './dto/tournament-result-reviews.dto';
 
 @ApiTags('Matches')
 @Controller()
@@ -106,6 +110,25 @@ export class MatchesController {
   @Get('matches/:id/result-review')
   findResultReview(@Param('id') id: string) {
     return this.matches.findResultReview(id);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List result reviews for tournament staff' })
+  @ApiOkResponse({ type: TournamentResultReviewsResponseDto })
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('tournamentId')
+  @TournamentStaffRoles(
+    TournamentStaffRole.CO_ORGANIZER,
+    TournamentStaffRole.REFEREE,
+    TournamentStaffRole.SCOREKEEPER,
+  )
+  @AllowAdminOverride()
+  @Get('tournaments/:tournamentId/result-reviews')
+  findTournamentResultReviews(
+    @Param('tournamentId') tournamentId: string,
+    @Query() query: TournamentResultReviewsQueryDto,
+  ) {
+    return this.matches.findTournamentResultReviews(tournamentId, query);
   }
 
   @ApiBearerAuth()

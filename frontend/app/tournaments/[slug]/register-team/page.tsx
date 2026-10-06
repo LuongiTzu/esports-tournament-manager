@@ -235,7 +235,7 @@ export default function RegisterTeamPage({
 
       router.push(
         manualMode
-          ? `/tournaments/${slug}/manage#registrations`
+          ? `/tournaments/${slug}/manage/registrations#registrations`
           : `/tournaments/${slug}`,
       );
     } catch (reason: unknown) {
@@ -319,7 +319,7 @@ export default function RegisterTeamPage({
       await teamsApi.uploadLogo(registeredTeam.id, logoFile);
       router.push(
         manualMode
-          ? `/tournaments/${slug}/manage#registrations`
+          ? `/tournaments/${slug}/manage/registrations#registrations`
           : `/tournaments/${slug}`,
       );
     } catch (uploadError) {
@@ -387,7 +387,7 @@ export default function RegisterTeamPage({
         <Link
           href={
             manualMode
-              ? `/tournaments/${slug}/manage#registrations`
+              ? `/tournaments/${slug}/manage/registrations#registrations`
               : `/tournaments/${slug}`
           }
           className="inline-flex items-center gap-2 text-sm text-ink-muted transition hover:text-ink"
@@ -743,7 +743,7 @@ export default function RegisterTeamPage({
               <Link
                 href={
                   manualMode
-                    ? `/tournaments/${slug}/manage#registrations`
+                    ? `/tournaments/${slug}/manage/registrations#registrations`
                     : `/tournaments/${slug}`
                 }
                 className={secondaryButtonClass}

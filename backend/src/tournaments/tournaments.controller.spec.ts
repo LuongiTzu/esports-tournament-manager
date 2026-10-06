@@ -5,6 +5,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { OWNERSHIP_PARAM_KEY } from '../common/decorators/ownership.decorator';
+import { TOURNAMENT_STAFF_ROLES_KEY } from '../common/decorators/tournament-staff-roles.decorator';
 import { OwnershipGuard } from '../common/guards/ownership.guard';
 import { EmailVerifiedGuard } from '../common/guards/email-verified.guard';
 import { VisibilityGuard } from '../common/guards/visibility.guard';
@@ -65,6 +66,58 @@ describe('TournamentsController deletion authorization', () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     },
   );
+});
+
+describe('TournamentsController clone authorization', () => {
+  it('keeps cloning exclusive to the tournament owner', async () => {
+    const method = TournamentsController.prototype.clone;
+    expect(Reflect.getMetadata(GUARDS_METADATA, method)).toEqual([
+      JwtAuthGuard,
+      EmailVerifiedGuard,
+      OwnershipGuard,
+    ]);
+    expect(Reflect.getMetadata(OWNERSHIP_PARAM_KEY, method)).toBe(
+      'tournamentId',
+    );
+    expect(
+      Reflect.getMetadata(TOURNAMENT_STAFF_ROLES_KEY, method),
+    ).toBeUndefined();
+
+    const staffLookup = jest.fn().mockResolvedValue({ role: 'CO_ORGANIZER' });
+    const prisma = {
+      tournament: {
+        findUnique: jest.fn().mockResolvedValue({ organizerId: 'owner' }),
+      },
+      tournamentStaff: { findUnique: staffLookup },
+    } as unknown as PrismaService;
+    const guard = new OwnershipGuard(new Reflector(), prisma);
+    const contextFor = (userId: string) =>
+      ({
+        getHandler: () => method,
+        getClass: () => TournamentsController,
+        switchToHttp: () => ({
+          getRequest: () => ({
+            user: { id: userId },
+            params: { tournamentId: 'tournament-1' },
+            query: {},
+          }),
+        }),
+      }) as unknown as ExecutionContext;
+
+    await expect(guard.canActivate(contextFor('owner'))).resolves.toBe(true);
+    for (const userId of [
+      'captain',
+      'member',
+      'co-organizer',
+      'referee',
+      'scorekeeper',
+    ]) {
+      await expect(
+        guard.canActivate(contextFor(userId)),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    }
+    expect(staffLookup).not.toHaveBeenCalled();
+  });
 });
 
 describe('TournamentsController favorite authorization', () => {

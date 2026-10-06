@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
   CalendarBlankIcon,
@@ -29,9 +30,7 @@ import GameIcon from "@/features/games/components/GameIcon";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { clearSession, useAuth } from "@/features/auth/store";
 import { hasVerifiedEmail } from "@/features/auth/email-verification";
-import type { RatingList } from "@/features/ratings/types";
 import { accentVars } from "@/features/games/game-accent";
-import RosterSummary from "@/features/games/components/RosterSummary";
 import { gamePositionLabel } from "@/features/games/position-labels";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
@@ -44,7 +43,13 @@ import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 import TournamentFavoriteButton from "@/features/tournaments/components/TournamentFavoriteButton";
 import TournamentShareActions from "@/features/tournaments/components/TournamentShareActions";
 import type { TournamentDetail } from "@/features/tournaments/types";
+import {
+  isPublicTournamentSection,
+  publicTournamentSectionHref,
+  type PublicTournamentSection,
+} from "@/features/tournaments/public-sections";
 import { ApiError } from "@/lib/api/client";
+import styles from "./TournamentDetail.module.css";
 
 const PublicCompetitionView = dynamic(
   () =>
@@ -72,7 +77,7 @@ const TournamentComments = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div id="comments" className="mt-8 min-h-48 animate-pulse bg-surface-card" />
+      <div id="comments" className="mt-8 min-h-48 scroll-mt-28 animate-pulse bg-surface-card" />
     ),
   },
 );
@@ -85,6 +90,11 @@ const statusTone: Record<TournamentDetail["status"], string> = {
   CANCELLED: "border-rejected/35 bg-rejected/12 text-rejected",
 };
 
+const subscribeTimeZone = () => () => {};
+const browserTimeZone = () =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+const serverTimeZone = () => "UTC";
+
 function EventCard({
   title,
   icon,
@@ -95,11 +105,9 @@ function EventCard({
   children: ReactNode;
 }) {
   return (
-    <section className="border border-line bg-surface-card/90 p-5 shadow-[0_12px_30px_rgb(0_0_0/0.12)] sm:p-6">
+    <section className="border border-line bg-surface-card p-5 sm:p-6">
       <div className="flex items-center gap-3">
-        <span className="grid size-9 place-items-center border border-accent/25 bg-accent/10 text-accent">
-          {icon}
-        </span>
+        <span className="text-accent">{icon}</span>
         <h2 className="text-lg font-bold text-ink">{title}</h2>
       </div>
       <div className="mt-5">{children}</div>
@@ -150,13 +158,18 @@ function ScheduleMilestone({
 
 export default function TournamentDetailClient({
   slug,
+  section = "overview",
+  legacySection,
   backHref,
   initialTournament,
 }: {
   slug: string;
+  section?: PublicTournamentSection;
+  legacySection?: "comments" | "rules";
   backHref: string;
   initialTournament: TournamentDetail | null;
 }) {
+  const router = useRouter();
   const { user, ready } = useAuth();
   const { locale, t } = useLocale();
   const [tournament, setTournament] =
@@ -165,20 +178,33 @@ export default function TournamentDetailClient({
   const [loading, setLoading] = useState(!initialTournament);
   const [retryVersion, setRetryVersion] = useState(0);
   const [error, setError] = useState("");
-  const [ratingSnapshot, setRatingSnapshot] = useState<{
-    slug: string;
-    summary: RatingList["summary"];
-  } | null>(null);
-  const ratingSummary =
-    ratingSnapshot?.slug === slug ? ratingSnapshot.summary : null;
-  const updateRatingSummary = useCallback(
-    (summary: RatingList["summary"]) => setRatingSnapshot({ slug, summary }),
-    [slug],
+  const timeZone = useSyncExternalStore(
+    subscribeTimeZone,
+    browserTimeZone,
+    serverTimeZone,
   );
 
   useEffect(() => {
     if (tournament) document.title = `${tournament.name} | ArenaVerse`;
   }, [tournament]);
+
+  useEffect(() => {
+    if (!legacySection) return;
+    const hash = window.location.hash;
+    const target =
+      legacySection === "comments" && hash.startsWith("#comment-")
+        ? hash
+        : `#${legacySection}`;
+    router.replace(`${publicTournamentSectionHref(slug, "overview")}${target}`);
+  }, [legacySection, router, slug]);
+
+  useEffect(() => {
+    if (section !== "overview") return;
+    const hash = window.location.hash.slice(1);
+    if (isPublicTournamentSection(hash) && hash !== "overview") {
+      router.replace(publicTournamentSectionHref(slug, hash));
+    }
+  }, [router, section, slug]);
 
   useEffect(() => {
     if (!ready) return;
@@ -293,11 +319,14 @@ export default function TournamentDetailClient({
     formatLocalizedDate(value, locale, {
       dateStyle: "medium",
       timeStyle: "short",
+      timeZone,
     });
+  const formatDate = (value: string) =>
+    formatLocalizedDate(value, locale, { dateStyle: "medium", timeZone });
   const eventDates = tournament.startDate
     ? tournament.endDate
-      ? `${formatLocalizedDate(tournament.startDate, locale)} — ${formatLocalizedDate(tournament.endDate, locale)}`
-      : formatLocalizedDate(tournament.startDate, locale)
+      ? `${formatDate(tournament.startDate)} — ${formatDate(tournament.endDate)}`
+      : formatDate(tournament.startDate)
     : t("common.notSet");
   const hasContact = Boolean(
     tournament.contactEmail ||
@@ -308,7 +337,7 @@ export default function TournamentDetailClient({
   return (
     <div
       style={accentVars(tournament.game.name)}
-      className="tournament-detail-page w-full flex-1 pb-16"
+      className={`${styles.page} tournament-detail-page w-full flex-1 pb-16`}
     >
       <div className="mx-auto w-full max-w-[100rem] px-0 sm:px-4">
         <div className="px-4 py-3 sm:px-0">
@@ -353,9 +382,9 @@ export default function TournamentDetailClient({
             </div>
           </div>
 
-          <div className="grid gap-7 border-t border-line px-4 py-6 sm:px-7 lg:grid-cols-[minmax(0,1.5fr)_minmax(20rem,0.65fr)] lg:items-center lg:px-10">
+          <div className="grid gap-5 border-t border-line px-4 py-5 sm:px-7 lg:grid-cols-[minmax(0,1.5fr)_minmax(17rem,0.65fr)] lg:items-center lg:px-10">
             <div className="flex min-w-0 items-start gap-4 sm:gap-6">
-              <span className="grid size-20 shrink-0 place-items-center overflow-hidden border border-line bg-surface-sub text-accent shadow-xl sm:size-28">
+              <span className="grid size-16 shrink-0 place-items-center overflow-hidden border border-line bg-surface-sub text-accent sm:size-20">
                 <GameIcon game={tournament.game} size={48} />
               </span>
               <div className="min-w-0">
@@ -364,7 +393,7 @@ export default function TournamentDetailClient({
                 </p>
                 <h1
                   data-testid="tournament-title"
-                  className="mt-2 text-2xl font-black leading-tight tracking-tight text-ink sm:text-4xl"
+                  className="mt-2 text-2xl font-bold leading-tight tracking-tight text-ink sm:text-3xl"
                 >
                   {tournament.name}
                 </h1>
@@ -401,7 +430,7 @@ export default function TournamentDetailClient({
                   ? `${t("tournament.detail.registrationUntil")} ${formatDateTime(tournament.registrationDeadline)}`
                   : t("tournament.detail.registrationNoDeadline")}
               </p>
-              <div className="mt-4 grid w-full gap-2 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="mt-3 grid w-full gap-2 sm:grid-cols-2 lg:grid-cols-1">
                 {canManage && emailVerified && (
                   <Link
                     href={`/tournaments/${slug}/manage`}
@@ -420,85 +449,40 @@ export default function TournamentDetailClient({
                     {t("tournament.detail.registerTeam")}
                   </Link>
                 )}
-                <TournamentReportAction
-                  slug={slug}
-                  tournamentName={tournament.name}
-                />
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <a
-                    href="#ratings"
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line bg-surface-card/90 px-3.5 text-sm font-semibold text-ink-muted shadow-sm backdrop-blur-md transition hover:border-accent/45 hover:text-accent focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)]"
-                  >
-                    <StarIcon
-                      aria-hidden
-                      size={20}
-                      weight={ratingSummary?.count ? "fill" : "bold"}
-                      className="text-accent"
-                    />
-                    {ratingSummary
-                      ? ratingSummary.count > 0 && ratingSummary.average !== null
-                        ? `${t("ratings.action")} · ${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(ratingSummary.average)} (${ratingSummary.count})`
-                        : `${t("ratings.action")} · ${t("ratings.noRatingsShort")}`
-                      : t("ratings.action")}
-                  </a>
-                  <TournamentShareActions tournament={tournament} />
-                  <TournamentFavoriteButton
-                    slug={slug}
-                    isFavorited={tournament.isFavorited}
-                    favoriteCount={tournament.favoriteCount}
-                    onOptimisticChange={(favoriteState) =>
-                      setTournament((current) =>
-                        current ? { ...current, ...favoriteState } : current,
-                      )
-                    }
-                    onReconciled={(favoriteState) =>
-                      setTournament((current) =>
-                        current ? { ...current, ...favoriteState } : current,
-                      )
-                    }
-                    onRollback={(favoriteState) =>
-                      setTournament((current) =>
-                        current ? { ...current, ...favoriteState } : current,
-                      )
-                    }
-                  />
-                </div>
               </div>
             </div>
           </div>
 
           <nav
             aria-label={t("tournament.detail.sectionNavigation")}
-            className="overflow-x-auto border-t border-line bg-surface-card/95 px-4 sm:px-8"
+            className="overflow-x-auto border-t border-line bg-surface-card px-4 sm:px-8"
           >
             <div className="flex min-w-max gap-1">
-              <a href="#overview" className="tournament-detail-tab">
-                {t("tournament.detail.overview")}
-              </a>
-              <a href="#competition" className="tournament-detail-tab">
-                {t("tournament.detail.competition")}
-              </a>
-              <a href="#participants" className="tournament-detail-tab">
-                {t("tournament.detail.participants")}
-              </a>
-              <a href="#ratings" className="tournament-detail-tab">
-                {t("ratings.action")}
-              </a>
-              <a href="#comments" className="tournament-detail-tab">
-                {t("comments.title")}
-              </a>
-              {tournament.rules && (
-                <a href="#rules" className="tournament-detail-tab">
-                  {t("tournament.detail.rules")}
-                </a>
-              )}
+              {(
+                [
+                  ["overview", t("tournament.detail.overview")],
+                  ["competition", t("tournament.detail.competition")],
+                  ["participants", t("tournament.detail.participants")],
+                  ["ratings", t("ratings.action")],
+                ] as const
+              ).map(([target, label]) => (
+                <Link
+                  key={target}
+                  href={publicTournamentSectionHref(slug, target)}
+                  aria-current={section === target ? "page" : undefined}
+                  className={`${styles.tab} ${section === target ? styles.activeTab : ""}`}
+                >
+                  {label}
+                </Link>
+              ))}
             </div>
           </nav>
         </header>
       </div>
 
       <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <section
+        {section === "overview" && (
+          <section
           id="overview"
           className="scroll-mt-28 py-10 lg:grid lg:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.72fr)] lg:gap-7"
         >
@@ -507,7 +491,7 @@ export default function TournamentDetailClient({
               title={t("tournament.detail.information")}
               icon={<ShieldCheckIcon size={19} weight="duotone" />}
             >
-              <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <dl className="grid grid-cols-2 gap-5 lg:grid-cols-3">
                 <Fact
                   label={t("tournament.detail.game")}
                   value={displayGameName}
@@ -560,12 +544,13 @@ export default function TournamentDetailClient({
                 <h3 className="font-bold text-ink">
                   {t("tournament.detail.teamStructure")}
                 </h3>
-                <div className="mt-4">
-                  <RosterSummary
-                    activeSize={tournament.minTeamSize}
-                    maxRosterSize={tournament.maxTeamSize}
-                  />
-                </div>
+                <p className="mt-4 text-sm text-ink-muted">
+                  <strong className="text-ink">{tournament.minTeamSize}</strong>{" "}
+                  {t("game.structure.activePlayers")}
+                  <span className="mx-3 text-ink-faint" aria-hidden>·</span>
+                  <strong className="text-ink">{tournament.maxTeamSize}</strong>{" "}
+                  {t("game.structure.maximumRoster")}
+                </p>
                 {tournament.game.positionMode !== "NONE" &&
                   (tournament.game.positions?.length ?? 0) > 0 && (
                     <div className="mt-5">
@@ -753,7 +738,39 @@ export default function TournamentDetailClient({
               </EventCard>
             )}
 
-            <div className="border border-line bg-surface-sub/75 p-5 text-sm text-ink-muted">
+            <div className="flex flex-wrap items-center gap-2 border-t border-line pt-5">
+              <Link
+                href={publicTournamentSectionHref(slug, "ratings")}
+                className="inline-flex min-h-11 items-center gap-2 border border-line px-3.5 text-sm font-semibold text-ink-muted hover:border-accent hover:text-accent"
+              >
+                <StarIcon aria-hidden size={20} className="text-accent" />
+                {t("ratings.action")}
+              </Link>
+              <TournamentShareActions tournament={tournament} />
+              <TournamentFavoriteButton
+                slug={slug}
+                isFavorited={tournament.isFavorited}
+                favoriteCount={tournament.favoriteCount}
+                onOptimisticChange={(favoriteState) =>
+                  setTournament((current) =>
+                    current ? { ...current, ...favoriteState } : current,
+                  )
+                }
+                onReconciled={(favoriteState) =>
+                  setTournament((current) =>
+                    current ? { ...current, ...favoriteState } : current,
+                  )
+                }
+                onRollback={(favoriteState) =>
+                  setTournament((current) =>
+                    current ? { ...current, ...favoriteState } : current,
+                  )
+                }
+              />
+              <TournamentReportAction slug={slug} tournamentName={tournament.name} />
+            </div>
+
+            <div className="border-t border-line pt-5 text-sm text-ink-muted">
               <div className="flex items-start gap-3">
                 <ClockIcon className="mt-0.5 shrink-0 text-accent" size={18} />
                 <p>
@@ -763,19 +780,23 @@ export default function TournamentDetailClient({
               </div>
             </div>
           </aside>
-        </section>
+          </section>
+        )}
 
-        <PublicCompetitionView
-          id="competition"
-          slug={slug}
-          tournamentId={tournament.id}
-          bannerUrl={bannerUrl}
-          tournamentName={tournament.name}
-        />
+        {section === "competition" && (
+          <PublicCompetitionView
+            id="competition"
+            slug={slug}
+            tournamentId={tournament.id}
+            bannerUrl={bannerUrl}
+            tournamentName={tournament.name}
+          />
+        )}
 
-        <section
+        {section === "participants" && (
+          <section
           id="participants"
-          className="mt-8 scroll-mt-28 border border-line bg-surface-card/90 p-5 sm:p-7"
+          className="mt-8 scroll-mt-28 p-1 sm:p-2"
         >
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -816,9 +837,9 @@ export default function TournamentDetailClient({
                 <li key={team.id}>
                   <Link
                     href={`/teams/${encodeURIComponent(team.id)}`}
-                    className="flex h-full items-center gap-3 border border-line bg-surface-sub/70 p-4 transition hover:border-accent/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    className="flex h-full items-center gap-3 border border-line bg-surface-card p-4 transition hover:border-accent/45 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
-                    <span className="grid size-12 shrink-0 place-items-center overflow-hidden border border-line bg-surface-card font-bold text-accent">
+                      <span className="grid size-12 shrink-0 place-items-center overflow-hidden bg-surface-sub font-bold text-accent">
                       <ResolvedImage
                         src={team.logoUrl}
                         alt={`${t("tournament.detail.teamLogoAlt")} ${team.name}`}
@@ -844,24 +865,15 @@ export default function TournamentDetailClient({
               ))}
             </ul>
           )}
-        </section>
+          </section>
+        )}
 
-        <TournamentRatings
-          slug={slug}
-          onSummaryChange={updateRatingSummary}
-        />
+        {section === "ratings" && <TournamentRatings slug={slug} />}
 
-        <TournamentComments
-          key={tournament.id}
-          slug={slug}
-          tournamentId={tournament.id}
-          organizerId={tournament.organizer?.id}
-        />
-
-        {tournament.rules && (
+        {section === "overview" && (
           <section
             id="rules"
-            className="mt-8 scroll-mt-28 border border-line bg-surface-card/90 p-5 sm:p-7"
+            className="mt-8 scroll-mt-28 border border-line bg-surface-card p-5 sm:p-7"
           >
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
               {t("tournament.detail.competitionPolicy")}
@@ -870,9 +882,18 @@ export default function TournamentDetailClient({
               {t("tournament.detail.rules")}
             </h2>
             <p className="mt-5 max-w-4xl whitespace-pre-wrap text-sm leading-7 text-ink-muted">
-              {tournament.rules}
+              {tournament.rules?.trim() || t("common.notSet")}
             </p>
           </section>
+        )}
+
+        {section === "overview" && (
+          <TournamentComments
+            key={tournament.id}
+            slug={slug}
+            tournamentId={tournament.id}
+            organizerId={tournament.organizer?.id}
+          />
         )}
       </main>
     </div>

@@ -82,7 +82,7 @@ export default function TeamProfile({
     >
       <title>{`${team.name} | ArenaVerse`}</title>
       <Link
-        href={`${tournamentHref}#participants`}
+        href={`${tournamentHref}/participants`}
         className="inline-flex max-w-full items-center gap-2 text-xs leading-5 text-ink-muted transition-colors hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
       >
         <ArrowLeftIcon aria-hidden size={15} className="shrink-0" />
@@ -167,7 +167,7 @@ export default function TeamProfile({
             </a>
           </div>
           <Link
-            href={`${tournamentHref}#competition`}
+            href={`${tournamentHref}/competition`}
             className="mx-3 mb-3 inline-flex items-center gap-2 text-xs font-semibold text-accent hover:underline sm:my-3"
           >
             {t("teamDetail.viewCompetition")}

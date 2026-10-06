@@ -16,6 +16,7 @@ import {
   RespondToMatchResultDto,
 } from './dto/match-result-review.dto';
 import { MatchResultReviewService } from './match-result-review.service';
+import { TournamentResultReviewsQueryDto } from './dto/tournament-result-reviews.dto';
 
 @Injectable()
 export class MatchesService {
@@ -34,6 +35,12 @@ export class MatchesService {
   }
   findResultReview(matchId: string) {
     return this.resultReviews.findOne(matchId);
+  }
+  findTournamentResultReviews(
+    tournamentId: string,
+    query: TournamentResultReviewsQueryDto,
+  ) {
+    return this.resultReviews.findForTournament(tournamentId, query);
   }
   checkIn(matchId: string, userId: string, dto: MatchCheckInDto) {
     return this.checkIns.checkIn(matchId, userId, dto);

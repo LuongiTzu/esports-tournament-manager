@@ -90,7 +90,7 @@ export default function TournamentReadinessChecklist({
         label: "readiness.approvedTeams",
         detail: `${approvedCount} ${t("readiness.approvedTeamsCount")}`,
         done: approvedCount >= 2,
-        actionHref: "#registration-management",
+        actionHref: `/tournaments/${tournament.slug}/manage/registrations#registration-management`,
         actionLabel: "readiness.reviewTeams",
       },
       {
@@ -100,7 +100,7 @@ export default function TournamentReadinessChecklist({
             ? t("readiness.noPendingRegistrations")
             : `${pendingCount} ${t("readiness.pendingTeamsCount")}`,
         done: pendingCount === 0,
-        actionHref: "#registration-management",
+        actionHref: `/tournaments/${tournament.slug}/manage/registrations#registration-management`,
         actionLabel: "readiness.reviewTeams",
       },
       {
@@ -121,7 +121,7 @@ export default function TournamentReadinessChecklist({
             ? `${firstRoundMatches.length} ${t("readiness.matchesGenerated")}`
             : t("readiness.structureMissing"),
         done: firstRoundMatches.length > 0,
-        actionHref: "#competition-management",
+        actionHref: `/tournaments/${tournament.slug}/manage/competition#competition-management`,
         actionLabel: "readiness.manageCompetition",
       },
       {
@@ -133,11 +133,11 @@ export default function TournamentReadinessChecklist({
               ? `${playableMatches.length} ${t("readiness.matchesScheduled")}`
               : `${unscheduledCount}/${playableMatches.length} ${t("readiness.matchesUnscheduled")}`,
         done: playableMatches.length > 0 && unscheduledCount === 0,
-        actionHref: "#competition-management",
+        actionHref: `/tournaments/${tournament.slug}/manage/competition#competition-management`,
         actionLabel: "readiness.manageCompetition",
       },
     ];
-  }, [schedule, t, teams, tournament.registrationOpen]);
+  }, [schedule, t, teams, tournament.registrationOpen, tournament.slug]);
 
   const completedCount = loading
     ? 0

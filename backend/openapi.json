@@ -3228,6 +3228,7 @@
               "enum": [
                 "NEEDS_ACTION",
                 "CHECK_IN",
+                "OVERDUE_CHECK_IN",
                 "CONFIRM",
                 "DISPUTED"
               ]
@@ -3427,6 +3428,74 @@
           }
         ],
         "summary": "Get a match result review for its organizer",
+        "tags": [
+          "Matches"
+        ]
+      }
+    },
+    "/api/tournaments/{tournamentId}/result-reviews": {
+      "get": {
+        "operationId": "MatchesController_findTournamentResultReviews",
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DISPUTED",
+                "PENDING_CONFIRMATION",
+                "CONFIRMED",
+                "RESOLVED"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TournamentResultReviewsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List result reviews for tournament staff",
         "tags": [
           "Matches"
         ]
@@ -5869,6 +5938,153 @@
         "required": [
           "teamId",
           "decision"
+        ]
+      },
+      "TournamentResultReviewTeamDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "TournamentResultReviewItemDto": {
+        "type": "object",
+        "properties": {
+          "matchId": {
+            "type": "string"
+          },
+          "roundId": {
+            "type": "string"
+          },
+          "roundName": {
+            "type": "string"
+          },
+          "matchNumber": {
+            "type": "number",
+            "nullable": true
+          },
+          "teamA": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TournamentResultReviewTeamDto"
+              }
+            ]
+          },
+          "teamB": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TournamentResultReviewTeamDto"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "PENDING_CONFIRMATION",
+              "CONFIRMED",
+              "DISPUTED",
+              "RESOLVED"
+            ],
+            "type": "string"
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "matchId",
+          "roundId",
+          "roundName",
+          "matchNumber",
+          "teamA",
+          "teamB",
+          "status",
+          "openedAt",
+          "updatedAt"
+        ]
+      },
+      "TournamentResultReviewSummaryDto": {
+        "type": "object",
+        "properties": {
+          "disputed": {
+            "type": "number"
+          },
+          "pendingConfirmation": {
+            "type": "number"
+          },
+          "resolved": {
+            "type": "number"
+          },
+          "confirmed": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "disputed",
+          "pendingConfirmation",
+          "resolved",
+          "confirmed"
+        ]
+      },
+      "TournamentResultReviewPaginationDto": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "totalPages": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "page",
+          "limit",
+          "total",
+          "totalPages"
+        ]
+      },
+      "TournamentResultReviewsResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TournamentResultReviewItemDto"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/TournamentResultReviewSummaryDto"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/TournamentResultReviewPaginationDto"
+          }
+        },
+        "required": [
+          "data",
+          "summary",
+          "pagination"
         ]
       },
       "ResolveMatchDisputeDto": {

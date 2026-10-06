@@ -174,7 +174,7 @@ export default function TournamentStaffManagement({
 
       {error && <p className={`${alertErrorClass} mt-4`}>{error}</p>}
 
-      <div className="mt-5 space-y-2">
+      <div className="manage-staff-list mt-5 space-y-2">
         {loading ? (
           <p className="text-sm text-ink-muted">{t("common.loading")}</p>
         ) : staff.length === 0 ? (

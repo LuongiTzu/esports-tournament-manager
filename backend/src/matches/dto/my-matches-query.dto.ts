@@ -35,8 +35,9 @@ export class MyMatchesQueryDto extends PaginationQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsIn(['NEEDS_ACTION', 'CHECK_IN', 'CONFIRM', 'DISPUTED'])
-  attention?: 'NEEDS_ACTION' | 'CHECK_IN' | 'CONFIRM' | 'DISPUTED';
+  @IsIn(['NEEDS_ACTION', 'CHECK_IN', 'OVERDUE_CHECK_IN', 'CONFIRM', 'DISPUTED'])
+  attention?:
+    'NEEDS_ACTION' | 'CHECK_IN' | 'OVERDUE_CHECK_IN' | 'CONFIRM' | 'DISPUTED';
 
   @IsOptional()
   @IsIn(['DEFAULT', 'NEWEST', 'OLDEST'])

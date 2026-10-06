@@ -75,6 +75,11 @@ export default function TournamentComments({
   const { user } = useAuth();
   const verifiedUser = hasVerifiedEmail(user) ? user : null;
   const { t } = useLocale();
+  useEffect(() => {
+    if (window.location.hash === "#comments") {
+      document.getElementById("comments")?.scrollIntoView({ block: "start" });
+    }
+  }, []);
   const [threads, setThreads] = useState<TournamentCommentThread[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);

@@ -58,7 +58,6 @@ const extendedEn = {
   "myMatches.filter.noResults": "No matching matches",
   "myMatches.filter.noResultsHint": "Change or clear the filters to see your matches.",
   "myMatches.filter.onPage": "matches on this page",
-  "manage.reviewQueue.shortcut": "Disputes & confirmations",
   "manage.reviewQueue.eyebrow": "Items to track",
   "manage.reviewQueue.title": "Result disputes & confirmations",
   "manage.reviewQueue.description":
@@ -772,6 +771,14 @@ const extendedEn = {
   "manage.loadError": "Could not load data",
   "manage.eyebrow": "Organizer workspace",
   "manage.title": "Manage",
+  "manage.nav.label": "Tournament management pages",
+  "manage.nav.overview": "Overview",
+  "manage.nav.competition": "Stages & matches",
+  "manage.nav.registrations": "Registrations",
+  "manage.nav.announcements": "Announcements",
+  "manage.nav.staff": "Staff",
+  "manage.nav.tools": "Tools",
+  "manage.sectionForbidden": "You do not have access to this management section.",
   "staff.title": "Collaborators and officials",
   "staff.description":
     "Co-organizers manage setup and participants; referees and scorekeepers only manage matches.",
@@ -788,7 +795,6 @@ const extendedEn = {
   "staff.addError": "Could not add the staff member.",
   "staff.updateError": "Could not update the staff role.",
   "staff.removeError": "Could not remove the staff member.",
-  "clone.shortcut": "Create similar tournament",
   "clone.eyebrow": "Start a new season",
   "clone.title": "Create a tournament from this one",
   "clone.description":

@@ -211,4 +211,61 @@ describe('MatchQueryService.findForUser', () => {
       { id: 'team-1', name: 'My Team', tournament },
     ]);
   });
+
+  it('counts overdue check-ins with the same scoped filter used for the page', async () => {
+    const { prisma, service } = harness();
+    jest.mocked(prisma.team.findMany).mockResolvedValue([
+      { id: 'team-1', captainId: 'user-1' },
+      { id: 'team-2', captainId: 'other-user' },
+    ] as never);
+    jest.mocked(prisma.match.findMany).mockResolvedValue([]);
+    jest.mocked(prisma.match.count).mockResolvedValue(13);
+    jest.mocked(prisma.match.findFirst).mockResolvedValue(null);
+    jest.mocked(prisma.match.groupBy).mockResolvedValue([] as never);
+
+    const result = await service.findForUser('user-1', {
+      status: MatchStatus.PENDING,
+      attention: 'OVERDUE_CHECK_IN',
+      page: 2,
+      limit: 5,
+      sort: 'NEWEST',
+    });
+    const query = jest.mocked(prisma.match.findMany).mock.calls[0][0]!;
+    expect(query).toMatchObject({
+      skip: 5,
+      take: 5,
+      orderBy: [
+        { scheduledAt: { sort: 'desc', nulls: 'last' } },
+        { id: 'asc' },
+      ],
+      where: {
+        isActive: true,
+        isBye: false,
+        status: MatchStatus.PENDING,
+        AND: [
+          {
+            status: MatchStatus.PENDING,
+            scheduledAt: { lt: expect.any(Date) as Date },
+            OR: [
+              {
+                OR: [{ teamAId: 'team-1' }, { teamBId: 'team-1' }],
+                checkIns: { none: { teamId: 'team-1' } },
+              },
+              {
+                OR: [{ teamAId: 'team-2' }, { teamBId: 'team-2' }],
+                checkIns: { none: { teamId: 'team-2' } },
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(prisma.match.count).toHaveBeenCalledWith({ where: query.where });
+    expect(result.pagination).toEqual({
+      page: 2,
+      limit: 5,
+      total: 13,
+      totalPages: 3,
+    });
+  });
 });
