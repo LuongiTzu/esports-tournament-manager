@@ -46,7 +46,7 @@ const GRADIENT_KEYS = [
   "--gradient-seven",
 ] as const;
 const COLOR_MAP = [0, 1, 2, 0, 1, 2, 1] as const;
-const DEFAULT_COLORS = ["#c084fc", "#f472b6", "#38bdf8"];
+const DEFAULT_COLORS = ["#ff5a00", "#ff8a45", "#e84b00"];
 
 function parseHsl(value: string) {
   const match = value.match(/([\d.]+)\s*([\d.]+)%?\s*([\d.]+)%?/);

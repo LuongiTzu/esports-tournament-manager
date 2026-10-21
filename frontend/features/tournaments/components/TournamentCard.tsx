@@ -7,7 +7,6 @@ import {
 import type { Tournament } from "@/features/tournaments/types";
 import { getTournamentBannerUrl } from "@/features/tournaments/banner";
 import type { TournamentView } from "@/features/tournaments/components/TournamentGrid";
-import { accentVars } from "@/features/games/game-accent";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { formatLocalizedDate } from "@/features/locale/format";
 import ResolvedImage from "@/components/ResolvedImage";
@@ -26,13 +25,13 @@ const statusLabels: Record<Tournament["status"], TranslationKey> = {
 const statusClasses: Record<Tournament["status"], string> = {
   DRAFT: "tournament-status-DRAFT border-line bg-surface/85 text-ink-muted",
   REGISTRATION:
-    "tournament-status-REGISTRATION border-approved/35 bg-approved/15 text-approved",
+    "tournament-status-REGISTRATION border-sky-300/40 bg-black/80 text-sky-200",
   ONGOING:
-    "tournament-status-ONGOING border-brand/35 bg-brand/20 text-brand-hover",
+    "tournament-status-ONGOING border-emerald-300/40 bg-black/80 text-emerald-200",
   COMPLETED:
-    "tournament-status-COMPLETED border-line-strong/50 bg-surface-sub/90 text-ink-muted",
+    "tournament-status-COMPLETED border-line bg-surface/85 text-ink-muted",
   CANCELLED:
-    "tournament-status-CANCELLED border-rejected/35 bg-rejected/15 text-rejected",
+    "tournament-status-CANCELLED border-rose-300/40 bg-black/80 text-rose-200",
 };
 
 export default function TournamentCard({
@@ -68,8 +67,7 @@ export default function TournamentCard({
 
   return (
     <article
-      style={accentVars(t.game?.name)}
-      className={`tournament-card group relative overflow-hidden rounded-2xl border border-line bg-surface-card/90 transition-[border-color,box-shadow] duration-300 hover:border-accent/55 hover:shadow-xl hover:shadow-accent/10 ${
+      className={`tournament-card group relative overflow-hidden rounded-2xl border border-line bg-surface-sub transition-colors duration-200 hover:border-line-strong ${
         listView
           ? "grid sm:grid-cols-[18rem_minmax(0,1fr)]"
           : "flex h-full flex-col"
@@ -91,7 +89,7 @@ export default function TournamentCard({
         />
         <div
           aria-hidden
-          className="tournament-card-media-gradient absolute inset-0 bg-gradient-to-t from-surface-card via-transparent to-black/10"
+          className="tournament-card-media-gradient absolute inset-0 bg-gradient-to-t from-surface-sub via-transparent to-black/10"
         />
         <span
           className={`tournament-status absolute left-4 top-4 rounded-md border px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur-md ${statusClasses[t.status]}`}
@@ -103,6 +101,7 @@ export default function TournamentCard({
           isFavorited={t.isFavorited}
           favoriteCount={t.favoriteCount}
           compact
+          accentWhenActive
           className="!absolute !right-4 !top-4 !bottom-auto !left-auto z-20"
           onOptimisticChange={onFavoriteOptimisticChange}
           onReconciled={onFavoriteReconciled}
@@ -111,7 +110,7 @@ export default function TournamentCard({
         />
 
         {t.isOfficial && (
-          <span className="absolute bottom-3 left-4 inline-flex items-center gap-1.5 rounded-md border border-accent/30 bg-slate-950/75 px-2.5 py-1 text-xs font-bold text-accent backdrop-blur-md">
+          <span className="absolute bottom-3 left-4 inline-flex items-center gap-1.5 rounded-md border border-[#d8bd87]/40 bg-black/80 px-2.5 py-1 text-xs font-bold text-[#d8bd87] backdrop-blur-md">
             <CrownIcon size={14} weight="fill" />
             {translate("tournament.detail.official")}
           </span>
@@ -122,7 +121,7 @@ export default function TournamentCard({
         className={`flex flex-1 flex-col ${listView ? "p-5 sm:p-6" : "p-5"}`}
       >
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-lg font-bold text-ink transition group-hover:text-accent">
+          <h3 className="text-lg font-bold text-ink">
             {t.name}
           </h3>
           {t.game && (
@@ -157,10 +156,10 @@ export default function TournamentCard({
         </div>
 
         {t.maxTeams && (
-          <div className="mt-3 h-1 overflow-hidden rounded-full bg-surface-sub">
+          <div className="mt-3 h-1 overflow-hidden rounded-full bg-line">
             <div
               aria-hidden
-              className="h-full rounded-full bg-gradient-to-r from-accent to-accent-alt transition-[width] duration-500"
+              className="h-full rounded-full bg-accent transition-[width] duration-500"
               style={{ width: `${registrationProgress}%` }}
             />
           </div>

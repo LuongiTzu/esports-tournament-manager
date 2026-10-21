@@ -1,6 +1,6 @@
 .root {
   display: block;
-  width: clamp(5.5rem, 25vw, 7rem);
+  width: clamp(6rem, 27vw, 7.5rem);
   height: 1.25rem;
   line-height: 0;
 }

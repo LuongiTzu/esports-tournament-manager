@@ -23,13 +23,13 @@ export default function Footer() {
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr] lg:px-8">
         <div className="max-w-md">
           <Link href="/" className="inline-flex items-center gap-2.5 font-bold text-ink">
-            <span className="relative grid size-9 place-items-center overflow-hidden rounded-lg shadow-md shadow-brand/20">
+            <span className="relative grid h-10 w-14 place-items-center overflow-hidden">
               <Image
-                src="/images/global/logo-web-cut-background.png"
+                src="/images/global/newlogoweb.png"
                 alt=""
-                width={1280}
-                height={1280}
-                className="size-full object-contain"
+                width={1536}
+                height={1024}
+                className="system-logo size-full object-contain"
               />
             </span>
             Esports Tournament Manager

@@ -4,9 +4,9 @@ import { useEffect, useId, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import styles from "./AnimatedBrandName.module.css";
 
-const BRAND_NAME = "ArenaVERSE";
+const BRAND_NAME = "ARENAVERSE";
 const CHARACTERS = Array.from(BRAND_NAME);
-const VIEWBOX_WIDTH = 400;
+const VIEWBOX_WIDTH = 430;
 const VIEWBOX_HEIGHT = 72;
 const STROKE_DASH_LENGTH = 480;
 const DRAW_DURATION = 1.6;

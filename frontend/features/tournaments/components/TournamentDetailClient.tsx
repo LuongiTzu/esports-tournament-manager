@@ -30,7 +30,6 @@ import GameIcon from "@/features/games/components/GameIcon";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { clearSession, useAuth } from "@/features/auth/store";
 import { hasVerifiedEmail } from "@/features/auth/email-verification";
-import { accentVars } from "@/features/games/game-accent";
 import { gamePositionLabel } from "@/features/games/position-labels";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
@@ -336,7 +335,6 @@ export default function TournamentDetailClient({
 
   return (
     <div
-      style={accentVars(tournament.game.name)}
       className={`${styles.page} tournament-detail-page w-full flex-1 pb-16`}
     >
       <div className="mx-auto w-full max-w-[100rem] px-0 sm:px-4">
@@ -738,16 +736,16 @@ export default function TournamentDetailClient({
               </EventCard>
             )}
 
-            <div className="flex flex-wrap items-center gap-2 border-t border-line pt-5">
+            <div className={`${styles.actions} border-t border-line pt-5`}>
               <Link
                 href={publicTournamentSectionHref(slug, "ratings")}
-                className="inline-flex min-h-11 items-center gap-2 border border-line px-3.5 text-sm font-semibold text-ink-muted hover:border-accent hover:text-accent"
               >
-                <StarIcon aria-hidden size={20} className="text-accent" />
+                <StarIcon aria-hidden size={20} />
                 {t("ratings.action")}
               </Link>
               <TournamentShareActions tournament={tournament} />
               <TournamentFavoriteButton
+                className="w-full"
                 slug={slug}
                 isFavorited={tournament.isFavorited}
                 favoriteCount={tournament.favoriteCount}
@@ -767,6 +765,8 @@ export default function TournamentDetailClient({
                   )
                 }
               />
+            </div>
+            <div className="mt-3">
               <TournamentReportAction slug={slug} tournamentName={tournament.name} />
             </div>
 

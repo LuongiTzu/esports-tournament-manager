@@ -24,7 +24,6 @@ import {
 import { useAuth } from "@/features/auth/store";
 import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
 import { isEmailNotVerifiedError } from "@/features/auth/email-verification";
-import { accentVars } from "@/features/games/game-accent";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { teamsApi } from "@/features/teams/api";
@@ -342,7 +341,6 @@ export default function RegisterTeamPage({
   if (registeredTeam) {
     return (
       <div
-        style={accentVars(config.game.name)}
         className="team-register-page tournament-detail-page flex w-full flex-1 items-center px-4 py-16"
       >
         <section className="mx-auto w-full max-w-2xl border border-approved/30 bg-surface-card p-6 shadow-[var(--shadow-elevated)] sm:p-8">
@@ -380,7 +378,6 @@ export default function RegisterTeamPage({
 
   return (
     <div
-      style={accentVars(config.game.name)}
       className="team-register-page tournament-detail-page w-full flex-1 pb-16"
     >
       <div className="mx-auto w-full max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">

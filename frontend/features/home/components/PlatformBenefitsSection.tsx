@@ -160,7 +160,7 @@ export default function PlatformBenefitsSection() {
               width={1250}
               height={1086}
               sizes="(min-width: 1280px) 416px, 352px"
-              className="relative z-10 h-auto w-full object-contain drop-shadow-[0_18px_30px_rgba(124,58,237,0.2)]"
+              className="relative z-10 h-auto w-full object-contain drop-shadow-[0_18px_30px_rgba(255,90,0,0.2)]"
             />
           </motion.div>
 
@@ -182,7 +182,7 @@ export default function PlatformBenefitsSection() {
               width={1450}
               height={1086}
               sizes="(min-width: 1280px) 448px, 384px"
-              className="relative z-10 h-auto w-full object-contain drop-shadow-[0_18px_30px_rgba(239,35,60,0.18)]"
+              className="relative z-10 h-auto w-full object-contain drop-shadow-[0_18px_30px_rgba(255,90,0,0.18)]"
             />
           </motion.div>
 

@@ -16,6 +16,7 @@ interface TournamentFavoriteButtonProps {
   favoriteCount: number;
   showCount?: boolean;
   compact?: boolean;
+  accentWhenActive?: boolean;
   className?: string;
   onOptimisticChange?: (state: TournamentFavoriteMutationResult) => void;
   onReconciled?: (state: TournamentFavoriteMutationResult) => void;
@@ -31,6 +32,7 @@ export default function TournamentFavoriteButton({
   favoriteCount: initialFavoriteCount,
   showCount = true,
   compact = false,
+  accentWhenActive = false,
   className = "",
   onOptimisticChange,
   onReconciled,
@@ -121,11 +123,17 @@ export default function TournamentFavoriteButton({
         aria-busy={pending}
         disabled={pending || !ready}
         onClick={handleClick}
-        className={`relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border font-semibold shadow-sm backdrop-blur-md transition-[color,background-color,border-color,box-shadow,filter,transform,opacity] focus-visible:outline-none focus-visible:shadow-[var(--shadow-focus)] motion-safe:active:scale-95 disabled:cursor-wait ${
+        className={`relative z-20 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border font-semibold shadow-sm backdrop-blur-md transition-[color,background-color,border-color,box-shadow,filter,transform,opacity] focus-visible:outline-none motion-safe:active:scale-95 disabled:cursor-wait ${
           compact ? "min-w-11 px-2.5 text-xs" : "px-3.5 text-sm"
         } ${
+          accentWhenActive
+            ? "focus-visible:ring-2 focus-visible:ring-accent"
+            : "focus-visible:shadow-[var(--shadow-focus)]"
+        } ${
           state.isFavorited
-            ? "border-rose-400/60 bg-[#542637] text-rose-100 hover:border-rose-300/75 hover:bg-[#663044]"
+            ? accentWhenActive
+              ? "border-accent bg-accent text-on-accent hover:brightness-110"
+              : "border-brand bg-brand text-on-brand hover:border-brand-hover hover:bg-brand-hover"
             : "border-line bg-surface-card/90 text-ink-muted hover:border-accent/45 hover:text-accent"
         }`}
       >

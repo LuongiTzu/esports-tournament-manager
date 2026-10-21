@@ -6,7 +6,7 @@ import TournamentOperationSection from "@/features/home/components/TournamentOpe
 
 export default function HomePage() {
   return (
-    <>
+    <div className="home-page">
       <HeroSection />
       <div className="home-sections">
         <FeaturedTournamentsSection />
@@ -14,6 +14,6 @@ export default function HomePage() {
         <TournamentFormatsSection />
         <PlatformBenefitsSection />
       </div>
-    </>
+    </div>
   );
 }

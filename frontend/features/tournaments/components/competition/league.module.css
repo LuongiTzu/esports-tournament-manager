@@ -1,6 +1,6 @@
 .board {
   --league-surface: #ffffff;
-  --league-accent: #5140c9;
+  --league-accent: #c2410c;
   --league-on-accent: #ffffff;
   position: relative;
   isolation: isolate;
@@ -11,9 +11,9 @@
   color: var(--color-ink);
 }
 :global(html[data-theme="dark"]) .board {
-  --league-surface: #0b0d12;
-  --league-accent: #b3a4ff;
-  --league-on-accent: #0b0d12;
+  --league-surface: #080808;
+  --league-accent: #ff7a33;
+  --league-on-accent: #080808;
 }
 .content {
   padding: clamp(16px, 3vw, 32px);

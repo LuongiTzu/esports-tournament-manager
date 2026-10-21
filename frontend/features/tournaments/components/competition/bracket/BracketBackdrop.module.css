@@ -1,6 +1,6 @@
 .backdrop {
-  --art-primary: #9f3045;
-  --art-secondary: #87752c;
+  --art-primary: #b54708;
+  --art-secondary: #7c4a1e;
   --art-opacity: 0.32;
   --poster-opacity: 0.20;
   position: absolute;
@@ -12,20 +12,20 @@
 }
 
 :global(html[data-theme="dark"]) .backdrop {
-  --art-primary: #e35a58;
-  --art-secondary: #c6b761;
+  --art-primary: #ff7026;
+  --art-secondary: #c88749;
   --art-opacity: 0.42;
   --poster-opacity: 0.22;
 }
 
 .backdrop[data-variant="panels"] {
-  --art-primary: #16829f;
-  --art-secondary: #6355a7;
+  --art-primary: #9b4d1c;
+  --art-secondary: #b45309;
 }
 
 :global(html[data-theme="dark"]) .backdrop[data-variant="panels"] {
-  --art-primary: #37bdd1;
-  --art-secondary: #8b74d9;
+  --art-primary: #e67a32;
+  --art-secondary: #ff7a33;
 }
 
 .backdrop[data-variant="contours"] {
@@ -35,37 +35,37 @@
 
 :global(html[data-theme="dark"]) .backdrop[data-variant="contours"] {
   --art-primary: #c4a47c;
-  --art-secondary: #9ca8ba;
+  --art-secondary: #a88b73;
 }
 
 .backdrop[data-variant="aurora"] {
-  --art-primary: #7289b5;
-  --art-secondary: #9690b4;
+  --art-primary: #a66a3f;
+  --art-secondary: #9f7858;
 }
 
 :global(html[data-theme="dark"]) .backdrop[data-variant="aurora"] {
-  --art-primary: #859bcc;
-  --art-secondary: #b0a3ce;
+  --art-primary: #dc9359;
+  --art-secondary: #c69a73;
 }
 
 .backdrop[data-variant="ribbons"] {
-  --art-primary: #148aab;
-  --art-secondary: #554191;
+  --art-primary: #a45320;
+  --art-secondary: #8c4a23;
 }
 
 :global(html[data-theme="dark"]) .backdrop[data-variant="ribbons"] {
-  --art-primary: #38bcd7;
-  --art-secondary: #8670c5;
+  --art-primary: #e9823c;
+  --art-secondary: #c96b2d;
 }
 
 .backdrop[data-variant="silk"] {
   --art-primary: #73839d;
-  --art-secondary: #9d98aa;
+  --art-secondary: #998c80;
 }
 
 :global(html[data-theme="dark"]) .backdrop[data-variant="silk"] {
-  --art-primary: #adbbd2;
-  --art-secondary: #c5bdd0;
+  --art-primary: #c1a389;
+  --art-secondary: #d2b398;
 }
 
 .poster {

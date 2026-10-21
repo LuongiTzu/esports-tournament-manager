@@ -1,17 +1,12 @@
 .page {
-  --accent: oklch(0.8 0.09 290);
-  --on-accent: #191522;
+  --accent: var(--color-brand);
+  --on-accent: var(--color-on-brand);
   --radius-control: 0.5rem;
   --control-height: 2.75rem;
 }
 
 :global(body):has(.page) {
   background: var(--color-surface);
-}
-
-:global(html[data-theme="light"]) .page {
-  --accent: oklch(0.48 0.16 290);
-  --on-accent: #fff;
 }
 
 .hero {

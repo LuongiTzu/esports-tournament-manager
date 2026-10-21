@@ -73,11 +73,11 @@ export default function AuthShell({
           className="inline-flex items-center gap-2 text-sm font-semibold text-brand"
         >
           <Image
-            src="/images/global/logo-web-cut-background.png"
+            src="/images/global/newlogoweb.png"
             alt=""
-            width={1280}
-            height={1280}
-            className="size-5 object-contain"
+            width={1536}
+            height={1024}
+            className="system-logo size-5 object-contain"
           />
           Esports Hub
         </Link>

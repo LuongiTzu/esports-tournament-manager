@@ -9,7 +9,6 @@ import {
 } from "@phosphor-icons/react";
 import { useAuth } from "@/features/auth/store";
 import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
-import { accentVars } from "@/features/games/game-accent";
 import RegistrationManagement from "@/features/teams/components/manage/RegistrationManagement";
 import { tournamentsApi } from "@/features/tournaments/api";
 import CompetitionManager from "@/features/tournaments/components/manage/CompetitionManager";
@@ -262,7 +261,6 @@ export default function TournamentManageClient({
 
   return (
     <div
-      style={accentVars(tournament.game?.name)}
       className="manage-page tournament-detail-page w-full flex-1"
     >
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10">

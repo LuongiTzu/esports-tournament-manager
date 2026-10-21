@@ -43,7 +43,7 @@
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--color-brand) 28%, transparent);
   border-radius: var(--dc-radius);
-  background: #0b0d12;
+  background: #080808;
   box-shadow:
     0 30px 60px -20px rgb(0 0 0 / 65%),
     0 8px 20px -10px rgb(0 0 0 / 50%);

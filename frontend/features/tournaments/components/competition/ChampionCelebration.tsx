@@ -49,9 +49,9 @@ export default function ChampionCelebration({ champion }: { champion: BracketTea
       <TextLoop
         text={t("standings.championCongratulations")}
         paused={paused}
-        color="#231333"
-        ribbonColor="#c4b5fd"
-        ribbonEndColor="#f9a8d4"
+        color="#2b190e"
+        ribbonColor="#ff7a33"
+        ribbonEndColor="#ffd090"
       />
       <div className={styles.center}>
         <Fireworks side="left" />
@@ -77,9 +77,9 @@ export default function ChampionCelebration({ champion }: { champion: BracketTea
         text={t("standings.championCongratulations")}
         direction="reverse"
         paused={paused}
-        color="#15273a"
-        ribbonColor="#67e8f9"
-        ribbonEndColor="#a5b4fc"
+        color="#261b13"
+        ribbonColor="#ff5a00"
+        ribbonEndColor="#ffad7d"
       />
     </section>
   );

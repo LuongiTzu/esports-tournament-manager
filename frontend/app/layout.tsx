@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import "./globals.css";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
@@ -7,6 +8,15 @@ import { LocaleProvider } from "@/features/locale/store";
 import { ThemeProvider } from "@/features/theme/store";
 import { RealtimeProvider } from "@/features/realtime/provider";
 import { getSiteUrl } from "@/lib/site-url";
+
+const play = localFont({
+  src: [
+    { path: "../assets/fonts/play/Play-Regular.ttf", weight: "400" },
+    { path: "../assets/fonts/play/Play-Bold.ttf", weight: "700" },
+  ],
+  variable: "--font-play",
+  display: "swap",
+});
 
 const themeBootstrapScript = `
 (() => {
@@ -47,9 +57,9 @@ export const metadata: Metadata = {
   description:
     "Nền tảng tổ chức và quản lý giải đấu thể thao điện tử: Tạo giải, đăng ký đội, theo dõi kết quả.",
   icons: {
-    icon: [{ url: "/images/global/logo-web-cut-background.png", type: "image/png" }],
-    shortcut: "/images/global/logo-web-cut-background.png",
-    apple: "/images/global/logo-web-cut-background.png",
+    icon: [{ url: "/images/global/newlogoweb.png", type: "image/png" }],
+    shortcut: "/images/global/newlogoweb.png",
+    apple: "/images/global/newlogoweb.png",
   },
 };
 
@@ -65,7 +75,7 @@ export default function RootLayout({
       data-theme-preference="dark"
       data-scroll-behavior="smooth"
       suppressHydrationWarning
-      className="h-full antialiased"
+      className={`h-full antialiased ${play.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />

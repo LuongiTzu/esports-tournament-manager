@@ -95,18 +95,18 @@ function AdminNavbar({
           aria-label={t("nav.admin")}
           className="inline-flex min-w-0 items-center gap-2.5"
         >
-          <span className="relative grid size-8 shrink-0 place-items-center overflow-hidden rounded-md">
+          <span className="relative grid h-10 w-14 shrink-0 place-items-center overflow-hidden">
             <Image
-              src="/images/global/logo-web-cut-background.png"
+              src="/images/global/newlogoweb.png"
               alt=""
-              width={1280}
-              height={1280}
+              width={1536}
+              height={1024}
               priority
-              className="size-full object-contain"
+              className="system-logo size-full object-contain"
             />
           </span>
           <span className="hidden text-sm font-black tracking-tight text-ink sm:inline">
-            ArenaVERSE
+            ARENAVERSE
           </span>
           <span className="hidden h-4 w-px bg-line sm:block" />
           <span className="truncate text-[10px] font-black uppercase tracking-[0.16em] text-brand sm:text-[11px]">
@@ -218,14 +218,14 @@ export default function Navbar() {
           aria-label={t("nav.home")}
           className="group inline-flex min-w-0 shrink-0 items-center gap-2.5 font-bold text-ink"
         >
-          <span className="relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg shadow-md shadow-brand/20">
+          <span className="relative grid h-10 w-14 shrink-0 place-items-center overflow-hidden">
             <Image
-              src="/images/global/logo-web-cut-background.png"
+              src="/images/global/newlogoweb.png"
               alt=""
-              width={1280}
-              height={1280}
+              width={1536}
+              height={1024}
               priority
-              className="size-full object-contain"
+              className="system-logo size-full object-contain"
             />
           </span>
           <AnimatedBrandName />

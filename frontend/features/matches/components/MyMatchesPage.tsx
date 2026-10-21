@@ -709,7 +709,7 @@ export default function MyMatchesPage() {
           </div>
           <Link
             href="/users/me/teams"
-            className="inline-flex min-h-12 items-center justify-center gap-2 justify-self-end whitespace-nowrap rounded-[var(--radius-control)] border border-violet-400/60 bg-violet-600 px-4 py-3 text-sm font-bold text-white shadow-[0_6px_24px_rgba(124,58,237,0.25)] transition-colors hover:border-violet-300 hover:bg-violet-700"
+            className="inline-flex min-h-12 items-center justify-center gap-2 justify-self-end whitespace-nowrap rounded-[var(--radius-control)] border border-brand bg-brand px-4 py-3 text-sm font-bold text-on-brand shadow-[var(--shadow-button)] transition-colors hover:border-brand-hover hover:bg-brand-hover"
           >
             <UsersThreeIcon aria-hidden size={20} weight="bold" className="shrink-0" />
             {t("myTeams.title")}

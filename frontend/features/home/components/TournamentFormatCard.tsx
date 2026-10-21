@@ -35,7 +35,7 @@ export default function TournamentFormatCard({
     >
       <span
         aria-hidden
-        className={`pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(82,33,139,0.92)_0%,rgba(50,26,68,0.9)_55%,rgba(36,23,28,0.96)_100%)] transition-opacity duration-300 motion-reduce:transition-none ${
+        className={`pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(78,34,12,0.92)_0%,rgba(54,29,17,0.9)_55%,rgba(30,21,16,0.96)_100%)] transition-opacity duration-300 motion-reduce:transition-none ${
           active ? "opacity-100" : "opacity-0"
         }`}
       />
@@ -55,7 +55,7 @@ export default function TournamentFormatCard({
           />
         </span>
         <span
-          className={`absolute inset-0 bg-[linear-gradient(to_bottom,transparent_32%,rgba(40,20,50,0.35)_64%,rgba(40,20,50,1)_100%)] transition-opacity duration-300 motion-reduce:transition-none ${
+          className={`absolute inset-0 bg-[linear-gradient(to_bottom,transparent_32%,rgba(40,24,16,0.35)_64%,rgba(40,24,16,1)_100%)] transition-opacity duration-300 motion-reduce:transition-none ${
             active ? "opacity-100" : "opacity-35"
           }`}
         />
@@ -78,7 +78,7 @@ export default function TournamentFormatCard({
         <span
           className={`transition-[color,filter] duration-300 motion-reduce:transition-none ${
             active
-              ? "text-fuchsia-300 drop-shadow-[0_0_8px_rgba(192,38,211,0.25)]"
+              ? "text-brand-hover drop-shadow-[0_0_8px_rgba(255,90,0,0.25)]"
               : "text-white"
           }`}
         >

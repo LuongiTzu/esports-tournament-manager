@@ -3,33 +3,33 @@
 
 /* Semantic theme tokens. Dark remains the visual baseline; light overrides live below. */
 @theme {
-  --color-surface: #0d1015;
-  --color-surface-card: #14181f;
-  --color-surface-sub: #1c212a;
-  --color-surface-hover: #252c36;
-  --color-surface-muted: #1c212a;
-  --color-surface-elevated: #191e26;
-  --color-line: #2b323d;
-  --color-line-strong: #424c5b;
+  --color-surface: #080808;
+  --color-surface-card: #151515;
+  --color-surface-sub: #1c1c1c;
+  --color-surface-hover: #252525;
+  --color-surface-muted: #1c1c1c;
+  --color-surface-elevated: #1a1a1a;
+  --color-line: #292929;
+  --color-line-strong: #454545;
 
-  --color-ink: #f3f4f6;
-  --color-ink-muted: #a9b1bd;
-  --color-ink-faint: #8b95a5;
-  --color-muted: #1c212a;
-  --color-muted-foreground: #a9b1bd;
-  --color-input: #1c212a;
-  --color-overlay: rgb(4 3 8 / 0.72);
+  --color-ink: #f5f5f5;
+  --color-ink-muted: #b3b3b3;
+  --color-ink-faint: #909090;
+  --color-muted: #1c1c1c;
+  --color-muted-foreground: #b3b3b3;
+  --color-input: #1c1c1c;
+  --color-overlay: rgb(0 0 0 / 0.72);
   --color-emphasis-foreground: #ffffff;
-  --color-visual-backdrop: #0d1015;
-  --color-visual-accent: #c4b5fd;
+  --color-visual-backdrop: #080808;
+  --color-visual-accent: #ed713b;
 
   /* Màu thương hiệu — dùng cho chrome của app (navbar, form xác thực).
      Tông màu theo game chỉ áp cho phần nội dung giải đấu. */
-  --color-brand: #7c3aed;
-  --color-brand-hover: #8b5cf6;
-  --color-brand-secondary: #e11d48;
-  --color-brand-secondary-dark: #be123c;
-  --color-on-brand: #fff;
+  --color-brand: #e65a18;
+  --color-brand-hover: #ed692f;
+  --color-brand-secondary: #ed713b;
+  --color-brand-secondary-dark: #ce4c11;
+  --color-on-brand: #080808;
 
   /* Trạng thái đội — hệ màu dùng chung toàn app, không trang nào tự đặt màu riêng */
   --color-pending: oklch(0.8 0.115 78);
@@ -45,9 +45,9 @@
 /* `inline` keeps game accent utilities connected to the runtime CSS variables
    applied by `accentVars`, instead of resolving them once from :root. */
 @theme inline {
-  --color-accent: var(--accent, oklch(0.78 0.02 275));
-  --color-accent-alt: var(--accent-alt, oklch(0.78 0.02 275));
-  --color-on-accent: var(--on-accent, oklch(0.175 0.008 275));
+  --color-accent: var(--accent, #e65a18);
+  --color-accent-alt: var(--accent-alt, #ed713b);
+  --color-on-accent: var(--on-accent, #080808);
 }
 
 :root {
@@ -72,11 +72,9 @@
     transparent
   );
   --gradient-navbar: linear-gradient(var(--color-surface-card), var(--color-surface-card));
-  --glow-primary:
-    0 0 28px rgb(124 58 237 / 0.24), 0 0 54px rgb(225 29 72 / 0.12);
-  --shadow-focus: 0 0 0 3px rgb(124 58 237 / 0.22);
-  --shadow-button:
-    0 10px 26px rgb(124 58 237 / 0.2), 0 4px 16px rgb(225 29 72 / 0.12);
+  --glow-primary: 0 0 28px rgb(230 90 24 / 0.22);
+  --shadow-focus: 0 0 0 3px rgb(230 90 24 / 0.24);
+  --shadow-button: 0 10px 26px rgb(230 90 24 / 0.2);
   --shadow-elevated: 0 24px 64px rgb(0 0 0 / 0.34);
   --radius-control: 0.8125rem;
   --radius-card: 1rem;
@@ -99,27 +97,42 @@ html[data-theme="light"] {
   --color-muted: #edf0f4;
   --color-muted-foreground: #536071;
   --color-input: #ffffff;
-  --color-overlay: rgb(20 14 28 / 0.52);
-  --color-emphasis-foreground: #5b21b6;
-  --color-brand: #6d28d9;
-  --color-brand-hover: #5b21b6;
-  --color-brand-secondary: #be123c;
-  --color-brand-secondary-dark: #9f1239;
+  --color-overlay: rgb(20 16 13 / 0.52);
+  --color-emphasis-foreground: #9a3412;
+  --color-brand: #c2410c;
+  --color-brand-hover: #9a3412;
+  --color-brand-secondary: #c2410c;
+  --color-brand-secondary-dark: #9a3412;
+  --color-on-brand: #ffffff;
+  --color-visual-accent: #c2410c;
   --color-pending: oklch(0.47 0.12 76);
   --color-approved: oklch(0.45 0.13 156);
   --color-rejected: oklch(0.5 0.16 20);
   --gradient-navbar: linear-gradient(var(--color-surface-card), var(--color-surface-card));
-  --glow-primary:
-    0 0 24px rgb(109 40 217 / 0.16), 0 0 46px rgb(190 18 60 / 0.08);
-  --shadow-focus: 0 0 0 3px rgb(109 40 217 / 0.18);
-  --shadow-button:
-    0 10px 24px rgb(109 40 217 / 0.17), 0 4px 14px rgb(190 18 60 / 0.08);
+  --glow-primary: 0 0 24px rgb(194 65 12 / 0.16);
+  --shadow-focus: 0 0 0 3px rgb(194 65 12 / 0.2);
+  --shadow-button: 0 10px 24px rgb(194 65 12 / 0.17);
   --shadow-elevated: 0 24px 64px rgb(42 28 55 / 0.15);
 }
 
 body {
   background: var(--color-surface);
   color: var(--color-ink);
+}
+
+:where(h1, h2, h3, h4, h5, h6),
+.home-page {
+  font-family: var(--font-play), var(--font-sans);
+}
+
+.system-logo {
+  mix-blend-mode: screen;
+  filter: brightness(1.15) contrast(1.1);
+}
+
+html[data-theme="light"] .system-logo {
+  filter: invert(1);
+  mix-blend-mode: multiply;
 }
 
 .admin-console {
@@ -388,7 +401,7 @@ html[data-theme="light"] .tournament-discovery-hero-overlay {
 }
 
 html[data-theme="light"] .tournament-discovery-eyebrow {
-  color: #6d28d9;
+  color: var(--color-brand);
   text-shadow: 0 1px 10px rgb(255 255 255 / 0.9);
 }
 
@@ -403,20 +416,29 @@ html[data-theme="light"] .tournament-filter-panel {
 }
 
 html[data-theme="light"] .tournament-view-active {
-  color: #6d28d9;
-  background: #ede9fe;
-  box-shadow: inset 0 0 0 1px rgb(109 40 217 / 0.12);
+  color: var(--color-brand);
+  background: #fff0e7;
+  box-shadow: inset 0 0 0 1px rgb(194 65 12 / 0.12);
+}
+
+.tournament-card {
+  --accent: #b0b0b0;
+  --accent-alt: #b0b0b0;
+  --on-accent: #080808;
 }
 
 html[data-theme="light"] .tournament-card {
-  border-color: #e2e8f0;
+  --accent: #525252;
+  --accent-alt: #525252;
+  --on-accent: #ffffff;
+  border-color: #d4d4d4;
   background: #ffffff;
-  box-shadow: 0 3px 12px rgb(15 23 42 / 0.05);
+  box-shadow: 0 3px 12px rgb(0 0 0 / 0.04);
 }
 
 html[data-theme="light"] .tournament-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 18px 34px -12px rgb(15 23 42 / 0.2);
+  border-color: #a3a3a3;
+  box-shadow: 0 12px 28px -16px rgb(0 0 0 / 0.16);
 }
 
 html[data-theme="light"] .tournament-card-media {
@@ -450,36 +472,27 @@ html[data-theme="light"] .tournament-card-media-gradient {
 
 html[data-theme="light"] .tournament-status {
   backdrop-filter: none;
-}
-
-html[data-theme="light"] .tournament-status-DRAFT {
-  color: #475569;
-  border-color: #e2e8f0;
-  background: #f8fafc;
+  color: #525252;
+  border-color: #d4d4d4;
+  background: #f5f5f5;
 }
 
 html[data-theme="light"] .tournament-status-REGISTRATION {
-  color: #1d4ed8;
-  border-color: #bfdbfe;
-  background: #dbeafe;
+  color: #1e40af;
+  border-color: #93c5fd;
+  background: #eff6ff;
 }
 
 html[data-theme="light"] .tournament-status-ONGOING {
-  color: #15803d;
-  border-color: #bbf7d0;
-  background: #dcfce7;
-}
-
-html[data-theme="light"] .tournament-status-COMPLETED {
-  color: #475569;
-  border-color: #e2e8f0;
-  background: #f1f5f9;
+  color: #166534;
+  border-color: #86efac;
+  background: #f0fdf4;
 }
 
 html[data-theme="light"] .tournament-status-CANCELLED {
-  color: #b91c1c;
-  border-color: #fecaca;
-  background: #fee2e2;
+  color: #9f1239;
+  border-color: #fda4af;
+  background: #fff1f2;
 }
 
 @utility bg-gradient-brand {
@@ -529,7 +542,26 @@ html {
 }
 
 .tournament-detail-page {
+  --accent: #77a8eb;
+  --accent-alt: #9bc1f2;
+  --on-accent: #0b1728;
+  --color-brand: #77a8eb;
+  --color-brand-hover: #93bbf0;
+  --color-brand-secondary: #77a8eb;
+  --color-brand-secondary-dark: #5289cf;
+  --color-on-brand: #0b1728;
   background: var(--color-surface);
+}
+
+html[data-theme="light"] .tournament-detail-page {
+  --accent: #285da8;
+  --accent-alt: #4879bb;
+  --on-accent: #ffffff;
+  --color-brand: #285da8;
+  --color-brand-hover: #1d4e91;
+  --color-brand-secondary: #285da8;
+  --color-brand-secondary-dark: #1d4e91;
+  --color-on-brand: #ffffff;
 }
 
 .manage-page :where(*) {
@@ -661,13 +693,8 @@ html {
   }
 }
 
-/* Create tournament: calm, focused SaaS workspace with a sports-blue accent. */
+/* Create tournament keeps its layout while sharing the app's orange accent. */
 .tournament-create-page {
-  --color-brand: #2563eb;
-  --color-brand-hover: #1d4ed8;
-  --color-brand-secondary: #0284c7;
-  --color-on-brand: #ffffff;
-  --shadow-focus: 0 0 0 3px rgb(37 99 235 / 0.18);
   --radius-control: 0.5rem;
   --radius-card: 0.625rem;
   isolation: isolate;
@@ -700,7 +727,7 @@ html[data-theme="light"] .tournament-create-page {
   --color-surface: #f8fafc;
   --color-surface-card: #ffffff;
   --color-surface-sub: #f1f5f9;
-  --color-surface-hover: #eff6ff;
+  --color-surface-hover: #fff0e7;
   --color-line: #e2e8f0;
   --color-ink: #0f172a;
   --color-ink-muted: #475569;

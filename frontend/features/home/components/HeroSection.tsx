@@ -82,7 +82,7 @@ export default function HeroSection() {
             cardWidth={520}
             cardHeight={320}
             radius={18}
-            tint="#05060a"
+            tint="#080808"
             duration={760}
             autoplayDelay={4200}
             showControls={false}

@@ -1,5 +1,5 @@
 .page:global(.tournament-detail-page) {
-  background: #0e0e10;
+  background: var(--color-surface);
 }
 
 :global(html[data-theme="light"]) .page:global(.tournament-detail-page) {
@@ -28,4 +28,69 @@
 .activeTab {
   border-color: var(--accent);
   color: var(--color-ink);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.actions > div {
+  min-width: 0;
+  width: 100%;
+}
+
+.actions > a,
+.actions > button,
+.actions > div > button {
+  display: inline-flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: 0.625rem;
+  background: var(--color-surface-card);
+  padding: 0 0.625rem;
+  color: var(--color-ink-muted);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: none;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+.actions > a > svg,
+.actions > button > svg,
+.actions > div > button > svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex: none;
+  color: inherit;
+}
+
+.actions > a:hover,
+.actions > button:hover,
+.actions > div > button:hover,
+.actions > div > button[aria-pressed="true"] {
+  border-color: var(--color-line-strong);
+  background: var(--color-surface-hover);
+  color: var(--color-ink);
+}
+
+.actions > a:focus-visible,
+.actions > button:focus-visible,
+.actions > div > button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }

@@ -6,11 +6,11 @@ export interface Accent {
   onAccent: string;
 }
 
-const INK = "oklch(0.175 0.008 275)";
+const INK = "#080808";
 
 const NEUTRAL: Accent = {
-  accent: "oklch(0.78 0.02 275)",
-  alt: "oklch(0.78 0.02 275)",
+  accent: "#ff5a00",
+  alt: "#ff7a33",
   onAccent: INK,
 };
 
@@ -49,7 +49,7 @@ const ACCENTS: Record<string, Accent> = {
   },
   [key("Tekken 8")]: {
     accent: "oklch(0.68 0.2 20)",
-    alt: "oklch(0.72 0.16 300)",
+    alt: "oklch(0.72 0.16 55)",
     onAccent: INK,
   },
   [key("Street Fighter 6")]: {
@@ -57,7 +57,11 @@ const ACCENTS: Record<string, Accent> = {
     alt: "oklch(0.76 0.17 80)",
     onAccent: INK,
   },
-  [key("Liên Quân Mobile")]: NEUTRAL,
+  [key("Liên Quân Mobile")]: {
+    accent: "oklch(0.73 0.13 260)",
+    alt: "oklch(0.79 0.1 240)",
+    onAccent: INK,
+  },
 };
 
 export function gameAccent(name?: string | null): Accent {
