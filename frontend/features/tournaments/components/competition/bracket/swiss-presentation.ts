@@ -8,7 +8,8 @@ import type { BracketLayout } from "./bracket-presentation";
 
 export const SWISS_SHEET = {
   cardWidth: 360,
-  cardHeight: 60,
+  cardHeight: 68,
+  fixtureGap: 16,
   columnGap: 62,
   rowGap: 30,
   padding: 36,
@@ -38,6 +39,7 @@ interface SwissResultGroup {
   height: number;
 }
 export interface SwissBracketLayout extends BracketLayout {
+  metrics: typeof SWISS_SHEET;
   groups: PositionedSwissGroup[];
   results: SwissResultGroup[];
 }
@@ -56,6 +58,7 @@ export function layoutSwissBracket(
     footer,
     cardWidth,
     cardHeight,
+    fixtureGap,
     columnGap,
     rowGap,
   } = metrics;
@@ -98,7 +101,8 @@ export function layoutSwissBracket(
     }
   }
   const groupHeight = (group: SwissRecordGroup) =>
-    heading + group.entries.length * cardHeight + footer;
+    heading + group.entries.length * cardHeight +
+    Math.max(0, group.entries.length - 1) * fixtureGap + footer;
   const resultHeight = (teamCount: number) =>
     heading + Math.max(56, Math.ceil(teamCount / 2) * 56 + 16);
   const resultsHeight =
@@ -156,7 +160,7 @@ export function layoutSwissBracket(
         nodes.push({
           match: matches.get(entry.matchId)!,
           x,
-          y: y + heading + index * cardHeight,
+          y: y + heading + index * (cardHeight + fixtureGap),
           lane: "main",
         }),
       );

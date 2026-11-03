@@ -1,6 +1,7 @@
 "use client";
 
 import ResolvedImage from "@/components/ResolvedImage";
+import { YoutubeLogoIcon } from "@phosphor-icons/react";
 import type { BracketMatch, BracketTeam } from "@/features/tournaments/types";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
@@ -86,16 +87,27 @@ export default function BracketMatchCard({
         <span className="truncate font-semibold uppercase tracking-[0.12em] text-ink-faint">
           {label ?? `${t("match.label")} ${match.matchNumber ?? "–"}`}
         </span>
-        <span
-          className={
-            match.status === "COMPLETED"
-              ? "text-approved"
-              : match.status === "ONGOING"
-                ? "text-pending"
-                : "text-ink-faint"
-          }
-        >
-          {t(`match.status.${match.status}` as TranslationKey)}
+        <span className="flex shrink-0 items-center gap-1.5">
+          {match.youtubeUrl && (
+            <span
+              className="inline-flex items-center gap-1 border border-brand/45 bg-brand/15 px-1.5 py-0.5 text-[10px] font-bold text-brand"
+              title={t("youtube.available")}
+            >
+              <YoutubeLogoIcon aria-hidden="true" size={13} />
+              VIDEO
+            </span>
+          )}
+          <span
+            className={
+              match.status === "COMPLETED"
+                ? "text-approved"
+                : match.status === "ONGOING"
+                  ? "text-pending"
+                  : "text-ink-faint"
+            }
+          >
+            {t(`match.status.${match.status}` as TranslationKey)}
+          </span>
         </span>
       </div>
 
@@ -162,9 +174,7 @@ export default function BracketMatchCard({
           onClick={() => onSelect(match)}
           className="mt-3 w-full rounded-lg border border-line py-2 text-xs font-semibold text-ink-muted transition hover:border-brand/50 hover:bg-brand/5 hover:text-brand"
         >
-          {match.isBye || !match.isActive
-            ? t("match.viewDetails")
-            : t("match.viewManage")}
+          {t("match.viewDetails")}
         </button>
       )}
     </article>

@@ -11,8 +11,8 @@ import type {
   RoundStandings,
 } from "@/features/tournaments/types";
 import StandingsTable from "../manage/StandingsTable";
-import BracketMatchCard from "../manage/BracketMatchCard";
 import BracketBackdrop from "./bracket/BracketBackdrop";
+import LeagueMatchCard from "./LeagueMatchCard";
 import styles from "./league.module.css";
 
 export default function LeagueCompetitionView({
@@ -76,7 +76,9 @@ export default function LeagueCompetitionView({
               {tournamentName ?? bracket.round.name}
             </p>
             <h3>{roundFormatLabel(bracket.round.format, t)}</h3>
-            <p className="mt-1 text-sm text-ink-muted">{bracket.round.name}</p>
+            <p className={styles.subtitle}>
+              {t("competition.stage")}: {bracket.round.name}
+            </p>
           </div>
           <div
             className={styles.tabs}
@@ -245,7 +247,7 @@ export default function LeagueCompetitionView({
             <div className="space-y-6">
               {visibleIterations.map((round) => (
                 <section key={round}>
-                  <h4 className="mb-3 text-sm font-semibold text-brand">
+                  <h4 className={styles.iterationHeading}>
                     {t("competition.iteration")} {round}
                   </h4>
                   <div className={styles.matches}>
@@ -254,7 +256,7 @@ export default function LeagueCompetitionView({
                       .map((match) => (
                         <div key={match.id}>
                           {grouped && (
-                            <p className="mb-2 text-xs text-ink-muted">
+                            <p className={styles.fixtureGroupLabel}>
                               {
                                 bracket.groups.find(
                                   (group) => group.id === match.groupId,
@@ -262,7 +264,7 @@ export default function LeagueCompetitionView({
                               }
                             </p>
                           )}
-                          <BracketMatchCard
+                          <LeagueMatchCard
                             match={match}
                             onSelect={onSelectMatch}
                           />

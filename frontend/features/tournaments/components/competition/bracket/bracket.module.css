@@ -56,11 +56,11 @@
   gap: 12px;
 }
 .title {
-  font-family: var(--font-sans);
-  font-size: clamp(22px, 2.4cqw, 32px);
+  font-family: var(--font-play), var(--font-sans);
+  font-size: clamp(28px, 3.5cqw, 48px);
   font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: -0.015em;
+  line-height: 1.08;
+  letter-spacing: -0.045em;
   overflow-wrap: break-word;
 }
 .emblem {
@@ -78,8 +78,56 @@
   margin-top: 8px;
   font-size: 13px;
 }
-.board[data-format="DOUBLE_ELIM"] .emblem {
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .emblem {
   display: none;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) {
+  --sheet-accent: #b92f25;
+}
+:global(html[data-theme="light"]) .board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) {
+  --sheet-accent: #171717;
+  --sheet-heading-glow: rgb(0 0 0 / 12%);
+}
+:global(html[data-theme="dark"]) .board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) {
+  --sheet-accent: #f05b4e;
+  --sheet-heading-glow: rgb(185 47 37 / 25%);
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .header {
+  padding-top: 32px;
+  padding-bottom: 18px;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .eyebrow {
+  margin-bottom: 8px;
+  font-family: var(--font-play), var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .title {
+  max-width: 1100px;
+  font-size: clamp(34px, 5.2cqw, 72px);
+  line-height: 0.98;
+  text-transform: uppercase;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 45%);
+}
+:global(html[data-theme="light"]) .board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .title {
+  text-shadow: none;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .subtitle {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 7px 23px 7px 12px;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 12px 100%);
+  background: #b92f25;
+  color: #fff;
+  font-family: var(--font-play), var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:global(html[data-theme="light"]) .board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .subtitle {
+  background: #171717;
 }
 .toolbar {
   display: flex;
@@ -206,7 +254,7 @@
   opacity: 0.85;
   transition: opacity 0.15s;
 }
-.board[data-format="DOUBLE_ELIM"] .edge {
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .edge {
   stroke: var(--sheet-accent);
   stroke-width: 1.5;
 }
@@ -366,63 +414,137 @@ button.match {
 .matchHeader > span:last-child {
   flex-shrink: 0;
 }
+.matchHeaderMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.videoBadge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 5px;
+  border: 1px solid rgb(0 0 0 / 25%);
+  background: #fff;
+  color: #171717;
+  font-family: var(--font-play), var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.videoBadge svg {
+  width: 12px;
+  height: 12px;
+  color: #b92f25;
+}
 .matchHeader [data-status="ONGOING"] {
   color: var(--sheet-live);
 }
-.board[data-format="DOUBLE_ELIM"] .matchTeams {
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .matchTeams {
   display: block;
   height: 88px;
   border: none;
 }
-.board[data-format="DOUBLE_ELIM"] .team {
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .match {
+  background: transparent;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .team {
   flex-direction: row;
   height: 44px;
-  border-top: 1px solid var(--sheet-line);
-  padding: 0 12px;
+  padding: 0 21px 0 10px;
   gap: 9px;
+  background: #f6f6f4;
+  color: #17191d;
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%);
 }
-.board[data-format="DOUBLE_ELIM"] .team:last-child {
-  border-bottom: 1px solid var(--sheet-line);
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .team[data-slot="B"] {
+  background: #cfd1d2;
 }
-.board[data-format="DOUBLE_ELIM"] .teamName {
-  font-size: 17px;
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .team[data-empty="true"] {
+  color: #5e6268;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .team[data-loser="true"] {
+  color: #555b63;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) button.match:hover .team {
+  background: #fff;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) button.match:hover .team[data-slot="B"] {
+  background: #e1e2e2;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .teamName {
+  font-size: 16px;
   line-height: 1.2;
   text-align: left;
 }
-.board[data-format="DOUBLE_ELIM"] .team[data-empty="true"] .teamName {
-  font-size: 17px;
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .team[data-empty="true"] .teamName {
+  font-size: 15px;
   font-weight: 500;
   white-space: nowrap;
 }
-.board[data-format="DOUBLE_ELIM"] .logo {
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .logo {
   width: 27px;
   height: 27px;
-  color: var(--sheet-muted);
+  color: #3d4045;
 }
-.board[data-format="DOUBLE_ELIM"] .seed {
-  font-size: 16px;
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .seed {
+  font-size: 13px;
   font-weight: 500;
-  color: var(--sheet-muted);
+  color: #62666d;
 }
-.board[data-format="DOUBLE_ELIM"] .score {
-  font-size: 22px;
-  font-weight: 900;
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .score {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  min-width: 33px;
+  margin-left: 3px;
+  border-left: 1px solid rgb(0 0 0 / 14%);
+  font-family: var(--font-play), var(--font-sans);
+  font-size: 21px;
+  font-weight: 700;
 }
-.board[data-format="DOUBLE_ELIM"] .team[data-winner="true"] .score {
-  color: var(--sheet-accent);
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .teamRecord {
+  color: #555b63;
 }
-.board[data-format="DOUBLE_ELIM"] .matchFooter {
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .team[data-winner="true"] .score {
+  color: #a5281b;
+}
+:global(html[data-theme="light"]) .board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .team[data-winner="true"] .score {
+  color: #171717;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .matchFooter {
   height: 16px;
   font-size: 11px;
   color: var(--sheet-muted);
   border: 0;
   opacity: 0.75;
 }
-.board[data-format="DOUBLE_ELIM"] .matchHeader {
-  font-size: 14px;
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .matchHeader {
+  height: 24px;
+  padding: 0 19px 0 9px;
+  background: #b92f25;
+  color: #fff;
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 100%, 0 100%);
+  font-family: var(--font-play), var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
-.board[data-format="DOUBLE_ELIM"] .match[data-inactive="true"] .team {
-  border-top-style: dashed;
+:global(html[data-theme="light"]) .board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .matchHeader {
+  background: #171717;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .matchHeader [data-status="ONGOING"] {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .match[data-inactive="true"] .team {
+  opacity: 0.8;
 }
 .pendingRound {
   position: absolute;
@@ -518,9 +640,9 @@ button.match {
   align-items: center;
   gap: 10px;
   color: var(--sheet-accent);
-  font-family: "Arial Narrow", Arial, sans-serif;
+  font-family: var(--font-play), var(--font-sans);
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 700;
   line-height: 1;
   text-transform: uppercase;
 }
@@ -530,36 +652,47 @@ button.match {
   white-space: nowrap;
 }
 .swissFixtures {
-  border-top: 1px solid var(--sheet-line);
-  border-right: 1px solid var(--sheet-line);
+  border: 0;
 }
 .swissFixtures .match {
   background: transparent;
 }
 .swissFixtures .match:hover {
-  background: var(--sheet-hover);
+  background: transparent;
 }
-.swissFixtures .matchTeams {
-  height: 60px;
-  border: none;
+.board[data-format="SWISS"] .swissFixtures .matchHeader {
+  height: 20px;
+  padding: 0 15px 0 7px;
+  font-size: 12px;
+}
+.board[data-format="SWISS"] .swissFixtures .matchTeams {
+  height: 48px;
+  border: 0;
 }
 .swissFixtures .matchFooter,
 .swissFixtures .logo {
   display: none;
 }
-.swissFixtures .team {
-  padding-inline: 12px;
-  gap: 4px;
+.board[data-format="SWISS"] .swissFixtures .team {
+  height: 24px;
+  padding: 0 17px 0 7px;
+  gap: 5px;
 }
-.swissFixtures .teamName {
-  font-size: 19px;
-  text-align: center;
+.board[data-format="SWISS"] .swissFixtures .teamName {
+  font-size: 17px;
+  text-align: left;
 }
-.swissFixtures .versus {
-  font-size: 30px;
-  min-width: 43px;
+.board[data-format="SWISS"] .swissFixtures .seed {
+  font-size: 11px;
 }
-.swissFixtures .team[data-empty="true"] .teamName {
+.board[data-format="SWISS"] .swissFixtures .score {
+  min-width: 27px;
+  font-size: 16px;
+}
+.board[data-format="SWISS"] .swissFixtures .teamRecord {
+  font-size: 10px;
+}
+.board[data-format="SWISS"] .swissFixtures .team[data-empty="true"] .teamName {
   font-size: 13px;
 }
 .teamRecord {
@@ -648,7 +781,13 @@ button.match {
     height: 36px;
   }
   .title {
-    font-size: 22px;
+    font-size: 27px;
+  }
+  .board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .header {
+    padding-top: 24px;
+  }
+  .board:is([data-format="DOUBLE_ELIM"], [data-format="PLAYOFF"], [data-format="SWISS"]) .title {
+    font-size: clamp(30px, 7cqw, 44px);
   }
   .eyebrow {
     font-size: 10px;

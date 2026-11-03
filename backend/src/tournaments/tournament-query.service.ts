@@ -704,6 +704,7 @@ export class TournamentQueryService {
             isBye: match.isBye,
             bestOf: match.bestOf,
             scheduledAt: match.scheduledAt,
+            youtubeUrl: match.youtubeUrl,
             slots: { A: match.teamA, B: match.teamB },
             score: { A: match.scoreA, B: match.scoreB },
             winner: match.winner,

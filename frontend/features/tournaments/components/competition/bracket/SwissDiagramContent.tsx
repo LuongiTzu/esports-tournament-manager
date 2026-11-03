@@ -22,7 +22,7 @@ export default function SwissDiagramContent({
   const { t, locale } = useLocale();
   const [hovered, setHovered] = useState<string | null>(null);
   const matches = new Map(bracket.matches.map((match) => [match.id, match]));
-  const { cardWidth, cardHeight, padding } = layout.metrics;
+  const { cardWidth, cardHeight, fixtureGap, padding } = layout.metrics;
   return (
     <>
       {layout.columns.map((column) => (
@@ -116,8 +116,14 @@ export default function SwissDiagramContent({
               {recordLabel}
             </h5>
             <div className={styles.swissFixtures}>
-              {group.entries.map((entry) => (
-                <div key={entry.matchId} style={{ height: cardHeight }}>
+              {group.entries.map((entry, index) => (
+                <div
+                  key={entry.matchId}
+                  style={{
+                    height: cardHeight,
+                    marginBottom: index < group.entries.length - 1 ? fixtureGap : 0,
+                  }}
+                >
                   <DiagramMatchCard
                     match={matches.get(entry.matchId)!}
                     bracket={bracket}

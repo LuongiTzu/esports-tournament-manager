@@ -21,6 +21,7 @@ import RoundSettingsSummary from "./RoundSettingsSummary";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { useCompetitionInvalidation } from "@/features/tournaments/realtime";
 import CompetitionStageNavigation from "./CompetitionStageNavigation";
+import PublicMatchDialog from "@/features/matches/components/PublicMatchDialog";
 
 export default function PublicCompetitionView({
   id,
@@ -40,6 +41,7 @@ export default function PublicCompetitionView({
   const [standings, setStandings] =
     useState<TournamentStandingsResponse | null>(null);
   const [selectedRoundId, setSelectedRoundId] = useState("");
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshVersion, setRefreshVersion] = useState(0);
@@ -96,6 +98,9 @@ export default function PublicCompetitionView({
     (round): round is RoundStandings =>
       round.roundId === selectedBracket?.round.id,
   );
+  const selectedMatch = rounds
+    .flatMap((round) => round.matches)
+    .find((match) => match.id === selectedMatchId);
 
   return (
     <section
@@ -212,6 +217,7 @@ export default function PublicCompetitionView({
                 bannerUrl={bannerUrl}
                 tournamentName={tournamentName}
                 standings={selectedStandings}
+                onSelectMatch={(match) => setSelectedMatchId(match.id)}
               />
             </div>
 
@@ -240,6 +246,13 @@ export default function PublicCompetitionView({
             )}
           </div>
         </>
+      )}
+      {!error && selectedMatch && (
+        <PublicMatchDialog
+          key={selectedMatch.id}
+          match={selectedMatch}
+          onClose={() => setSelectedMatchId(null)}
+        />
       )}
     </section>
   );

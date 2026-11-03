@@ -15,6 +15,7 @@ export interface MatchGameScore {
 
 export interface MatchDetail {
   id: string;
+  youtubeUrl: string | null;
   scoreA: number;
   scoreB: number;
   status: MatchStatus;

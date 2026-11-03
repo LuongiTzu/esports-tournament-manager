@@ -31,6 +31,7 @@ import styles from "./bracket.module.css";
 
 // Keep round headings readable by default; "fit" still shows the whole bracket.
 const MIN_AUTO_SCALE = 0.65;
+const MIN_SWISS_AUTO_SCALE = 0.8;
 
 export default function BracketDiagram({
   bracket,
@@ -91,7 +92,7 @@ export default function BracketDiagram({
       : zoom === "auto"
         ? viewportSize.width >= 640
           ? Math.max(
-              MIN_AUTO_SCALE,
+              swissLayout ? MIN_SWISS_AUTO_SCALE : MIN_AUTO_SCALE,
               Math.min(
                 1,
                 viewportSize.width / layout.width,

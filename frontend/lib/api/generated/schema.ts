@@ -1375,6 +1375,23 @@ export interface paths {
         patch: operations["TeamsController_updateStatus"];
         trace?: never;
     };
+    "/api/matches/{id}/youtube": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Set or remove the YouTube video for a match */
+        patch: operations["MatchesController_updateYouTube"];
+        trace?: never;
+    };
     "/api/users/me/matches": {
         parameters: {
             query?: never;
@@ -2030,6 +2047,14 @@ export interface components {
             /** @enum {string} */
             status: "PENDING" | "APPROVED" | "REJECTED";
             rejectReason?: string;
+        };
+        UpdateMatchYouTubeDto: {
+            /** @description YouTube video/live URL; null removes the link. */
+            youtubeUrl: string | null;
+        };
+        MatchYouTubeResponseDto: {
+            id: string;
+            youtubeUrl: string | null;
         };
         MyMatchFilterGameDto: {
             id: string;
@@ -4442,6 +4467,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    MatchesController_updateYouTube: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMatchYouTubeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchYouTubeResponseDto"];
                 };
             };
         };

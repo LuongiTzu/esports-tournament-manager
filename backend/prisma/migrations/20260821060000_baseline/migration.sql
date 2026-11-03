@@ -285,6 +285,7 @@ CREATE TABLE "matches" (
     "scheduled_at" TIMESTAMP(3),
     "played_at" TIMESTAMP(3),
     "discord_link" TEXT,
+    "youtube_url" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "round_id" TEXT NOT NULL,

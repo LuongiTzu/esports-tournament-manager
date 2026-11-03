@@ -29,6 +29,15 @@ export interface MyMatchFilters {
 }
 
 export const matchesApi = {
+  updateYouTube: (matchId: string, youtubeUrl: string | null) =>
+    request<{ id: string; youtubeUrl: string | null }>(
+      `/matches/${encodeURIComponent(matchId)}/youtube`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ youtubeUrl }),
+        auth: true,
+      },
+    ),
   checkIn: (matchId: string, teamId: string) =>
     request<MatchCheckIn>(`/matches/${encodeURIComponent(matchId)}/check-ins`, {
       method: "POST",

@@ -97,6 +97,16 @@ export const BRACKET = {
 } as const;
 
 export function bracketMetrics(format: RoundBracket["round"]["format"]) {
+  if (format === "PLAYOFF") {
+    return {
+      ...BRACKET,
+      cardHeight: 128,
+      rowGap: 38,
+      sourceY: 68,
+      slotAY: 68,
+      slotBY: 68,
+    };
+  }
   return format === "DOUBLE_ELIM"
     ? {
         cardWidth: 336,

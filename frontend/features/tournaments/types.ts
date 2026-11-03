@@ -249,6 +249,7 @@ export interface BracketGroup {
 
 export interface BracketMatch {
   id: string;
+  youtubeUrl: string | null;
   groupId: string | null;
   bracketRound: number | null;
   bracketType: BracketType | null;

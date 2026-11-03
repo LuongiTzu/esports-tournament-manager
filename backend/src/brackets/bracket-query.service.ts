@@ -92,6 +92,7 @@ export class BracketQueryService {
         isBye: match.isBye,
         bestOf: match.bestOf,
         scheduledAt: match.scheduledAt,
+        youtubeUrl: match.youtubeUrl,
         slots: {
           A: toPublicBracketTeam(
             match.teamA,

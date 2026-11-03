@@ -32,6 +32,7 @@ export function match(id, overrides = {}) {
     isBye: false,
     bestOf: 3,
     scheduledAt: null,
+    youtubeUrl: null,
     slots: { A: null, B: null },
     score: { A: 0, B: 0 },
     winner: null,

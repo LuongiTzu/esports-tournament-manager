@@ -3166,6 +3166,52 @@
         ]
       }
     },
+    "/api/matches/{id}/youtube": {
+      "patch": {
+        "operationId": "MatchesController_updateYouTube",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMatchYouTubeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchYouTubeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set or remove the YouTube video for a match",
+        "tags": [
+          "Matches"
+        ]
+      }
+    },
     "/api/users/me/matches": {
       "get": {
         "operationId": "MatchesController_findMine",
@@ -5314,6 +5360,36 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "UpdateMatchYouTubeDto": {
+        "type": "object",
+        "properties": {
+          "youtubeUrl": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2048,
+            "description": "YouTube video/live URL; null removes the link."
+          }
+        },
+        "required": [
+          "youtubeUrl"
+        ]
+      },
+      "MatchYouTubeResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "youtubeUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "youtubeUrl"
         ]
       },
       "MyMatchFilterGameDto": {

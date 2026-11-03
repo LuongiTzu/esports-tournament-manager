@@ -12,6 +12,7 @@ import { TournamentRealtimeModule } from '../tournaments/tournament-realtime.mod
 import { BracketsModule } from '../brackets/brackets.module';
 import { MatchCheckInService } from './match-check-in.service';
 import { MatchResultReviewService } from './match-result-review.service';
+import { MatchYouTubeService } from './match-youtube.service';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { MatchResultReviewService } from './match-result-review.service';
   ],
   controllers: [MatchesController],
   providers: [
+    MatchYouTubeService,
     MatchesService,
     MatchQueryService,
     MatchSchedulingService,

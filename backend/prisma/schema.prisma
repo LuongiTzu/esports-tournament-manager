@@ -657,6 +657,7 @@ model Match {
   scheduledAt         DateTime?                 @map("scheduled_at")
   playedAt            DateTime?                 @map("played_at")
   discordLink         String?                   @map("discord_link")
+  youtubeUrl          String?                   @map("youtube_url")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

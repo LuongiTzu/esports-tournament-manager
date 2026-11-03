@@ -31,6 +31,11 @@ import {
   UpdateMatchDto,
 } from './dto/match.dto';
 import { MatchesService } from './matches.service';
+import { MatchYouTubeService } from './match-youtube.service';
+import {
+  MatchYouTubeResponseDto,
+  UpdateMatchYouTubeDto,
+} from './dto/update-match-youtube.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AllowAdminOverride } from '../common/decorators/allow-admin-override.decorator';
 import { MyMatchesQueryDto } from './dto/my-matches-query.dto';
@@ -54,7 +59,26 @@ import {
 @ApiTags('Matches')
 @Controller()
 export class MatchesController {
-  constructor(private readonly matches: MatchesService) {}
+  constructor(
+    private readonly matches: MatchesService,
+    private readonly youtube: MatchYouTubeService,
+  ) {}
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Set or remove the YouTube video for a match' })
+  @ApiOkResponse({ type: MatchYouTubeResponseDto })
+  @UseGuards(JwtAuthGuard, EmailVerifiedGuard, OwnershipGuard)
+  @Ownership('match:id')
+  @TournamentStaffRoles(
+    TournamentStaffRole.CO_ORGANIZER,
+    TournamentStaffRole.REFEREE,
+    TournamentStaffRole.SCOREKEEPER,
+  )
+  @AllowAdminOverride()
+  @Patch('matches/:id/youtube')
+  updateYouTube(@Param('id') id: string, @Body() dto: UpdateMatchYouTubeDto) {
+    return this.youtube.update(id, dto);
+  }
 
   @ApiBearerAuth()
   @ApiOperation({ summary: 'List matches for the current user teams' })

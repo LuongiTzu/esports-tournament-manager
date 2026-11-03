@@ -1,6 +1,7 @@
 "use client";
 
 import ResolvedImage from "@/components/ResolvedImage";
+import { YoutubeLogoIcon } from "@phosphor-icons/react";
 import { useLocale } from "@/features/locale/store";
 import { formatLocalizedDate } from "@/features/locale/format";
 import type {
@@ -34,7 +35,10 @@ export default function DiagramMatchCard({
   onSelect?: (match: BracketMatch) => void;
 }) {
   const { t, locale } = useLocale();
-  const stacked = bracket.round.format === "DOUBLE_ELIM";
+  const stacked =
+    bracket.round.format === "DOUBLE_ELIM" ||
+    bracket.round.format === "PLAYOFF" ||
+    bracket.round.format === "SWISS";
   const fullHeading = matchHeading(match, bracket, t);
   const heading =
     fullHeading === matchCode(match) && numbers?.has(match.id)
@@ -54,6 +58,12 @@ export default function DiagramMatchCard({
       ? t("round.settings.scoringMode.POINT_SCORE")
       : `BO${match.bestOf}`;
   const hasScore = match.status !== "PENDING" && match.isActive && !match.isBye;
+  const videoBadge = match.youtubeUrl ? (
+    <span className={styles.videoBadge} title={t("youtube.available")}>
+      <YoutubeLogoIcon aria-hidden="true" />
+      <span>VIDEO</span>
+    </span>
+  ) : null;
   const slotName = (slot: Slot) =>
     match.slots[slot]?.name ??
     (match.isBye && !sources?.[slot]
@@ -109,13 +119,16 @@ export default function DiagramMatchCard({
             {heading}
             {schedule && ` · ${schedule}`}
           </span>
-          {pendingReset ? (
-            <span>{t("bracket.ifNeeded")}</span>
-          ) : match.isBye ? (
-            <span>BYE</span>
-          ) : match.status === "ONGOING" ? (
-            <span data-status="ONGOING">{t("match.status.ONGOING")}</span>
-          ) : null}
+          <span className={styles.matchHeaderMeta}>
+            {pendingReset ? (
+              <span>{t("bracket.ifNeeded")}</span>
+            ) : match.isBye ? (
+              <span>BYE</span>
+            ) : match.status === "ONGOING" ? (
+              <span data-status="ONGOING">{t("match.status.ONGOING")}</span>
+            ) : null}
+            {videoBadge}
+          </span>
         </span>
       )}
       <span className={styles.matchTeams}>
@@ -142,6 +155,7 @@ export default function DiagramMatchCard({
         {renderTeam("B")}
       </span>
       <span className={styles.matchFooter}>
+        {!stacked && videoBadge}
         <span>{pendingReset ? t("bracket.resetCondition") : scoreMode}</span>
         {numbers?.has(match.id) && <span>M{numbers.get(match.id)}</span>}
         <span>{stacked ? "" : schedule}</span>
@@ -155,8 +169,9 @@ export default function DiagramMatchCard({
       type="button"
       className={styles.match}
       data-inactive={!match.isActive}
+      data-has-video={Boolean(match.youtubeUrl)}
       onClick={() => onSelect(match)}
-      aria-label={label}
+      aria-label={`${label}${match.youtubeUrl ? `, ${t("youtube.available")}` : ""}`}
       title={title}
     >
       {content}
@@ -165,7 +180,8 @@ export default function DiagramMatchCard({
     <article
       className={styles.match}
       data-inactive={!match.isActive}
-      aria-label={label}
+      data-has-video={Boolean(match.youtubeUrl)}
+      aria-label={`${label}${match.youtubeUrl ? `, ${t("youtube.available")}` : ""}`}
       title={title}
     >
       {content}

@@ -41,6 +41,7 @@ import type { TournamentStatus } from "@/shared/types/tournament-status";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import MatchResultReviewManagement from "./MatchResultReviewManagement";
+import MatchYouTubeEditor from "@/features/matches/components/MatchYouTubeEditor";
 
 interface EditableGameScore {
   teamAScore: string;
@@ -127,9 +128,9 @@ export default function MatchManagementPanel({
   );
   const [loading, setLoading] = useState(true);
   const [retryVersion, setRetryVersion] = useState(0);
-  const [saving, setSaving] = useState<"schedule" | "result" | "review" | null>(
-    null,
-  );
+  const [saving, setSaving] = useState<
+    "schedule" | "result" | "review" | "youtube" | null
+  >(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
@@ -216,7 +217,7 @@ export default function MatchManagementPanel({
       if (event.key === "Escape" && !saving) onClose();
       if (event.key !== "Tab") return;
       const focusable = panelRef.current?.querySelectorAll<HTMLElement>(
-        'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]',
+        'button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], iframe, [tabindex="0"]',
       );
       if (!focusable?.length) {
         event.preventDefault();
@@ -956,6 +957,31 @@ export default function MatchManagementPanel({
                   </section>
                 </fieldset>
               )}
+
+              <MatchYouTubeEditor
+                key={match.id}
+                matchId={match.id}
+                youtubeUrl={match.youtubeUrl}
+                disabledReason={
+                  match.isBye
+                    ? t("match.manage.byeReadOnly")
+                    : !match.isActive
+                      ? t("match.manage.inactiveReadOnly")
+                      : tournamentStatus === "CANCELLED"
+                        ? t("match.manage.cancelledTournament")
+                        : null
+                }
+                busy={Boolean(saving)}
+                onBusyChange={(pending) =>
+                  setSaving(pending ? "youtube" : null)
+                }
+                onSaved={async (youtubeUrl) => {
+                  setMatch((current) =>
+                    current ? { ...current, youtubeUrl } : current,
+                  );
+                  await onMutation();
+                }}
+              />
 
               <MatchResultReviewManagement
                 review={resultReview}
