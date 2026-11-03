@@ -1,5 +1,6 @@
 const extendedVi = {
   "youtube.title": "Video / Livestream YouTube",
+  "youtube.matchVideo": "Video trận đấu",
   "youtube.label": "Link YouTube",
   "youtube.hint": "Dán link video hoặc livestream của trận đấu. Người xem có thể xem ngay tại trang thi đấu.",
   "youtube.invalid": "Nhập link video YouTube HTTPS hợp lệ dạng watch, live hoặc youtu.be.",
@@ -644,6 +645,13 @@ const extendedVi = {
   "tournament.status.CANCELLED": "Đã hủy",
   "competition.eyebrow": "Thi đấu",
   "competition.title": "Diễn biến giải đấu",
+  "competition.publicHeading": "Lịch đấu & kết quả",
+  "competition.chooseStage": "Chọn giai đoạn",
+  "competition.formatDetails": "Thể thức thi đấu",
+  "competition.stageParticipants": "Đội tham dự",
+  "competition.advancedFrom": "Đi tiếp từ",
+  "competition.qualified": "Đi tiếp",
+  "competition.teamsInto": "đội vào",
   "competition.description":
     "Lịch đấu, kết quả, xếp hạng và tiến trình chính thức từ hệ thống.",
   "competition.loadError": "Không tải được dữ liệu thi đấu.",
@@ -678,6 +686,7 @@ const extendedVi = {
   "match.status.COMPLETED": "Đã xong",
   "match.awaitingTeam": "Chờ xác định",
   "match.label": "Trận",
+  "match.details": "Chi tiết trận đấu",
   "match.noTeam": "Không có đội",
   "match.drawResult": "Kết quả hòa",
   "match.inactive": "Chưa kích hoạt",

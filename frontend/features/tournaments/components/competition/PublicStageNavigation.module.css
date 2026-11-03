@@ -1,0 +1,123 @@
+.navigation {
+  margin-top: 28px;
+}
+
+.label {
+  margin-bottom: 10px;
+  color: var(--color-ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.single {
+  border-bottom: 1px solid var(--color-line);
+  padding: 8px 0 17px;
+  color: var(--color-ink);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.tabs {
+  display: flex;
+  max-width: 100%;
+  gap: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-line);
+  scrollbar-width: thin;
+}
+
+.tab {
+  display: flex;
+  min-width: 190px;
+  max-width: 300px;
+  min-height: 68px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px 13px 0;
+  border-bottom: 3px solid transparent;
+  color: var(--color-ink-muted);
+  text-align: left;
+  transition: border-color 150ms, color 150ms;
+}
+
+.tab + .tab {
+  padding-left: 20px;
+}
+
+.tab:hover {
+  color: var(--color-ink);
+}
+
+.tab[aria-current="true"] {
+  border-bottom-color: var(--accent, var(--color-brand));
+  color: var(--color-ink);
+}
+
+.tab:focus-visible,
+.select:focus-visible {
+  outline: 2px solid var(--accent, var(--color-brand));
+  outline-offset: -3px;
+}
+
+.number {
+  align-self: flex-start;
+  margin-top: 4px;
+  color: var(--color-ink-faint);
+  font-family: var(--font-play), var(--font-sans);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.tab[aria-current="true"] .number {
+  color: var(--accent, var(--color-brand));
+}
+
+.tabText {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  color: var(--color-ink-faint);
+  font-size: 12px;
+}
+
+.status[data-status="ONGOING"] {
+  color: var(--color-approved);
+}
+
+.select {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .navigation {
+    margin-top: 22px;
+  }
+
+  .tabs {
+    display: none;
+  }
+
+  .select {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid var(--color-line-strong);
+    border-radius: 8px;
+    background: var(--color-surface-sub);
+    padding: 0 12px;
+    color: var(--color-ink);
+    font-size: 14px;
+    font-weight: 650;
+  }
+}

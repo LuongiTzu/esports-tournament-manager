@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  CircleNotchIcon,
-  TrophyIcon,
-  WarningCircleIcon,
-} from "@phosphor-icons/react";
+import { CircleNotchIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { alertErrorClass } from "@/components/ui";
 import { tournamentsApi } from "@/features/tournaments/api";
 import { roundFormatLabel } from "@/features/tournaments/round-formats";
@@ -15,13 +11,13 @@ import type {
   TournamentStandingsResponse,
 } from "@/features/tournaments/types";
 import RoundCompetitionView from "../manage/RoundCompetitionView";
-import RoundProgressionSummary from "../manage/RoundProgressionSummary";
 import RoundStandingsView from "../manage/RoundStandingsView";
-import RoundSettingsSummary from "./RoundSettingsSummary";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import { useCompetitionInvalidation } from "@/features/tournaments/realtime";
-import CompetitionStageNavigation from "./CompetitionStageNavigation";
+import PublicStageNavigation from "./PublicStageNavigation";
+import PublicStageDetails from "./PublicStageDetails";
 import PublicMatchDialog from "@/features/matches/components/PublicMatchDialog";
+import styles from "./PublicCompetitionView.module.css";
 
 export default function PublicCompetitionView({
   id,
@@ -101,52 +97,25 @@ export default function PublicCompetitionView({
   const selectedMatch = rounds
     .flatMap((round) => round.matches)
     .find((match) => match.id === selectedMatchId);
+  const showSeparateStandings = selectedBracket?.round.format === "SWISS";
 
   return (
     <section
       id={id}
       aria-labelledby="public-competition-heading"
-      className="mt-8 min-w-0 scroll-mt-28 overflow-hidden border border-line bg-surface-card/90 p-4 sm:p-7"
+      className={styles.root}
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">
-            {t("competition.eyebrow")}
+      <header className={styles.header}>
+        <h2 id="public-competition-heading" className={styles.title}>
+          {t("competition.publicHeading")}
+        </h2>
+        {standings?.tournament.champion && (
+          <p className={styles.champion}>
+            <span>{t("standings.champion")}</span>
+            <strong>{standings.tournament.champion.name}</strong>
           </p>
-          <h2
-            id="public-competition-heading"
-            className="mt-1 text-xl font-bold text-ink sm:text-2xl"
-          >
-            {t("competition.title")}
-          </h2>
-          <p className="mt-2 text-sm text-ink-muted">
-            {t("competition.description")}
-          </p>
-        </div>
-        {standings && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                standings.tournament.status === "COMPLETED"
-                  ? "border-approved/30 bg-approved/10 text-approved"
-                  : standings.tournament.status === "CANCELLED"
-                    ? "border-rejected/30 bg-rejected/10 text-rejected"
-                    : "border-line bg-surface-sub text-ink-muted"
-              }`}
-            >
-              {t(
-                `tournament.status.${standings.tournament.status}` as TranslationKey,
-              )}
-            </span>
-            {standings.tournament.champion && (
-              <span className="inline-flex items-center gap-2 rounded-full border border-approved/30 bg-approved/10 px-3 py-1.5 text-sm font-semibold text-approved">
-                <TrophyIcon weight="fill" />{" "}
-                {standings.tournament.champion.name}
-              </span>
-            )}
-          </div>
         )}
-      </div>
+      </header>
 
       {loading ? (
         <div
@@ -168,52 +137,49 @@ export default function PublicCompetitionView({
         </div>
       ) : (
         <>
-          <CompetitionStageNavigation
+          <PublicStageNavigation
             rounds={rounds.map(({ round }) => round)}
             selectedRoundId={selectedBracket.round.id}
             onSelect={setSelectedRoundId}
           />
 
-          <div className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-line bg-surface-sub/25 p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-bold text-ink">
-                  {selectedBracket.round.name}
-                </h3>
-                <p className="mt-1 text-sm text-ink-muted">
+          <div className={styles.stageContent}>
+            <div className={styles.stageSummary}>
+              <div className={styles.stageIdentity}>
+                <span className={styles.format}>
                   {roundFormatLabel(selectedBracket.round.format, t)}
+                </span>
+                <span
+                  className={styles.stageStatus}
+                  data-status={selectedBracket.round.status}
+                >
+                  {t(
+                    `round.status.${selectedBracket.round.status}` as TranslationKey,
+                  )}
+                </span>
+              </div>
+              {selectedStandings && selectedStandings.progress.requiredMatches > 0 && (
+                <p className={styles.progress}>
+                  <strong>
+                    {selectedStandings.progress.completedRequiredMatches}/
+                    {selectedStandings.progress.requiredMatches}
+                  </strong>{" "}
+                  {t("competition.matchesCompleted")}
                 </p>
-              </div>
-              <span className="rounded-full bg-surface-card px-3 py-1 text-xs font-medium text-ink-muted">
-                {t(
-                  `round.status.${selectedBracket.round.status}` as TranslationKey,
-                )}
-              </span>
+              )}
             </div>
+            {selectedStandings?.advancement.nextRound &&
+              selectedStandings.advancement.nextRound.participantCount > 0 && (
+                <p className={styles.nextStage}>
+                  {selectedStandings.advancement.nextRound.participantCount}{" "}
+                  {t("competition.teamsInto")} {selectedStandings.advancement.nextRound.name}
+                </p>
+              )}
 
-            <div className="mt-4">
-              <RoundSettingsSummary round={selectedBracket.round} />
-            </div>
-
-            {selectedStandings && (
-              <div className="mt-5">
-                <RoundProgressionSummary data={selectedStandings} />
-              </div>
-            )}
-
-            <div className="mt-6 min-w-0">
-              <h3 className="mb-4 font-semibold text-ink">
-                {t(
-                  ["GROUP_STAGE", "ROUND_ROBIN"].includes(
-                    selectedBracket.round.format,
-                  )
-                    ? "competition.title"
-                    : "competition.matchesAndSchedule",
-                )}
-              </h3>
+            <div className={styles.competition}>
               <RoundCompetitionView
-                diagramClassName="-mx-4 sm:-mx-5"
                 bracket={selectedBracket}
+                showHint={false}
                 bannerUrl={bannerUrl}
                 tournamentName={tournamentName}
                 standings={selectedStandings}
@@ -221,16 +187,9 @@ export default function PublicCompetitionView({
               />
             </div>
 
-            {!["GROUP_STAGE", "ROUND_ROBIN"].includes(
-              selectedBracket.round.format,
-            ) && (
-              <div className="mt-8 border-t border-line pt-6">
-                <h3 className="mb-4 font-semibold text-ink">
-                  {selectedBracket.round.format === "PLAYOFF" ||
-                  selectedBracket.round.format === "DOUBLE_ELIM"
-                    ? t("competition.stageResults")
-                    : t("competition.standings")}
-                </h3>
+            {showSeparateStandings && (
+              <div className={styles.standings}>
+                <h3>{t("competition.standings")}</h3>
                 {selectedStandings && standings ? (
                   <RoundStandingsView
                     data={selectedStandings}
@@ -244,6 +203,12 @@ export default function PublicCompetitionView({
                 )}
               </div>
             )}
+
+            <PublicStageDetails
+              key={selectedBracket.round.id}
+              round={selectedBracket.round}
+              standings={selectedStandings}
+            />
           </div>
         </>
       )}

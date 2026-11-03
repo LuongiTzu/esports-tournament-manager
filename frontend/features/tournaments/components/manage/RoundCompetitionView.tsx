@@ -21,6 +21,7 @@ export default function RoundCompetitionView({
   standings,
   onSelectMatch,
   diagramClassName,
+  showHint = true,
 }: {
   bracket: RoundBracket;
   bannerUrl?: string | null;
@@ -28,6 +29,7 @@ export default function RoundCompetitionView({
   standings?: RoundStandings;
   onSelectMatch?: (match: BracketMatch) => void;
   diagramClassName?: string;
+  showHint?: boolean;
 }) {
   const { t } = useLocale();
   const panelId = useId();
@@ -53,7 +55,9 @@ export default function RoundCompetitionView({
   return (
     <div className="min-w-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-ink-muted">{t("bracket.viewHint")}</p>
+        {showHint && (
+          <p className="text-xs text-ink-muted">{t("bracket.viewHint")}</p>
+        )}
         <div
           className="inline-flex shrink-0 rounded-lg border border-line bg-surface-sub p-1"
           role="group"

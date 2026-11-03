@@ -17,10 +17,13 @@ function SettingPill({
 
 export default function RoundSettingsSummary({
   round,
+  className,
 }: {
   round: TournamentRound;
+  className?: string;
 }) {
   const { t } = useLocale();
+  const containerClassName = className ?? "flex flex-wrap gap-2";
   const scoringMode = round.settings.scoringMode ?? "SERIES_SCORE";
   const common = (
     <>
@@ -38,7 +41,7 @@ export default function RoundSettingsSummary({
   switch (round.format) {
     case "ROUND_ROBIN":
       return (
-        <div className="flex flex-wrap gap-2">
+        <div className={containerClassName}>
           {common}
           <SettingPill
             label={t("round.settings.advancingTeams")}
@@ -64,7 +67,7 @@ export default function RoundSettingsSummary({
       );
     case "GROUP_STAGE":
       return (
-        <div className="flex flex-wrap gap-2">
+        <div className={containerClassName}>
           {common}
           <SettingPill
             label={t("round.settings.groups")}
@@ -95,7 +98,7 @@ export default function RoundSettingsSummary({
     case "SWISS":
       if (round.settings.mode === "THRESHOLD")
         return (
-          <div className="flex flex-wrap gap-2">
+          <div className={containerClassName}>
             {common}
             <SettingPill label={t("swiss.mode")} value={t("swiss.threshold")} />
             <SettingPill
@@ -109,7 +112,7 @@ export default function RoundSettingsSummary({
           </div>
         );
       return (
-        <div className="flex flex-wrap gap-2">
+        <div className={containerClassName}>
           {common}
           <SettingPill
             label={t("round.settings.swissRounds")}
@@ -125,7 +128,7 @@ export default function RoundSettingsSummary({
       );
     case "PLAYOFF":
       return (
-        <div className="flex flex-wrap gap-2">
+        <div className={containerClassName}>
           {common}
           <SettingPill
             label={t("round.settings.thirdPlace")}
@@ -137,7 +140,7 @@ export default function RoundSettingsSummary({
       );
     case "DOUBLE_ELIM":
       return (
-        <div className="flex flex-wrap gap-2">
+        <div className={containerClassName}>
           {common}
           <SettingPill
             label={t("round.settings.grandFinalReset")}

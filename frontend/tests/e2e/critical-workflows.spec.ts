@@ -6,7 +6,7 @@ import {
   type Page,
 } from "@playwright/test";
 
-const API_URL = "http://localhost:3101/api";
+const API_URL = "http://127.0.0.1:3101/api";
 const PASSWORD = "SmokePass123!";
 const users = {
   admin: "smoke-admin@e2e.test",
@@ -111,6 +111,9 @@ function teamBody(name: string, ign: string, email: string) {
 }
 
 test.describe.serial("critical full-stack smoke workflows", () => {
+  // Retrying the whole serial suite repeats setup logins and hits the auth throttle.
+  test.describe.configure({ retries: 0 });
+
   let adminSession: UserSession;
   let organizerSession: UserSession;
   let participantSession: UserSession;
@@ -246,7 +249,7 @@ test.describe.serial("critical full-stack smoke workflows", () => {
     request,
   }) => {
     const response = await request.get(
-      `http://localhost:3100/tournaments/${tournament.slug}`,
+      `http://127.0.0.1:3100/tournaments/${tournament.slug}`,
     );
     expect(response.ok()).toBeTruthy();
     const html = await response.text();
@@ -266,7 +269,7 @@ test.describe.serial("critical full-stack smoke workflows", () => {
     page,
   }) => {
     await useSession(page, participantSession);
-    await page.goto(`/tournaments/${tournament.slug}`);
+    await page.goto(`/tournaments/${tournament.slug}/participants`);
 
     await expect(page.getByText(participantTeamName).first()).toBeVisible();
     await expect(page.getByText(organizerTeamName).first()).toBeVisible();
@@ -275,10 +278,10 @@ test.describe.serial("critical full-stack smoke workflows", () => {
   test("4. the generated bracket exposes the completed match", async ({
     page,
   }) => {
-    await page.goto(`/tournaments/${tournament.slug}#competition`);
+    await page.goto(`/tournaments/${tournament.slug}/competition`);
 
     await expect(
-      page.getByRole("heading", { name: "Smoke Final" }),
+      page.locator("#competition").getByText("Smoke Final", { exact: true }),
     ).toBeVisible();
     const match = page.locator(
       `[aria-label*="${participantTeamName}"][aria-label*="${organizerTeamName}"]`,

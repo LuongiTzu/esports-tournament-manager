@@ -2,6 +2,7 @@ import type extendedVi from "@/features/locale/dictionaries/extended-vi";
 
 const extendedEn = {
   "youtube.title": "YouTube video / livestream",
+  "youtube.matchVideo": "Match video",
   "youtube.label": "YouTube link",
   "youtube.hint": "Paste the match's YouTube video or live link. Viewers can watch it on the competition page.",
   "youtube.invalid": "Enter a valid HTTPS YouTube watch, live or youtu.be video link.",
@@ -662,6 +663,13 @@ const extendedEn = {
   "tournament.status.CANCELLED": "Cancelled",
   "competition.eyebrow": "Competition",
   "competition.title": "Tournament competition",
+  "competition.publicHeading": "Matches & results",
+  "competition.chooseStage": "Choose a stage",
+  "competition.formatDetails": "Competition format",
+  "competition.stageParticipants": "Teams in this stage",
+  "competition.advancedFrom": "Advanced from",
+  "competition.qualified": "Advanced",
+  "competition.teamsInto": "teams advance to",
   "competition.description":
     "Official schedules, results, standings, and progression from the system.",
   "competition.loadError": "Could not load competition data.",
@@ -697,6 +705,7 @@ const extendedEn = {
   "match.status.COMPLETED": "Completed",
   "match.awaitingTeam": "To be determined",
   "match.label": "Match",
+  "match.details": "Match details",
   "match.noTeam": "No team",
   "match.drawResult": "Draw",
   "match.inactive": "Inactive",

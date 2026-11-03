@@ -1,19 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PlayCircleIcon, ArrowSquareOutIcon } from "@phosphor-icons/react";
-import { secondaryButtonClass } from "@/components/ui";
+import {
+  ArrowSquareOutIcon,
+  CircleNotchIcon,
+  PlayIcon,
+  YoutubeLogoIcon,
+} from "@phosphor-icons/react";
+import ResolvedImage from "@/components/ResolvedImage";
 import { useLocale } from "@/features/locale/store";
 import { parseYouTubeUrl } from "../youtube";
 import {
   loadYouTubeApi,
   type YouTubePlayer as Player,
 } from "../youtube-player-loader";
+import styles from "./YouTubePlayer.module.css";
 
 export default function YouTubePlayer({ url }: { url: string }) {
   const { t } = useLocale();
   const video = parseYouTubeUrl(url);
-  if (!video) return <p role="alert">{t("youtube.invalid")}</p>;
+  if (!video)
+    return <p role="alert" className={styles.invalid}>{t("youtube.invalid")}</p>;
   return (
     <VideoPlayer key={video.videoId} videoId={video.videoId} url={video.url} />
   );
@@ -23,17 +30,35 @@ function VideoPlayer({ videoId, url }: { videoId: string; url: string }) {
   const { t } = useLocale();
   const [attempt, setAttempt] = useState(0);
   return (
-    <div className="space-y-3">
+    <div className={styles.root}>
       {attempt === 0 ? (
-        <div className="grid aspect-video min-h-[200px] place-items-center rounded-xl border border-line bg-surface-sub p-5">
-          <button
-            type="button"
-            onClick={() => setAttempt(1)}
-            className={secondaryButtonClass}
-          >
-            <PlayCircleIcon size={24} aria-hidden="true" /> {t("youtube.watch")}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setAttempt(1)}
+          className={styles.preview}
+          aria-label={t("youtube.watch")}
+        >
+          <span className={styles.posterFallback} aria-hidden="true">
+            <YoutubeLogoIcon size={96} weight="fill" />
+          </span>
+          <ResolvedImage
+            src={`https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`}
+            fallbackSrc={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+            alt=""
+            className={styles.poster}
+            loading="eager"
+          />
+          <span className={styles.scrim} aria-hidden="true" />
+          <span className={styles.brand} aria-hidden="true">
+            <YoutubeLogoIcon size={18} /> YouTube
+          </span>
+          <span className={styles.previewAction} aria-hidden="true">
+            <span className={styles.playCircle}>
+              <PlayIcon size={28} weight="fill" />
+            </span>
+            <span>{t("youtube.watch")}</span>
+          </span>
+        </button>
       ) : (
         <ActivePlayer
           key={attempt}
@@ -45,9 +70,10 @@ function VideoPlayer({ videoId, url }: { videoId: string; url: string }) {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 text-sm font-semibold text-brand hover:underline"
+        className={styles.externalLink}
       >
-        <ArrowSquareOutIcon aria-hidden="true" /> {t("youtube.open")}
+        {t("youtube.open")}
+        <ArrowSquareOutIcon size={18} aria-hidden="true" />
       </a>
     </div>
   );
@@ -83,12 +109,12 @@ function ActivePlayer({
           enablejsapi: "1",
           origin: window.location.origin,
           playsinline: "1",
-          autoplay: "0",
+          autoplay: "1",
         });
         frame.src = `https://www.youtube.com/embed/${videoId}?${query}`;
         frame.title = title;
         frame.referrerPolicy = "strict-origin-when-cross-origin";
-        frame.allow = "encrypted-media; picture-in-picture; fullscreen";
+        frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
         frame.allowFullscreen = true;
         frame.className = "absolute inset-0 h-full w-full border-0";
         container.appendChild(frame);
@@ -118,25 +144,23 @@ function ActivePlayer({
   }, [videoId, title]);
 
   return (
-    <div>
-      <div
-        ref={host}
-        className="relative aspect-video min-h-[200px] overflow-hidden rounded-xl bg-black"
-      />
+    <div className={styles.playerFrame}>
+      <div ref={host} className={styles.playerHost} />
       {status === "loading" && (
-        <p role="status" className="mt-2 text-sm text-ink-muted">
-          {t("youtube.loading")}
-        </p>
+        <div className={styles.playerOverlay} role="status">
+          <CircleNotchIcon size={28} className={styles.spinner} aria-hidden="true" />
+          <span>{t("youtube.loading")}</span>
+        </div>
       )}
       {status === "error" && (
-        <div className="mt-3 space-y-2">
-          <p role="alert" className="text-sm text-rejected">
+        <div className={styles.playerOverlay}>
+          <p role="alert" className={styles.playerError}>
             {t("youtube.playError")}
           </p>
           <button
             type="button"
             onClick={onRetry}
-            className={secondaryButtonClass}
+            className={styles.retry}
           >
             {t("common.retry")}
           </button>

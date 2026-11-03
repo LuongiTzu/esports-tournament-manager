@@ -2,8 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const frontendPort = 3100;
 const backendPort = 3101;
-const frontendUrl = `http://localhost:${frontendPort}`;
-const backendUrl = `http://localhost:${backendPort}`;
+const frontendUrl = `http://127.0.0.1:${frontendPort}`;
+const backendUrl = `http://127.0.0.1:${backendPort}`;
 const databaseUrl = process.env.E2E_DATABASE_URL ?? "";
 
 export default defineConfig({
