@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { ArrowUpRightIcon, SwordIcon } from "@phosphor-icons/react";
 import { formatLocalizedDate } from "@/features/locale/format";
 import { useLocale } from "@/features/locale/store";

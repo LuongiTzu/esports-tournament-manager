@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import { TrashIcon } from "@phosphor-icons/react";
 import { alertErrorClass } from "@/components/ui";
 import { useLocale } from "@/features/locale/store";

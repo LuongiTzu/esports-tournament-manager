@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import AuthShell from "@/features/auth/components/AuthShell";
 import AuthVisualPanel from "@/features/auth/components/AuthVisualPanel";
 import { authApi } from "@/features/auth/api";

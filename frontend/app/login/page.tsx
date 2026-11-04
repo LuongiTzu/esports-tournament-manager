@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useState, useSyncExternalStore } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/components/navigation/Link";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import AuthShell from "@/features/auth/components/AuthShell";
 import AuthVisualPanel from "@/features/auth/components/AuthVisualPanel";

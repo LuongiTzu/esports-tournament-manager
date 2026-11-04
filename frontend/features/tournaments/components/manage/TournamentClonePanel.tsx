@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import {
   ArrowRightIcon,
   CheckCircleIcon,

@@ -13,7 +13,7 @@ import {
   type TournamentReportReason,
 } from "@/features/reports/types";
 import { ApiError } from "@/lib/api/client";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { useAuth } from "@/features/auth/store";
 import EmailVerificationNotice from "@/features/auth/components/EmailVerificationNotice";
 import { isEmailNotVerifiedError } from "@/features/auth/email-verification";

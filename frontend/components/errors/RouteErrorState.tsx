@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { ArrowClockwiseIcon, HouseIcon, WarningIcon } from "@phosphor-icons/react";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/ui";
 

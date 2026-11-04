@@ -11,7 +11,7 @@ import {
   UserCircleIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import ImageUploadPicker from "@/components/ImageUploadPicker";
 import { alertErrorClass, inputClass, labelClass } from "@/components/ui";
 import { authApi } from "@/features/auth/api";

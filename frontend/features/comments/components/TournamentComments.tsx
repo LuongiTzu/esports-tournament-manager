@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { ChatCircleDotsIcon } from "@phosphor-icons/react";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { clearSession, useAuth } from "@/features/auth/store";

@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleNotchIcon } from "@phosphor-icons/react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 
 import ResolvedImage from "@/components/ResolvedImage";
 import StatusBadge from "@/features/teams/components/StatusBadge";

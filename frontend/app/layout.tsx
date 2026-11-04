@@ -4,6 +4,7 @@ import "./globals.css";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import RouteTitle from "@/components/RouteTitle";
+import { NavigationProvider } from "@/components/navigation/NavigationProvider";
 import { LocaleProvider } from "@/features/locale/store";
 import { ThemeProvider } from "@/features/theme/store";
 import { RealtimeProvider } from "@/features/realtime/provider";
@@ -83,12 +84,14 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-surface text-ink">
         <ThemeProvider>
           <LocaleProvider>
-            <RouteTitle />
-            <RealtimeProvider>
-              <Navbar />
-              <main className="flex flex-1 flex-col">{children}</main>
-              <Footer />
-            </RealtimeProvider>
+            <NavigationProvider>
+              <RouteTitle />
+              <RealtimeProvider>
+                <Navbar />
+                <main className="flex flex-1 flex-col">{children}</main>
+                <Footer />
+              </RealtimeProvider>
+            </NavigationProvider>
           </LocaleProvider>
         </ThemeProvider>
       </body>

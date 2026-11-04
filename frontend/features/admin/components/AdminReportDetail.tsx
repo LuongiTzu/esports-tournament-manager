@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { CheckCircleIcon, EyeIcon, XCircleIcon } from "@phosphor-icons/react";
 import { primaryButtonClass, secondaryButtonClass } from "@/components/ui";
 import type { AdminReport } from "@/features/admin/types";

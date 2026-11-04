@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { EyeIcon, EyeSlashIcon, TrashIcon } from "@phosphor-icons/react";
 import { secondaryButtonClass } from "@/components/ui";
 import type { AdminComment } from "@/features/admin/types";

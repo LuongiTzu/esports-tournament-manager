@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/components/navigation/Link";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import {
   CalendarBlankIcon,
   CheckIcon,

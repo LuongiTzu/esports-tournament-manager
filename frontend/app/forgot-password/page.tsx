@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import AuthShell from "@/features/auth/components/AuthShell";
 import AuthVisualPanel from "@/features/auth/components/AuthVisualPanel";
 import styles from "@/features/auth/components/AuthSurface.module.css";

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { useLocale } from "@/features/locale/store";
 
 export default function Footer() {

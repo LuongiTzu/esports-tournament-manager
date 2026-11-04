@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import type { ReactNode } from "react";
 import { useLocale } from "@/features/locale/store";
 import styles from "./AuthSurface.module.css";

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "@/components/navigation/Link";
+import { usePathname } from "next/navigation";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import {
   ChartBarIcon,
   CaretRightIcon,

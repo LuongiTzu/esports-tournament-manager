@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "@/components/navigation/Link";
+import { usePathname } from "next/navigation";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import {
   CaretDownIcon,
   CalendarDotsIcon,
@@ -168,7 +169,11 @@ export default function AccountMenu({
                   key={item.href}
                   href={item.href}
                   role="menuitem"
-                  onClick={() => setOpen(false)}
+                  onNavigate={(event) => {
+                    event.preventDefault();
+                    router.push(item.href);
+                    setOpen(false);
+                  }}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
                     active
                       ? "bg-brand/10 font-semibold text-brand"

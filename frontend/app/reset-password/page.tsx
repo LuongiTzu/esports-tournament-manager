@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/components/navigation/Link";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import AuthShell from "@/features/auth/components/AuthShell";
 import AuthVisualPanel from "@/features/auth/components/AuthVisualPanel";
 import styles from "@/features/auth/components/AuthSurface.module.css";

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import { HeartIcon } from "@phosphor-icons/react";
 import { clearSession, useAuth } from "@/features/auth/store";
 import { useLocale } from "@/features/locale/store";

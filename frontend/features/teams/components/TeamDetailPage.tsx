@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { alertErrorClass, secondaryButtonClass } from "@/components/ui";
 import { clearSession, useAuth } from "@/features/auth/store";
 import { useLocale } from "@/features/locale/store";

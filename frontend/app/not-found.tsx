@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr";
 import { primaryButtonClass } from "@/components/ui";
 

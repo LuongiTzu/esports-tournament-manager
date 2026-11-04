@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "@/components/navigation/Link";
+import { usePathname } from "next/navigation";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import {
   ArrowSquareOutIcon,
   ListIcon,
@@ -167,6 +168,11 @@ export default function Navbar() {
   }, []);
 
   const closeMenu = () => setMenuOpen(false);
+  const navigateFromMenu = (href: string) => (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    router.push(href);
+    closeMenu();
+  };
 
   const handleLogout = async () => {
     closeMenu();
@@ -321,7 +327,7 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  onClick={closeMenu}
+                  onNavigate={navigateFromMenu(link.href)}
                   aria-current={active ? "page" : undefined}
                   className={`rounded-lg border-l-2 px-3 py-2.5 text-sm font-medium transition ${active ? "border-brand bg-brand/10 text-ink" : "border-transparent text-ink-muted hover:bg-surface-sub hover:text-ink"}`}
                 >
@@ -347,7 +353,7 @@ export default function Navbar() {
               <>
                 <Link
                   href="/profile"
-                  onClick={closeMenu}
+                  onNavigate={navigateFromMenu("/profile")}
                   className="my-1 inline-flex items-center gap-3 truncate rounded-xl border border-line bg-surface-card px-3 py-3 text-sm text-ink-muted"
                 >
                   <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-xs font-bold text-on-brand">
@@ -369,7 +375,7 @@ export default function Navbar() {
                 </Link>
                 <Link
                   href="/tournaments/new"
-                  onClick={closeMenu}
+                  onNavigate={navigateFromMenu("/tournaments/new")}
                   className="inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-ink-muted transition hover:bg-surface-hover hover:text-ink"
                 >
                   <PlusIcon size={16} weight="bold" />
@@ -387,21 +393,21 @@ export default function Navbar() {
               <div className="grid grid-cols-2 gap-2">
                 <Link
                   href="/login"
-                  onClick={closeMenu}
+                  onNavigate={navigateFromMenu("/login")}
                   className="rounded-lg border border-line px-3 py-2.5 text-center text-sm font-medium text-ink"
                 >
                   {t("nav.login")}
                 </Link>
                 <Link
                   href="/register"
-                  onClick={closeMenu}
+                  onNavigate={navigateFromMenu("/register")}
                   className="rounded-lg border border-brand/40 bg-brand/10 px-3 py-2.5 text-center text-sm font-semibold text-ink"
                 >
                   {t("nav.register")}
                 </Link>
                 <Link
                   href="/tournaments/new"
-                  onClick={closeMenu}
+                  onNavigate={navigateFromMenu("/tournaments/new")}
                   className="col-span-2 inline-flex items-center justify-center gap-2 rounded-lg bg-surface-sub px-3 py-2.5 text-sm font-semibold text-ink transition hover:bg-surface-hover"
                 >
                   <PlusIcon size={16} weight="bold" />

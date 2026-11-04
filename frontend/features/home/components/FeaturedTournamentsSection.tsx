@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import ScrollReveal from "@/features/home/components/ScrollReveal";
 import SectionHeading from "@/features/home/components/SectionHeading";

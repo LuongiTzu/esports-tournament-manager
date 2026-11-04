@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { LoadingRegion, Skeleton } from "@/components/Loading";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import {
   CircleNotchIcon,
   EnvelopeSimpleIcon,

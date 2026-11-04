@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import {
   ArrowLeftIcon,
   CalendarBlankIcon,

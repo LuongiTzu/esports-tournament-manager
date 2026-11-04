@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { useAuth } from "@/features/auth/store";
 import { useLocale, type TranslationKey } from "@/features/locale/store";
 import {

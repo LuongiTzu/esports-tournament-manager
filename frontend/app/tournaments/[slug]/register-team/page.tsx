@@ -1,8 +1,9 @@
 "use client";
 
 import { use, useEffect, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "@/components/navigation/Link";
+import { useSearchParams } from "next/navigation";
+import { useRouter } from "@/components/navigation/NavigationProvider";
 import {
   ArrowLeftIcon,
   CalendarBlankIcon,

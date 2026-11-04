@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/navigation/Link";
 import { ArrowRightIcon, LightningIcon, PlayIcon } from "@phosphor-icons/react";
 import { useLocale } from "@/features/locale/store";
 import RotatingText from "@/components/RotatingText";
