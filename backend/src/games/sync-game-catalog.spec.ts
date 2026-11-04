@@ -22,8 +22,15 @@ describe('syncGameCatalog', () => {
       expect(upsert.mock.calls[index][0]).toEqual(
         expect.objectContaining({
           where: { code: game.code },
-          create: expect.objectContaining({ code: game.code, name: game.name }),
-          update: expect.objectContaining({ name: game.name }),
+          create: expect.objectContaining({
+            code: game.code,
+            name: game.name,
+            iconUrl: game.iconUrl,
+          }),
+          update: expect.objectContaining({
+            name: game.name,
+            iconUrl: game.iconUrl,
+          }),
         }),
       );
     }

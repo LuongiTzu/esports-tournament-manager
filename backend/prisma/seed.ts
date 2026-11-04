@@ -55,15 +55,16 @@ const RESET_CONFIRMATION = 'RESET_LOCAL_ESPORTS_DEV_DB';
 const POSTER_BY_GAME: Record<string, string> = {
   LIEN_QUAN_MOBILE: '/images/tournaments/common/posters/arena-of-valor.jpg',
   LEAGUE_OF_LEGENDS: '/images/tournaments/common/posters/league-of-legends.jpg',
-  VALORANT: '/images/tournaments/common/posters/valorant.jpg',
+  VALORANT: '/images/tournaments/common/posters/valorant.png',
   COUNTER_STRIKE_2: '/images/tournaments/common/posters/counter-strike-2.jpg',
   DOTA_2: '/images/tournaments/common/posters/dota-2.jpg',
   MLBB: '/images/tournaments/common/posters/mobile%20legend.jpg',
   HONOR_OF_KINGS: '/images/tournaments/common/posters/honor-of-king.jpg',
   WILD_RIFT: '/images/tournaments/common/posters/wild-rift.jpg',
   FC_ONLINE: '/images/tournaments/common/posters/fc-online.jpg',
-  CROSSFIRE_PC: '/images/tournaments/common/posters/crossfire.jpg',
+  CROSSFIRE_PC: '/images/tournaments/common/posters/crossfire.webp',
   TEKKEN_8: '/images/tournaments/common/posters/tenken.jpg',
+  STREET_FIGHTER_6: '/images/tournaments/common/posters/street-fighter.jpg',
   ROCKET_LEAGUE: '/images/tournaments/common/posters/rocket-league.jpg',
 };
 

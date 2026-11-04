@@ -11,6 +11,7 @@ export async function syncGameCatalog(
   for (const game of GAME_CATALOG) {
     const metadata = {
       name: game.name,
+      iconUrl: game.iconUrl,
       genre: game.genre,
       positions: game.positions,
       positionMode: game.positionMode,

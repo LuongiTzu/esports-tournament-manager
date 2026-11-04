@@ -169,6 +169,9 @@ CLAUDE.md
 TODO.md
 notes.md
 *.tmp.md
+# Keep local Markdown documents out of future commits, except READMEs.
+*.md
+!README.md
 skills-lock.json
 # User-generated media (avatars, team logos, tournament banners, etc.)
 # These are runtime/private data and must never be committed.

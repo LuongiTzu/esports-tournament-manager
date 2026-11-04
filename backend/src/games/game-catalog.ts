@@ -1,10 +1,12 @@
 import { GameGenre, GamePositionMode, TeamSizeMode } from '@prisma/client';
 
 const STANDARD_ROSTER_CAP = 10;
+const ICON_ROOT = '/images/games/icons';
 
 export interface GameCatalogEntry {
   code: string;
   name: string;
+  iconUrl: string | null;
   genre: GameGenre;
   positions: string[];
   positionMode: GamePositionMode;
@@ -37,6 +39,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'LEAGUE_OF_LEGENDS',
     name: 'League of Legends',
+    iconUrl: `${ICON_ROOT}/league-of-legends.svg`,
     genre: GameGenre.MOBA,
     positions: ['TOP', 'JUNGLE', 'MID', 'BOT', 'SUPPORT'],
     positionMode: GamePositionMode.FIXED,
@@ -47,6 +50,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'LIEN_QUAN_MOBILE',
     name: 'Liên Quân Mobile',
+    iconUrl: `${ICON_ROOT}/lien-quan-mobile.svg`,
     genre: GameGenre.MOBA,
     positions: ['DARK_SLAYER_LANE', 'JUNGLE', 'MID', 'DRAGON_LANE', 'ROAM'],
     positionMode: GamePositionMode.FIXED,
@@ -57,6 +61,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'VALORANT',
     name: 'Valorant',
+    iconUrl: `${ICON_ROOT}/valorant.svg`,
     genre: GameGenre.FPS,
     positions: ['DUELIST', 'INITIATOR', 'CONTROLLER', 'SENTINEL'],
     positionMode: GamePositionMode.OPTIONAL,
@@ -67,6 +72,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'COUNTER_STRIKE_2',
     name: 'Counter-Strike 2',
+    iconUrl: `${ICON_ROOT}/counter-strike-2.svg`,
     genre: GameGenre.FPS,
     positions: [],
     positionMode: GamePositionMode.NONE,
@@ -77,6 +83,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'DOTA_2',
     name: 'Dota 2',
+    iconUrl: `${ICON_ROOT}/dota-2.svg`,
     genre: GameGenre.MOBA,
     positions: [
       'POSITION_1',
@@ -93,6 +100,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'ROCKET_LEAGUE',
     name: 'Rocket League',
+    iconUrl: `${ICON_ROOT}/rocket-league.svg`,
     genre: GameGenre.SPORTS,
     positions: [],
     positionMode: GamePositionMode.NONE,
@@ -103,6 +111,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'TEKKEN_8',
     name: 'Tekken 8',
+    iconUrl: `${ICON_ROOT}/tekken-8.svg`,
     genre: GameGenre.FIGHTING,
     positions: [],
     positionMode: GamePositionMode.NONE,
@@ -113,6 +122,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'STREET_FIGHTER_6',
     name: 'Street Fighter 6',
+    iconUrl: `${ICON_ROOT}/street-fighter-6.svg`,
     genre: GameGenre.FIGHTING,
     positions: [],
     positionMode: GamePositionMode.NONE,
@@ -123,6 +133,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'MLBB',
     name: 'Mobile Legends: Bang Bang',
+    iconUrl: `${ICON_ROOT}/mobile-legends.svg`,
     genre: GameGenre.MOBA,
     positions: ['EXP_LANE', 'JUNGLE', 'MID_LANE', 'GOLD_LANE', 'ROAM'],
     positionMode: GamePositionMode.FIXED,
@@ -133,6 +144,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'HONOR_OF_KINGS',
     name: 'Honor of Kings',
+    iconUrl: `${ICON_ROOT}/honor-of-kings.svg`,
     genre: GameGenre.MOBA,
     positions: ['CLASH_LANE', 'JUNGLE', 'MID_LANE', 'FARM_LANE', 'ROAM'],
     positionMode: GamePositionMode.FIXED,
@@ -143,6 +155,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'WILD_RIFT',
     name: 'League of Legends: Wild Rift',
+    iconUrl: `${ICON_ROOT}/wild-rift.svg`,
     genre: GameGenre.MOBA,
     positions: ['SOLO_LANE', 'JUNGLE', 'MID_LANE', 'DUO_LANE', 'SUPPORT'],
     positionMode: GamePositionMode.FIXED,
@@ -153,6 +166,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   {
     code: 'FC_ONLINE',
     name: 'FC Online',
+    iconUrl: `${ICON_ROOT}/fc-online.ico`,
     genre: GameGenre.SPORTS,
     positions: [],
     positionMode: GamePositionMode.NONE,
@@ -167,6 +181,7 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
   fixedGame({
     code: 'CROSSFIRE_PC',
     name: 'CrossFire',
+    iconUrl: `${ICON_ROOT}/crossfire.svg`,
     genre: GameGenre.FPS,
     positions: ['ORDER', 'ATTACKER', 'SNIPER', 'TACTICAL_BACKUP'],
     positionMode: GamePositionMode.OPTIONAL,
@@ -174,19 +189,10 @@ export const GAME_CATALOG: GameCatalogEntry[] = [
     minTeamSize: 5,
     maxTeamSize: STANDARD_ROSTER_CAP,
   }),
-  fixedGame({
-    code: 'POKEMON_UNITE',
-    name: 'Pokémon UNITE',
-    genre: GameGenre.MOBA,
-    positions: [],
-    positionMode: GamePositionMode.NONE,
-    defaultTeamSize: 5,
-    minTeamSize: 5,
-    maxTeamSize: STANDARD_ROSTER_CAP,
-  }),
   {
     code: 'CUSTOM',
     name: 'Custom Game',
+    iconUrl: null,
     genre: GameGenre.OTHER,
     positions: [],
     positionMode: GamePositionMode.NONE,

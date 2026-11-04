@@ -15,7 +15,7 @@ import styles from "./GamePosterGridBackground.module.css";
 const POSTER_ROOT = "/images/tournaments/common/posters";
 const GAME_POSTERS = [
   `${POSTER_ROOT}/league-of-legends.jpg`,
-  `${POSTER_ROOT}/valorant.jpg`,
+  `${POSTER_ROOT}/valorant.png`,
   `${POSTER_ROOT}/dota-2.jpg`,
   `${POSTER_ROOT}/counter-strike-2.jpg`,
   `${POSTER_ROOT}/arena-of-valor.jpg`,
@@ -26,8 +26,7 @@ const GAME_POSTERS = [
   `${POSTER_ROOT}/fc-online.jpg`,
   `${POSTER_ROOT}/street-fighter.jpg`,
   `${POSTER_ROOT}/tenken.jpg`,
-  `${POSTER_ROOT}/pokemon-unite.jpg`,
-  `${POSTER_ROOT}/crossfire.jpg`,
+  `${POSTER_ROOT}/crossfire.webp`,
 ] as const;
 
 const DEFAULT_ROW_COUNT = 4;

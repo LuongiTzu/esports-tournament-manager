@@ -8,7 +8,7 @@ const GAME_POSTERS: Record<string, string> = {
   arenaofvalor: "/images/tournaments/common/posters/arena-of-valor.jpg",
   aov: "/images/tournaments/common/posters/arena-of-valor.jpg",
   dota2: "/images/tournaments/common/posters/dota-2.jpg",
-  valorant: "/images/tournaments/common/posters/valorant.jpg",
+  valorant: "/images/tournaments/common/posters/valorant.png",
   csgo: "/images/tournaments/common/posters/counter-strike-2.jpg",
   counterstrike: "/images/tournaments/common/posters/counter-strike-2.jpg",
   counterstrike2: "/images/tournaments/common/posters/counter-strike-2.jpg",

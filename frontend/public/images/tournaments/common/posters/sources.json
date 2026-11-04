@@ -1,0 +1,55 @@
+{
+  "updatedAt": "2026-11-04",
+  "replacements": [
+    {
+      "file": "crossfire.webp",
+      "source": "https://smilegatevn.com/en/images/game/crossfire/banner.jpg",
+      "credit": "Smilegate Vietnam",
+      "dimensions": [2880, 1620]
+    },
+    {
+      "file": "crossfire.jpg",
+      "source": "https://www.smilegate.com/assets/img/game/crossfire/frames/2.jpg",
+      "credit": "Smilegate; legacy poster path",
+      "dimensions": [2300, 1300]
+    },
+    {
+      "file": "dota-2.jpg",
+      "source": "https://dmarket.com/blog/best-dota2-wallpapers/dota2heroes7_hu_86a8cffd87b9bb85.jpg",
+      "credit": "Dota 2 artwork via DMarket",
+      "dimensions": [1920, 1080]
+    },
+    {
+      "file": "tenken.jpg",
+      "source": "https://egi.com.sg/wp-content/uploads/2024/08/Tekken-8-Keyart-Horizontal-City-Without-Logo.jpg",
+      "credit": "Bandai Namco Entertainment via ExcelGames Interactive",
+      "dimensions": [8358, 4501]
+    },
+    {
+      "file": "arena-of-valor.jpg",
+      "source": "https://www.arenaofvalor.com/web2017/images/pc/bgn_test.jpg",
+      "credit": "Arena of Valor official website",
+      "dimensions": [1920, 1080]
+    },
+    {
+      "file": "honor-of-king.jpg",
+      "source": "https://sg-hok.playerinfinite.com/cms/nrft/feeds/pic/_21d34b42cf46b762ad323b3e2ba42695990aeb1d-1920x1080-ori_s_80_50_ori_q_80.jpeg",
+      "credit": "Honor of Kings official game CDN",
+      "dimensions": [1920, 1080]
+    },
+    {
+      "file": "valorant.png",
+      "source": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news/1371084d631d25722a1e4b8d5df41d2ac6a70443.zip",
+      "asset": "Ep8a1_Defiance_Youtube Cover_.png",
+      "credit": "Riot Games VALORANT Media",
+      "dimensions": [2560, 1440]
+    },
+    {
+      "file": "valorant.jpg",
+      "source": "https://cmsassets.rgpub.io/sanity/files/dsfx7636/news/1371084d631d25722a1e4b8d5df41d2ac6a70443.zip",
+      "asset": "Ep8A1_Riot Games.com Product Card 1920x1080_.jpg",
+      "credit": "Riot Games VALORANT Media; legacy poster path",
+      "dimensions": [1920, 1080]
+    }
+  ]
+}

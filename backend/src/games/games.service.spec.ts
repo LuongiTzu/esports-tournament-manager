@@ -12,8 +12,8 @@ const catalogByCode = Object.fromEntries(
 );
 
 describe('game catalog', () => {
-  it('contains the eight established games and seven GF-1 additions', () => {
-    expect(GAME_CATALOG).toHaveLength(15);
+  it('contains the eight established games and six GF-1 additions', () => {
+    expect(GAME_CATALOG).toHaveLength(14);
     expect(GAME_CATALOG.slice(0, 8).map((game) => game.name)).toEqual([
       'League of Legends',
       'Liên Quân Mobile',
@@ -30,9 +30,9 @@ describe('game catalog', () => {
       'League of Legends: Wild Rift',
       'FC Online',
       'CrossFire',
-      'Pokémon UNITE',
       'Custom Game',
     ]);
+    expect(catalogByCode.POKEMON_UNITE).toBeUndefined();
   });
 
   it('does not introduce an Age of Empires catalog addition', () => {
@@ -150,7 +150,6 @@ describe('game catalog', () => {
       GamePositionMode.OPTIONAL,
       ['ORDER', 'ATTACKER', 'SNIPER', 'TACTICAL_BACKUP'],
     ],
-    ['POKEMON_UNITE', 10, GamePositionMode.NONE, []],
   ] as const)(
     'defines fixed metadata and canonical positions for %s',
     (code, maxTeamSize, positionMode, positions) => {
@@ -219,7 +218,6 @@ describe('GamesService', () => {
   it('returns only games identified by canonical machine codes', async () => {
     const games = GAME_CATALOG.map((game, index) => ({
       id: `game-${index}`,
-      iconUrl: null,
       ...game,
     }));
     (prisma.game.findMany as jest.Mock).mockResolvedValue(games);
@@ -244,7 +242,6 @@ describe('GamesService', () => {
   it('returns stable position codes and position mode', async () => {
     (prisma.game.findFirst as jest.Mock).mockResolvedValue({
       id: 'lol',
-      iconUrl: null,
       ...catalogByCode.LEAGUE_OF_LEGENDS,
     });
 

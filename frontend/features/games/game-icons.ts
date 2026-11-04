@@ -38,7 +38,6 @@ const GAME_ICONS = [
     name: "Mobile Legends: Bang Bang",
     file: "mobile-legends.svg",
   },
-  { code: "POKEMON_UNITE", name: "Pokémon UNITE", file: "pokemon-unite.svg" },
   { code: "ROCKET_LEAGUE", name: "Rocket League", file: "rocket-league.svg" },
   {
     code: "STREET_FIGHTER_6",

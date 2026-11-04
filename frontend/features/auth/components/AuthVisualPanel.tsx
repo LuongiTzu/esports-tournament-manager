@@ -10,7 +10,7 @@ const tournamentPosters = [
     alt: "League of Legends",
   },
   {
-    src: "/images/tournaments/common/posters/valorant.jpg",
+    src: "/images/tournaments/common/posters/valorant.png",
     alt: "Valorant",
   },
   {

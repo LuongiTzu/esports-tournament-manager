@@ -784,3 +784,74 @@ CREATE INDEX "tournament_staff_user_id_role_idx" ON "tournament_staff"("user_id"
 
 ALTER TABLE "tournament_staff" ADD CONSTRAINT "tournament_staff_tournament_id_fkey" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "tournament_staff" ADD CONSTRAINT "tournament_staff_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Keep the supported game catalog available after a fresh migration deploy.
+-- Existing game IDs are preserved so tournament foreign keys remain stable.
+WITH catalog (
+    code, name, icon_url, genre, positions, position_mode,
+    team_size_mode, default_team_size, min_team_size, max_team_size,
+    allowed_team_sizes, min_selectable_team_size, max_selectable_team_size
+) AS (
+    VALUES
+    ('LEAGUE_OF_LEGENDS', 'League of Legends', '/images/games/icons/league-of-legends.svg', 'MOBA', '["TOP","JUNGLE","MID","BOT","SUPPORT"]', 'FIXED', 'FIXED', 5, 5, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('LIEN_QUAN_MOBILE', 'Liên Quân Mobile', '/images/games/icons/lien-quan-mobile.svg', 'MOBA', '["DARK_SLAYER_LANE","JUNGLE","MID","DRAGON_LANE","ROAM"]', 'FIXED', 'FIXED', 5, 5, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('VALORANT', 'Valorant', '/images/games/icons/valorant.svg', 'FPS', '["DUELIST","INITIATOR","CONTROLLER","SENTINEL"]', 'OPTIONAL', 'FIXED', 5, 5, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('COUNTER_STRIKE_2', 'Counter-Strike 2', '/images/games/icons/counter-strike-2.svg', 'FPS', '[]', 'NONE', 'FIXED', 5, 5, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('DOTA_2', 'Dota 2', '/images/games/icons/dota-2.svg', 'MOBA', '["POSITION_1","POSITION_2","POSITION_3","POSITION_4","POSITION_5"]', 'FIXED', 'FIXED', 5, 5, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('ROCKET_LEAGUE', 'Rocket League', '/images/games/icons/rocket-league.svg', 'SPORTS', '[]', 'NONE', 'FIXED', 3, 3, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('TEKKEN_8', 'Tekken 8', '/images/games/icons/tekken-8.svg', 'FIGHTING', '[]', 'NONE', 'FIXED', 1, 1, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('STREET_FIGHTER_6', 'Street Fighter 6', '/images/games/icons/street-fighter-6.svg', 'FIGHTING', '[]', 'NONE', 'FIXED', 1, 1, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('MLBB', 'Mobile Legends: Bang Bang', '/images/games/icons/mobile-legends.svg', 'MOBA', '["EXP_LANE","JUNGLE","MID_LANE","GOLD_LANE","ROAM"]', 'FIXED', 'FIXED', 5, 5, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('HONOR_OF_KINGS', 'Honor of Kings', '/images/games/icons/honor-of-kings.svg', 'MOBA', '["CLASH_LANE","JUNGLE","MID_LANE","FARM_LANE","ROAM"]', 'FIXED', 'FIXED', 5, 5, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('WILD_RIFT', 'League of Legends: Wild Rift', '/images/games/icons/wild-rift.svg', 'MOBA', '["SOLO_LANE","JUNGLE","MID_LANE","DUO_LANE","SUPPORT"]', 'FIXED', 'FIXED', 5, 5, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('FC_ONLINE', 'FC Online', '/images/games/icons/fc-online.ico', 'SPORTS', '[]', 'NONE', 'PRESET', 3, 1, 10, ARRAY[1,3]::INTEGER[], NULL, NULL),
+    ('CROSSFIRE_PC', 'CrossFire', '/images/games/icons/crossfire.svg', 'FPS', '["ORDER","ATTACKER","SNIPER","TACTICAL_BACKUP"]', 'OPTIONAL', 'FIXED', 5, 5, 10, ARRAY[]::INTEGER[], NULL, NULL),
+    ('CUSTOM', 'Custom Game', NULL, 'OTHER', '[]', 'NONE', 'FLEXIBLE', 1, 1, 30, ARRAY[]::INTEGER[], 1, 20)
+)
+INSERT INTO "games" (
+    "id", "code", "name", "icon_url", "genre", "positions", "position_mode",
+    "team_size_mode", "default_team_size", "min_team_size", "max_team_size",
+    "allowed_team_sizes", "min_selectable_team_size", "max_selectable_team_size"
+)
+SELECT
+    'catalog-' || lower(code), code, name, icon_url,
+    genre::"GameGenre", positions::JSONB, position_mode::"GamePositionMode",
+    team_size_mode::"TeamSizeMode", default_team_size, min_team_size, max_team_size,
+    allowed_team_sizes, min_selectable_team_size, max_selectable_team_size
+FROM catalog
+WHERE TRUE
+ON CONFLICT ("code") DO UPDATE SET
+    "name" = EXCLUDED."name",
+    "icon_url" = EXCLUDED."icon_url",
+    "genre" = EXCLUDED."genre",
+    "positions" = EXCLUDED."positions",
+    "position_mode" = EXCLUDED."position_mode",
+    "team_size_mode" = EXCLUDED."team_size_mode",
+    "default_team_size" = EXCLUDED."default_team_size",
+    "min_team_size" = EXCLUDED."min_team_size",
+    "max_team_size" = EXCLUDED."max_team_size",
+    "allowed_team_sizes" = EXCLUDED."allowed_team_sizes",
+    "min_selectable_team_size" = EXCLUDED."min_selectable_team_size",
+    "max_selectable_team_size" = EXCLUDED."max_selectable_team_size";
+
+-- Preserve older Pokémon UNITE tournaments as custom-game history before removal.
+UPDATE "tournaments" AS tournament
+SET "game_id" = custom_game."id",
+    "custom_game_name" = COALESCE(NULLIF(BTRIM(tournament."custom_game_name"), ''), retired_game."name")
+FROM "games" AS retired_game
+CROSS JOIN "games" AS custom_game
+WHERE tournament."game_id" = retired_game."id"
+  AND retired_game."code" = 'POKEMON_UNITE'
+  AND custom_game."code" = 'CUSTOM';
+
+DELETE FROM "games" WHERE "code" = 'POKEMON_UNITE';
+
+-- Point tournaments using the bundled CrossFire poster at its sharper WebP version.
+UPDATE "tournaments"
+SET "banner_url" = '/images/tournaments/common/posters/crossfire.webp'
+WHERE "banner_url" = '/images/tournaments/common/posters/crossfire.jpg';
+
+-- Keep existing Valorant tournament banners on the sharper bundled poster.
+UPDATE "tournaments"
+SET "banner_url" = '/images/tournaments/common/posters/valorant.png'
+WHERE "banner_url" = '/images/tournaments/common/posters/valorant.jpg';

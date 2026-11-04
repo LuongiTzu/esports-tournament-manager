@@ -116,13 +116,6 @@ describe('canonical game registration matrix', () => {
     ).toEqual([]);
   });
 
-  it('keeps Pokemon UNITE free of player positions', () => {
-    const entry = game('POKEMON_UNITE');
-    expect(entry.positions).toEqual([]);
-    expect(entry.positionMode).toBe(GamePositionMode.NONE);
-    expectValid(entry);
-  });
-
   it.each([
     [1, 1],
     [3, 4],
