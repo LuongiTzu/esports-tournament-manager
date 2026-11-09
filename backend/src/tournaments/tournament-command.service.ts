@@ -22,7 +22,12 @@ import { RoundSettingsService } from '../brackets/round-settings.service';
 import { ApplicationErrorCode } from '../common/errors/application-error-code';
 import { ContentFilterService } from '../common/services/content-filter.service';
 import { GAME_CATALOG_CODES } from '../games/game-catalog';
+import {
+  gameAllowedTeamSizes,
+  withGameCollections,
+} from '../games/game-collections';
 import { PrismaService } from '../prisma/prisma.service';
+import { retrySerializableTransaction } from '../prisma/transaction-retry';
 import {
   CreateRoundDto,
   CreateTournamentDto,
@@ -44,6 +49,7 @@ import {
   tournamentStartReasons,
 } from './domain/tournament-management.policy';
 import { TOURNAMENT_GAME_SELECT } from './tournament-prisma.select';
+import { allowedGenderValues, withAllowedGenders } from './tournament-genders';
 import { withTournamentGameDisplayName } from './domain/tournament-game-display';
 import {
   NOTIFICATION_PUBLISHER,
@@ -58,6 +64,9 @@ const DELETABLE_TOURNAMENT_STATUSES: TournamentStatus[] = [
   TournamentStatus.CANCELLED,
 ];
 const CUSTOM_GAME_CODE = 'CUSTOM';
+type GameSizeRecord = Omit<TournamentGameSizeRules, 'allowedTeamSizes'> & {
+  allowedTeamSizes: Array<{ size: number }>;
+};
 
 @Injectable()
 export class TournamentCommandService {
@@ -83,6 +92,7 @@ export class TournamentCommandService {
     // 1. Kiểm tra game tồn tại
     const game = await this.prisma.game.findFirst({
       where: { id: dto.gameId, code: { in: GAME_CATALOG_CODES } },
+      include: { allowedTeamSizes: true },
     });
     if (!game) {
       throw new BadRequestException('Game không tồn tại');
@@ -150,7 +160,15 @@ export class TournamentCommandService {
           maxTeamSize,
           minAge: dto.minAge,
           maxAge: dto.maxAge,
-          allowedGenders: dto.allowedGenders ?? Prisma.JsonNull,
+          genderRestrictionEnabled: Array.isArray(dto.allowedGenders),
+          allowedGenders: Array.isArray(dto.allowedGenders)
+            ? {
+                create: dto.allowedGenders.map((gender, index) => ({
+                  gender,
+                  orderIndex: index + 1,
+                })),
+              }
+            : undefined,
           registrationStartDate: toDate(dto.registrationStartDate),
           registrationDeadline: toDate(dto.registrationDeadline),
           startDate: toDate(dto.startDate),
@@ -175,6 +193,7 @@ export class TournamentCommandService {
       return tx.tournament.findUnique({
         where: { id: tournament.id },
         include: {
+          allowedGenders: true,
           game: { select: TOURNAMENT_GAME_SELECT },
           rounds: { orderBy: { orderIndex: 'asc' } },
           _count: { select: { teams: true } },
@@ -183,7 +202,8 @@ export class TournamentCommandService {
     });
     return created && Array.isArray(created.rounds)
       ? withTournamentGameDisplayName({
-          ...created,
+          ...withAllowedGenders(created),
+          game: withGameCollections(created.game),
           rounds: created.rounds.map((round) => ({
             ...round,
             settings: this.roundSettingsService.getEffectiveSettings(
@@ -203,6 +223,7 @@ export class TournamentCommandService {
       const current = await tx.tournament.findUnique({
         where: { id: tournamentId },
         include: {
+          allowedGenders: true,
           game: { select: TOURNAMENT_GAME_SELECT },
           _count: { select: { teams: true } },
           rounds: {
@@ -230,7 +251,12 @@ export class TournamentCommandService {
               'minAge' | 'maxAge' | 'allowedGenders' | 'requireMemberFullInfo';
             return (
               dto[field] !== undefined &&
-              JSON.stringify(dto[field]) !== JSON.stringify(current[field])
+              JSON.stringify(dto[field]) !==
+                JSON.stringify(
+                  field === 'allowedGenders'
+                    ? allowedGenderValues(current)
+                    : current[field],
+                )
             );
           },
         );
@@ -405,7 +431,20 @@ export class TournamentCommandService {
               : undefined,
           minAge: dto.minAge,
           maxAge: dto.maxAge,
-          allowedGenders: dto.allowedGenders,
+          genderRestrictionEnabled:
+            dto.allowedGenders !== undefined
+              ? Array.isArray(dto.allowedGenders)
+              : undefined,
+          allowedGenders:
+            dto.allowedGenders !== undefined
+              ? {
+                  deleteMany: {},
+                  create: (dto.allowedGenders ?? []).map((gender, index) => ({
+                    gender,
+                    orderIndex: index + 1,
+                  })),
+                }
+              : undefined,
           registrationStartDate: toDate(dto.registrationStartDate),
           registrationDeadline: toDate(dto.registrationDeadline),
           startDate: toDate(dto.startDate),
@@ -419,6 +458,7 @@ export class TournamentCommandService {
           gameId: dto.gameId,
         },
         include: {
+          allowedGenders: true,
           game: { select: TOURNAMENT_GAME_SELECT },
           rounds: { orderBy: { orderIndex: 'asc' } },
         },
@@ -448,7 +488,8 @@ export class TournamentCommandService {
     }
 
     return withTournamentGameDisplayName({
-      ...updated,
+      ...withAllowedGenders(updated),
+      game: withGameCollections(updated.game),
       rounds: updated.rounds.map((round) => ({
         ...round,
         settings: this.roundSettingsService.getEffectiveSettings(
@@ -460,62 +501,59 @@ export class TournamentCommandService {
   }
 
   async remove(tournamentId: string) {
-    return this.prisma.$transaction(
-      async (tx) => {
-        const tournament = await tx.tournament.findUnique({
-          where: { id: tournamentId },
-          select: { id: true, status: true, startDate: true },
-        });
-        if (!tournament) {
-          throw new NotFoundException('Không tìm thấy giải đấu');
-        }
+    return retrySerializableTransaction(this.prisma, async (tx) => {
+      const tournament = await tx.tournament.findUnique({
+        where: { id: tournamentId },
+        select: { id: true, status: true, startDate: true },
+      });
+      if (!tournament) {
+        throw new NotFoundException('Không tìm thấy giải đấu');
+      }
 
-        if (!DELETABLE_TOURNAMENT_STATUSES.includes(tournament.status)) {
-          throw new BadRequestException(
-            'Không thể xóa giải đấu đang diễn ra hoặc đã kết thúc',
-          );
-        }
-        if (tournament.startDate && tournament.startDate <= new Date()) {
-          throw new BadRequestException(
-            'Không thể xóa giải đấu đã đến thời điểm bắt đầu',
-          );
-        }
+      if (!DELETABLE_TOURNAMENT_STATUSES.includes(tournament.status)) {
+        throw new BadRequestException(
+          'Không thể xóa giải đấu đang diễn ra hoặc đã kết thúc',
+        );
+      }
+      if (tournament.startDate && tournament.startDate <= new Date()) {
+        throw new BadRequestException(
+          'Không thể xóa giải đấu đã đến thời điểm bắt đầu',
+        );
+      }
 
-        const [startedRounds, startedMatches] = await Promise.all([
-          tx.round.count({
-            where: {
-              tournamentId,
-              status: { in: [RoundStatus.ONGOING, RoundStatus.COMPLETED] },
-            },
-          }),
-          tx.match.count({
-            where: {
-              round: { tournamentId },
-              OR: [
-                {
-                  status: {
-                    in: [MatchStatus.ONGOING, MatchStatus.COMPLETED],
-                  },
+      const [startedRounds, startedMatches] = await Promise.all([
+        tx.round.count({
+          where: {
+            tournamentId,
+            status: { in: [RoundStatus.ONGOING, RoundStatus.COMPLETED] },
+          },
+        }),
+        tx.match.count({
+          where: {
+            round: { tournamentId },
+            OR: [
+              {
+                status: {
+                  in: [MatchStatus.ONGOING, MatchStatus.COMPLETED],
                 },
-                { playedAt: { not: null } },
-                { scoreA: { gt: 0 } },
-                { scoreB: { gt: 0 } },
-                { scores: { some: {} } },
-              ],
-            },
-          }),
-        ]);
-        if (startedRounds > 0 || startedMatches > 0) {
-          throw new BadRequestException(
-            'Không thể xóa giải đấu đã có vòng hoặc trận đấu bắt đầu',
-          );
-        }
+              },
+              { playedAt: { not: null } },
+              { scoreA: { gt: 0 } },
+              { scoreB: { gt: 0 } },
+              { scores: { some: {} } },
+            ],
+          },
+        }),
+      ]);
+      if (startedRounds > 0 || startedMatches > 0) {
+        throw new BadRequestException(
+          'Không thể xóa giải đấu đã có vòng hoặc trận đấu bắt đầu',
+        );
+      }
 
-        await tx.tournament.delete({ where: { id: tournamentId } });
-        return { message: 'Đã xóa giải đấu thành công' };
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+      await tx.tournament.delete({ where: { id: tournamentId } });
+      return { message: 'Đã xóa giải đấu thành công' };
+    });
   }
 
   async addRound(tournamentId: string, dto: CreateRoundDto) {
@@ -617,22 +655,31 @@ export class TournamentCommandService {
   }
 
   private resolveTeamSize(
-    game: TournamentGameSizeRules,
+    game: GameSizeRecord,
     requestedTeamSize?: number,
   ): number {
     return this.mapTeamSizeRuleError(() =>
-      this.teamSizePolicy.resolveTeamSize(game, requestedTeamSize),
+      this.teamSizePolicy.resolveTeamSize(
+        {
+          ...game,
+          allowedTeamSizes: gameAllowedTeamSizes(game.allowedTeamSizes),
+        },
+        requestedTeamSize,
+      ),
     );
   }
 
   private resolveMaxTeamSize(
-    game: TournamentGameSizeRules,
+    game: GameSizeRecord,
     teamSize: number,
     requestedMaxTeamSize?: number,
   ): number {
     return this.mapTeamSizeRuleError(() =>
       this.teamSizePolicy.resolveMaxTeamSize(
-        game,
+        {
+          ...game,
+          allowedTeamSizes: gameAllowedTeamSizes(game.allowedTeamSizes),
+        },
         teamSize,
         requestedMaxTeamSize,
       ),
@@ -640,12 +687,19 @@ export class TournamentCommandService {
   }
 
   private validateMaxTeamSize(
-    game: TournamentGameSizeRules,
+    game: GameSizeRecord,
     teamSize: number,
     maxTeamSize: number,
   ): number {
     return this.mapTeamSizeRuleError(() =>
-      this.teamSizePolicy.validateMaxTeamSize(game, teamSize, maxTeamSize),
+      this.teamSizePolicy.validateMaxTeamSize(
+        {
+          ...game,
+          allowedTeamSizes: gameAllowedTeamSizes(game.allowedTeamSizes),
+        },
+        teamSize,
+        maxTeamSize,
+      ),
     );
   }
 

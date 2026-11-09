@@ -40,6 +40,7 @@ import { RegistrationMemberInput } from './types/registration-member-input';
 import { TeamQueryService } from './team-query.service';
 import { TeamReviewService } from './team-review.service';
 import { resolveTournamentGameDisplayName } from '../tournaments/domain/tournament-game-display';
+import { allowedGenderValues } from '../tournaments/tournament-genders';
 import { TeamReviewPolicy } from './domain/team-review.policy';
 import {
   ACTIVITY_EMAIL_PUBLISHER,
@@ -468,7 +469,7 @@ export class TeamsService {
         maxSubstitutes: tournament.maxTeamSize - tournament.minTeamSize,
         minAge: tournament.minAge,
         maxAge: tournament.maxAge,
-        allowedGenders: tournament.allowedGenders,
+        allowedGenders: allowedGenderValues(tournament),
         registrationStartDate: tournament.registrationStartDate,
         registrationDeadline: tournament.registrationDeadline,
         requireMemberFullInfo: tournament.requireMemberFullInfo,
@@ -478,7 +479,7 @@ export class TeamsService {
         code: game.code,
         name: game.name,
         genre: game.genre,
-        positions: game.positions ?? [],
+        positions: game.positions.map(({ code }) => code),
         positionMode: game.positionMode,
       },
       prefill: {
@@ -654,13 +655,14 @@ export class TeamsService {
     const tournament = await client.tournament.findUnique({
       where: { slug },
       include: {
+        allowedGenders: true,
         game: {
           select: {
             id: true,
             code: true,
             name: true,
             genre: true,
-            positions: true,
+            positions: { orderBy: { orderIndex: 'asc' } },
             positionMode: true,
           },
         },
@@ -683,8 +685,12 @@ export class TeamsService {
     const tournament = await this.prisma.tournament.findUniqueOrThrow({
       where: { id: tournamentId },
       include: {
+        allowedGenders: true,
         game: {
-          select: { positions: true, positionMode: true },
+          select: {
+            positions: { orderBy: { orderIndex: 'asc' } },
+            positionMode: true,
+          },
         },
       },
     });

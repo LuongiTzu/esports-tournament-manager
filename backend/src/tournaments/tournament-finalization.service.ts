@@ -33,6 +33,7 @@ import {
   TournamentEventPublisher,
 } from '../common/ports/tournament-event-publisher';
 import { PrismaService } from '../prisma/prisma.service';
+import { retrySerializableTransaction } from '../prisma/transaction-retry';
 import { resolveTournamentFinalizationMode } from './domain/tournament-finalization.policy';
 import {
   COMPETITION_AUDIT_WRITER,
@@ -71,7 +72,8 @@ export class TournamentFinalizationService {
     selectedChampionTeamId?: string,
     actorId?: string,
   ) {
-    const result = await this.prisma.$transaction(
+    const result = await retrySerializableTransaction(
+      this.prisma,
       async (tx) => {
         await tx.$queryRaw(
           Prisma.sql`SELECT "id" FROM "tournaments" WHERE "id" = ${tournamentId} FOR UPDATE`,
@@ -251,7 +253,6 @@ export class TournamentFinalizationService {
           status: TournamentStatus.COMPLETED,
         };
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
 
     this.events.publish({

@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import {
   BannedKeywordCategory,
   Game,
+  GamePosition,
   GamePositionMode,
   Gender,
   MemberRole,
@@ -92,7 +93,11 @@ async function main(): Promise<void> {
     await ensureBannedKeywords(prisma);
 
     const games = new Map(
-      (await prisma.game.findMany()).map((game) => [game.code, game]),
+      (await prisma.game.findMany({
+        include: { positions: { orderBy: { orderIndex: 'asc' } } },
+      })).map(
+        (game) => [game.code, game],
+      ),
     );
     const roundsByTournament = new Map<
       string,
@@ -344,7 +349,7 @@ async function ensureBannedKeywords(prisma: PrismaService): Promise<void> {
 async function seedTournament(
   prisma: PrismaService,
   spec: SeedTournamentSpec,
-  game: Game,
+  game: Game & { positions: GamePosition[] },
   tournamentIndex: number,
 ) {
   const organizer = ORGANIZERS[spec.organizerIndex];
@@ -374,9 +379,10 @@ async function seedTournament(
       maxTeamSize: spec.maxTeamSize,
       minAge: 16,
       maxAge: 35,
+      genderRestrictionEnabled: tournamentIndex === 10,
       allowedGenders:
         tournamentIndex === 10
-          ? ([Gender.FEMALE] as Prisma.InputJsonValue)
+          ? { create: [{ gender: Gender.FEMALE, orderIndex: 1 }] }
           : undefined,
       registrationStartDate: new Date(spec.registrationStartDate),
       registrationDeadline: new Date(spec.registrationDeadline),
@@ -461,7 +467,7 @@ async function seedTeam(
   prisma: PrismaService,
   tournamentId: string,
   tournament: SeedTournamentSpec,
-  game: Game,
+  game: Game & { positions: GamePosition[] },
   tournamentIndex: number,
   teamIndex: number,
   activeTeamSize: number,
@@ -530,16 +536,12 @@ function buildMembers(input: {
   teamName: string;
   playerCount: number;
   activeTeamSize: number;
-  game: Game;
+  game: Game & { positions: GamePosition[] };
   captain: (typeof PARTICIPANTS)[number];
   includeCoach: boolean;
   includeManager: boolean;
 }): Prisma.TeamMemberCreateWithoutTeamInput[] {
-  const positions = Array.isArray(input.game.positions)
-    ? input.game.positions.filter(
-        (position): position is string => typeof position === 'string',
-      )
-    : [];
+  const positions = input.game.positions.map(({ code }) => code);
   const members: Prisma.TeamMemberCreateWithoutTeamInput[] = Array.from(
     { length: input.playerCount },
     (_, memberIndex) => ({

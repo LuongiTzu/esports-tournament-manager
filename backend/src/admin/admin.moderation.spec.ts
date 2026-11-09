@@ -386,11 +386,13 @@ describe('AdminService moderation', () => {
     expect(prisma.tournament.update).toHaveBeenLastCalledWith({
       where: { id: 't-1' },
       data: { isVerified: true },
+      include: { allowedGenders: true },
     });
     await service.verifyTournament('t-1', false);
     expect(prisma.tournament.update).toHaveBeenLastCalledWith({
       where: { id: 't-1' },
       data: { isVerified: false },
+      include: { allowedGenders: true },
     });
   });
 
@@ -412,6 +414,7 @@ describe('AdminService moderation', () => {
     expect(prisma.tournament.update).toHaveBeenCalledWith({
       where: { id: 't-1' },
       data: { isOfficial: true, isVerified: true },
+      include: { allowedGenders: true },
     });
 
     prisma.tournament.findUnique.mockResolvedValue({

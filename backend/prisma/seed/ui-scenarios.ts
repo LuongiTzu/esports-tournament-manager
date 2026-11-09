@@ -77,16 +77,15 @@ const TEAM_B_ROSTER: RosterMember[] = [
 export async function seedUiScenarios(prisma: PrismaService): Promise<void> {
   const game = await prisma.game.findUnique({
     where: { code: 'VALORANT' },
-    select: { id: true, positions: true },
+    select: {
+      id: true,
+      positions: { orderBy: { orderIndex: 'asc' }, select: { code: true } },
+    },
   });
   if (!game)
     throw new Error('VALORANT must exist before UI scenarios are seeded');
 
-  const positions = Array.isArray(game.positions)
-    ? game.positions.filter(
-        (position): position is string => typeof position === 'string',
-      )
-    : [];
+  const positions = game.positions.map(({ code }) => code);
   if (positions.length === 0) {
     throw new Error('VALORANT must expose roster positions');
   }
@@ -295,7 +294,6 @@ export async function seedUiScenarios(prisma: PrismaService): Promise<void> {
         respondedById: UI_SCENARIO_ACCOUNTS.captainA.id,
         decision: MatchResultDecision.DISPUTED,
         note: 'Tỷ số map thứ ba chưa khớp với biên bản thi đấu của đội.',
-        evidenceUrls: ['https://example.com/bang-chung-tran-dau'],
         respondedAt: at(-80 * MINUTE),
       },
       {
@@ -305,7 +303,6 @@ export async function seedUiScenarios(prisma: PrismaService): Promise<void> {
         respondedById: UI_SCENARIO_ACCOUNTS.captainA.id,
         decision: MatchResultDecision.DISPUTED,
         note: 'Đội đề nghị trọng tài kiểm tra lại tình huống cuối của map hai.',
-        evidenceUrls: ['https://example.com/video-map-2'],
         respondedAt: at(-140 * MINUTE),
       },
       confirmedResponse(
@@ -320,6 +317,21 @@ export async function seedUiScenarios(prisma: PrismaService): Promise<void> {
         UI_SCENARIO_ACCOUNTS.captainB.id,
         at(-195 * MINUTE),
       ),
+    ],
+  });
+
+  await prisma.matchResultEvidence.createMany({
+    data: [
+      {
+        responseId: 'seed-ui-response-disputed-a',
+        orderIndex: 1,
+        url: 'https://example.com/bang-chung-tran-dau',
+      },
+      {
+        responseId: 'seed-ui-response-resolved-a',
+        orderIndex: 1,
+        url: 'https://example.com/video-map-2',
+      },
     ],
   });
 }

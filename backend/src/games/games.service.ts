@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { GAME_CATALOG_CODES } from './game-catalog';
+import { withGameCollections } from './game-collections';
 
 /** Field công khai của Game — dùng chung cho mọi query */
 const GAME_SELECT = {
@@ -9,13 +10,13 @@ const GAME_SELECT = {
   name: true,
   iconUrl: true,
   genre: true,
-  positions: true,
+  positions: { orderBy: { orderIndex: 'asc' }, select: { code: true } },
   positionMode: true,
   teamSizeMode: true,
   defaultTeamSize: true,
   minTeamSize: true,
   maxTeamSize: true,
-  allowedTeamSizes: true,
+  allowedTeamSizes: { orderBy: { size: 'asc' }, select: { size: true } },
   minSelectableTeamSize: true,
   maxSelectableTeamSize: true,
 } as const;
@@ -26,11 +27,12 @@ export class GamesService {
 
   /** Lấy danh sách game hỗ trợ (sắp theo tên) */
   async findAll() {
-    return this.prisma.game.findMany({
+    const games = await this.prisma.game.findMany({
       where: { code: { in: GAME_CATALOG_CODES } },
       orderBy: { name: 'asc' },
       select: GAME_SELECT,
     });
+    return games.map(withGameCollections);
   }
 
   /** Lấy chi tiết 1 game */
@@ -44,7 +46,7 @@ export class GamesService {
       throw new NotFoundException('Không tìm thấy game');
     }
 
-    return game;
+    return withGameCollections(game);
   }
 
   /** Danh sách vị trí thi đấu của 1 game (FE render dropdown động) */
@@ -55,7 +57,7 @@ export class GamesService {
       gameId: game.id,
       name: game.name,
       genre: game.genre,
-      positions: (game.positions as string[] | null) ?? [],
+      positions: game.positions,
       positionMode: game.positionMode,
     };
   }

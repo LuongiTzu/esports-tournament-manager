@@ -308,23 +308,43 @@ model Game {
   name         String           @unique /// VD: "League of Legends", "Valorant", "Tekken 8"
   iconUrl      String?          @map("icon_url")
   genre        GameGenre        @default(OTHER) /// Thể loại — quyết định danh sách vị trí thi đấu
-  positions    Json? /// Mã vị trí ổn định, VD: ["TOP","JUNGLE","MID","BOT","SUPPORT"]
   positionMode GamePositionMode @default(NONE) @map("position_mode")
 
   teamSizeMode          TeamSizeMode @default(FIXED) @map("team_size_mode")
   defaultTeamSize       Int          @map("default_team_size") /// Số người thi đấu chính mặc định mỗi bên
   minTeamSize           Int          @map("min_team_size") /// Giới hạn đội hình tối thiểu hiện có của game
   maxTeamSize           Int          @map("max_team_size") /// Tổng số người tối đa kể cả dự bị
-  allowedTeamSizes      Int[]        @default([]) @map("allowed_team_sizes") /// Các cỡ đội hình chính được chọn khi PRESET
   minSelectableTeamSize Int?         @map("min_selectable_team_size") /// Cỡ đội hình chính nhỏ nhất khi FLEXIBLE
   maxSelectableTeamSize Int?         @map("max_selectable_team_size") /// Cỡ đội hình chính lớn nhất khi FLEXIBLE
 
   createdAt DateTime @default(now()) @map("created_at")
 
   // Relations
+  positions        GamePosition[]
+  allowedTeamSizes GameAllowedTeamSize[]
   tournaments Tournament[]
 
   @@map("games")
+}
+
+model GamePosition {
+  gameId     String @map("game_id")
+  game       Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  code       String
+  orderIndex Int    @map("order_index")
+
+  @@id([gameId, code])
+  @@unique([gameId, orderIndex])
+  @@map("game_positions")
+}
+
+model GameAllowedTeamSize {
+  gameId String @map("game_id")
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  size   Int
+
+  @@id([gameId, size])
+  @@map("game_allowed_team_sizes")
 }
 
 /// Giải đấu
@@ -355,7 +375,7 @@ model Tournament {
 
   minAge         Int?  @map("min_age") /// Giới hạn tuổi tối thiểu của thành viên
   maxAge         Int?  @map("max_age") /// Giới hạn tuổi tối đa của thành viên
-  allowedGenders Json? @map("allowed_genders") /// Giới hạn giới tính, VD ["FEMALE"]; null = không giới hạn
+  genderRestrictionEnabled Boolean @default(false) @map("gender_restriction_enabled")
 
   registrationStartDate DateTime? @map("registration_start_date") /// Thời điểm mở đăng ký
   registrationDeadline  DateTime? @map("registration_deadline") /// Hạn chót đăng ký
@@ -378,6 +398,7 @@ model Tournament {
   organizer   User   @relation("OrganizerTournaments", fields: [organizerId], references: [id])
 
   rounds               Round[]
+  allowedGenders       TournamentAllowedGender[]
   teams                Team[]
   comments             Comment[]
   reports              Report[]
@@ -391,7 +412,19 @@ model Tournament {
 
   @@index([gameId, visibility, moderationStatus])
   @@index([status, startDate])
+  @@index([organizerId])
   @@map("tournaments")
+}
+
+model TournamentAllowedGender {
+  tournamentId String     @map("tournament_id")
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  gender       Gender
+  orderIndex   Int        @map("order_index")
+
+  @@id([tournamentId, gender])
+  @@unique([tournamentId, orderIndex])
+  @@map("tournament_allowed_genders")
 }
 
 model TournamentStaff {
@@ -467,9 +500,10 @@ model Round {
   participants  RoundTeam[] @relation("RoundParticipants")
   advancedTeams RoundTeam[] @relation("RoundAdvancements")
 
-  @@index([tournamentId, orderIndex])
+  @@unique([tournamentId, orderIndex])
   @@map("rounds")
 }
+
 
 /// Durable qualification from one round into the eligible participant set of the next round.
 model RoundTeam {
@@ -508,7 +542,7 @@ model Group {
   teamAssignments GroupTeam[]
   matches         Match[]
 
-  @@index([roundId])
+  @@unique([roundId, orderIndex])
   @@map("groups")
 }
 
@@ -602,6 +636,7 @@ model TeamMember {
 
   @@unique([teamId, ign])
   @@index([teamId])
+  @@index([userId])
   @@map("team_members")
 }
 
@@ -695,6 +730,7 @@ model Match {
   @@index([roundId, groupId])
   @@index([activationCondition, isActive])
   @@index([teamAId, teamBId])
+  @@index([teamBId])
   @@map("matches")
 }
 
@@ -743,7 +779,6 @@ model MatchResultResponse {
   id           String              @id @default(cuid())
   decision     MatchResultDecision
   note         String?             @db.VarChar(2000)
-  evidenceUrls String[]            @default([]) @map("evidence_urls")
   respondedAt  DateTime            @default(now()) @map("responded_at")
 
   reviewMatchId String            @map("review_match_id")
@@ -755,10 +790,22 @@ model MatchResultResponse {
   respondedById String @map("responded_by_id")
   respondedBy   User   @relation("MatchResultResponseActor", fields: [respondedById], references: [id], onDelete: Restrict)
 
+  evidence MatchResultEvidence[]
+
   @@unique([reviewMatchId, teamId])
   @@index([teamId, respondedAt])
   @@index([respondedById])
   @@map("match_result_responses")
+}
+
+model MatchResultEvidence {
+  responseId String              @map("response_id")
+  response   MatchResultResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  orderIndex Int                 @map("order_index")
+  url        String
+
+  @@id([responseId, orderIndex])
+  @@map("match_result_evidence")
 }
 
 /// Tỉ số chi tiết từng ván/map (hỗ trợ BO3, BO5)
@@ -774,7 +821,7 @@ model MatchScore {
   matchId String @map("match_id")
   match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
 
-  @@index([matchId])
+  @@unique([matchId, setNumber])
   @@map("match_scores")
 }
 

@@ -11,6 +11,7 @@ import {
   NotificationPublisher,
 } from '../common/ports/notification-publisher';
 import { PrismaService } from '../prisma/prisma.service';
+import { retrySerializableTransaction } from '../prisma/transaction-retry';
 import { CreateReportDto } from './dto/create-report.dto';
 
 @Injectable()
@@ -27,7 +28,8 @@ export class ReportService {
       1,
       this.config.get<number>('REPORT_PENDING_THRESHOLD', 3),
     );
-    const result = await this.prisma.$transaction(
+    const result = await retrySerializableTransaction(
+      this.prisma,
       async (tx) => {
         const tournament = await tx.tournament.findUnique({
           where: { slug },
@@ -100,7 +102,6 @@ export class ReportService {
         }
         return { report, pendingCount, adminNotifications };
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
     result.adminNotifications.forEach((notification) =>
       this.notifications.emitCreated(notification),

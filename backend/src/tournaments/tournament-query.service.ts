@@ -26,6 +26,8 @@ import {
   TOURNAMENT_GAME_SELECT,
 } from './tournament-prisma.select';
 import { withTournamentGameDisplayName } from './domain/tournament-game-display';
+import { withAllowedGenders } from './tournament-genders';
+import { withGameCollections } from '../games/game-collections';
 import { resolveTournamentFinalizationMode } from './domain/tournament-finalization.policy';
 import { TournamentListSort } from './dto/tournament-list-query.dto';
 import {
@@ -106,6 +108,7 @@ export class TournamentQueryService {
         take: limit,
         orderBy: publicTournamentOrderBy(query.sort),
         include: {
+          allowedGenders: true,
           game: { select: TOURNAMENT_GAME_SELECT },
           favorites: viewerFavoriteSelection(userId),
           _count: { select: { teams: true, favorites: true } },
@@ -116,7 +119,12 @@ export class TournamentQueryService {
 
     return {
       data: data.map((tournament) =>
-        withTournamentFavoriteState(withTournamentGameDisplayName(tournament)),
+        withTournamentFavoriteState(
+          withTournamentGameDisplayName({
+            ...withAllowedGenders(tournament),
+            game: withGameCollections(tournament.game),
+          }),
+        ),
       ),
       pagination: {
         page,
@@ -131,6 +139,7 @@ export class TournamentQueryService {
     const tournament = await this.prisma.tournament.findUnique({
       where: { slug },
       include: {
+        allowedGenders: true,
         game: {
           select: TOURNAMENT_GAME_SELECT,
         },
@@ -208,7 +217,8 @@ export class TournamentQueryService {
 
     return withTournamentFavoriteState(
       withTournamentGameDisplayName({
-        ...visibleTournament,
+        ...withAllowedGenders(visibleTournament),
+        game: withGameCollections(visibleTournament.game),
         viewerStaffRole,
         management: {
           gameConfiguration: managementAction(
@@ -252,13 +262,16 @@ export class TournamentQueryService {
         },
         orderBy: { createdAt: 'desc' },
         include: {
+          allowedGenders: true,
           game: { select: { id: true, code: true, name: true, iconUrl: true } },
           favorites: viewerFavoriteSelection(userId),
           _count: { select: { teams: true, favorites: true } },
         },
       });
       return tournaments.map((tournament) =>
-        withTournamentFavoriteState(withTournamentGameDisplayName(tournament)),
+        withTournamentFavoriteState(
+          withTournamentGameDisplayName(withAllowedGenders(tournament)),
+        ),
       );
     }
 
@@ -280,13 +293,16 @@ export class TournamentQueryService {
       },
       orderBy: { createdAt: 'desc' },
       include: {
+        allowedGenders: true,
         game: { select: { id: true, code: true, name: true, iconUrl: true } },
         favorites: viewerFavoriteSelection(userId),
         _count: { select: { teams: true, favorites: true } },
       },
     });
     return tournaments.map((tournament) =>
-      withTournamentFavoriteState(withTournamentGameDisplayName(tournament)),
+      withTournamentFavoriteState(
+        withTournamentGameDisplayName(withAllowedGenders(tournament)),
+      ),
     );
   }
 
@@ -297,6 +313,7 @@ export class TournamentQueryService {
       include: {
         tournament: {
           include: {
+            allowedGenders: true,
             game: {
               select: { id: true, code: true, name: true, iconUrl: true },
             },
@@ -341,7 +358,7 @@ export class TournamentQueryService {
       }
       return [
         withTournamentFavoriteState(
-          withTournamentGameDisplayName(visibleTournament),
+          withTournamentGameDisplayName(withAllowedGenders(visibleTournament)),
         ),
       ];
     });

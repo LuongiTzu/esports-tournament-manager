@@ -97,11 +97,22 @@ export async function validateSeed(
       where: { email: { endsWith: `@${SEED_EMAIL_DOMAIN}` } },
       include: { organizedTournaments: true },
     }),
-    prisma.game.findMany({ orderBy: { name: 'asc' } }),
+    prisma.game.findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        positions: { orderBy: { orderIndex: 'asc' } },
+        allowedTeamSizes: true,
+      },
+    }),
     prisma.tournament.findMany({
       where: { slug: { startsWith: SEED_SLUG_PREFIX } },
       include: {
-        game: true,
+        game: {
+          include: {
+            positions: { orderBy: { orderIndex: 'asc' } },
+            allowedTeamSizes: true,
+          },
+        },
         teams: { include: { members: true } },
         rounds: {
           include: {
@@ -184,7 +195,7 @@ export async function validateSeed(
       teamSizeMode: tournament.game.teamSizeMode,
       defaultTeamSize: tournament.game.defaultTeamSize,
       maxTeamSize: tournament.game.maxTeamSize,
-      allowedTeamSizes: tournament.game.allowedTeamSizes,
+      allowedTeamSizes: tournament.game.allowedTeamSizes.map(({ size }) => size),
       minSelectableTeamSize: tournament.game.minSelectableTeamSize,
       maxSelectableTeamSize: tournament.game.maxSelectableTeamSize,
     };
@@ -222,7 +233,7 @@ export async function validateSeed(
           allowedGenders: null,
           requireMemberFullInfo: false,
           startDate: tournament.startDate,
-          positions: asStringArray(tournament.game.positions),
+          positions: tournament.game.positions.map(({ code }) => code),
           positionMode: tournament.game.positionMode,
         },
         team.members.map((member) => ({

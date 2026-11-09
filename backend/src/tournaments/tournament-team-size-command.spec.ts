@@ -20,13 +20,13 @@ interface TestGame {
   name: string;
   iconUrl: null;
   genre: GameGenre;
-  positions: string[];
+  positions: { code: string }[];
   positionMode: GamePositionMode;
   teamSizeMode: TeamSizeMode;
   defaultTeamSize: number;
   minTeamSize: number;
   maxTeamSize: number;
-  allowedTeamSizes: number[];
+  allowedTeamSizes: { size: number }[];
   minSelectableTeamSize: number | null;
   maxSelectableTeamSize: number | null;
 }
@@ -37,7 +37,7 @@ const baseGame: TestGame = {
   name: 'League of Legends',
   iconUrl: null,
   genre: GameGenre.MOBA,
-  positions: ['TOP', 'JUNGLE', 'MID', 'BOT', 'SUPPORT'],
+  positions: ['TOP', 'JUNGLE', 'MID', 'BOT', 'SUPPORT'].map((code) => ({ code })),
   positionMode: GamePositionMode.FIXED,
   teamSizeMode: TeamSizeMode.FIXED,
   defaultTeamSize: 5,
@@ -60,7 +60,7 @@ const presetGame: TestGame = {
   defaultTeamSize: 3,
   minTeamSize: 1,
   maxTeamSize: 4,
-  allowedTeamSizes: [1, 3],
+  allowedTeamSizes: [1, 3].map((size) => ({ size })),
 };
 
 const customGame: TestGame = {

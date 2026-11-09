@@ -1,3 +1,7 @@
+-- Squashed baseline. Keep custom constraints and catalog data from the source migrations.
+BEGIN;
+
+-- Source: 20260821060000_baseline
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
@@ -855,3 +859,218 @@ WHERE "banner_url" = '/images/tournaments/common/posters/crossfire.jpg';
 UPDATE "tournaments"
 SET "banner_url" = '/images/tournaments/common/posters/valorant.png'
 WHERE "banner_url" = '/images/tournaments/common/posters/valorant.jpg';
+
+-- Source: 20261109000000_normalize_match_result_evidence
+CREATE TABLE "match_result_evidence" (
+    "response_id" TEXT NOT NULL,
+    "order_index" INTEGER NOT NULL,
+    "url" TEXT NOT NULL,
+    CONSTRAINT "match_result_evidence_pkey" PRIMARY KEY ("response_id", "order_index")
+);
+
+ALTER TABLE "match_result_evidence"
+    ADD CONSTRAINT "match_result_evidence_response_id_fkey"
+    FOREIGN KEY ("response_id") REFERENCES "match_result_responses"("id")
+    ON DELETE CASCADE ON UPDATE CASCADE;
+
+INSERT INTO "match_result_evidence" ("response_id", "order_index", "url")
+SELECT response."id", evidence.ordinality::integer, evidence.url
+FROM "match_result_responses" AS response
+CROSS JOIN LATERAL unnest(response."evidence_urls")
+    WITH ORDINALITY AS evidence(url, ordinality);
+
+DO $$
+BEGIN
+    IF (SELECT COUNT(*) FROM "match_result_evidence") <>
+       (SELECT COALESCE(SUM(cardinality("evidence_urls")), 0)
+        FROM "match_result_responses") THEN
+        RAISE EXCEPTION 'Evidence URL backfill count mismatch';
+    END IF;
+END $$;
+
+ALTER TABLE "match_result_responses" DROP COLUMN "evidence_urls";
+
+-- Source: 20261109010000_normalize_game_lists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM "games"
+        WHERE "positions" IS NOT NULL
+          AND jsonb_typeof("positions") <> 'array'
+    ) THEN
+        RAISE EXCEPTION 'Game positions must be JSON arrays before normalization';
+    END IF;
+END $$;
+
+CREATE TABLE "game_positions" (
+    "game_id" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "order_index" INTEGER NOT NULL,
+    CONSTRAINT "game_positions_pkey" PRIMARY KEY ("game_id", "code"),
+    CONSTRAINT "game_positions_game_id_order_index_key"
+        UNIQUE ("game_id", "order_index")
+);
+
+ALTER TABLE "game_positions"
+    ADD CONSTRAINT "game_positions_game_id_fkey"
+    FOREIGN KEY ("game_id") REFERENCES "games"("id")
+    ON DELETE CASCADE ON UPDATE CASCADE;
+
+CREATE TABLE "game_allowed_team_sizes" (
+    "game_id" TEXT NOT NULL,
+    "size" INTEGER NOT NULL,
+    CONSTRAINT "game_allowed_team_sizes_pkey" PRIMARY KEY ("game_id", "size"),
+    CONSTRAINT "game_allowed_team_sizes_size_check" CHECK ("size" > 0)
+);
+
+ALTER TABLE "game_allowed_team_sizes"
+    ADD CONSTRAINT "game_allowed_team_sizes_game_id_fkey"
+    FOREIGN KEY ("game_id") REFERENCES "games"("id")
+    ON DELETE CASCADE ON UPDATE CASCADE;
+
+INSERT INTO "game_positions" ("game_id", "code", "order_index")
+SELECT game."id", position.code, position.ordinality::integer
+FROM "games" AS game
+CROSS JOIN LATERAL jsonb_array_elements_text(game."positions")
+    WITH ORDINALITY AS position(code, ordinality);
+
+INSERT INTO "game_allowed_team_sizes" ("game_id", "size")
+SELECT game."id", size.value
+FROM "games" AS game
+CROSS JOIN LATERAL unnest(game."allowed_team_sizes") AS size(value);
+
+DO $$
+BEGIN
+    IF (SELECT COUNT(*) FROM "game_positions") <>
+       (SELECT COALESCE(SUM(jsonb_array_length("positions")), 0)
+        FROM "games") THEN
+        RAISE EXCEPTION 'Game position backfill count mismatch';
+    END IF;
+    IF (SELECT COUNT(*) FROM "game_allowed_team_sizes") <>
+       (SELECT COALESCE(SUM(cardinality("allowed_team_sizes")), 0)
+        FROM "games") THEN
+        RAISE EXCEPTION 'Game allowed team size backfill count mismatch';
+    END IF;
+END $$;
+
+ALTER TABLE "games"
+    DROP COLUMN "positions",
+    DROP COLUMN "allowed_team_sizes";
+
+-- Source: 20261109020000_normalize_tournament_genders
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM "tournaments"
+        WHERE "allowed_genders" IS NOT NULL
+          AND jsonb_typeof("allowed_genders") NOT IN ('array', 'null')
+    ) THEN
+        RAISE EXCEPTION 'Tournament allowed_genders must be a JSON array or null';
+    END IF;
+END $$;
+
+ALTER TABLE "tournaments"
+    ADD COLUMN "gender_restriction_enabled" BOOLEAN NOT NULL DEFAULT false;
+
+UPDATE "tournaments"
+SET "gender_restriction_enabled" =
+    jsonb_typeof("allowed_genders") = 'array'
+WHERE "allowed_genders" IS NOT NULL;
+
+CREATE TABLE "tournament_allowed_genders" (
+    "tournament_id" TEXT NOT NULL,
+    "gender" "Gender" NOT NULL,
+    "order_index" INTEGER NOT NULL,
+    CONSTRAINT "tournament_allowed_genders_pkey"
+        PRIMARY KEY ("tournament_id", "gender"),
+    CONSTRAINT "tournament_allowed_genders_tournament_id_order_index_key"
+        UNIQUE ("tournament_id", "order_index")
+);
+
+ALTER TABLE "tournament_allowed_genders"
+    ADD CONSTRAINT "tournament_allowed_genders_tournament_id_fkey"
+    FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id")
+    ON DELETE CASCADE ON UPDATE CASCADE;
+
+INSERT INTO "tournament_allowed_genders"
+    ("tournament_id", "gender", "order_index")
+SELECT tournament."id", gender.value::"Gender", gender.ordinality::integer
+FROM "tournaments" AS tournament
+CROSS JOIN LATERAL jsonb_array_elements_text(
+    CASE WHEN jsonb_typeof(tournament."allowed_genders") = 'array'
+         THEN tournament."allowed_genders" ELSE '[]'::jsonb END
+) WITH ORDINALITY AS gender(value, ordinality);
+
+DO $$
+BEGIN
+    IF (SELECT COUNT(*) FROM "tournament_allowed_genders") <>
+       (SELECT COALESCE(SUM(jsonb_array_length("allowed_genders")), 0)
+        FROM "tournaments"
+        WHERE jsonb_typeof("allowed_genders") = 'array') THEN
+        RAISE EXCEPTION 'Tournament gender backfill count mismatch';
+    END IF;
+END $$;
+
+ALTER TABLE "tournaments" DROP COLUMN "allowed_genders";
+
+-- Source: 20261109040000_strengthen_constraints_and_indexes
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM "rounds"
+        GROUP BY "tournament_id", "order_index"
+        HAVING COUNT(*) > 1
+    ) THEN
+        RAISE EXCEPTION 'Duplicate round order within a tournament';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM "groups"
+        GROUP BY "round_id", "order_index"
+        HAVING COUNT(*) > 1
+    ) THEN
+        RAISE EXCEPTION 'Duplicate group order within a round';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM "match_scores"
+        GROUP BY "match_id", "set_number"
+        HAVING COUNT(*) > 1
+    ) THEN
+        RAISE EXCEPTION 'Duplicate set number within a match';
+    END IF;
+END $$;
+
+CREATE UNIQUE INDEX "rounds_tournament_id_order_index_key"
+    ON "rounds"("tournament_id", "order_index");
+CREATE UNIQUE INDEX "groups_round_id_order_index_key"
+    ON "groups"("round_id", "order_index");
+CREATE UNIQUE INDEX "match_scores_match_id_set_number_key"
+    ON "match_scores"("match_id", "set_number");
+
+DROP INDEX "rounds_tournament_id_order_index_idx";
+DROP INDEX "groups_round_id_idx";
+DROP INDEX "match_scores_match_id_idx";
+
+CREATE INDEX "tournaments_organizer_id_idx" ON "tournaments"("organizer_id");
+CREATE INDEX "team_members_user_id_idx" ON "team_members"("user_id");
+CREATE INDEX "matches_team_b_id_idx" ON "matches"("team_b_id");
+
+ALTER TABLE "rounds"
+    ADD CONSTRAINT "rounds_order_index_positive_check" CHECK ("order_index" > 0),
+    ADD CONSTRAINT "rounds_best_of_positive_check" CHECK ("best_of" > 0);
+ALTER TABLE "groups"
+    ADD CONSTRAINT "groups_order_index_positive_check" CHECK ("order_index" > 0);
+ALTER TABLE "matches"
+    ADD CONSTRAINT "matches_scores_nonnegative_check" CHECK ("score_a" >= 0 AND "score_b" >= 0),
+    ADD CONSTRAINT "matches_best_of_positive_check" CHECK ("best_of" > 0);
+ALTER TABLE "match_scores"
+    ADD CONSTRAINT "match_scores_set_number_positive_check" CHECK ("set_number" > 0),
+    ADD CONSTRAINT "match_scores_values_nonnegative_check"
+        CHECK ("team_a_score" >= 0 AND "team_b_score" >= 0);
+ALTER TABLE "game_positions"
+    ADD CONSTRAINT "game_positions_order_index_positive_check" CHECK ("order_index" > 0);
+ALTER TABLE "tournament_allowed_genders"
+    ADD CONSTRAINT "tournament_allowed_genders_order_index_positive_check" CHECK ("order_index" > 0);
+ALTER TABLE "match_result_evidence"
+    ADD CONSTRAINT "match_result_evidence_order_index_positive_check" CHECK ("order_index" > 0);
+
+COMMIT;

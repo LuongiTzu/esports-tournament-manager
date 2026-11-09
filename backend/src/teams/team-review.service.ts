@@ -75,8 +75,12 @@ export class TeamReviewService {
           members: { orderBy: { orderIndex: 'asc' } },
           tournament: {
             include: {
+              allowedGenders: true,
               game: {
-                select: { positions: true, positionMode: true },
+                select: {
+                  positions: { orderBy: { orderIndex: 'asc' } },
+                  positionMode: true,
+                },
               },
             },
           },

@@ -220,7 +220,13 @@ describe('GamesService', () => {
       id: `game-${index}`,
       ...game,
     }));
-    (prisma.game.findMany as jest.Mock).mockResolvedValue(games);
+    (prisma.game.findMany as jest.Mock).mockResolvedValue(
+      games.map((game) => ({
+        ...game,
+        positions: game.positions.map((code) => ({ code })),
+        allowedTeamSizes: game.allowedTeamSizes.map((size) => ({ size })),
+      })),
+    );
 
     await expect(service.findAll()).resolves.toEqual(games);
     expect(prisma.game.findMany).toHaveBeenCalledWith(
@@ -231,7 +237,7 @@ describe('GamesService', () => {
           code: true,
           positionMode: true,
           teamSizeMode: true,
-          allowedTeamSizes: true,
+          allowedTeamSizes: expect.objectContaining({ select: { size: true } }),
           minSelectableTeamSize: true,
           maxSelectableTeamSize: true,
         }),
@@ -243,6 +249,10 @@ describe('GamesService', () => {
     (prisma.game.findFirst as jest.Mock).mockResolvedValue({
       id: 'lol',
       ...catalogByCode.LEAGUE_OF_LEGENDS,
+      positions: catalogByCode.LEAGUE_OF_LEGENDS.positions.map((code) => ({
+        code,
+      })),
+      allowedTeamSizes: [],
     });
 
     await expect(service.findPositions('lol')).resolves.toEqual(

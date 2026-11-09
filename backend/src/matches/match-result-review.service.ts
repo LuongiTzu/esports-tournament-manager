@@ -23,7 +23,10 @@ import {
   ResolveMatchDisputeDto,
   RespondToMatchResultDto,
 } from './dto/match-result-review.dto';
-import { matchResultReviewSelect } from './match-result-review.select';
+import {
+  matchResultReviewSelect,
+  toMatchResultReviewResponse,
+} from './match-result-review.select';
 import { TournamentResultReviewsQueryDto } from './dto/tournament-result-reviews.dto';
 
 @Injectable()
@@ -34,11 +37,12 @@ export class MatchResultReviewService {
     private readonly audit: CompetitionAuditWriter = NOOP_COMPETITION_AUDIT_WRITER,
   ) {}
 
-  findOne(matchId: string) {
-    return this.prisma.matchResultReview.findUnique({
+  async findOne(matchId: string) {
+    const review = await this.prisma.matchResultReview.findUnique({
       where: { matchId },
       select: matchResultReviewSelect,
     });
+    return review ? toMatchResultReviewResponse(review) : null;
   }
 
   async findForTournament(
@@ -191,7 +195,12 @@ export class MatchResultReviewService {
           respondedById: userId,
           decision: dto.decision,
           note: dto.note?.trim(),
-          evidenceUrls: dto.evidenceUrls ?? [],
+          evidence: {
+            create: (dto.evidenceUrls ?? []).map((url, index) => ({
+              url,
+              orderIndex: index + 1,
+            })),
+          },
         },
       });
 
@@ -237,7 +246,7 @@ export class MatchResultReviewService {
           evidenceUrls: dto.evidenceUrls ?? [],
         },
       });
-      return updated;
+      return toMatchResultReviewResponse(updated);
     });
   }
 
@@ -283,7 +292,7 @@ export class MatchResultReviewService {
           resolvedAt: resolvedAt.toISOString(),
         },
       });
-      return updated;
+      return toMatchResultReviewResponse(updated);
     });
   }
 

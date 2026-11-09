@@ -33,7 +33,8 @@ export class RegistrationValidatorService {
     maxTeamSize: number;
     minAge: number | null;
     maxAge: number | null;
-    allowedGenders: unknown;
+    allowedGenders?: unknown;
+    genderRestrictionEnabled?: boolean;
     requireMemberFullInfo: boolean;
     startDate: Date | null;
     game: { positions: unknown; positionMode: GamePositionMode };
@@ -44,7 +45,10 @@ export class RegistrationValidatorService {
       maxTeamSize: tournament.maxTeamSize,
       minAge: tournament.minAge,
       maxAge: tournament.maxAge,
-      allowedGenders: toGenderList(tournament.allowedGenders),
+      allowedGenders:
+        tournament.genderRestrictionEnabled === false
+          ? null
+          : toGenderList(tournament.allowedGenders),
       requireMemberFullInfo: tournament.requireMemberFullInfo,
       startDate: tournament.startDate,
       positions: toStringList(tournament.game.positions),
@@ -158,13 +162,40 @@ function uniqueValues(values: (string | undefined)[]): string[] {
 }
 function toStringList(value: unknown): string[] {
   return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
+    ? value.flatMap((item: unknown) => {
+        if (typeof item === 'string') return [item];
+        if (
+          item !== null &&
+          typeof item === 'object' &&
+          'code' in item &&
+          typeof item.code === 'string'
+        ) {
+          return [item.code];
+        }
+        return [];
+      })
     : [];
 }
 function toGenderList(value: unknown): Gender[] | null {
   if (!Array.isArray(value)) return null;
-  const list = value.filter(
-    (item): item is Gender => typeof item === 'string' && item in Gender,
-  );
+  const list = value.flatMap((item: unknown) => {
+    if (isGender(item)) return [item];
+    if (
+      item !== null &&
+      typeof item === 'object' &&
+      'gender' in item &&
+      isGender(item.gender)
+    ) {
+      return [item.gender];
+    }
+    return [];
+  });
   return list.length ? list : null;
+}
+
+function isGender(value: unknown): value is Gender {
+  return (
+    typeof value === 'string' &&
+    Object.values(Gender).some((gender) => gender === value)
+  );
 }

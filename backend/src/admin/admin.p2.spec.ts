@@ -179,6 +179,7 @@ describe('AdminService P2 workflows', () => {
     expect(prisma.tournament.update).toHaveBeenCalledWith({
       where: { id: 't-1' },
       data: { isVerified: true },
+      include: { allowedGenders: true },
     });
   });
 

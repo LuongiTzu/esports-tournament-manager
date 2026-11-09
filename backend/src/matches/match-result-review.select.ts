@@ -15,9 +15,26 @@ export const matchResultReviewSelect =
         teamId: true,
         decision: true,
         note: true,
-        evidenceUrls: true,
+        evidence: {
+          orderBy: { orderIndex: 'asc' },
+          select: { url: true },
+        },
         respondedAt: true,
         respondedBy: { select: { id: true, displayName: true } },
       },
     },
   });
+
+export type MatchResultReviewRecord = Prisma.MatchResultReviewGetPayload<{
+  select: typeof matchResultReviewSelect;
+}>;
+
+export function toMatchResultReviewResponse(review: MatchResultReviewRecord) {
+  return {
+    ...review,
+    responses: review.responses.map(({ evidence, ...response }) => ({
+      ...response,
+      evidenceUrls: evidence.map(({ url }) => url),
+    })),
+  };
+}

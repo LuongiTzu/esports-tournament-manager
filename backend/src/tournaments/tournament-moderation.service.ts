@@ -18,6 +18,7 @@ import {
 } from '../common/ports/notification-publisher';
 import { PrismaService } from '../prisma/prisma.service';
 import { withTournamentGameDisplayName } from './domain/tournament-game-display';
+import { withAllowedGenders } from './tournament-genders';
 
 export interface TournamentModerationListQuery {
   search?: string;
@@ -62,6 +63,7 @@ export class TournamentModerationService {
       where,
       orderBy: [{ reports: { _count: 'desc' } }, { createdAt: 'desc' }],
       include: {
+        allowedGenders: true,
         organizer: {
           select: { id: true, displayName: true, email: true, role: true },
         },
@@ -91,7 +93,7 @@ export class TournamentModerationService {
       },
     });
     return tournaments.map(({ adminOverrides = [], ...tournament }) => ({
-      ...withTournamentGameDisplayName(tournament),
+      ...withTournamentGameDisplayName(withAllowedGenders(tournament)),
       activeAdminOverride: adminOverrides[0] ?? null,
     }));
   }
@@ -116,6 +118,7 @@ export class TournamentModerationService {
     const updated = await this.prisma.tournament.update({
       where: { id },
       data: { moderationStatus },
+      include: { allowedGenders: true },
     });
     if (moderationStatus !== tournament.moderationStatus) {
       await this.notifications.createNotification({
@@ -139,7 +142,7 @@ export class TournamentModerationService {
         sourceKey: `tournament:${tournament.id}:moderation:${updated.updatedAt?.toISOString() ?? `${tournament.moderationStatus}:${moderationStatus}`}`,
       });
     }
-    return updated;
+    return withAllowedGenders(updated);
   }
   async verify(id: string, explicit?: boolean) {
     const tournament = await this.prisma.tournament.findUnique({
@@ -165,10 +168,13 @@ export class TournamentModerationService {
       throw new BadRequestException(
         'A hidden tournament cannot receive the verified trust label',
       );
-    return this.prisma.tournament.update({
-      where: { id },
-      data: { isVerified: nextValue },
-    });
+    return this.prisma.tournament
+      .update({
+        where: { id },
+        data: { isVerified: nextValue },
+        include: { allowedGenders: true },
+      })
+      .then(withAllowedGenders);
   }
 
   async setOfficial(id: string, explicit?: boolean) {
@@ -196,12 +202,15 @@ export class TournamentModerationService {
         'A hidden tournament cannot receive the official label',
       );
     }
-    return this.prisma.tournament.update({
-      where: { id },
-      data: {
-        isOfficial: nextValue,
-        ...(nextValue ? { isVerified: true } : {}),
-      },
-    });
+    return this.prisma.tournament
+      .update({
+        where: { id },
+        data: {
+          isOfficial: nextValue,
+          ...(nextValue ? { isVerified: true } : {}),
+        },
+        include: { allowedGenders: true },
+      })
+      .then(withAllowedGenders);
   }
 }

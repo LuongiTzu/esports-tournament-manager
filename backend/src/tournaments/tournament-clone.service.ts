@@ -1,7 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   CompetitionAuditAction,
-  Gender,
   TournamentStatus,
   Visibility,
 } from '@prisma/client';
@@ -13,6 +12,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CloneTournamentDto } from './dto/tournament-staff.dto';
 import { TournamentCommandService } from './tournament-command.service';
+import { allowedGenderValues } from './tournament-genders';
 
 @Injectable()
 export class TournamentCloneService {
@@ -31,7 +31,10 @@ export class TournamentCloneService {
   ) {
     const source = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
-      include: { rounds: { orderBy: { orderIndex: 'asc' } } },
+      include: {
+        rounds: { orderBy: { orderIndex: 'asc' } },
+        allowedGenders: true,
+      },
     });
     if (!source) throw new NotFoundException('Tournament not found');
 
@@ -54,9 +57,7 @@ export class TournamentCloneService {
         maxTeams: source.maxTeams ?? undefined,
         minAge: source.minAge ?? undefined,
         maxAge: source.maxAge ?? undefined,
-        allowedGenders: Array.isArray(source.allowedGenders)
-          ? (source.allowedGenders as Gender[])
-          : undefined,
+        allowedGenders: allowedGenderValues(source) ?? undefined,
         autoApproveTeams: source.autoApproveTeams,
         requireMemberFullInfo: source.requireMemberFullInfo,
         prizePool: source.prizePool ?? undefined,

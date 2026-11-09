@@ -16,7 +16,7 @@ interface ReviewResponseFixture {
   teamId: string;
   decision: MatchResultDecision;
   note: string | null;
-  evidenceUrls: string[];
+  evidence: { url: string }[];
   respondedAt: Date;
   respondedBy: { id: string; displayName: string };
 }
@@ -83,7 +83,7 @@ function harness(matchValue = match()) {
               teamId: data.teamId,
               decision: data.decision,
               note: data.note ?? null,
-              evidenceUrls: data.evidenceUrls,
+              evidence: data.evidence.create,
               respondedAt: new Date(),
               respondedBy: {
                 id: data.respondedById,
@@ -147,7 +147,7 @@ describe('MatchResultReviewService', () => {
           teamId: 'team-a',
           decision: MatchResultDecision.CONFIRMED,
           note: null,
-          evidenceUrls: [],
+          evidence: [],
           respondedAt: new Date(),
           respondedBy: { id: 'captain-a', displayName: 'Captain A' },
         },
@@ -173,6 +173,9 @@ describe('MatchResultReviewService', () => {
     });
 
     expect(result.status).toBe(MatchResultReviewStatus.DISPUTED);
+    expect(result.responses[0].evidenceUrls).toEqual([
+      'https://example.com/evidence.png',
+    ]);
     expect(audit.record).toHaveBeenCalledWith(
       tx,
       expect.objectContaining({
@@ -180,7 +183,13 @@ describe('MatchResultReviewService', () => {
       }),
     );
 
-    const duplicate = match(result as ReviewFixture);
+    const duplicate = match({
+      ...result,
+      responses: result.responses.map(({ evidenceUrls, ...response }) => ({
+        ...response,
+        evidence: evidenceUrls.map((url) => ({ url })),
+      })),
+    });
     jest.mocked(tx.match.findUnique).mockResolvedValue(duplicate as never);
     await expect(
       service.respond('match-1', 'captain-a', {

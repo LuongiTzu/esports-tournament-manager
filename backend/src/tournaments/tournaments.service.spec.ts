@@ -159,12 +159,22 @@ describe('TournamentsService public listing', () => {
       {
         id: 'normal',
         customGameName: null,
-        game: { code: 'MLBB', name: 'Mobile Legends: Bang Bang' },
+        game: {
+          code: 'MLBB',
+          name: 'Mobile Legends: Bang Bang',
+          positions: [],
+          allowedTeamSizes: [],
+        },
       },
       {
         id: 'custom',
         customGameName: 'Chess',
-        game: { code: 'CUSTOM', name: 'Custom Game' },
+        game: {
+          code: 'CUSTOM',
+          name: 'Custom Game',
+          positions: [],
+          allowedTeamSizes: [],
+        },
       },
     ]);
 
@@ -235,7 +245,14 @@ describe('TournamentsService round settings', () => {
         findUnique: jest.fn().mockResolvedValue({
           id: 'tournament-1',
           customGameName: null,
-          game: { code: 'TEST_GAME', name: 'Test Game' },
+          genderRestrictionEnabled: false,
+          allowedGenders: [],
+          game: {
+            code: 'TEST_GAME',
+            name: 'Test Game',
+            positions: [],
+            allowedTeamSizes: [],
+          },
           rounds: [],
         }),
       },
@@ -248,6 +265,7 @@ describe('TournamentsService round settings', () => {
           name: 'Test Game',
           defaultTeamSize: 5,
           maxTeamSize: 7,
+          allowedTeamSizes: [],
         }),
       },
       tournament: { findUnique: jest.fn().mockResolvedValue(null) },
@@ -484,7 +502,14 @@ describe('TournamentsService round settings', () => {
         findUnique: jest.fn().mockResolvedValue({
           id: 'tournament-1',
           customGameName: null,
-          game: { code: 'TEST_GAME', name: 'Test Game' },
+          genderRestrictionEnabled: false,
+          allowedGenders: [],
+          game: {
+            code: 'TEST_GAME',
+            name: 'Test Game',
+            positions: [],
+            allowedTeamSizes: [],
+          },
           rounds: [],
         }),
       },
@@ -497,6 +522,7 @@ describe('TournamentsService round settings', () => {
           name: 'Test Game',
           defaultTeamSize: 5,
           maxTeamSize: 7,
+          allowedTeamSizes: [],
         }),
       },
       tournament: { findUnique: jest.fn().mockResolvedValue(null) },
@@ -1010,7 +1036,14 @@ describe('TournamentsService roster snapshots', () => {
         update: jest.fn().mockResolvedValue({
           id: 'tournament-1',
           customGameName: null,
-          game: { code: 'ROCKET_LEAGUE', name: 'Rocket League' },
+          genderRestrictionEnabled: false,
+          allowedGenders: [],
+          game: {
+            code: 'ROCKET_LEAGUE',
+            name: 'Rocket League',
+            positions: [],
+            allowedTeamSizes: [],
+          },
           rounds: [
             {
               id: 'group-round',
@@ -1114,7 +1147,14 @@ describe('TournamentsService lifecycle updates', () => {
     const update = jest
       .fn()
       .mockImplementation(({ data }) =>
-        Promise.resolve({ ...current, ...data, rounds: [] }),
+        Promise.resolve({
+          ...current,
+          ...data,
+          genderRestrictionEnabled: false,
+          allowedGenders: [],
+          game: { ...current.game, positions: [], allowedTeamSizes: [] },
+          rounds: [],
+        }),
       );
     const prisma = {
       tournament: {

@@ -4,7 +4,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { withTournamentGameDisplayName } from '../tournaments/domain/tournament-game-display';
 import { MyMatchesQueryDto } from './dto/my-matches-query.dto';
 import { getMatchCheckInWindow } from './domain/match-check-in.policy';
-import { matchResultReviewSelect } from './match-result-review.select';
+import {
+  matchResultReviewSelect,
+  toMatchResultReviewResponse,
+} from './match-result-review.select';
 import { myMatchFilters } from './my-match-filters';
 
 const publicTeamSelect = {
@@ -70,6 +73,9 @@ function toMyMatch(
   );
   return {
     ...match,
+    resultReview: match.resultReview
+      ? toMatchResultReviewResponse(match.resultReview)
+      : null,
     checkIns: match.checkIns.filter((checkIn) =>
       assignedTeamIds.includes(checkIn.teamId),
     ),
