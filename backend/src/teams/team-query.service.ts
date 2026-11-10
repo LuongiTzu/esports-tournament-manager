@@ -9,6 +9,7 @@ import {
   Prisma,
   RegistrationStatus,
   Role,
+  TournamentStaffRole,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { withTournamentGameDisplayName } from '../tournaments/domain/tournament-game-display';
@@ -27,6 +28,25 @@ const CAPTAIN_SELECT = {
   id: true,
   displayName: true,
   avatarUrl: true,
+} as const;
+
+const PUBLIC_TEAM_SELECT = {
+  id: true,
+  name: true,
+  shortName: true,
+  description: true,
+  logoUrl: true,
+  status: true,
+  seed: true,
+  finalRank: true,
+  reviewedAt: true,
+  registeredAt: true,
+  updatedAt: true,
+  captainId: true,
+  tournamentId: true,
+  captain: { select: CAPTAIN_SELECT },
+  members: { orderBy: { orderIndex: 'asc' }, select: PUBLIC_MEMBER_SELECT },
+  _count: { select: { members: true } },
 } as const;
 
 @Injectable()
@@ -53,8 +73,23 @@ export class TeamQueryService {
       throw new NotFoundException('Không tìm thấy giải đấu');
     }
 
+    const isCoOrganizer = Boolean(
+      viewerId &&
+      (
+        await this.prisma.tournamentStaff.findUnique({
+          where: {
+            tournamentId_userId: {
+              tournamentId: tournament.id,
+              userId: viewerId,
+            },
+          },
+          select: { role: true },
+        })
+      )?.role === TournamentStaffRole.CO_ORGANIZER,
+    );
     const canManage =
       tournament.organizerId === viewerId ||
+      isCoOrganizer ||
       Boolean(
         viewerId &&
         viewerRole === Role.ADMIN &&
@@ -74,6 +109,21 @@ export class TeamQueryService {
         throw new BadRequestException('Trạng thái lọc không hợp lệ');
       }
       where.status = parsed as RegistrationStatus;
+    }
+
+    if (!canManage) {
+      const teams = await this.prisma.team.findMany({
+        where,
+        orderBy: { registeredAt: 'asc' },
+        select: PUBLIC_TEAM_SELECT,
+      });
+      return teams.map((team) => ({
+        ...team,
+        contactName: null,
+        contactEmail: null,
+        contactPhone: null,
+        rejectReason: null,
+      }));
     }
 
     return this.prisma.team.findMany({
@@ -145,9 +195,24 @@ export class TeamQueryService {
       recentMatches: completedMatches.slice(0, 10),
     };
 
+    const isCoOrganizer = Boolean(
+      viewerId &&
+      (
+        await this.prisma.tournamentStaff.findUnique({
+          where: {
+            tournamentId_userId: {
+              tournamentId: team.tournament.id,
+              userId: viewerId,
+            },
+          },
+          select: { role: true },
+        })
+      )?.role === TournamentStaffRole.CO_ORGANIZER,
+    );
     const canManage = Boolean(
       viewerId &&
       (team.tournament.organizerId === viewerId ||
+        isCoOrganizer ||
         (viewerRole === Role.ADMIN &&
           (await this.managementAccess.findActiveOverrideForAdmin(
             team.tournament.id,
@@ -168,6 +233,7 @@ export class TeamQueryService {
     return {
       ...team,
       history,
+      contactName: null,
       contactEmail: null,
       contactPhone: null,
       rejectReason: null,

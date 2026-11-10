@@ -9,6 +9,7 @@ export interface JwtPayload {
   email: string;
   role: string;
   tokenVersion: number; // phiên bản token - tăng khi logout/đổi mật khẩu
+  exp?: number;
 }
 
 /** User đã xác thực được gắn vào request sau khi qua JwtAuthGuard */

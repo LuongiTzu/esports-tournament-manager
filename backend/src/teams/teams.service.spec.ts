@@ -260,7 +260,7 @@ describe('TeamsService roster lifecycle', () => {
   );
 
   it('revalidates the persisted roster with self-exclusion before approval', async () => {
-    const { service, validator } = harness();
+    const { service, validator, events } = harness();
 
     await service.updateStatus('team-1', {
       status: RegistrationStatus.APPROVED,
@@ -271,6 +271,11 @@ describe('TeamsService roster lifecycle', () => {
       [],
       expect.objectContaining({ excludeTeamId: 'team-1' }),
     );
+    expect(jest.mocked(events.publish)).toHaveBeenCalledWith({
+      tournamentId: 'tournament-1',
+      event: 'teamApproved',
+      payload: { teamId: 'team-1' },
+    });
   });
 
   it('blocks approval after the first Round participant set is frozen', async () => {

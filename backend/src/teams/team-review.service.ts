@@ -183,7 +183,7 @@ export class TeamReviewService {
       this.events.publish({
         tournamentId: result.tournamentId,
         event: 'teamApproved',
-        payload: result.updated,
+        payload: { teamId: result.updated.id },
       });
     }
     return result.updated;

@@ -21,6 +21,16 @@ function socket(token?: string) {
   } as unknown as Socket;
 }
 
+function authenticatedSocket(id: string, role: Role = Role.SIGNED_UP_USER) {
+  const client = socket();
+  client.data = { readOnly: true, user: { id, role, tokenVersion: 1 } };
+  return client;
+}
+
+async function flushRealtime() {
+  await new Promise<void>((resolve) => setImmediate(resolve));
+}
+
 function harness(
   tournament: {
     id: string;
@@ -36,9 +46,19 @@ function harness(
 ) {
   const jwt = { verifyAsync: jest.fn() } as unknown as JwtService;
   const prisma = {
-    user: { findUnique: jest.fn() },
+    user: {
+      findUnique: jest
+        .fn()
+        .mockImplementation(({ where }: { where: { id: string } }) => ({
+          id: where.id,
+          role: where.id === 'admin' ? Role.ADMIN : Role.SIGNED_UP_USER,
+          isLocked: false,
+          tokenVersion: 1,
+        })),
+    },
     tournament: { findUnique: jest.fn().mockResolvedValue(tournament) },
     team: { findFirst: jest.fn() },
+    tournamentStaff: { findUnique: jest.fn().mockResolvedValue(null) },
   } as unknown as PrismaService;
   const events = new TournamentEventsService();
   const notificationEvents = new NotificationEventsService();
@@ -71,7 +91,7 @@ describe('TournamentGateway', () => {
     await gateway.handleConnection(client);
 
     expect(client.data).toEqual({
-      user: { id: 'user-1', role: Role.SIGNED_UP_USER },
+      user: { id: 'user-1', role: Role.SIGNED_UP_USER, tokenVersion: 2 },
       readOnly: true,
     });
     expect(client.join).toHaveBeenCalledWith('user:user-1');
@@ -127,11 +147,7 @@ describe('TournamentGateway', () => {
       moderationStatus: ModerationStatus.ACTIVE,
     });
     jest.mocked(prisma.team.findFirst).mockResolvedValue(null);
-    const client = socket();
-    client.data = {
-      readOnly: true,
-      user: { id: 'unrelated', role: Role.SIGNED_UP_USER },
-    };
+    const client = authenticatedSocket('unrelated');
 
     await expect(
       gateway.joinTournament(client, { tournamentId: 't-1' }),
@@ -148,14 +164,29 @@ describe('TournamentGateway', () => {
     jest
       .mocked(prisma.team.findFirst)
       .mockResolvedValue({ id: 'team-1' } as never);
-    const client = socket();
-    client.data = {
-      readOnly: true,
-      user: { id: 'member', role: Role.SIGNED_UP_USER },
-    };
+    const client = authenticatedSocket('member');
 
     await expect(
       gateway.joinTournament(client, { tournamentId: 't-1' }),
+    ).resolves.toEqual(expect.objectContaining({ room: 'tournament:t-1' }));
+  });
+
+  it('allows tournament staff into a private room', async () => {
+    const { gateway, prisma } = harness({
+      id: 't-1',
+      organizerId: 'organizer',
+      visibility: Visibility.PRIVATE,
+      moderationStatus: ModerationStatus.ACTIVE,
+    });
+    jest.mocked(prisma.team.findFirst).mockResolvedValue(null);
+    jest.mocked(prisma.tournamentStaff.findUnique).mockResolvedValue({
+      id: 'staff-1',
+    } as never);
+
+    await expect(
+      gateway.joinTournament(authenticatedSocket('staff'), {
+        tournamentId: 't-1',
+      }),
     ).resolves.toEqual(expect.objectContaining({ room: 'tournament:t-1' }));
   });
 
@@ -169,8 +200,7 @@ describe('TournamentGateway', () => {
       visibility: Visibility.PRIVATE,
       moderationStatus: ModerationStatus.ACTIVE,
     });
-    const client = socket();
-    client.data = { readOnly: true, user };
+    const client = authenticatedSocket(user.id, user.role);
 
     await expect(
       gateway.joinTournament(client, { tournamentId: 't-1' }),
@@ -196,8 +226,7 @@ describe('TournamentGateway', () => {
         .mockResolvedValue(
           user?.id === 'member' ? ({ id: 'team-1' } as never) : null,
         );
-      const client = socket();
-      if (user) client.data = { readOnly: true, user };
+      const client = user ? authenticatedSocket(user.id, user.role) : socket();
 
       await expect(
         gateway.joinTournament(client, { tournamentId: 't-1' }),
@@ -218,8 +247,7 @@ describe('TournamentGateway', () => {
         visibility: Visibility.PRIVATE,
         moderationStatus: ModerationStatus.HIDDEN_BY_ADMIN,
       });
-      const client = socket();
-      client.data = { readOnly: true, user };
+      const client = authenticatedSocket(user.id, user.role);
 
       await expect(
         gateway.joinTournament(client, { tournamentId: 't-1' }),
@@ -266,11 +294,12 @@ describe('TournamentGateway', () => {
     );
   });
 
-  it('emits created notifications to the recipient user room', () => {
+  it('emits created notifications to the recipient user room', async () => {
     const { gateway, notificationEvents } = harness();
-    const emit = jest.fn();
-    const to = jest.fn().mockReturnValue({ emit });
-    gateway.server = { to } as unknown as Server;
+    const client = authenticatedSocket('user-1');
+    const fetchSockets = jest.fn().mockResolvedValue([client]);
+    const inRoom = jest.fn().mockReturnValue({ fetchSockets });
+    gateway.server = { in: inRoom } as unknown as Server;
     gateway.afterInit();
     const notification = {
       id: 'n-1',
@@ -286,25 +315,86 @@ describe('TournamentGateway', () => {
 
     notificationEvents.publish(notification);
 
-    expect(to).toHaveBeenCalledWith('user:user-1');
-    expect(emit).toHaveBeenCalledWith('notification', notification);
+    await flushRealtime();
+    expect(inRoom).toHaveBeenCalledWith('user:user-1');
+    expect(client.emit).toHaveBeenCalledWith('notification', notification);
+    gateway.onModuleDestroy();
+  });
+
+  it('does not deliver notifications after the user is locked', async () => {
+    const { gateway, notificationEvents, prisma } = harness();
+    const client = authenticatedSocket('user-1');
+    gateway.server = {
+      in: jest.fn().mockReturnValue({
+        fetchSockets: jest.fn().mockResolvedValue([client]),
+      }),
+    } as unknown as Server;
+    jest.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'user-1',
+      role: Role.SIGNED_UP_USER,
+      isLocked: true,
+      tokenVersion: 1,
+    } as never);
+    gateway.afterInit();
+
+    notificationEvents.publish({ userId: 'user-1' } as never);
+    await flushRealtime();
+
+    expect(client.emit).not.toHaveBeenCalledWith(
+      'notification',
+      expect.anything(),
+    );
+    expect(client.disconnect).toHaveBeenCalledWith(true);
+    gateway.onModuleDestroy();
+  });
+
+  it('removes a subscriber when a public tournament becomes private', async () => {
+    const { gateway, events, prisma } = harness();
+    const client = socket();
+    gateway.server = {
+      in: jest.fn().mockReturnValue({
+        fetchSockets: jest.fn().mockResolvedValue([client]),
+      }),
+    } as unknown as Server;
+    jest.mocked(prisma.tournament.findUnique).mockResolvedValue({
+      id: 't-1',
+      organizerId: 'organizer',
+      visibility: Visibility.PRIVATE,
+      moderationStatus: ModerationStatus.ACTIVE,
+    } as never);
+    gateway.afterInit();
+
+    events.publish({
+      tournamentId: 't-1',
+      event: 'matchUpdated',
+      payload: { id: 'm-1' },
+    });
+    await flushRealtime();
+
+    expect(client.emit).not.toHaveBeenCalledWith(
+      'matchUpdated',
+      expect.anything(),
+    );
+    expect(client.leave).toHaveBeenCalledWith('tournament:t-1');
     gateway.onModuleDestroy();
   });
 
   it.each(TOURNAMENT_EVENT_NAMES)(
     'forwards %s with its payload to the tournament room',
-    (event) => {
+    async (event) => {
       const { gateway, events } = harness();
-      const emit = jest.fn();
-      const to = jest.fn().mockReturnValue({ emit });
-      gateway.server = { to } as unknown as Server;
+      const client = socket();
+      const fetchSockets = jest.fn().mockResolvedValue([client]);
+      const inRoom = jest.fn().mockReturnValue({ fetchSockets });
+      gateway.server = { in: inRoom } as unknown as Server;
       gateway.afterInit();
       const payload = { id: `${event}-1` };
 
       events.publish({ tournamentId: 't-1', event, payload });
 
-      expect(to).toHaveBeenCalledWith('tournament:t-1');
-      expect(emit).toHaveBeenCalledWith(event, {
+      await flushRealtime();
+      expect(inRoom).toHaveBeenCalledWith('tournament:t-1');
+      expect(client.emit).toHaveBeenCalledWith(event, {
         tournamentId: 't-1',
         data: payload,
       });

@@ -11,24 +11,33 @@ import {
 } from '@nestjs/websockets';
 import {
   ModerationStatus,
+  Notification,
   RegistrationStatus,
   Role,
   Visibility,
 } from '@prisma/client';
-import { Server, Socket } from 'socket.io';
+import { RemoteSocket, Server, Socket } from 'socket.io';
 import { Subscription } from 'rxjs';
-import { OnModuleDestroy } from '@nestjs/common';
+import { Logger, OnModuleDestroy } from '@nestjs/common';
 import { JwtPayload } from '../auth/strategies/jwt.strategy';
 import { PrismaService } from '../prisma/prisma.service';
 import { TournamentEventsService } from './tournament-events.service';
 import { NotificationEventsService } from '../notifications/notification-events.service';
 import { configuredCorsOrigin } from '../common/config/browser-origins';
 import { tournamentVisibilityPolicy } from '../common/policies/tournament-visibility.policy';
+import { TournamentRealtimeEvent } from '../common/ports/tournament-event-publisher';
 
 interface TournamentSocketData {
-  user?: { id: string; role: Role };
+  user?: { id: string; role: Role; tokenVersion: number; expiresAt?: number };
   readOnly: boolean;
 }
+
+type TournamentClient =
+  | Socket
+  | RemoteSocket<
+      Record<string, (...args: unknown[]) => void>,
+      TournamentSocketData
+    >;
 
 @WebSocketGateway({
   namespace: '/tournaments',
@@ -43,6 +52,7 @@ export class TournamentGateway
   @WebSocketServer()
   server!: Server;
 
+  private readonly logger = new Logger(TournamentGateway.name);
   private eventSubscription?: Subscription;
   private notificationSubscription?: Subscription;
 
@@ -55,18 +65,18 @@ export class TournamentGateway
 
   afterInit(): void {
     this.eventSubscription = this.events.events$.subscribe((message) => {
-      this.server
-        .to(TournamentGateway.room(message.tournamentId))
-        .emit(message.event, {
-          tournamentId: message.tournamentId,
-          data: message.payload,
-        });
+      void this.emitTournamentEvent(message).catch((error: unknown) =>
+        this.logger.error('Tournament realtime authorization failed', error),
+      );
     });
     this.notificationSubscription = this.notificationEvents.events$.subscribe(
       (notification) => {
-        this.server
-          .to(TournamentGateway.userRoom(notification.userId))
-          .emit('notification', notification);
+        void this.emitNotification(notification).catch((error: unknown) =>
+          this.logger.error(
+            'Notification realtime authorization failed',
+            error,
+          ),
+        );
       },
     );
   }
@@ -89,7 +99,13 @@ export class TournamentGateway
       ) {
         throw new Error('Invalid user session');
       }
-      data.user = { id: user.id, role: user.role };
+      data.user = {
+        id: user.id,
+        role: user.role,
+        tokenVersion: user.tokenVersion,
+        expiresAt:
+          typeof payload.exp === 'number' ? payload.exp * 1000 : undefined,
+      };
       await client.join(TournamentGateway.userRoom(user.id));
     } catch {
       client.emit('authenticationError', { message: 'Invalid access token' });
@@ -124,37 +140,7 @@ export class TournamentGateway
     });
     if (!tournament) throw new WsException('Tournament not found');
 
-    const user = (client.data as TournamentSocketData).user;
-    let isRelatedParticipant = false;
-    if (
-      user &&
-      tournament.visibility === Visibility.PRIVATE &&
-      tournament.moderationStatus !== ModerationStatus.HIDDEN_BY_ADMIN &&
-      !tournamentVisibilityPolicy.canView({ ...tournament, user })
-    ) {
-      const team = await this.prisma.team.findFirst({
-        where: {
-          tournamentId,
-          status: {
-            in: [RegistrationStatus.PENDING, RegistrationStatus.APPROVED],
-          },
-          OR: [
-            { captainId: user.id },
-            { members: { some: { userId: user.id } } },
-          ],
-        },
-        select: { id: true },
-      });
-      isRelatedParticipant = team !== null;
-    }
-
-    if (
-      !tournamentVisibilityPolicy.canView({
-        ...tournament,
-        user,
-        isRelatedParticipant,
-      })
-    ) {
+    if (!(await this.canViewTournament(client, tournament))) {
       throw new WsException('Tournament access denied');
     }
 
@@ -182,6 +168,121 @@ export class TournamentGateway
 
   static userRoom(userId: string): string {
     return `user:${userId}`;
+  }
+
+  private async emitTournamentEvent(
+    message: TournamentRealtimeEvent,
+  ): Promise<void> {
+    const room = TournamentGateway.room(message.tournamentId);
+    const clients = await this.server.in(room).fetchSockets();
+    if (!clients.length) return;
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { id: message.tournamentId },
+      select: {
+        id: true,
+        organizerId: true,
+        visibility: true,
+        moderationStatus: true,
+      },
+    });
+    for (const client of clients) {
+      try {
+        if (tournament && (await this.canViewTournament(client, tournament))) {
+          client.emit(message.event, {
+            tournamentId: message.tournamentId,
+            data: message.payload,
+          });
+        } else {
+          void client.leave(room);
+        }
+      } catch {
+        void client.leave(room);
+      }
+    }
+  }
+
+  private async emitNotification(notification: Notification): Promise<void> {
+    const clients = await this.server
+      .in(TournamentGateway.userRoom(notification.userId))
+      .fetchSockets();
+    for (const client of clients) {
+      try {
+        const user = await this.currentUser(client);
+        if (user?.id === notification.userId) {
+          client.emit('notification', notification);
+        }
+      } catch {
+        void client.leave(TournamentGateway.userRoom(notification.userId));
+      }
+    }
+  }
+
+  private async currentUser(
+    client: TournamentClient,
+  ): Promise<{ id: string; role: Role } | undefined> {
+    const session = (client.data as TournamentSocketData).user;
+    if (!session) return undefined;
+    if (session.expiresAt !== undefined && session.expiresAt <= Date.now()) {
+      client.disconnect(true);
+      throw new WsException('Session expired');
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: session.id },
+      select: { id: true, role: true, isLocked: true, tokenVersion: true },
+    });
+    if (!user || user.isLocked || user.tokenVersion !== session.tokenVersion) {
+      client.disconnect(true);
+      throw new WsException('Session expired');
+    }
+    return { id: user.id, role: user.role };
+  }
+
+  private async canViewTournament(
+    client: TournamentClient,
+    tournament: {
+      id: string;
+      organizerId: string;
+      visibility: Visibility;
+      moderationStatus: ModerationStatus;
+    },
+  ): Promise<boolean> {
+    const user = await this.currentUser(client);
+    if (tournamentVisibilityPolicy.canView({ ...tournament, user }))
+      return true;
+    if (
+      !user ||
+      tournament.visibility !== Visibility.PRIVATE ||
+      tournament.moderationStatus === ModerationStatus.HIDDEN_BY_ADMIN
+    ) {
+      return false;
+    }
+    const [team, staff] = await Promise.all([
+      this.prisma.team.findFirst({
+        where: {
+          tournamentId: tournament.id,
+          status: {
+            in: [RegistrationStatus.PENDING, RegistrationStatus.APPROVED],
+          },
+          OR: [
+            { captainId: user.id },
+            { members: { some: { userId: user.id } } },
+          ],
+        },
+        select: { id: true },
+      }),
+      this.prisma.tournamentStaff.findUnique({
+        where: {
+          tournamentId_userId: { tournamentId: tournament.id, userId: user.id },
+        },
+        select: { id: true },
+      }),
+    ]);
+    return tournamentVisibilityPolicy.canView({
+      ...tournament,
+      user,
+      isRelatedParticipant: team !== null,
+      isTournamentStaff: staff !== null,
+    });
   }
 
   private handshakeToken(client: Socket): string | undefined {
