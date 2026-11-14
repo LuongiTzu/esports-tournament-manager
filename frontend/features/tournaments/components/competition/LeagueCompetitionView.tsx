@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ResolvedImage from "@/components/ResolvedImage";
+import { LoadingStatus } from "@/components/Loading";
 import { useLocale } from "@/features/locale/store";
 import { roundFormatLabel } from "@/features/tournaments/round-formats";
 import type {
@@ -18,12 +19,14 @@ import styles from "./league.module.css";
 export default function LeagueCompetitionView({
   bracket,
   standings,
+  standingsLoading = false,
   bannerUrl,
   tournamentName,
   onSelectMatch,
 }: {
   bracket: RoundBracket;
   standings?: RoundStandings;
+  standingsLoading?: boolean;
   bannerUrl?: string | null;
   tournamentName?: string;
   onSelectMatch?: (match: BracketMatch) => void;
@@ -131,7 +134,9 @@ export default function LeagueCompetitionView({
             ))}
           </nav>
         )}
-        {view === "standings" ? (
+        {view === "standings" && standingsLoading && !standings ? (
+          <LoadingStatus label={t("competition.standingsLoading")} className="py-6" />
+        ) : view === "standings" ? (
           <>
             <p className="mb-5 text-xs leading-relaxed text-ink-muted">
               {t("competition.table.cutoff")}

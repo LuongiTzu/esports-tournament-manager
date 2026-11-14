@@ -1,5 +1,5 @@
 import { TournamentMode, TournamentStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import {
   BooleanQueryField,
   PaginationQueryDto,
@@ -15,14 +15,17 @@ export enum TournamentListSort {
 export class TournamentListQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   q?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(128)
   gameId?: string;
 
   @IsOptional()

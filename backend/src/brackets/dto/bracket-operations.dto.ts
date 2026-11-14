@@ -21,6 +21,7 @@ export class UpdateRoundSettingsDto {
 
 export class SeedAssignmentDto {
   @IsString()
+  @MaxLength(128)
   teamId!: string;
 
   @IsInt()
@@ -31,6 +32,7 @@ export class SeedAssignmentDto {
 export class UpdateSeedsDto {
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(256)
   @ValidateNested({ each: true })
   @Type(() => SeedAssignmentDto)
   seeds!: SeedAssignmentDto[];

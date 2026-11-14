@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import Footer from "@/components/Footer";
+import ArenaAssistant from "@/features/assistant/ArenaAssistant";
 import Navbar from "@/components/Navbar";
 import RouteTitle from "@/components/RouteTitle";
 import { NavigationProvider } from "@/components/navigation/NavigationProvider";
@@ -90,6 +91,7 @@ export default function RootLayout({
                 <Navbar />
                 <main className="flex flex-1 flex-col">{children}</main>
                 <Footer />
+                <ArenaAssistant />
               </RealtimeProvider>
             </NavigationProvider>
           </LocaleProvider>

@@ -18,6 +18,7 @@ import { ReportModule } from './reports/report.module';
 import { UploadModule } from './uploads/upload.module';
 import { RatingModule } from './ratings/rating.module';
 import { ObservabilityModule } from './observability/observability.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { ObservabilityModule } from './observability/observability.module';
     UploadModule,
     RatingModule,
     ObservabilityModule,
+    AiModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

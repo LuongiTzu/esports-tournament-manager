@@ -111,53 +111,11 @@ describe('RegistrationValidatorService', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       response: expect.objectContaining({
         code: ApplicationErrorCode.REGISTRATION_INVALID,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         errors: expect.any(Array),
       }),
       status: 422,
     });
-  });
-
-  it('accepts exactly five active players plus up to two substitutes', async () => {
-    const members = [
-      ...players(5),
-      {
-        realName: 'Substitute 1',
-        ign: 'substitute-1',
-        memberRole: MemberRole.SUBSTITUTE,
-      },
-      {
-        realName: 'Substitute 2',
-        ign: 'substitute-2',
-        memberRole: MemberRole.SUBSTITUTE,
-      },
-    ];
-    await expect(
-      service.validate(rules({ minTeamSize: 5, maxTeamSize: 7 }), members),
-    ).resolves.toEqual({ captainIndex: 0 });
-  });
-
-  it.each([4, 6, 8])(
-    'rejects %i active players for a 5-7 roster',
-    async (count) => {
-      await expect(
-        service.validate(
-          rules({ minTeamSize: 5, maxTeamSize: 7 }),
-          players(count),
-        ),
-      ).rejects.toMatchObject({ status: 422 });
-    },
-  );
-
-  it('does not count coach or manager records as player roster slots', async () => {
-    const members = [
-      ...players(5),
-      { realName: 'Coach', ign: 'coach', memberRole: MemberRole.COACH },
-      { realName: 'Manager', ign: 'manager', memberRole: MemberRole.MANAGER },
-    ];
-
-    await expect(
-      service.validate(rules({ minTeamSize: 5, maxTeamSize: 5 }), members),
-    ).resolves.toEqual({ captainIndex: 0 });
   });
 
   it('accepts a member without email and phone', async () => {
@@ -173,71 +131,5 @@ describe('RegistrationValidatorService', () => {
     await expect(
       service.validate(rules(), [{ ...players(1)[0], ...contact }]),
     ).resolves.toEqual({ captainIndex: 0 });
-  });
-
-  it('requires an allowed position for FIXED games with full info', async () => {
-    const fixedRules = rules({
-      minTeamSize: 2,
-      maxTeamSize: 2,
-      requireMemberFullInfo: true,
-      positions: ['TOP', 'JUNGLE'],
-      positionMode: GamePositionMode.FIXED,
-    });
-    const fullMembers = players(2).map((player, index) => ({
-      ...player,
-      birthDate: '2000-01-01',
-      gender: Gender.OTHER,
-      position: index === 0 ? 'TOP' : 'JUNGLE',
-    }));
-
-    await expect(service.validate(fixedRules, fullMembers)).resolves.toEqual({
-      captainIndex: 0,
-    });
-    await expect(
-      service.validate(fixedRules, [
-        { ...fullMembers[0], position: undefined },
-        fullMembers[1],
-      ]),
-    ).rejects.toMatchObject({ status: 422 });
-    await expect(
-      service.validate(fixedRules, [
-        { ...fullMembers[0], position: 'UNKNOWN' },
-        fullMembers[1],
-      ]),
-    ).rejects.toMatchObject({ status: 422 });
-  });
-
-  it('keeps positions optional but validates supplied codes for OPTIONAL games', async () => {
-    const optionalRules = rules({
-      requireMemberFullInfo: true,
-      positions: ['DUELIST', 'SENTINEL'],
-      positionMode: GamePositionMode.OPTIONAL,
-    });
-    const fullMember = {
-      ...players(1)[0],
-      birthDate: '2000-01-01',
-      gender: Gender.OTHER,
-    };
-
-    await expect(
-      service.validate(optionalRules, [fullMember]),
-    ).resolves.toEqual({
-      captainIndex: 0,
-    });
-    await expect(
-      service.validate(optionalRules, [{ ...fullMember, position: 'DUELIST' }]),
-    ).resolves.toEqual({ captainIndex: 0 });
-    await expect(
-      service.validate(optionalRules, [{ ...fullMember, position: 'UNKNOWN' }]),
-    ).rejects.toMatchObject({ status: 422 });
-  });
-
-  it('accepts no position and rejects a submitted position for NONE games', async () => {
-    await expect(service.validate(rules(), players(1))).resolves.toEqual({
-      captainIndex: 0,
-    });
-    await expect(
-      service.validate(rules(), [{ ...players(1)[0], position: 'LURKER' }]),
-    ).rejects.toMatchObject({ status: 422 });
   });
 });

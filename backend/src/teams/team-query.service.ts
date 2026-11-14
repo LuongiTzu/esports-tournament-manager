@@ -161,6 +161,41 @@ export class TeamQueryService {
       throw new NotFoundException('Không tìm thấy đội');
     }
 
+    const isCoOrganizer = Boolean(
+      viewerId &&
+      (
+        await this.prisma.tournamentStaff.findUnique({
+          where: {
+            tournamentId_userId: {
+              tournamentId: team.tournament.id,
+              userId: viewerId,
+            },
+          },
+          select: { role: true },
+        })
+      )?.role === TournamentStaffRole.CO_ORGANIZER,
+    );
+    const canManage = Boolean(
+      viewerId &&
+      (team.tournament.organizerId === viewerId ||
+        isCoOrganizer ||
+        (viewerRole === Role.ADMIN &&
+          (await this.managementAccess.findActiveOverrideForAdmin(
+            team.tournament.id,
+            viewerId,
+            viewerRole,
+          )))),
+    );
+    const isPrivileged =
+      !!viewerId &&
+      (canManage ||
+        team.captainId === viewerId ||
+        team.members.some((m) => m.userId === viewerId));
+
+    if (!isPrivileged && team.status !== RegistrationStatus.APPROVED) {
+      throw new NotFoundException('Không tìm thấy đội');
+    }
+
     const completedMatches = await this.prisma.match.findMany({
       where: {
         status: MatchStatus.COMPLETED,
@@ -194,37 +229,6 @@ export class TeamQueryService {
       finalRank: team.finalRank,
       recentMatches: completedMatches.slice(0, 10),
     };
-
-    const isCoOrganizer = Boolean(
-      viewerId &&
-      (
-        await this.prisma.tournamentStaff.findUnique({
-          where: {
-            tournamentId_userId: {
-              tournamentId: team.tournament.id,
-              userId: viewerId,
-            },
-          },
-          select: { role: true },
-        })
-      )?.role === TournamentStaffRole.CO_ORGANIZER,
-    );
-    const canManage = Boolean(
-      viewerId &&
-      (team.tournament.organizerId === viewerId ||
-        isCoOrganizer ||
-        (viewerRole === Role.ADMIN &&
-          (await this.managementAccess.findActiveOverrideForAdmin(
-            team.tournament.id,
-            viewerId,
-            viewerRole,
-          )))),
-    );
-    const isPrivileged =
-      !!viewerId &&
-      (canManage ||
-        team.captainId === viewerId ||
-        team.members.some((m) => m.userId === viewerId));
 
     if (isPrivileged) {
       return { ...team, history, canViewSensitiveInfo: true };

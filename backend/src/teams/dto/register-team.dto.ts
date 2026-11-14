@@ -9,6 +9,7 @@ import {
   Min,
   ValidateNested,
   MaxLength,
+  ArrayMaxSize,
   ArrayMinSize,
   Matches,
 } from 'class-validator';
@@ -115,6 +116,7 @@ export class RegisterTeamDto {
   @ValidateNested({ each: true })
   @Type(() => TeamMemberInputDto)
   @ArrayMinSize(1, { message: 'Đội phải có ít nhất 1 thành viên' })
+  @ArrayMaxSize(50, { message: 'Đội chỉ được có tối đa 50 thành viên' })
   members!: TeamMemberInputDto[];
 }
 

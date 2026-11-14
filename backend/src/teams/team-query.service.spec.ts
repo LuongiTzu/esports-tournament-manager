@@ -63,6 +63,7 @@ describe('TeamQueryService access', () => {
     ] as never);
     jest.mocked(prisma.team.findUnique).mockResolvedValue({
       id: 'team-1',
+      status: RegistrationStatus.PENDING,
       captainId: 'captain',
       contactEmail: 'captain@example.com',
       finalRank: null,

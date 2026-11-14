@@ -1,5 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { Server } from 'node:http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/main';
@@ -9,8 +10,11 @@ const describeDatabase =
 
 describeDatabase('health and observability (database E2E)', () => {
   let app: INestApplication;
+  const previousMetricsToken = process.env.METRICS_TOKEN;
+  const metricsToken = 'observability-e2e-metrics-token';
 
   beforeAll(async () => {
+    process.env.METRICS_TOKEN = metricsToken;
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -20,36 +24,50 @@ describeDatabase('health and observability (database E2E)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) await app.close();
+    if (previousMetricsToken === undefined) delete process.env.METRICS_TOKEN;
+    else process.env.METRICS_TOKEN = previousMetricsToken;
   });
 
   it('exposes liveness with a traceable request id', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(app.getHttpServer() as Server)
       .get('/api/health/live')
       .set('x-request-id', 'e2e-health-request')
       .expect(200);
 
     expect(response.headers['x-request-id']).toBe('e2e-health-request');
-    expect(response.body.data).toMatchObject({ status: 'ok' });
+    expect(response.body).toMatchObject({ data: { status: 'ok' } });
   });
 
   it('reports database and storage readiness', async () => {
-    const response = await request(app.getHttpServer())
+    const response = await request(app.getHttpServer() as Server)
       .get('/api/health/ready')
       .expect(200);
 
-    expect(response.body.data).toEqual({
-      status: 'ready',
-      checks: { database: 'up', storage: 'up' },
+    expect(response.body).toMatchObject({
+      data: {
+        status: 'ready',
+        checks: { database: 'up', storage: 'up' },
+      },
     });
   });
 
-  it('publishes aggregate process metrics', async () => {
-    const response = await request(app.getHttpServer())
+  it('requires authentication before publishing aggregate process metrics', async () => {
+    await request(app.getHttpServer() as Server)
       .get('/api/metrics')
+      .expect(401);
+    const response = await request(app.getHttpServer() as Server)
+      .get('/api/metrics')
+      .set('Authorization', `Bearer ${metricsToken}`)
       .expect(200);
 
-    expect(response.body.data.requests.total).toBeGreaterThanOrEqual(2);
-    expect(response.body.data.process.heapUsedBytes).toBeGreaterThan(0);
+    const body = response.body as {
+      data: {
+        requests: { total: number };
+        process: { heapUsedBytes: number };
+      };
+    };
+    expect(body.data.requests.total).toBeGreaterThanOrEqual(2);
+    expect(body.data.process.heapUsedBytes).toBeGreaterThan(0);
   });
 });

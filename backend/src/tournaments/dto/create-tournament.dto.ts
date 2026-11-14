@@ -10,12 +10,14 @@ import {
   IsDateString,
   ValidateNested,
   IsArray,
+  ArrayMaxSize,
   ArrayMinSize,
   ArrayUnique,
   IsEmail,
   Matches,
   IsUrl,
   IsIn,
+  IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
@@ -57,6 +59,7 @@ export class CreateRoundDto {
    * phụ thuộc `format` — không thể dùng decorator tĩnh.
    */
   @IsOptional()
+  @IsObject()
   settings?: Record<string, unknown>;
 }
 
@@ -244,6 +247,7 @@ export class CreateTournamentDto {
   @IsOptional()
   @IsArray({ message: 'rounds phải là mảng' })
   @ArrayMinSize(1, { message: 'Giải đấu cần ít nhất 1 vòng đấu' })
+  @ArrayMaxSize(64, { message: 'Giải đấu chỉ được có tối đa 64 vòng đấu' })
   @ValidateNested({ each: true })
   @Type(() => CreateRoundDto)
   rounds?: CreateRoundDto[];

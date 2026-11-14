@@ -15,6 +15,7 @@ function normalizeEmail({ value }: TransformFnParams): unknown {
 
 export class AcceptTeamInvitationDto {
   @IsString({ message: 'Token lời mời không hợp lệ' })
+  @MaxLength(200)
   token!: string;
 
   @ValidateNested()
@@ -24,5 +25,6 @@ export class AcceptTeamInvitationDto {
 
 export class AcceptAccountLinkInvitationDto {
   @IsString({ message: 'Token lời mời không hợp lệ' })
+  @MaxLength(200)
   token!: string;
 }

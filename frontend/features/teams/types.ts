@@ -21,8 +21,8 @@ export interface TeamWithMembers {
   status: TeamStatus;
   seed: number | null;
   finalRank: number | null;
-  contactName: string;
-  contactEmail: string;
+  contactName: string | null;
+  contactEmail: string | null;
   contactPhone: string | null;
   rejectReason: string | null;
   reviewedAt: string | null;

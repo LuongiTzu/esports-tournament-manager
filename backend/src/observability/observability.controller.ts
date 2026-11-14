@@ -49,8 +49,8 @@ export class ObservabilityController {
   @Get('metrics')
   @Header('Cache-Control', 'no-store')
   metricsSnapshot(@Headers('authorization') authorization?: string) {
-    const metricsToken = this.config.get<string>('METRICS_TOKEN');
-    if (metricsToken && authorization !== `Bearer ${metricsToken}`) {
+    const metricsToken = this.config.get<string>('METRICS_TOKEN')?.trim();
+    if (!metricsToken || authorization !== `Bearer ${metricsToken}`) {
       throw new UnauthorizedException('Metrics token không hợp lệ');
     }
     return this.metrics.snapshot();

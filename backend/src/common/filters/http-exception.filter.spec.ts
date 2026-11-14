@@ -21,6 +21,21 @@ function catchException(exception: unknown) {
 }
 
 describe('HttpExceptionFilter', () => {
+  it('maps oversized request bodies to 413 without exposing parser details', () => {
+    const error = Object.assign(new Error('request entity too large'), {
+      status: 413,
+      type: 'entity.too.large',
+    });
+    const { status, json } = catchException(error);
+
+    expect(status).toHaveBeenCalledWith(413);
+    expect(json).toHaveBeenCalledWith({
+      statusCode: 413,
+      message: 'Request body is too large',
+      errors: [],
+    });
+  });
+
   it('keeps the established envelope for a string message', () => {
     const { status, json } = catchException(
       new BadRequestException('Invalid request'),

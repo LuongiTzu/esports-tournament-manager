@@ -114,7 +114,7 @@ export async function request<T>(
   const { auth = false, headers = {}, ...rest } = options;
 
   const finalHeaders = new Headers(headers);
-  if (!(rest.body instanceof FormData) && !finalHeaders.has("Content-Type")) {
+  if (rest.body != null && !(rest.body instanceof FormData) && !finalHeaders.has("Content-Type")) {
     finalHeaders.set("Content-Type", "application/json");
   }
 

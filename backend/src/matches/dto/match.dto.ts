@@ -1,6 +1,7 @@
 import { MatchStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsDateString,
@@ -9,6 +10,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -30,6 +32,7 @@ export class UpdateMatchDto {
 
   @IsOptional()
   @IsUrl({ require_protocol: true })
+  @MaxLength(2048)
   discordLink?: string | null;
 
   @IsOptional()
@@ -54,6 +57,7 @@ export class MatchScoreDto {
 export class PutMatchScoresDto {
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(9)
   @ValidateNested({ each: true })
   @Type(() => MatchScoreDto)
   scores!: MatchScoreDto[];
@@ -61,6 +65,7 @@ export class PutMatchScoresDto {
 
 export class BulkScheduleItemDto {
   @IsString()
+  @MaxLength(128)
   matchId!: string;
 
   @IsOptional()
@@ -71,6 +76,7 @@ export class BulkScheduleItemDto {
 export class BulkScheduleDto {
   @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(1024)
   @ValidateNested({ each: true })
   @Type(() => BulkScheduleItemDto)
   matches!: BulkScheduleItemDto[];
@@ -79,14 +85,17 @@ export class BulkScheduleDto {
 export class CreateManualMatchDto {
   @IsOptional()
   @IsString()
+  @MaxLength(128)
   teamAId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(128)
   teamBId?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(128)
   groupId?: string;
 
   @IsOptional()
@@ -100,5 +109,6 @@ export class CreateManualMatchDto {
 
   @IsOptional()
   @IsUrl({ require_protocol: true })
+  @MaxLength(2048)
   discordLink?: string;
 }

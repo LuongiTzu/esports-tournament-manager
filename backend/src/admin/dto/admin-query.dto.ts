@@ -5,7 +5,7 @@ import {
   TournamentStatus,
 } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import {
   BooleanQueryField,
   PaginationQueryDto,
@@ -14,10 +14,12 @@ import {
 export class AdminTournamentListQueryDto {
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(128)
   gameId?: string;
 
   @IsOptional()
@@ -48,12 +50,14 @@ export class AdminCommentListQueryDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string;
 }
 
 export class AdminUsersQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
+  @MaxLength(100)
   search?: string;
 
   @BooleanQueryField()

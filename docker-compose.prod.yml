@@ -67,6 +67,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      # Backend has no published port; all external requests pass through gateway.
+      TRUST_PROXY_HOPS: "1"
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?schema=public
       FRONTEND_URL: https://${PUBLIC_HOST:?PUBLIC_HOST is required}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?ALLOWED_ORIGINS is required}

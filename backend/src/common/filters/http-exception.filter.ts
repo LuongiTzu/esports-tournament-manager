@@ -18,7 +18,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : isPayloadTooLarge(exception)
+          ? HttpStatus.PAYLOAD_TOO_LARGE
+          : HttpStatus.INTERNAL_SERVER_ERROR;
     const body =
       exception instanceof HttpException ? exception.getResponse() : undefined;
     const structuredBody = isRecord(body) ? body : undefined;
@@ -31,15 +33,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const message =
       status === 429
         ? RATE_LIMIT_MESSAGE
-        : Array.isArray(rawMessage)
-          ? 'Validation failed'
-          : typeof rawMessage === 'string'
-            ? rawMessage
-            : status === 500
-              ? 'Internal server error'
-              : exception instanceof Error
-                ? exception.message
-                : 'Request failed';
+        : status === HttpStatus.PAYLOAD_TOO_LARGE
+          ? 'Request body is too large'
+          : Array.isArray(rawMessage)
+            ? 'Validation failed'
+            : typeof rawMessage === 'string'
+              ? rawMessage
+              : status === 500
+                ? 'Internal server error'
+                : exception instanceof Error
+                  ? exception.message
+                  : 'Request failed';
 
     const publicBody: Record<string, unknown> = {
       statusCode: status,
@@ -61,6 +65,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     response.status(status).json(publicBody);
   }
+}
+
+function isPayloadTooLarge(exception: unknown): boolean {
+  return (
+    isRecord(exception) &&
+    exception.type === 'entity.too.large' &&
+    exception.status === HttpStatus.PAYLOAD_TOO_LARGE
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -1,4 +1,6 @@
 const extendedVi = {
+  "competition.standingsLoading": "Đang tải bảng xếp hạng…",
+  "competition.standingsLoadError": "Không tải được bảng xếp hạng.",
   "youtube.title": "Video / Livestream YouTube",
   "youtube.matchVideo": "Video trận đấu",
   "youtube.label": "Link YouTube",

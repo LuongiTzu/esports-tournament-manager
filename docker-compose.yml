@@ -35,6 +35,8 @@ services:
       STORAGE_DRIVER: local
       UPLOAD_DIR: /app/uploads
       CHOKIDAR_USEPOLLING: "true"
+      TSC_WATCHFILE: DynamicPriorityPolling
+      TSC_WATCHDIRECTORY: RecursiveDirectoryUsingDynamicPriorityPolling
     command:
       [
         "sh",

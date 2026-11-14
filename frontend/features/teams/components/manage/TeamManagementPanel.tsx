@@ -379,7 +379,7 @@ export default function TeamManagementPanel({
     name: team.name,
     shortName: team.shortName ?? "",
     description: team.description ?? "",
-    contactName: team.contactName,
+    contactName: team.contactName ?? "",
     contactEmail: team.contactEmail ?? "",
     contactPhone: team.contactPhone ?? "",
   });
@@ -554,7 +554,7 @@ export default function TeamManagementPanel({
                 name: team.name,
                 shortName: team.shortName ?? "",
                 description: team.description ?? "",
-                contactName: team.contactName,
+                contactName: team.contactName ?? "",
                 contactEmail: team.contactEmail ?? "",
                 contactPhone: team.contactPhone ?? "",
               });

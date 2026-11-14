@@ -13,7 +13,11 @@ import { IsString, MinLength, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { existsSync, unlinkSync } from 'fs';
 import request from 'supertest';
-import { configureApp, configureStaticAssets } from '../main';
+import {
+  configureApp,
+  configureStaticAssets,
+  MAX_REQUEST_BODY_BYTES,
+} from '../main';
 import {
   imageUploadOptions,
   MAX_IMAGE_SIZE,
@@ -160,5 +164,20 @@ describe('backend infrastructure', () => {
     expect(response.body.errors).toEqual(
       expect.arrayContaining([expect.stringContaining('nested.value')]),
     );
+  });
+
+  it('rejects JSON bodies larger than the configured limit', async () => {
+    await request(app.getHttpServer())
+      .post('/api/infrastructure-test/validation')
+      .send({ nested: { value: 'x'.repeat(MAX_REQUEST_BODY_BYTES) } })
+      .expect(413);
+  });
+
+  it('rejects malformed JSON', async () => {
+    await request(app.getHttpServer())
+      .post('/api/infrastructure-test/validation')
+      .set('Content-Type', 'application/json')
+      .send('{"nested":')
+      .expect(400);
   });
 });

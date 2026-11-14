@@ -9,11 +9,14 @@ import {
 } from './common/config/browser-origins';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { trustedProxyHops } from './common/config/trusted-proxy';
 import {
   assertProductionStorageConfiguration,
   storageDriver,
   UPLOAD_ROOT,
 } from './uploads/upload.config';
+
+export const MAX_REQUEST_BODY_BYTES = 100 * 1024;
 
 export function configureStaticAssets(app: NestExpressApplication): void {
   if (storageDriver() !== 'local') return;
@@ -25,6 +28,13 @@ export function configureStaticAssets(app: NestExpressApplication): void {
 }
 
 export function configureApp(app: INestApplication): void {
+  const expressApp = app as NestExpressApplication;
+  expressApp.set('trust proxy', trustedProxyHops());
+  expressApp.useBodyParser('json', { limit: MAX_REQUEST_BODY_BYTES });
+  expressApp.useBodyParser('urlencoded', {
+    extended: true,
+    limit: MAX_REQUEST_BODY_BYTES,
+  });
   app.setGlobalPrefix('api');
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new HttpExceptionFilter());

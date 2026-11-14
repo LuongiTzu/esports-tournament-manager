@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CircleNotchIcon, WarningCircleIcon } from "@phosphor-icons/react";
 import { alertErrorClass } from "@/components/ui";
+import { LoadingStatus } from "@/components/Loading";
 import { tournamentsApi } from "@/features/tournaments/api";
 import { roundFormatLabel } from "@/features/tournaments/round-formats";
 import type {
@@ -40,22 +41,22 @@ export default function PublicCompetitionView({
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [standingsLoading, setStandingsLoading] = useState(true);
+  const [standingsError, setStandingsError] = useState("");
+  const [standingsAttempt, setStandingsAttempt] = useState(0);
   const [refreshVersion, setRefreshVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      tournamentsApi.getTournamentBracket(slug),
-      tournamentsApi.getStandings(slug),
-    ])
-      .then(([bracketResponse, standingsResponse]) => {
+    const controller = new AbortController();
+    tournamentsApi.getTournamentBracket(slug, controller.signal)
+      .then((bracketResponse) => {
         if (cancelled) return;
         const orderedRounds = [...bracketResponse.rounds].sort(
           (a, b) => a.round.orderIndex - b.round.orderIndex,
         );
         setRounds(orderedRounds);
         setError("");
-        setStandings(standingsResponse);
         setSelectedRoundId((current) =>
           orderedRounds.some(({ round }) => round.id === current)
             ? current
@@ -79,8 +80,35 @@ export default function PublicCompetitionView({
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [refreshVersion, slug, t]);
+
+  // Match browsing does not need to wait for standings and progression data.
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    tournamentsApi.getStandings(slug, controller.signal)
+      .then((response) => {
+        if (cancelled) return;
+        setStandings(response);
+        setStandingsError("");
+      })
+      .catch((reason: unknown) => {
+        if (cancelled) return;
+        setStandings(null);
+        setStandingsError(
+          reason instanceof Error ? reason.message : t("competition.loadError"),
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setStandingsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [refreshVersion, slug, standingsAttempt, t]);
 
   useCompetitionInvalidation(tournamentId, () => {
     setRefreshVersion((version) => version + 1);
@@ -144,6 +172,26 @@ export default function PublicCompetitionView({
           />
 
           <div className={styles.stageContent}>
+            {standingsLoading && ["PLAYOFF", "DOUBLE_ELIM"].includes(selectedBracket.round.format) && (
+              <LoadingStatus label={t("competition.standingsLoading")} />
+            )}
+            {standingsError && (
+              <div role="alert" className={alertErrorClass}>
+                <p>{t("competition.standingsLoadError")} {standingsError}</p>
+                <button
+                  type="button"
+                  className="mt-2 min-h-9 font-semibold underline underline-offset-4"
+                  disabled={standingsLoading}
+                  onClick={() => {
+                    setStandingsLoading(true);
+                    setStandingsError("");
+                    setStandingsAttempt((attempt) => attempt + 1);
+                  }}
+                >
+                  {t("common.retry")}
+                </button>
+              </div>
+            )}
             <div className={styles.stageSummary}>
               <div className={styles.stageIdentity}>
                 <span className={styles.format}>
@@ -183,6 +231,7 @@ export default function PublicCompetitionView({
                 bannerUrl={bannerUrl}
                 tournamentName={tournamentName}
                 standings={selectedStandings}
+                standingsLoading={standingsLoading}
                 onSelectMatch={(match) => setSelectedMatchId(match.id)}
               />
             </div>
@@ -196,6 +245,8 @@ export default function PublicCompetitionView({
                     round={selectedBracket.round}
                     tournament={standings.tournament}
                   />
+                ) : standingsLoading ? (
+                  <LoadingStatus label={t("competition.standingsLoading")} />
                 ) : (
                   <p className="text-sm text-ink-muted">
                     {t("competition.noStandings")}

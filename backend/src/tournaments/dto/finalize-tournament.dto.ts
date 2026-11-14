@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ConfirmFinalStandingsDto {
   @ApiPropertyOptional({
@@ -8,5 +8,6 @@ export class ConfirmFinalStandingsDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(128)
   championTeamId?: string;
 }

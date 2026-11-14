@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useRouter } from "@/components/navigation/NavigationProvider";
 import {
   FunnelSimpleIcon,
   ListBulletsIcon,
@@ -54,7 +53,6 @@ function readPage(value: string | null) {
 
 export default function TournamentDiscovery() {
   const { t } = useLocale();
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams.get("search")?.trim() ?? "";
@@ -97,11 +95,14 @@ export default function TournamentDiscovery() {
         else next.delete(key);
       });
       const query = next.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, {
-        scroll: false,
-      });
+      // Results are fetched on the client; changing filters needs no server navigation.
+      window.history.replaceState(
+        null,
+        "",
+        query ? `${pathname}?${query}` : pathname,
+      );
     },
-    [pathname, router, searchParams],
+    [pathname, searchParams],
   );
 
   useEffect(() => {

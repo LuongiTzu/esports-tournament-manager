@@ -532,6 +532,7 @@ describe('TeamsService public history', () => {
           id: 'team-1',
           name: 'Team One',
           captainId: 'captain-1',
+          status: RegistrationStatus.APPROVED,
           finalRank: 2,
           contactEmail: 'private@example.com',
           contactPhone: '0900000000',

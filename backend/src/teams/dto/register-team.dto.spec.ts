@@ -57,4 +57,16 @@ describe('RegisterTeamDto representative contacts', () => {
       ).rejects.toMatchObject({ status: 400 });
     },
   );
+
+  it('rejects a roster larger than the tournament team-size ceiling', async () => {
+    await expect(
+      validate({
+        ...validPayload,
+        members: Array.from({ length: 51 }, (_, index) => ({
+          realName: `Player ${index}`,
+          ign: `player-${index}`,
+        })),
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+  });
 });

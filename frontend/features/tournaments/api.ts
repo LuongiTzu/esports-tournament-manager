@@ -122,15 +122,16 @@ export const tournamentsApi = {
       body: JSON.stringify(data),
       auth: true,
     }),
-  getTournamentBracket: (slug: string) =>
-    request<TournamentBracket>(`/tournaments/${slug}/bracket`, { auth: true }),
+  getTournamentBracket: (slug: string, signal?: AbortSignal) =>
+    request<TournamentBracket>(`/tournaments/${slug}/bracket`, { auth: true, signal }),
   getSchedule: (slug: string) =>
     request<TournamentSchedule>(`/tournaments/${slug}/schedule`, {
       auth: true,
     }),
-  getStandings: (slug: string) =>
+  getStandings: (slug: string, signal?: AbortSignal) =>
     request<TournamentStandingsResponse>(`/tournaments/${slug}/standings`, {
       auth: true,
+      signal,
     }),
   previewRoundGeneration: (roundId: string, force = false) =>
     request<RoundGenerationPreview>(

@@ -121,3 +121,34 @@ Cho phép bình luận dưới các giải đấu.
   backend có tại `http://localhost:3001/api`.
 - Production: xem hướng dẫn Docker, TLS, migration, MinIO, health check và vận
   hành tại [docs/production-deployment.md](docs/production-deployment.md).
+
+Production Compose đặt `TRUST_PROXY_HOPS=1` vì backend không mở cổng ra ngoài
+và Nginx là proxy duy nhất. Nginx ghi đè `X-Forwarded-For` bằng IP kết nối để
+rate limit phân biệt người dùng và bỏ qua header giả mạo. Khi chạy backend
+trực tiếp, giữ `TRUST_PROXY_HOPS=0` (mặc định); không mở cổng backend ra ngoài
+khi bật tin cậy proxy.
+
+`GET /api/metrics` luôn yêu cầu `Authorization: Bearer <METRICS_TOKEN>`.
+Nếu `METRICS_TOKEN` chưa được đặt hoặc rỗng, endpoint trả `401`.
+Ảnh `/storage/` dùng `Cache-Control` từ metadata S3 và kế thừa security header
+của Nginx.
+
+### Kiểm tra tốc độ giao diện trên localhost
+
+Chế độ development vẫn biên dịch trang khi truy cập lần đầu. Docker trên
+Windows dùng Webpack và polling để nhận thay đổi source. Để demo hoặc đánh
+giá tốc độ, có thể chạy riêng frontend bằng
+bản production đã build sẵn, sử dụng backend và database development đang chạy.
+
+Sau khi khởi động hệ thống bằng Docker Compose, chạy từ thư mục gốc:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.preview.yml up -d --build --no-deps frontend
+```
+
+Giao diện vẫn ở `http://localhost:3000`. Khi sửa source trong chế độ này,
+cần chạy lại lệnh trên để build. Quay lại chế độ development và hot reload:
+
+```powershell
+docker compose up -d --no-deps frontend
+```

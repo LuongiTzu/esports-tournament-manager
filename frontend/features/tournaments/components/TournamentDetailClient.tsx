@@ -177,6 +177,7 @@ export default function TournamentDetailClient({
   const [loading, setLoading] = useState(!initialTournament);
   const [retryVersion, setRetryVersion] = useState(0);
   const [error, setError] = useState("");
+  const tournamentId = tournament?.id;
   const timeZone = useSyncExternalStore(
     subscribeTimeZone,
     browserTimeZone,
@@ -242,7 +243,7 @@ export default function TournamentDetailClient({
   }, [initialTournament, ready, retryVersion, slug, t, user]);
 
   useEffect(() => {
-    if (!tournament || !user) return;
+    if (!tournamentId || !user) return;
     let cancelled = false;
     teamsApi
       .findMine()
@@ -259,7 +260,7 @@ export default function TournamentDetailClient({
     return () => {
       cancelled = true;
     };
-  }, [slug, tournament, user]);
+  }, [slug, tournamentId, user]);
 
   if (loading) {
     return <TournamentDetailSkeleton label={t("common.loading")} />;

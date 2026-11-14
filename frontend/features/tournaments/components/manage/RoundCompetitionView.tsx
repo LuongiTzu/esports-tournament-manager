@@ -19,6 +19,7 @@ export default function RoundCompetitionView({
   bannerUrl,
   tournamentName,
   standings,
+  standingsLoading = false,
   onSelectMatch,
   diagramClassName,
   showHint = true,
@@ -27,6 +28,7 @@ export default function RoundCompetitionView({
   bannerUrl?: string | null;
   tournamentName?: string;
   standings?: RoundStandings;
+  standingsLoading?: boolean;
   onSelectMatch?: (match: BracketMatch) => void;
   diagramClassName?: string;
   showHint?: boolean;
@@ -46,6 +48,7 @@ export default function RoundCompetitionView({
           key={bracket.round.id}
           bracket={bracket}
           standings={standings}
+          standingsLoading={standingsLoading}
           bannerUrl={bannerUrl}
           tournamentName={tournamentName}
           onSelectMatch={onSelectMatch}

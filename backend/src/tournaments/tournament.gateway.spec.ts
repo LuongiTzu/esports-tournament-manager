@@ -294,6 +294,27 @@ describe('TournamentGateway', () => {
     );
   });
 
+  it.each([
+    null,
+    { tournamentId: 42 },
+    { tournamentId: '  ' },
+    { tournamentId: ' x ' },
+    { tournamentId: 'x'.repeat(129) },
+  ])('rejects malformed tournament room messages', async (body) => {
+    const { gateway, prisma } = harness();
+    const client = socket();
+
+    await expect(gateway.joinTournament(client, body)).rejects.toThrow(
+      'Invalid tournamentId',
+    );
+    await expect(gateway.leaveTournament(client, body)).rejects.toThrow(
+      'Invalid tournamentId',
+    );
+    expect(prisma.tournament.findUnique).not.toHaveBeenCalled();
+    expect(client.join).not.toHaveBeenCalled();
+    expect(client.leave).not.toHaveBeenCalled();
+  });
+
   it('emits created notifications to the recipient user room', async () => {
     const { gateway, notificationEvents } = harness();
     const client = authenticatedSocket('user-1');

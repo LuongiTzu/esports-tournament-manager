@@ -56,6 +56,11 @@ export class TournamentQueryService {
       sort?: TournamentListSort;
       page?: number;
       limit?: number;
+      format?: RoundFormat;
+      formats?: RoundFormat[];
+      startFrom?: string;
+      startBefore?: string;
+      registrationOnly?: boolean;
     },
     userId?: string,
   ) {
@@ -99,6 +104,59 @@ export class TournamentQueryService {
           },
         },
       ];
+    }
+
+    if (query.format) where.rounds = { some: { format: query.format } };
+    if (query.formats?.length) {
+      where.AND = query.formats.map((format) => ({
+        rounds: { some: { format } },
+      }));
+    }
+    if (query.startFrom || query.startBefore) {
+      where.startDate = {
+        ...(query.startFrom ? { gte: new Date(query.startFrom) } : {}),
+        ...(query.startBefore ? { lt: new Date(query.startBefore) } : {}),
+      };
+    }
+    if (query.registrationOnly) {
+      const candidates = await this.prisma.tournament.findMany({
+        where,
+        select: {
+          id: true,
+          status: true,
+          registrationOpen: true,
+          registrationStartDate: true,
+          registrationDeadline: true,
+          startDate: true,
+          maxTeams: true,
+          _count: {
+            select: {
+              teams: { where: { status: { in: ['PENDING', 'APPROVED'] } } },
+            },
+          },
+          rounds: {
+            orderBy: { orderIndex: 'asc' },
+            take: 1,
+            select: { _count: { select: { matches: true, groups: true } } },
+          },
+        },
+      });
+      const now = new Date();
+      where.id = {
+        in: candidates
+          .filter((item) => {
+            const round = item.rounds[0];
+            return (
+              !registrationWindowReason(item, now) &&
+              !participantLockReason(
+                item.status,
+                Boolean(round && (round._count.matches || round._count.groups)),
+              ) &&
+              (!item.maxTeams || item._count.teams < item.maxTeams)
+            );
+          })
+          .map((item) => item.id),
+      };
     }
 
     const [data, total] = await Promise.all([
@@ -160,7 +218,16 @@ export class TournamentQueryService {
         },
         teams: {
           where: { status: 'APPROVED' },
-          include: {
+          select: {
+            ...PUBLIC_TOURNAMENT_TEAM_SELECT,
+            description: true,
+            status: true,
+            finalRank: true,
+            reviewedAt: true,
+            registeredAt: true,
+            updatedAt: true,
+            captainId: true,
+            tournamentId: true,
             captain: {
               select: { id: true, displayName: true, avatarUrl: true },
             },
@@ -219,6 +286,13 @@ export class TournamentQueryService {
       withTournamentGameDisplayName({
         ...withAllowedGenders(visibleTournament),
         game: withGameCollections(visibleTournament.game),
+        teams: tournament.teams.map((team) => ({
+          ...team,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          rejectReason: null,
+        })),
         viewerStaffRole,
         management: {
           gameConfiguration: managementAction(

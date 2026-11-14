@@ -1,5 +1,11 @@
 import { NotificationType } from '@prisma/client';
-import { IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export enum NotificationScope {
   WHOLE_TOURNAMENT = 'WHOLE_TOURNAMENT',
@@ -12,6 +18,7 @@ export class CreateTournamentNotificationDto {
 
   @IsString()
   @MinLength(1)
+  @MaxLength(2000)
   content!: string;
 
   @IsEnum(NotificationScope)
@@ -19,5 +26,6 @@ export class CreateTournamentNotificationDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(128)
   teamId?: string;
 }

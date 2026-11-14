@@ -1,6 +1,8 @@
 import type extendedVi from "@/features/locale/dictionaries/extended-vi";
 
 const extendedEn = {
+  "competition.standingsLoading": "Loading standings…",
+  "competition.standingsLoadError": "Could not load standings.",
   "youtube.title": "YouTube video / livestream",
   "youtube.matchVideo": "Match video",
   "youtube.label": "YouTube link",

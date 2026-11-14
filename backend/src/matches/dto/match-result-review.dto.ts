@@ -16,6 +16,7 @@ export class RespondToMatchResultDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
+  @MaxLength(128)
   teamId!: string;
 
   @ApiProperty({ enum: MatchResultDecision })
@@ -33,6 +34,7 @@ export class RespondToMatchResultDto {
   @IsArray()
   @ArrayMaxSize(5)
   @IsUrl({}, { each: true })
+  @MaxLength(2048, { each: true })
   evidenceUrls?: string[];
 }
 

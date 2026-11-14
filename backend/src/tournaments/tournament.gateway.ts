@@ -32,6 +32,9 @@ interface TournamentSocketData {
   readOnly: boolean;
 }
 
+const MAX_TOURNAMENT_ID_LENGTH = 128;
+const MAX_SOCKET_MESSAGE_BYTES = 64 * 1024;
+
 type TournamentClient =
   | Socket
   | RemoteSocket<
@@ -41,6 +44,7 @@ type TournamentClient =
 
 @WebSocketGateway({
   namespace: '/tournaments',
+  maxHttpBufferSize: MAX_SOCKET_MESSAGE_BYTES,
   cors: {
     origin: configuredCorsOrigin,
     credentials: true,
@@ -125,10 +129,9 @@ export class TournamentGateway
   @SubscribeMessage('joinTournament')
   async joinTournament(
     @ConnectedSocket() client: Socket,
-    @MessageBody() body: { tournamentId?: string },
+    @MessageBody() body: unknown,
   ) {
-    const tournamentId = body?.tournamentId;
-    if (!tournamentId) throw new WsException('tournamentId is required');
+    const tournamentId = tournamentIdFromMessage(body);
     const tournament = await this.prisma.tournament.findUnique({
       where: { id: tournamentId },
       select: {
@@ -152,10 +155,9 @@ export class TournamentGateway
   @SubscribeMessage('leaveTournament')
   async leaveTournament(
     @ConnectedSocket() client: Socket,
-    @MessageBody() body: { tournamentId?: string },
+    @MessageBody() body: unknown,
   ) {
-    const tournamentId = body?.tournamentId;
-    if (!tournamentId) throw new WsException('tournamentId is required');
+    const tournamentId = tournamentIdFromMessage(body);
 
     const room = TournamentGateway.room(tournamentId);
     await client.leave(room);
@@ -296,4 +298,22 @@ export class TournamentGateway
           : undefined;
     return token?.startsWith('Bearer ') ? token.slice(7) : token;
   }
+}
+
+function tournamentIdFromMessage(body: unknown): string {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    throw new WsException('Invalid tournamentId');
+  }
+  const value = (body as Record<string, unknown>).tournamentId;
+  if (value === undefined || value === null || value === '') {
+    throw new WsException('tournamentId is required');
+  }
+  if (
+    typeof value !== 'string' ||
+    value.length > MAX_TOURNAMENT_ID_LENGTH ||
+    value !== value.trim()
+  ) {
+    throw new WsException('Invalid tournamentId');
+  }
+  return value;
 }

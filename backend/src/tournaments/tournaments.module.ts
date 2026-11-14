@@ -1,4 +1,12 @@
 import { Module } from '@nestjs/common';
+import { AssistantController } from './assistant/assistant.controller';
+import { AssistantService } from './assistant/assistant.service';
+import { AssistantContextService } from './assistant/assistant-context.service';
+import { AssistantRecordsService } from './assistant/assistant-records.service';
+import { AssistantProposalService } from './assistant/assistant-proposal.service';
+import { AiModule } from '../ai/ai.module';
+import { TournamentAiSearchController } from './tournament-ai-search.controller';
+import { TournamentAiSearchService } from './tournament-ai-search.service';
 import { TournamentsController } from './tournaments.controller';
 import { TournamentsService } from './tournaments.service';
 import { CommonModule } from '../common/common.module';
@@ -20,13 +28,23 @@ import { TournamentCloneService } from './tournament-clone.service';
  */
 @Module({
   imports: [
+    AiModule,
     CommonModule,
     BracketsModule,
     NotificationModule,
     TournamentRealtimeModule,
   ],
-  controllers: [TournamentsController],
+  controllers: [
+    TournamentsController,
+    TournamentAiSearchController,
+    AssistantController,
+  ],
   providers: [
+    AssistantService,
+    AssistantContextService,
+    AssistantRecordsService,
+    AssistantProposalService,
+    TournamentAiSearchService,
     TournamentsService,
     TournamentCommandService,
     TournamentQueryService,
