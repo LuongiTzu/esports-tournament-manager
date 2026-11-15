@@ -2,13 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import {
-  FunnelSimpleIcon,
-  ListBulletsIcon,
-  MagnifyingGlassIcon,
-  SquaresFourIcon,
-} from "@phosphor-icons/react";
-import { inputClass } from "@/components/ui";
+import { ListBulletsIcon, SquaresFourIcon } from "@phosphor-icons/react";
+import { TournamentDiscoveryFilters } from "./TournamentDiscoveryFilters";
 import { gamesApi } from "@/features/games/api";
 import type { Game } from "@/features/games/types";
 import { useLocale } from "@/features/locale/store";
@@ -234,130 +229,29 @@ export default function TournamentDiscovery() {
       </header>
 
       <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8 lg:pb-20">
-        <div className="tournament-filter-panel relative z-10 -mt-7 rounded-2xl border border-line bg-surface-card/95 p-4 shadow-[var(--shadow-elevated)] backdrop-blur-xl sm:p-5">
-          <div className="mb-4 flex items-center gap-2 text-sm font-bold text-ink">
-            <span className="grid size-8 place-items-center rounded-lg bg-brand/15 text-brand-hover">
-              <FunnelSimpleIcon size={18} weight="duotone" />
-            </span>
-            {t("tournaments.discovery.filters")}
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[minmax(18rem,1.4fr)_minmax(11rem,0.7fr)_minmax(11rem,0.7fr)_minmax(11rem,0.7fr)]">
-            <div>
-              <label
-                htmlFor="tournament-search"
-                className="mb-1.5 block text-xs font-semibold text-ink-muted"
-              >
-                {t("tournaments.discovery.searchLabel")}
-              </label>
-              <div className="relative">
-                <MagnifyingGlassIcon
-                  aria-hidden
-                  size={19}
-                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint"
-                />
-                <input
-                  id="tournament-search"
-                  type="search"
-                  value={searchInput}
-                  onChange={(event) =>
-                    setSearchDraft({ value: event.target.value, source: search })
-                  }
-                  placeholder={t("tournaments.discovery.searchPlaceholder")}
-                  className={`${inputClass} h-11 bg-surface pl-10`}
-                />
-              </div>
-            </div>
-            <div>
-              <label
-                htmlFor="tournament-game"
-                className="mb-1.5 block text-xs font-semibold text-ink-muted"
-              >
-                {t("tournaments.discovery.gameLabel")}
-              </label>
-              <select
-                id="tournament-game"
-                value={gameId}
-                onChange={(event) => {
-                  updateQuery({
-                    gameId: event.target.value || null,
-                    page: null,
-                  });
-                }}
-                className={`${inputClass} h-11 bg-surface`}
-              >
-                <option value="">{t("tournaments.discovery.allGames")}</option>
-                {games.map((game) => (
-                  <option key={game.id} value={game.id}>
-                    {game.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label
-                htmlFor="tournament-status"
-                className="mb-1.5 block text-xs font-semibold text-ink-muted"
-              >
-                {t("tournaments.discovery.statusLabel")}
-              </label>
-              <select
-                id="tournament-status"
-                value={status}
-                onChange={(event) => {
-                  updateQuery({
-                    status: event.target.value || null,
-                    page: null,
-                  });
-                }}
-                className={`${inputClass} h-11 bg-surface`}
-              >
-                {statusFilters.map((filter) => (
-                  <option key={filter.value} value={filter.value}>
-                    {filter.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label
-                htmlFor="tournament-sort"
-                className="mb-1.5 block text-xs font-semibold text-ink-muted"
-              >
-                {t("tournaments.discovery.sortLabel")}
-              </label>
-              <select
-                id="tournament-sort"
-                value={sort}
-                onChange={(event) => {
-                  const nextSort = event.target.value as TournamentSort;
-                  updateQuery({
-                    sort: nextSort === "recommended" ? null : nextSort,
-                    page: null,
-                  });
-                }}
-                className={`${inputClass} h-11 bg-surface`}
-              >
-                <option value="recommended">
-                  {t("tournaments.discovery.sortRecommended")}
-                </option>
-                <option value="name">
-                  {t("tournaments.discovery.sortName")}
-                </option>
-                <option value="newest">
-                  {t("tournaments.discovery.sortNewest")}
-                </option>
-                <option value="teams">
-                  {t("tournaments.discovery.sortTeams")}
-                </option>
-              </select>
-            </div>
-          </div>
-          {gamesError && (
-            <p className="mt-3 text-xs text-ink-faint">
-              {t("tournaments.discovery.gamesError")}
-            </p>
-          )}
-        </div>
+        <TournamentDiscoveryFilters
+          search={searchInput}
+          gameId={gameId}
+          status={status}
+          sort={sort}
+          games={games}
+          gamesError={gamesError}
+          statuses={statusFilters}
+          onSearchChange={(value) => setSearchDraft({ value, source: search })}
+          onGameChange={(value) =>
+            updateQuery({ gameId: value || null, page: null })
+          }
+          onStatusChange={(value) =>
+            updateQuery({ status: value || null, page: null })
+          }
+          onSortChange={(value) =>
+            updateQuery({
+              sort: value === "recommended" ? null : value,
+              page: null,
+            })
+          }
+          onClear={clearFilters}
+        />
 
         <div
           id="tournament-results"
@@ -383,26 +277,17 @@ export default function TournamentDiscovery() {
             )}
 
             <div className="flex items-center gap-2">
-              {filtering && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="mr-1 rounded-lg px-3 py-2 text-xs font-semibold text-ink-muted transition hover:bg-surface-sub hover:text-ink"
-                >
-                  {t("tournaments.discovery.clearFilters")}
-                </button>
-              )}
               <div
                 role="group"
                 aria-label={t("tournaments.discovery.viewLabel")}
-                className="inline-flex rounded-lg border border-line bg-surface-card p-1"
+                className="inline-flex border border-line bg-surface-card p-1"
               >
                 <button
                   type="button"
                   aria-label={t("tournaments.discovery.gridView")}
                   aria-pressed={view === "grid"}
                   onClick={() => updateQuery({ view: null })}
-                  className={`grid size-9 place-items-center rounded-md transition ${
+                  className={`grid size-9 place-items-center transition ${
                     view === "grid"
                       ? "tournament-view-active bg-brand text-on-brand shadow-md shadow-brand/20"
                       : "text-ink-faint hover:bg-surface-sub hover:text-ink"
@@ -415,7 +300,7 @@ export default function TournamentDiscovery() {
                   aria-label={t("tournaments.discovery.listView")}
                   aria-pressed={view === "list"}
                   onClick={() => updateQuery({ view: "list" })}
-                  className={`grid size-9 place-items-center rounded-md transition ${
+                  className={`grid size-9 place-items-center transition ${
                     view === "list"
                       ? "tournament-view-active bg-brand text-on-brand shadow-md shadow-brand/20"
                       : "text-ink-faint hover:bg-surface-sub hover:text-ink"
@@ -498,7 +383,7 @@ export default function TournamentDiscovery() {
                     page: previousPage === 1 ? null : String(previousPage),
                   });
                 }}
-                className="rounded-lg border border-line bg-surface-card px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/45 disabled:cursor-not-allowed disabled:opacity-40"
+                className="border border-line bg-surface-card px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/45 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {t("tournaments.discovery.previous")}
               </button>
@@ -516,7 +401,7 @@ export default function TournamentDiscovery() {
                     ),
                   })
                 }
-                className="rounded-lg border border-line bg-surface-card px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/45 disabled:cursor-not-allowed disabled:opacity-40"
+                className="border border-line bg-surface-card px-4 py-2 text-sm font-medium text-ink transition hover:border-brand/45 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {t("tournaments.discovery.next")}
               </button>

@@ -325,6 +325,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -333,6 +334,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "maxLength": 128,
               "type": "string"
             }
           },
@@ -399,7 +401,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -492,6 +501,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           }
@@ -634,7 +644,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -667,7 +684,14 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -858,6 +882,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -887,6 +912,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 1000000,
               "type": "number"
             }
           },
@@ -896,6 +922,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "type": "number"
             }
           }
@@ -1059,6 +1086,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -1067,6 +1095,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "maxLength": 100,
               "type": "string"
             }
           },
@@ -1075,6 +1104,7 @@
             "required": false,
             "in": "query",
             "schema": {
+              "maxLength": 128,
               "type": "string"
             }
           },
@@ -1134,6 +1164,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 1000000,
               "type": "number"
             }
           },
@@ -1143,6 +1174,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "type": "number"
             }
           }
@@ -1417,6 +1449,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 1000000,
               "type": "number"
             }
           },
@@ -1426,6 +1459,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "type": "number"
             }
           }
@@ -1820,6 +1854,61 @@
         },
         "tags": [
           "Tournaments"
+        ]
+      }
+    },
+    "/api/tournaments/ai-search": {
+      "post": {
+        "operationId": "TournamentAiSearchController_search",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiSearchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "TournamentAiSearch"
+        ]
+      }
+    },
+    "/api/assistant/chat": {
+      "post": {
+        "operationId": "AssistantController_chat",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistantChatDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Assistant"
         ]
       }
     },
@@ -2226,6 +2315,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 1000000,
               "type": "number"
             }
           },
@@ -2235,6 +2325,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "type": "number"
             }
           }
@@ -2382,6 +2473,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 1000000,
               "type": "number"
             }
           },
@@ -2391,6 +2483,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "type": "number"
             }
           }
@@ -2464,7 +2557,17 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2510,7 +2613,14 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2608,10 +2718,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "object"
-                  }
+                  "type": "object"
                 }
               }
             }
@@ -3315,6 +3422,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 1000000,
               "type": "number"
             }
           },
@@ -3324,6 +3432,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "type": "number"
             }
           }
@@ -3499,8 +3608,8 @@
               "type": "string",
               "enum": [
                 "DISPUTED",
-                "PENDING_CONFIRMATION",
                 "CONFIRMED",
+                "PENDING_CONFIRMATION",
                 "RESOLVED"
               ]
             }
@@ -3511,6 +3620,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 1000000,
               "type": "number"
             }
           },
@@ -3520,6 +3630,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "type": "number"
             }
           }
@@ -3956,6 +4067,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 1000000,
               "type": "number"
             }
           },
@@ -3965,6 +4077,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "type": "number"
             }
           }
@@ -4074,6 +4187,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 1000000,
               "type": "number"
             }
           },
@@ -4083,6 +4197,7 @@
             "in": "query",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "type": "number"
             }
           },
@@ -4295,7 +4410,8 @@
           },
           "password": {
             "type": "string",
-            "minLength": 6
+            "minLength": 6,
+            "maxLength": 50
           }
         },
         "required": [
@@ -4307,7 +4423,8 @@
         "type": "object",
         "properties": {
           "credential": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 4096
           }
         },
         "required": [
@@ -4760,6 +4877,7 @@
           },
           "rounds": {
             "minItems": 1,
+            "maxItems": 64,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CreateRoundDto"
@@ -5015,9 +5133,101 @@
         "properties": {
           "championTeamId": {
             "type": "string",
+            "maxLength": 128,
             "description": "Organizer-selected champion when competitive standings are tied at rank one"
           }
         }
+      },
+      "AiSearchDto": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          },
+          "locale": {
+            "type": "string",
+            "default": "vi",
+            "enum": [
+              "vi",
+              "en"
+            ]
+          }
+        },
+        "required": [
+          "query",
+          "locale"
+        ]
+      },
+      "ChatMessageDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8000
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ]
+      },
+      "AssistantChatDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1500
+          },
+          "locale": {
+            "type": "string",
+            "default": "vi",
+            "enum": [
+              "vi",
+              "en"
+            ]
+          },
+          "page": {
+            "type": "string",
+            "enum": [
+              "discover",
+              "tournament",
+              "create",
+              "manage",
+              "general"
+            ]
+          },
+          "slug": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "history": {
+            "default": [],
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageDto"
+            }
+          }
+        },
+        "required": [
+          "message",
+          "locale",
+          "page",
+          "history"
+        ]
       },
       "UpdateRoundSettingsDto": {
         "type": "object",
@@ -5044,7 +5254,8 @@
         "type": "object",
         "properties": {
           "teamId": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 128
           },
           "seed": {
             "type": "number",
@@ -5061,6 +5272,7 @@
         "properties": {
           "seeds": {
             "minItems": 1,
+            "maxItems": 256,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SeedAssignmentDto"
@@ -5118,7 +5330,8 @@
           },
           "content": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 2000
           },
           "scope": {
             "type": "string",
@@ -5128,7 +5341,8 @@
             ]
           },
           "teamId": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 128
           }
         },
         "required": [
@@ -5280,6 +5494,7 @@
           },
           "members": {
             "minItems": 1,
+            "maxItems": 50,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TeamMemberInputDto"
@@ -5311,7 +5526,8 @@
         "type": "object",
         "properties": {
           "token": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200
           },
           "team": {
             "$ref": "#/components/schemas/RegisterTeamDto"
@@ -5326,7 +5542,8 @@
         "type": "object",
         "properties": {
           "token": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 200
           }
         },
         "required": [
@@ -5977,7 +6194,8 @@
         "type": "object",
         "properties": {
           "teamId": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 128
           }
         },
         "required": [
@@ -5988,7 +6206,8 @@
         "type": "object",
         "properties": {
           "teamId": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 128
           },
           "decision": {
             "enum": [
@@ -6007,7 +6226,8 @@
             "type": "array",
             "items": {
               "type": "string",
-              "format": "uri"
+              "format": "uri",
+              "maxLength": 2048
             }
           }
         },
@@ -6180,7 +6400,8 @@
         "type": "object",
         "properties": {
           "matchId": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 128
           },
           "scheduledAt": {
             "type": "string",
@@ -6197,6 +6418,7 @@
         "properties": {
           "matches": {
             "minItems": 1,
+            "maxItems": 1024,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/BulkScheduleItemDto"
@@ -6225,6 +6447,7 @@
           "discordLink": {
             "type": "string",
             "nullable": true,
+            "maxLength": 2048,
             "format": "uri"
           },
           "status": {
@@ -6264,6 +6487,7 @@
         "properties": {
           "scores": {
             "minItems": 1,
+            "maxItems": 9,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/MatchScoreDto"
@@ -6278,13 +6502,16 @@
         "type": "object",
         "properties": {
           "teamAId": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 128
           },
           "teamBId": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 128
           },
           "groupId": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 128
           },
           "bestOf": {
             "type": "number",
@@ -6295,6 +6522,7 @@
           },
           "discordLink": {
             "type": "string",
+            "maxLength": 2048,
             "format": "uri"
           }
         }

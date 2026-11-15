@@ -766,6 +766,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tournaments/ai-search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TournamentAiSearchController_search"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assistant/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AssistantController_chat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rounds/{id}/settings": {
         parameters: {
             query?: never;
@@ -1965,6 +1997,32 @@ export interface components {
             /** @description Organizer-selected champion when competitive standings are tied at rank one */
             championTeamId?: string;
         };
+        AiSearchDto: {
+            query: string;
+            /**
+             * @default vi
+             * @enum {string}
+             */
+            locale: "vi" | "en";
+        };
+        ChatMessageDto: {
+            /** @enum {string} */
+            role: "user" | "assistant";
+            content: string;
+        };
+        AssistantChatDto: {
+            message: string;
+            /**
+             * @default vi
+             * @enum {string}
+             */
+            locale: "vi" | "en";
+            /** @enum {string} */
+            page: "discover" | "tournament" | "create" | "manage" | "general";
+            slug?: string;
+            /** @default [] */
+            history: components["schemas"]["ChatMessageDto"][];
+        };
         UpdateRoundSettingsDto: {
             settings: {
                 [key: string]: unknown;
@@ -2593,7 +2651,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -2758,7 +2818,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -2781,7 +2843,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -3485,6 +3549,50 @@ export interface operations {
             };
         };
     };
+    TournamentAiSearchController_search: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiSearchDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AssistantController_chat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssistantChatDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
     BracketsController_updateSettings: {
         parameters: {
             query?: never;
@@ -3973,7 +4081,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>[];
+                };
             };
         };
     };
@@ -4011,7 +4121,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": Record<string, never>;
+                };
             };
         };
     };
@@ -4077,7 +4189,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>[];
+                    "application/json": Record<string, never>;
                 };
             };
         };
@@ -4601,7 +4713,7 @@ export interface operations {
     MatchesController_findTournamentResultReviews: {
         parameters: {
             query?: {
-                status?: "DISPUTED" | "PENDING_CONFIRMATION" | "CONFIRMED" | "RESOLVED";
+                status?: "DISPUTED" | "CONFIRMED" | "PENDING_CONFIRMATION" | "RESOLVED";
                 page?: number;
                 limit?: number;
             };
