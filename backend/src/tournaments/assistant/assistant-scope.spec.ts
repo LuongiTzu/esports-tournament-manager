@@ -1,4 +1,9 @@
-import { GeminiService } from '../../ai/gemini.service';
+import {
+  GeminiError,
+  GeminiService,
+  type GeminiErrorCode,
+} from '../../ai/gemini.service';
+import { assistantErrorMessage } from './assistant-errors';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TournamentQueryService } from '../tournament-query.service';
 import { AssistantContextService } from './assistant-context.service';
@@ -51,6 +56,25 @@ const dto = {
 };
 
 describe('Arena topic and source boundary', () => {
+  it.each<GeminiErrorCode>([
+    'TIMEOUT',
+    'RATE_LIMITED',
+    'UNAUTHORIZED',
+    'INVALID_REQUEST',
+    'INVALID_RESPONSE',
+    'UNAVAILABLE',
+    'NOT_CONFIGURED',
+  ])('exposes an actionable, sanitized error for %s', async (code) => {
+    const { service, generateText } = setup({});
+    generateText.mockRejectedValue(new GeminiError(code));
+    await expect(service.chat(dto)).rejects.toMatchObject({
+      status: code === 'RATE_LIMITED' ? 429 : 503,
+      response: {
+        code: `AI_${code}`,
+        message: assistantErrorMessage(code, 'vi'),
+      },
+    });
+  });
   it('discards off-topic model text and does not invent a tournament source', async () => {
     const { service, researchEsports, findAllPublic, prepare } = setup({
       topic: 'off_topic',

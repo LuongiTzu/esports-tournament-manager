@@ -49,6 +49,7 @@ const labels: Record<string, string> = {
 };
 const values: Record<string, string> = {
   DRAFT: "Bản nháp",
+  REGISTRATION: "Giai đoạn đăng ký",
   PRIVATE: "Riêng tư",
   PUBLIC: "Công khai",
   ONLINE: "Trực tuyến",
@@ -146,9 +147,13 @@ export default function ProposalCard({
       setSlug(result.slug ?? proposal.slug);
       setState("done");
       onApplied(
-        vi
-          ? "Đã áp dụng bản xem trước thành công."
-          : "The preview was applied successfully.",
+        proposal.kind === "publish"
+          ? vi
+            ? "Đã xuất bản giải thành công."
+            : "Tournament published successfully."
+          : vi
+            ? "Đã áp dụng bản xem trước thành công."
+            : "The preview was applied successfully.",
       );
     } catch (e) {
       const known = e instanceof ApiError && e.status < 500;
@@ -173,9 +178,13 @@ export default function ProposalCard({
           ? vi
             ? "Tạo bản nháp riêng tư. Chưa mở đăng ký."
             : "Create a private draft with registration closed."
-          : vi
-            ? "Chỉ áp dụng sau khi bạn xác nhận."
-            : "Changes are applied after your confirmation."}
+          : proposal.kind === "publish"
+            ? vi
+              ? "Xuất bản giải với lựa chọn bên dưới. Chỉ thực hiện khi bạn bấm xác nhận. Việc nhận đội còn phụ thuộc thời gian và điều kiện đăng ký của giải."
+              : "Publish with the choices below after confirmation. Registration remains subject to the tournament's dates and eligibility rules."
+            : vi
+              ? "Chỉ áp dụng sau khi bạn xác nhận."
+              : "Changes are applied after your confirmation."}
       </p>
       {proposal.before && (
         <details>
@@ -220,9 +229,13 @@ export default function ProposalCard({
                 ? vi
                   ? "Xác nhận tạo bản nháp"
                   : "Confirm draft creation"
-                : vi
-                  ? "Xác nhận thay đổi"
-                  : "Confirm changes"}
+                : proposal.kind === "publish"
+                  ? vi
+                    ? "Xác nhận xuất bản"
+                    : "Confirm publication"
+                  : vi
+                    ? "Xác nhận thay đổi"
+                    : "Confirm changes"}
       </button>
       {state === "done" && slug && (
         <Link

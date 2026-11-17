@@ -106,9 +106,13 @@ function AssistantChat({
         setError(
           e instanceof ApiError
             ? e.status === 429
-              ? vi
-                ? "Arena đang bận hoặc hết lượt tạm thời. Bạn chờ một chút nhé."
-                : "Arena is busy or temporarily out of quota. Please try shortly."
+              ? e.code === "AI_RATE_LIMITED"
+                ? vi
+                  ? "Gemini đang giới hạn lượt gọi hoặc đã hết quota. Bạn thử lại sau nhé."
+                  : "Gemini has reached a rate or quota limit. Please try again later."
+                : vi
+                  ? "Bạn gửi yêu cầu hơi nhanh hoặc Arena đang bận. Bạn chờ một chút nhé."
+                  : "Requests are arriving too quickly or Arena is busy. Please wait a moment."
               : e.status === 401
                 ? vi
                   ? "Bạn cần đăng nhập để thực hiện yêu cầu này."

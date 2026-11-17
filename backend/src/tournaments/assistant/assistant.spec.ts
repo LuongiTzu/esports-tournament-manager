@@ -134,6 +134,77 @@ describe('Arena proposals', () => {
       ],
     },
   };
+  beforeEach(() => {
+    prisma.game.findFirst.mockResolvedValue(game);
+  });
+  it.each(['Valorant', '', null])(
+    'omits customGameName=%j from catalog-game drafts before confirmation',
+    async (customGameName) => {
+      const result = await service.prepare(
+        { ...plan, payload: { ...plan.payload, customGameName } },
+        user,
+      );
+      expect(result.payload).not.toHaveProperty('customGameName');
+      expect(result.payload.gameId).toBe('valorant');
+    },
+  );
+  it('preserves the requested name for a custom-game draft', async () => {
+    prisma.game.findFirst.mockResolvedValue({ ...game, code: 'CUSTOM' });
+    const result = await service.prepare(
+      { ...plan, payload: { ...plan.payload, customGameName: 'Chess' } },
+      user,
+    );
+    expect(result.payload.customGameName).toBe('Chess');
+  });
+  it.each([undefined, '', '   '])(
+    'rejects a custom-game draft without a usable name: %j',
+    async (customGameName) => {
+      prisma.game.findFirst.mockResolvedValue({ ...game, code: 'CUSTOM' });
+      await expect(
+        service.prepare(
+          { ...plan, payload: { ...plan.payload, customGameName } },
+          user,
+        ),
+      ).rejects.toThrow('Cần tên game tùy chỉnh.');
+    },
+  );
+  it.each([false, true])(
+    'omits customGameName when updating a catalog game (game changed: %s)',
+    async (changeGame) => {
+      const result = await service.prepare(
+        {
+          action: 'update',
+          payload: {
+            name: 'Updated Cup',
+            customGameName: 'Valorant',
+            ...(changeGame ? { gameId: 'valorant' } : {}),
+          },
+        },
+        user,
+        {
+          canManage: true,
+          tournament: {
+            ...tournament,
+            game: { ...game, code: changeGame ? 'CUSTOM' : game.code },
+          },
+        } as unknown as AssistantContext,
+      );
+      expect(result.payload).not.toHaveProperty('customGameName');
+      expect(result.before).not.toHaveProperty('customGameName');
+      expect(result.payload.name).toBe('Updated Cup');
+    },
+  );
+  it('preserves a custom-game name update', async () => {
+    const result = await service.prepare(
+      { action: 'update', payload: { customGameName: 'New Chess' } },
+      user,
+      {
+        canManage: true,
+        tournament: { ...tournament, game: { ...game, code: 'CUSTOM' } },
+      } as unknown as AssistantContext,
+    );
+    expect(result.payload.customGameName).toBe('New Chess');
+  });
   it('prepares validated Swiss + playoff as a private closed draft without mutation', async () => {
     const p = await service.prepare(plan, user);
     expect(p.payload).toMatchObject({

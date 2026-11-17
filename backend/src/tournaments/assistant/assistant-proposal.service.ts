@@ -24,7 +24,7 @@ export type AssistantContext = Awaited<
   ReturnType<AssistantContextService['forTournament']>
 >;
 export interface AssistantProposal {
-  kind: 'create' | 'update' | 'add_round' | 'update_round';
+  kind: 'create' | 'update' | 'publish' | 'add_round' | 'update_round';
   targetId?: string;
   slug?: string;
   targetName: string;
@@ -79,6 +79,42 @@ export class AssistantProposalService {
     if (plan.action !== 'create' && !context?.canManage)
       throw new ForbiddenException('Bạn không có quyền sửa giải này.');
     const t = context?.tournament;
+    if (plan.action === 'publish') {
+      if (t!.status !== 'DRAFT')
+        throw new BadRequestException(
+          'Chỉ có thể xuất bản giải đang ở trạng thái bản nháp.',
+        );
+      const payload = plan.payload;
+      if (
+        !record(payload) ||
+        Object.keys(payload).some(
+          (key) => !['visibility', 'registrationOpen'].includes(key),
+        ) ||
+        !['PUBLIC', 'PRIVATE'].includes(String(payload.visibility)) ||
+        typeof payload.registrationOpen !== 'boolean'
+      )
+        throw new BadRequestException(
+          'Cần chọn công khai hoặc riêng tư và có mở đăng ký khi xuất bản hay không.',
+        );
+      const dto = plainToInstance(UpdateTournamentDto, {
+        status: 'REGISTRATION',
+        visibility: payload.visibility,
+        registrationOpen: payload.registrationOpen,
+      });
+      await validateProposalDto(dto);
+      return {
+        kind: 'publish',
+        targetId: t!.id,
+        slug: t!.slug,
+        targetName: t!.name,
+        payload: { ...dto },
+        before: {
+          status: t!.status,
+          visibility: t!.visibility,
+          registrationOpen: t!.registrationOpen,
+        },
+      };
+    }
     if (plan.action === 'update_round') {
       const round = t?.rounds.find((r) => r.id === plan.roundId);
       if (!round || !record(plan.settings))
@@ -125,11 +161,16 @@ export class AssistantProposalService {
       const game = dto.gameId
         ? await this.prisma.game.findFirst({
             where: { id: dto.gameId, code: { in: GAME_CATALOG_CODES } },
-            select: { name: true },
+            select: { name: true, code: true },
           })
         : null;
       if (dto.gameId && !game)
         throw new BadRequestException('Game không tồn tại.');
+      if ((game?.code ?? t!.game.code) !== 'CUSTOM') delete dto.customGameName;
+      if (!Object.values(dto).some((value) => value !== undefined))
+        throw new BadRequestException(
+          'Chưa có thay đổi phù hợp với game đã chọn.',
+        );
       return {
         kind: 'update',
         gameName: game?.name,
@@ -138,14 +179,18 @@ export class AssistantProposalService {
         targetName: t!.name,
         payload: { ...dto },
         before: Object.fromEntries(
-          Object.keys(plan.payload).map((key) => [
-            key,
-            key === 'gameId'
-              ? t!.displayGameName
-              : key === 'teamSize'
-                ? t!.minTeamSize
-                : (t as unknown as Record<string, unknown>)[key],
-          ]),
+          Object.keys(plan.payload)
+            .filter(
+              (key) => dto[key as keyof UpdateTournamentDto] !== undefined,
+            )
+            .map((key) => [
+              key,
+              key === 'gameId'
+                ? t!.displayGameName
+                : key === 'teamSize'
+                  ? t!.minTeamSize
+                  : (t as unknown as Record<string, unknown>)[key],
+            ]),
         ),
       };
     }
@@ -168,6 +213,9 @@ export class AssistantProposalService {
       include: { allowedTeamSizes: true },
     });
     if (!game) throw new BadRequestException('Game không tồn tại.');
+    // Gemini may repeat the catalog game name here; the write API only accepts
+    // this field for CUSTOM, including when its value is empty or null.
+    if (game.code !== 'CUSTOM') delete dto.customGameName;
     const policy = new TournamentTeamSizePolicy();
     const rules = {
       ...game,

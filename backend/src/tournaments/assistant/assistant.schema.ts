@@ -42,7 +42,11 @@ const roundSchema = {
 export const tournamentPayloadProperties = {
   name: string,
   gameId: string,
-  customGameName: string,
+  customGameName: {
+    type: 'string',
+    description:
+      'Only for a game whose catalog code is CUSTOM. Omit this field entirely for all other games, including empty or null values.',
+  },
   description: string,
   rules: string,
   mode: { type: 'string', enum: Object.values(TournamentMode) },
@@ -81,6 +85,7 @@ export const assistantSchema = {
         'records',
         'create',
         'update',
+        'publish',
         'update_round',
         'add_round',
       ],
@@ -96,6 +101,18 @@ export const assistantSchema = {
 
 // Keep independent action schemas small enough for Gemini's constrained decoder.
 export const proposalSchemas: Record<string, Record<string, unknown>> = {
+  publish: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['visibility', 'registrationOpen'],
+    properties: {
+      visibility: {
+        type: ['string', 'null'],
+        enum: ['PUBLIC', 'PRIVATE', null],
+      },
+      registrationOpen: { type: ['boolean', 'null'] },
+    },
+  },
   create: {
     type: 'object',
     additionalProperties: false,

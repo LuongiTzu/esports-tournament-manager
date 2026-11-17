@@ -116,6 +116,7 @@ export class AssistantContextService {
           name: t.name,
           game: t.displayGameName,
           status: t.status,
+          visibility: t.visibility,
           mode: t.mode,
           description: t.description,
           rules: t.rules,

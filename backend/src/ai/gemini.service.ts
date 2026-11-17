@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
@@ -8,11 +8,16 @@ export type GeminiErrorCode =
   | 'NOT_CONFIGURED'
   | 'UNAUTHORIZED'
   | 'RATE_LIMITED'
+  | 'TIMEOUT'
+  | 'INVALID_REQUEST'
   | 'UNAVAILABLE'
   | 'INVALID_RESPONSE';
 
 export class GeminiError extends Error {
-  constructor(readonly code: GeminiErrorCode) {
+  constructor(
+    readonly code: GeminiErrorCode,
+    readonly httpStatus?: number,
+  ) {
     super(`Gemini request failed: ${code}`);
     this.name = 'GeminiError';
   }
@@ -20,6 +25,7 @@ export class GeminiError extends Error {
 
 @Injectable()
 export class GeminiService {
+  private readonly logger = new Logger(GeminiService.name);
   constructor(private readonly config: ConfigService) {}
 
   get model(): string {
@@ -43,7 +49,11 @@ export class GeminiService {
         : {},
     );
     const text = extractText(body);
-    if (!text) throw new GeminiError('INVALID_RESPONSE');
+    if (!text) {
+      const error = new GeminiError('INVALID_RESPONSE');
+      this.logFailure(error);
+      throw error;
+    }
     return text;
   }
 
@@ -123,43 +133,75 @@ export class GeminiService {
     const apiKey = this.config.get<string>('GEMINI_API_KEY')?.trim();
     if (!apiKey) throw new GeminiError('NOT_CONFIGURED');
 
-    let response: Response;
-    try {
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey,
+    // These requests generate text/preview data only; they never execute mutations.
+    // Retry once for transport timeouts or transient upstream failures, not quota/auth/schema errors.
+    for (let attempt = 0; ; attempt++) {
+      const signal = AbortSignal.timeout(timeout);
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': apiKey,
+            },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              ...options,
+            }),
+            signal,
           },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            ...options,
-          }),
-          signal: AbortSignal.timeout(timeout),
-        },
-      );
-    } catch {
-      throw new GeminiError('UNAVAILABLE');
-    }
-
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        throw new GeminiError('UNAUTHORIZED');
+        );
+        if (!response.ok) {
+          const code: GeminiErrorCode =
+            response.status === 401 || response.status === 403
+              ? 'UNAUTHORIZED'
+              : response.status === 429
+                ? 'RATE_LIMITED'
+                : response.status >= 400 && response.status < 500
+                  ? 'INVALID_REQUEST'
+                  : 'UNAVAILABLE';
+          throw new GeminiError(code, response.status);
+        }
+        try {
+          return (await response.json()) as unknown;
+        } catch {
+          throw new GeminiError(
+            signal.aborted ? 'TIMEOUT' : 'INVALID_RESPONSE',
+          );
+        }
+      } catch (error) {
+        const failure =
+          error instanceof GeminiError
+            ? error
+            : new GeminiError(
+                signal.aborted ||
+                  (isRecord(error) && error.name === 'TimeoutError')
+                  ? 'TIMEOUT'
+                  : 'UNAVAILABLE',
+              );
+        const transient =
+          failure.code === 'TIMEOUT' ||
+          (failure.code === 'UNAVAILABLE' &&
+            (failure.httpStatus === undefined || failure.httpStatus >= 500));
+        if (attempt === 0 && transient) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          continue;
+        }
+        this.logFailure(failure);
+        throw failure;
       }
-      if (response.status === 429) throw new GeminiError('RATE_LIMITED');
-      throw new GeminiError('UNAVAILABLE');
     }
+  }
 
-    let body: unknown;
-    try {
-      body = await response.json();
-    } catch {
-      throw new GeminiError('INVALID_RESPONSE');
-    }
-
-    return body;
+  private logFailure(error: GeminiError) {
+    // Never log prompts, API keys or raw provider response bodies.
+    this.logger.warn({
+      event: 'gemini_request_failed',
+      code: error.code,
+      httpStatus: error.httpStatus,
+    });
   }
 }
 

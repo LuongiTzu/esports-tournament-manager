@@ -1,8 +1,8 @@
-import { request } from "@/lib/api/client";
+import { ApiError, request } from "@/lib/api/client";
 export type AssistantPage =
   "discover" | "tournament" | "create" | "manage" | "general";
 export interface AssistantProposal {
-  kind: "create" | "update" | "add_round" | "update_round";
+  kind: "create" | "update" | "publish" | "add_round" | "update_round";
   targetId?: string;
   slug?: string;
   targetName: string;
@@ -64,11 +64,22 @@ export function chatWithArena(
     }),
   });
 }
-export function applyProposal(proposal: AssistantProposal) {
+export async function applyProposal(proposal: AssistantProposal) {
+  if (proposal.kind === "publish") {
+    const current = await request<{ id: string; status: string }>(
+      `/tournaments/${encodeURIComponent(proposal.slug!)}`,
+      { auth: true },
+    );
+    if (current.id !== proposal.targetId || current.status !== "DRAFT")
+      throw new ApiError(
+        "Giải không còn là bản nháp. Hãy kiểm tra trạng thái hiện tại trước khi thay đổi.",
+        409,
+      );
+  }
   const path =
     proposal.kind === "create"
       ? "/tournaments"
-      : proposal.kind === "update"
+      : proposal.kind === "update" || proposal.kind === "publish"
         ? `/tournaments/${encodeURIComponent(proposal.targetId!)}`
         : proposal.kind === "add_round"
           ? `/tournaments/${encodeURIComponent(proposal.slug!)}/rounds`
