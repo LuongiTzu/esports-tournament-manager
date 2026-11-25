@@ -62,7 +62,11 @@ function KpiShell({
         glowRadius={36}
         glowIntensity={0.8}
         coneSpread={24}
-        colors={["#ff5a00", "#ff8a45", "#e84b00"]}
+        colors={[
+          "var(--color-brand)",
+          "var(--color-brand-hover)",
+          "var(--color-brand-secondary)",
+        ]}
         className="h-full transition-transform duration-200 group-hover:-translate-y-0.5"
       >
         <article className="relative min-h-44 overflow-hidden p-5">

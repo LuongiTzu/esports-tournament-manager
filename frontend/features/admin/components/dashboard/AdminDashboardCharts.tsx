@@ -63,9 +63,9 @@ const STATUS_STYLES: Record<
 };
 
 const POPULAR_GAME_COLORS = [
+  "var(--color-brand-secondary)",
   "var(--color-brand)",
-  "var(--color-brand-hover)",
-  "var(--color-brand-secondary-dark)",
+  "var(--color-ink-muted)",
   "var(--color-approved)",
   "var(--color-pending)",
 ] as const;

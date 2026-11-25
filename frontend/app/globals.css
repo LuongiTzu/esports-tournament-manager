@@ -135,6 +135,52 @@ html[data-theme="light"] .system-logo {
   mix-blend-mode: multiply;
 }
 
+/* Scope the admin palette to its route, including navbar and portaled dialogs. */
+body:has(.admin-navbar) {
+  --color-brand: #8b3dff;
+  --color-brand-hover: #a66aff;
+  --color-brand-secondary: #e4164f;
+  --color-brand-secondary-dark: #bd103e;
+  --color-on-brand: #ffffff;
+  --color-visual-accent: #8b3dff;
+  --gradient-primary: linear-gradient(100deg, var(--color-brand), var(--color-brand-secondary));
+  --gradient-primary-hover: linear-gradient(100deg, var(--color-brand-hover), var(--color-brand-secondary-dark));
+  --gradient-border: linear-gradient(90deg, transparent, var(--color-brand), var(--color-brand-secondary), transparent);
+  --glow-primary: 0 0 28px rgb(139 61 255 / 0.22);
+  --shadow-focus: 0 0 0 3px rgb(139 61 255 / 0.24);
+  --shadow-button: 0 10px 26px rgb(228 22 79 / 0.2);
+}
+
+html:not([data-theme="light"]) body:has(.admin-navbar) {
+  --color-surface: #0b0911;
+  --color-surface-card: #14111c;
+  --color-surface-sub: #1c1726;
+  --color-surface-hover: #272033;
+  --color-surface-muted: #1c1726;
+  --color-surface-elevated: #211a2c;
+  --color-line: #2a2235;
+  --color-line-strong: #493d59;
+  --color-ink: #f5f2fa;
+  --color-ink-muted: #b9b1c6;
+  --color-ink-faint: #968ca6;
+  --color-muted: #1c1726;
+  --color-muted-foreground: #b9b1c6;
+  --color-input: #1c1726;
+  --color-overlay: rgb(8 5 14 / 0.76);
+  --color-visual-backdrop: #0b0911;
+  --color-pending: #f0b94f;
+  --color-approved: #62d5a0;
+  --color-rejected: #e58b9a;
+}
+
+html[data-theme="light"] body:has(.admin-navbar) {
+  --color-brand: #7430d8;
+  --color-brand-hover: #6524bd;
+  --color-brand-secondary: #c41043;
+  --color-brand-secondary-dark: #a20e38;
+  --color-visual-accent: #7430d8;
+}
+
 .admin-console {
   --radius-control: 0.5rem;
   --radius-card: 0.75rem;
