@@ -22,6 +22,10 @@ import {
 } from "@/features/realtime/types";
 import { API_BASE_URL } from "@/lib/api/client";
 import { tokenStore } from "@/lib/api/token-store";
+import {
+  joinActiveTournamentRooms,
+  subscribeTournamentRoom,
+} from "@/features/realtime/room-subscriptions";
 
 interface RealtimeContextValue {
   subscribeNotifications: (
@@ -57,10 +61,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   );
   const deliveredNotificationIds = useRef(new Set<string>());
 
-  const joinActiveTournamentRooms = useCallback((socket: Socket) => {
-    tournamentListeners.current.forEach((_listeners, tournamentId) => {
-      socket.emit("joinTournament", { tournamentId });
-    });
+  const rejoinActiveTournamentRooms = useCallback((socket: Socket) => {
+    joinActiveTournamentRooms(socket, tournamentListeners.current);
   }, []);
 
   useEffect(() => {
@@ -74,7 +76,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     socketRef.current = socket;
     const deliveredNotificationIdsForSession = deliveredNotificationIds.current;
 
-    const onConnect = () => joinActiveTournamentRooms(socket);
+    const onConnect = () => rejoinActiveTournamentRooms(socket);
     const onNotification = (notification: NotificationRecord) => {
       if (!notification?.id) return;
       const delivered = deliveredNotificationIdsForSession;
@@ -115,7 +117,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       if (socketRef.current === socket) socketRef.current = null;
       deliveredNotificationIdsForSession.clear();
     };
-  }, [accessToken, joinActiveTournamentRooms, ready]);
+  }, [accessToken, rejoinActiveTournamentRooms, ready]);
 
   const subscribeNotifications = useCallback(
     (listener: NotificationRealtimeListener) => {
@@ -127,25 +129,12 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   const subscribeTournament = useCallback(
     (tournamentId: string, listener: TournamentRealtimeListener) => {
-      const listeners =
-        tournamentListeners.current.get(tournamentId) ??
-        new Set<TournamentRealtimeListener>();
-      const firstSubscriber = listeners.size === 0;
-      listeners.add(listener);
-      tournamentListeners.current.set(tournamentId, listeners);
-      if (firstSubscriber && socketRef.current?.connected) {
-        socketRef.current.emit("joinTournament", { tournamentId });
-      }
-      return () => {
-        const current = tournamentListeners.current.get(tournamentId);
-        current?.delete(listener);
-        if (current?.size === 0) {
-          tournamentListeners.current.delete(tournamentId);
-          if (socketRef.current?.connected) {
-            socketRef.current.emit("leaveTournament", { tournamentId });
-          }
-        }
-      };
+      return subscribeTournamentRoom(
+        tournamentListeners.current,
+        socketRef,
+        tournamentId,
+        listener,
+      );
     },
     [],
   );

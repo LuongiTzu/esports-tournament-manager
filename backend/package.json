@@ -21,7 +21,6 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "openapi:export": "npm run build && node dist/src/openapi.js",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
@@ -32,8 +31,7 @@
     "prisma:reset": "ts-node scripts/reset-development-database.ts --execute",
     "prisma:reset:check": "ts-node scripts/reset-development-database.ts --check",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "prisma:seed:check": "ts-node prisma/seed.ts --validate-only",
-    "prisma:ui-smoke:seed": "ts-node scripts/seed-ui-smoke-e2e.ts"
+    "prisma:seed:check": "ts-node prisma/seed.ts --validate-only"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1142.0",

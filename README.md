@@ -119,19 +119,9 @@ Cho phép bình luận dưới các giải đấu.
 - Development: chạy PostgreSQL, backend và frontend bằng
   `docker compose up -d --build`. Frontend có tại `http://localhost:3000` và
   backend có tại `http://localhost:3001/api`.
-- Production: xem hướng dẫn Docker, TLS, migration, MinIO, health check và vận
-  hành tại [docs/production-deployment.md](docs/production-deployment.md).
-
-Production Compose đặt `TRUST_PROXY_HOPS=1` vì backend không mở cổng ra ngoài
-và Nginx là proxy duy nhất. Nginx ghi đè `X-Forwarded-For` bằng IP kết nối để
-rate limit phân biệt người dùng và bỏ qua header giả mạo. Khi chạy backend
-trực tiếp, giữ `TRUST_PROXY_HOPS=0` (mặc định); không mở cổng backend ra ngoài
-khi bật tin cậy proxy.
 
 `GET /api/metrics` luôn yêu cầu `Authorization: Bearer <METRICS_TOKEN>`.
 Nếu `METRICS_TOKEN` chưa được đặt hoặc rỗng, endpoint trả `401`.
-Ảnh `/storage/` dùng `Cache-Control` từ metadata S3 và kế thừa security header
-của Nginx.
 
 ### Kiểm tra tốc độ giao diện trên localhost
 
